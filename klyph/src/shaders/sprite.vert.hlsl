@@ -1,6 +1,5 @@
 // Sprite vertex shader: pulls one record per sprite from a storage buffer by SV_VertexID.
-// Compile with SDL_shadercross to MSL, SPIR-V and DXIL. Not yet wired into the build; the MSL
-// in SpriteShaders.kt is the hand-written equivalent.
+// Compiled by the compileShaders Gradle task (SDL_shadercross) into render/generated/Shaders.kt.
 //
 // SDL_GPU HLSL binding convention: vertex storage buffers in space0 (t registers),
 // vertex uniform buffers in space1 (b registers).

@@ -17,6 +17,7 @@ import sdl3.SDL_GPU_SHADERFORMAT_DXIL
 import sdl3.SDL_GPU_SHADERFORMAT_MSL
 import sdl3.SDL_GPU_SHADERFORMAT_SPIRV
 import sdl3.SDL_GetGPUDeviceDriver
+import sdl3.SDL_GetGPUShaderFormats
 import sdl3.SDL_GetGPUSwapchainTextureFormat
 import sdl3.SDL_ReleaseGPUFence
 import sdl3.SDL_ReleaseWindowFromGPUDevice
@@ -84,6 +85,13 @@ public class GpuDevice internal constructor(internal val handle: CPointer<SDL_GP
     /** Name of the backend SDL chose, such as `metal`, `vulkan` or `direct3d12`. */
     public val driverName: String
         get() = SDL_GetGPUDeviceDriver(handle)?.toKString() ?: "unknown"
+
+    /** Shader formats the chosen backend accepts; on every current backend exactly one. */
+    public val shaderFormats: Set<ShaderFormat>
+        get() {
+            val bits = SDL_GetGPUShaderFormats(handle)
+            return ShaderFormat.entries.filterTo(LinkedHashSet()) { bits and it.bit != 0u }
+        }
 
     /**
      * Creates a swapchain for [window] so this device can present into it.

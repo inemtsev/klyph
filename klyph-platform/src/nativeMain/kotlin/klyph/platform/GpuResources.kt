@@ -412,3 +412,51 @@ internal inline fun <reified T : kotlinx.cinterop.CStructVar> T.zeroed(): T {
     memset(this.ptr, 0, sizeOf<T>().convert())
     return this
 }
+
+/**
+ * One shader compiled for every backend: MSL source for Metal, SPIR-V for Vulkan and DXIL for
+ * Direct3D 12, with the resource counts SDL needs. Produced by the `compileShaders` build task
+ * from HLSL; create the backend's shader with [GpuDevice.createShader].
+ */
+public class CompiledShader(
+    public val stage: ShaderStage,
+    private val msl: String,
+    private val spirvBase64: String,
+    private val dxilBase64: String,
+    public val samplers: Int,
+    public val storageTextures: Int,
+    public val storageBuffers: Int,
+    public val uniformBuffers: Int,
+) {
+    /** Returns the code for [format], and the entry point name that code uses. */
+    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    internal fun code(format: ShaderFormat): Pair<ByteArray, String> = when (format) {
+        // SPIRV-Cross renames `main` because Metal reserves it.
+        ShaderFormat.MSL -> msl.encodeToByteArray() to "main0"
+        ShaderFormat.SPIRV -> kotlin.io.encoding.Base64.decode(spirvBase64) to "main"
+        ShaderFormat.DXIL -> kotlin.io.encoding.Base64.decode(dxilBase64) to "main"
+    }
+
+    override fun toString(): String =
+        "CompiledShader(stage=$stage, samplers=$samplers, storageBuffers=$storageBuffers, uniformBuffers=$uniformBuffers)"
+}
+
+/**
+ * Creates the backend's shader from [shader], picking the format this device supports.
+ *
+ * @throws SdlException if the backend rejects the shader.
+ */
+public fun GpuDevice.createShader(shader: CompiledShader): GpuShader {
+    val format = shaderFormats.first()
+    val (code, entryPoint) = shader.code(format)
+    return createShader(
+        code = code,
+        format = format,
+        stage = shader.stage,
+        entryPoint = entryPoint,
+        samplers = shader.samplers,
+        storageTextures = shader.storageTextures,
+        storageBuffers = shader.storageBuffers,
+        uniformBuffers = shader.uniformBuffers,
+    )
+}

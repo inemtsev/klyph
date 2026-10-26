@@ -14,8 +14,6 @@ import klyph.platform.GraphicsPipeline
 import klyph.platform.RenderPass
 import klyph.platform.Sampler
 import klyph.platform.SamplerFilter
-import klyph.platform.ShaderFormat
-import klyph.platform.ShaderStage
 import klyph.platform.TextureFormat
 import klyph.platform.TransferBuffer
 import klyph.platform.beginCopyPass
@@ -33,6 +31,8 @@ import klyph.platform.pushVertexUniforms
 import klyph.platform.release
 import klyph.platform.unmap
 import klyph.platform.uploadToBuffer
+import klyph.render.generated.SpriteFragmentShader
+import klyph.render.generated.SpriteVertexShader
 
 /**
  * Draws every entity that has a [Transform] and a [Sprite] from one texture in a single draw call.
@@ -40,7 +40,8 @@ import klyph.platform.uploadToBuffer
  * Each frame has three steps so callers can time them: [extract] writes one 64-byte record per
  * sprite straight into mapped staging memory, [upload] copies the records to a GPU storage
  * buffer, and [draw] issues one draw of six vertices per sprite. The vertex shader pulls each
- * record by vertex index; there are no vertex buffers.
+ * record by vertex index; there are no vertex buffers. The shaders come from
+ * `src/shaders/sprite.*.hlsl`, compiled by the `compileShaders` task.
  *
  * At most [capacity] sprites are drawn per frame; extra sprites are skipped.
  */
@@ -52,21 +53,8 @@ public class SpriteRenderer(
 ) : AutoCloseable {
     private val storage: GpuBuffer = device.createBuffer(BufferUsage.STORAGE_READ, capacity * SPRITE_RECORD_BYTES)
     private val staging: TransferBuffer = device.createTransferBuffer(capacity * SPRITE_RECORD_BYTES)
-    private val vertexShader: GpuShader = device.createShader(
-        code = SPRITE_VERTEX_MSL.encodeToByteArray(),
-        format = ShaderFormat.MSL,
-        stage = ShaderStage.VERTEX,
-        entryPoint = "sprite_vertex",
-        storageBuffers = 1,
-        uniformBuffers = 1,
-    )
-    private val fragmentShader: GpuShader = device.createShader(
-        code = SPRITE_FRAGMENT_MSL.encodeToByteArray(),
-        format = ShaderFormat.MSL,
-        stage = ShaderStage.FRAGMENT,
-        entryPoint = "sprite_fragment",
-        samplers = 1,
-    )
+    private val vertexShader: GpuShader = device.createShader(SpriteVertexShader)
+    private val fragmentShader: GpuShader = device.createShader(SpriteFragmentShader)
     private val pipeline: GraphicsPipeline =
         device.createGraphicsPipeline(vertexShader, fragmentShader, colorFormat, BlendMode.ALPHA)
     private val sampler: Sampler = device.createSampler(filter)

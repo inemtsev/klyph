@@ -29,3 +29,15 @@ sprite benchmark: `KLYPH_SPRITES=<n>` sprite count (default 10000), `KLYPH_FRAME
 validation layer (slow; use it after touching the platform module). macOS has no `timeout`, so
 bound runs with `KLYPH_FRAMES`. Do not pipe `./gradlew` output into
 another command: the daemon inherits the pipe and the shell never sees EOF. Redirect to a file.
+
+## Shaders
+
+Shaders are written once in HLSL under `klyph/src/shaders/` as `<name>.vert.hlsl` or
+`<name>.frag.hlsl`. `./gradlew :klyph:compileShaders` runs SDL_shadercross and regenerates
+`klyph/src/nativeMain/kotlin/klyph/render/generated/Shaders.kt`, which embeds MSL, SPIR-V and
+DXIL plus resource counts as `CompiledShader` values. That file is checked in; commit it together
+with the HLSL change. The task runs before every Kotlin compile and is skipped with a warning when
+the tool is missing (default path `~/.local/shadercross/bin/shadercross`, override with
+`-Pklyph.shadercross=<path>`). Binding conventions for HLSL: vertex storage buffers `space0`,
+vertex uniforms `space1`, fragment samplers `space2`. The MSL entry point is `main0`;
+`GpuDevice.createShader(CompiledShader)` handles that.

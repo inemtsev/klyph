@@ -33,6 +33,8 @@ val checkNoInteropImports = tasks.register("checkNoInteropImports") {
     group = "verification"
     val sources = fileTree("src") { include("**/*.kt") }
     inputs.files(sources)
+    // Generated sources (compileShaders) land in src, so scan after they are written.
+    dependsOn(tasks.matching { it.name == "compileShaders" })
     // Plain values only: the configuration cache cannot serialize references to the script itself.
     val root = projectDir
     val interopImport = Regex("""^\s*import\s+(kotlinx\.cinterop|sdl3|cnames|platform)\.""")
