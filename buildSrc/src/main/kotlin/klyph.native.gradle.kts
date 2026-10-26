@@ -1,0 +1,54 @@
+// Convention plugin shared by every klyph module: the Kotlin/Native target for this host and the
+// rule that native interop stays inside klyph-platform.
+
+plugins {
+    id("org.jetbrains.kotlin.multiplatform")
+}
+
+// One target per build: the host's own, or the one named by -Pklyph.target=<name>.
+// Cross-compiling needs SDL3 headers and libraries for the other platform, so it is opt-in.
+val hostOs: String = System.getProperty("os.name")
+val hostArch: String = System.getProperty("os.arch")
+val hostTarget: String = when {
+    hostOs == "Mac OS X" && hostArch == "aarch64" -> "macosArm64"
+    hostOs == "Linux" && hostArch == "aarch64" -> "linuxArm64"
+    hostOs == "Linux" -> "linuxX64"
+    hostOs.startsWith("Windows") -> "mingwX64"
+    else -> throw GradleException("Unsupported host: $hostOs $hostArch.")
+}
+val targetName: String = providers.gradleProperty("klyph.target").getOrElse(hostTarget)
+
+kotlin {
+    when (targetName) {
+        "macosArm64" -> macosArm64()
+        "linuxX64" -> linuxX64()
+        "linuxArm64" -> linuxArm64()
+        "mingwX64" -> mingwX64()
+        else -> throw GradleException("Unknown klyph.target '$targetName'.")
+    }
+}
+
+val checkNoInteropImports = tasks.register("checkNoInteropImports") {
+    description = "Fails if a source file outside klyph-platform imports native interop packages."
+    group = "verification"
+    val sources = fileTree("src") { include("**/*.kt") }
+    inputs.files(sources)
+    // Plain values only: the configuration cache cannot serialize references to the script itself.
+    val root = projectDir
+    val interopImport = Regex("""^\s*import\s+(kotlinx\.cinterop|sdl3|cnames|platform)\.""")
+    doLast {
+        val offenders = sources.files.filter { file ->
+            file.useLines { lines -> lines.any { interopImport.containsMatchIn(it) } }
+        }
+        if (offenders.isNotEmpty()) {
+            throw GradleException(
+                "Native interop imports are only allowed in klyph-platform:\n" +
+                    offenders.joinToString("\n") { "  " + it.relativeTo(root) },
+            )
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(checkNoInteropImports)
+}

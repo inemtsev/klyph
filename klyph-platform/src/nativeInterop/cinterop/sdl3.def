@@ -1,0 +1,5 @@
+headers = SDL3/SDL.h
+headerFilter = SDL3/**
+# Include path comes from build.gradle.kts (sdl3.prefix). The library search path is added by
+# executables; the library name is carried in the klib so every consumer links it.
+linkerOpts = -lSDL3
