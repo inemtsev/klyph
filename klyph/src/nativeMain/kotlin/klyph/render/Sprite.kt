@@ -6,6 +6,8 @@ import klyph.platform.Color
 /**
  * A textured quad of [width] by [height] world units centred on its entity's transform, showing
  * the texture region from ([u0], [v0]) to ([u1], [v1]) tinted by [color].
+ *
+ * @sample samples.entity.Components.sprite
  */
 public class Sprite(
     public var width: Float,

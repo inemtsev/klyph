@@ -3,6 +3,8 @@ package klyph.entity
 /**
  * Position, rotation and scale of an entity in world units. Rotation is in radians,
  * counter-clockwise.
+ *
+ * @sample samples.entity.Components.transform
  */
 public class Transform(
     public var x: Float = 0f,

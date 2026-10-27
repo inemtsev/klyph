@@ -15,8 +15,13 @@ automatically (Homebrew, /usr/local, /usr); override with `-Psdl3.prefix=<path>`
 
 Modules: `klyph-platform` (SDL3 cinterop and the thin Kotlin API over it; the only module allowed
 to import `kotlinx.cinterop`, `sdl3`, `cnames` or `platform.*`), `klyph` (the engine, no interop),
-`sandbox` (executable; hosts smoke tests and benchmarks). `./gradlew check` enforces the import rule.
-Shared target config lives in `buildSrc/src/main/kotlin/klyph.native.gradle.kts`.
+`sandbox` (executable; hosts smoke tests and benchmarks), `samples` (the `@sample` functions from
+API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
+`assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`). `./gradlew check`
+runs every module's tests and samples plus the interop-import rule; a single module's tests run
+with `:<module>:macosArm64Test`. GPU, window and event functions have no samples because they need
+a display. Shared target config and SDL link flags live in
+`buildSrc/src/main/kotlin/klyph.native.gradle.kts`.
 
 ```
 ./gradlew :sandbox:linkDebugExecutableMacosArm64

@@ -80,6 +80,8 @@ public value class TextureFormat internal constructor(internal val raw: SDL_GPUT
 /**
  * A GPU device. Create one with the [GpuDevice] factory, [claim] a window to present into, and
  * [close] it after releasing every window and GPU resource created from it.
+ *
+ * Samples live in the sandbox because they need a display.
  */
 public class GpuDevice internal constructor(internal val handle: CPointer<SDL_GPUDevice>) : AutoCloseable {
     /** Name of the backend SDL chose, such as `metal`, `vulkan` or `direct3d12`. */

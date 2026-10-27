@@ -27,6 +27,8 @@ public value class KeyCode(public val code: UInt) {
 /**
  * Drains SDL's event queue. Owns one native event record, so polling allocates nothing.
  * [close] it when the pump is no longer needed.
+ *
+ * Samples live in the sandbox because they need a display.
  */
 public class EventPump : AutoCloseable {
     private val event = nativeHeap.alloc<SDL_Event>()

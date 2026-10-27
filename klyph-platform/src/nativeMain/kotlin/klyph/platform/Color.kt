@@ -4,6 +4,8 @@ import kotlin.jvm.JvmInline
 
 /**
  * An RGBA color with 8 bits per channel, packed as `0xRRGGBBAA`.
+ *
+ * @sample samples.platform.Colors.color
  */
 @JvmInline
 public value class Color(public val rgba: UInt) {
@@ -33,6 +35,8 @@ public value class Color(public val rgba: UInt) {
  * Creates a [Color] from channels in `0.0..1.0`. Values outside that range are rejected.
  *
  * @throws IllegalArgumentException if a channel is outside `0.0..1.0`.
+ *
+ * @sample samples.platform.Colors.color
  */
 public fun Color(red: Float, green: Float, blue: Float, alpha: Float = 1f): Color {
     require(red in 0f..1f) { "Red channel $red is outside 0.0..1.0." }

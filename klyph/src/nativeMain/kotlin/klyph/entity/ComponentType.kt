@@ -12,6 +12,8 @@ package klyph.entity
  * ```
  *
  * Identity is by instance, not by [name]; the name is for messages and tooling.
+ *
+ * @sample samples.entity.Components.componentType
  */
 public abstract class ComponentType<T : Any>(public val name: String) {
     override fun toString(): String = "ComponentType($name)"

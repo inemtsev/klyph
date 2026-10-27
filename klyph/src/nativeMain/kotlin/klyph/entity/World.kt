@@ -19,7 +19,11 @@ public class World(initialCapacity: Int = 1024) {
     public var entityCount: Int = 0
         private set
 
-    /** Creates an entity with no components. */
+    /**
+     * Creates an entity with no components.
+     *
+     * @sample samples.entity.Worlds.create
+     */
     public fun create(): Entity {
         val index = if (freeCount > 0) freeSlots[--freeCount] else allocateSlot()
         alive[index] = true
@@ -29,6 +33,8 @@ public class World(initialCapacity: Int = 1024) {
 
     /**
      * Removes [entity] and all its components. Does nothing if it is already gone.
+     *
+     * @sample samples.entity.Worlds.destroy
      */
     public fun destroy(entity: Entity) {
         if (!isAlive(entity)) return
@@ -51,17 +57,27 @@ public class World(initialCapacity: Int = 1024) {
      * Attaches [component] to [entity] under [type], replacing any component of that type.
      *
      * @throws IllegalArgumentException if [entity] is not alive.
+     *
+     * @sample samples.entity.Worlds.add
      */
     public fun <T : Any> add(entity: Entity, type: ComponentType<T>, component: T) {
         require(isAlive(entity)) { "Entity $entity is not alive." }
         store(type).set(entity, component)
     }
 
-    /** Detaches the [type] component from [entity]. Returns `true` if there was one. */
+    /**
+     * Detaches the [type] component from [entity]. Returns `true` if there was one.
+     *
+     * @sample samples.entity.Worlds.remove
+     */
     public fun <T : Any> remove(entity: Entity, type: ComponentType<T>): Boolean =
         stores[type]?.remove(entity) ?: false
 
-    /** Returns the [type] component of [entity], or `null` if it has none. */
+    /**
+     * Returns the [type] component of [entity], or `null` if it has none.
+     *
+     * @sample samples.entity.Worlds.getOrNull
+     */
     public fun <T : Any> getOrNull(entity: Entity, type: ComponentType<T>): T? =
         storeOrNull(type)?.getOrNull(entity)
 
@@ -69,19 +85,31 @@ public class World(initialCapacity: Int = 1024) {
      * Returns the [type] component of [entity].
      *
      * @throws NoSuchElementException if [entity] has no such component.
+     *
+     * @sample samples.entity.Worlds.get
      */
     public fun <T : Any> get(entity: Entity, type: ComponentType<T>): T =
         getOrNull(entity, type) ?: throw NoSuchElementException("Entity $entity has no ${type.name} component.")
 
-    /** Returns `true` if [entity] has a [type] component. */
+    /**
+     * Returns `true` if [entity] has a [type] component.
+     *
+     * @sample samples.entity.Worlds.has
+     */
     public fun has(entity: Entity, type: ComponentType<*>): Boolean = getOrNull(entity, type) != null
 
-    /** Number of entities that have a [type] component. */
+    /**
+     * Returns the number of entities that have a [type] component.
+     *
+     * @sample samples.entity.Worlds.count
+     */
     public fun count(type: ComponentType<*>): Int = storeOrNull(type)?.size ?: 0
 
     /**
      * Calls [action] for every entity that has both an [a] and a [b] component. Iterates the
      * [a] components in storage order; do not add or remove components of these types inside [action].
+     *
+     * @sample samples.entity.Worlds.forEach
      */
     @Suppress("UNCHECKED_CAST")
     public inline fun <A : Any, B : Any> forEach(a: ComponentType<A>, b: ComponentType<B>, action: (Entity, A, B) -> Unit) {
@@ -101,6 +129,8 @@ public class World(initialCapacity: Int = 1024) {
 
     /**
      * Calls [action] for every entity that has [a], [b] and [c] components, in [a] storage order.
+     *
+     * @sample samples.entity.Worlds.forEach
      */
     @Suppress("UNCHECKED_CAST")
     public inline fun <A : Any, B : Any, C : Any> forEach(

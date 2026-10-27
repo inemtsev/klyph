@@ -27,6 +27,8 @@ public enum class WindowFlag(internal val bit: ULong) {
 
 /**
  * An operating-system window. Create one with the [Window] factory and [close] it when done.
+ *
+ * Samples live in the sandbox because they need a display.
  */
 public class Window internal constructor(
     internal val handle: CPointer<SDL_Window>,

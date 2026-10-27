@@ -16,3 +16,4 @@ rootProject.name = "klyph"
 include(":klyph-platform")
 include(":klyph")
 include(":sandbox")
+include(":samples")

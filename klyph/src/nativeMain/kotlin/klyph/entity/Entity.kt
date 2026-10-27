@@ -5,6 +5,8 @@ import kotlin.jvm.JvmInline
 /**
  * Identifies an entity in a [World]. The low 32 bits are a slot index, the high 32 bits a
  * generation that changes when the slot is reused, so a stale handle never aliases a new entity.
+ *
+ * @sample samples.entity.Components.entity
  */
 @JvmInline
 public value class Entity @PublishedApi internal constructor(public val raw: Long) {
