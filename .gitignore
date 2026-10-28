@@ -6,3 +6,8 @@ build/
 *.iml
 local.properties
 .DS_Store
+
+# Local only, never committed
+GOALS.md
+CLAUDE.local.md
+PLAN.md
