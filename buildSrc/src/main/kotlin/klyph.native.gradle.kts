@@ -37,6 +37,10 @@ kotlin {
         binaries.configureEach {
             linkerOpts("-L$sdl3Lib")
             if (konanTarget.family != Family.MINGW) linkerOpts("-Wl,-rpath,$sdl3Lib")
+            // Kotlin/Native links Linux binaries against its own sysroot with an old glibc, while
+            // libSDL3.so from a current distro references newer glibc symbol versions. Skip the
+            // link-time check; the loader resolves them against the host glibc at run time.
+            if (konanTarget.family == Family.LINUX) linkerOpts("--allow-shlib-undefined")
         }
     }
 }

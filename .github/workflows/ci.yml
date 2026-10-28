@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# A newer push to the same branch or pull request cancels the run still in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Windows (mingwX64) comes later.
+
+jobs:
+  macos:
+    # Apple silicon, so the build picks the macosArm64 target with no flags.
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Lands in /opt/homebrew/opt/sdl3, which buildSrc/src/main/kotlin/Sdl3.kt checks first.
+      - name: Install SDL3
+        run: brew install sdl3
+
+      - name: Read Kotlin version
+        id: kotlin
+        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+
+      # The Kotlin/Native compiler and its LLVM toolchain download into ~/.konan on first use.
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
+
+      # "basic" is the open-source cache; the default "enhanced" one is under separate terms of use.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: Test and link
+        run: >-
+          ./gradlew --no-daemon
+          check
+          :sandbox:linkDebugExecutableMacosArm64
+          :benchmarks:linkReleaseExecutableMacosArm64
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-macos
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+          if-no-files-found: ignore
+
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      # Ubuntu 24.04 has no SDL3 package, so SDL is built from this release tag and cached.
+      SDL3_VERSION: "3.4.18"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set SDL3 install folder
+        run: echo "SDL3_PREFIX=$HOME/sdl3" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Cache SDL3
+        id: sdl3-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.SDL3_PREFIX }}
+          key: sdl3-${{ env.SDL3_VERSION }}-ubuntu-24.04-${{ runner.arch }}
+
+      # Development packages from SDL's docs/README-linux.md, so the library gets the X11,
+      # Wayland and audio backends a desktop build has. SDL loads them at runtime.
+      - name: Build SDL3
+        if: steps.sdl3-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev \
+            libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
+            libdrm-dev libgbm-dev libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev \
+            libasound2-dev libpulse-dev libpipewire-0.3-dev libdbus-1-dev libudev-dev
+          git clone --depth 1 --branch "release-$SDL3_VERSION" https://github.com/libsdl-org/SDL.git "$RUNNER_TEMP/sdl-src"
+          # CMAKE_INSTALL_LIBDIR=lib: the build looks for lib/, not lib/x86_64-linux-gnu/.
+          cmake -S "$RUNNER_TEMP/sdl-src" -B "$RUNNER_TEMP/sdl-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$SDL3_PREFIX" \
+            -DCMAKE_INSTALL_LIBDIR=lib \
+            -DSDL_SHARED=ON -DSDL_STATIC=OFF \
+            -DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+          cmake --build "$RUNNER_TEMP/sdl-build"
+          cmake --install "$RUNNER_TEMP/sdl-build"
+
+      - name: Read Kotlin version
+        id: kotlin
+        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+
+      # The Kotlin/Native compiler and its LLVM toolchain download into ~/.konan on first use.
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
+
+      # "basic" is the open-source cache; the default "enhanced" one is under separate terms of use.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      # Binaries get an rpath to $SDL3_PREFIX/lib, so test executables find libSDL3.so at runtime.
+      - name: Test and link
+        run: >-
+          ./gradlew --no-daemon
+          -Psdl3.prefix="$SDL3_PREFIX"
+          check
+          :sandbox:linkDebugExecutableLinuxX64
+          :benchmarks:linkReleaseExecutableLinuxX64
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-linux
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+          if-no-files-found: ignore
