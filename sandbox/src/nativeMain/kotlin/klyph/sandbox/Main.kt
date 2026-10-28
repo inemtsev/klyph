@@ -5,47 +5,44 @@ import klyph.platform.EventPump
 import klyph.platform.GpuDevice
 import klyph.platform.GpuValidation
 import klyph.platform.KeyCode
-import klyph.platform.PresentMode
 import klyph.platform.Sdl
 import klyph.platform.ShaderFormat
 import klyph.platform.Subsystem
 import klyph.platform.Window
 import klyph.platform.WindowFlag
+import klyph.platform.acquireSwapchainTexture
+import klyph.platform.beginRenderPass
 
 /**
- * Sandbox entry point. Runs the sprite benchmark.
+ * Sandbox entry point: a smoke test that opens a window and clears it every frame until the
+ * window closes, escape is pressed, or `KLYPH_FRAMES` frames have run.
  *
- * Environment: `KLYPH_SPRITES` sprite count (default 10000), `KLYPH_FRAMES` frames before exit,
- * `KLYPH_VSYNC=1` to cap at the display rate, `KLYPH_VALIDATION=1` for the GPU validation layer,
- * `KLYPH_OFFSCREEN=1` to render to a texture and wait for the GPU each frame instead of presenting.
+ * Environment: `KLYPH_FRAMES` frames before exit, `KLYPH_VALIDATION=1` for the GPU validation layer.
  */
 fun main() {
     Sdl.init(setOf(Subsystem.VIDEO))
-    val window = Window("klyph sprite benchmark", 1280, 720, setOf(WindowFlag.RESIZABLE, WindowFlag.HIGH_PIXEL_DENSITY))
+    val window = Window("klyph sandbox", 1280, 720, setOf(WindowFlag.RESIZABLE, WindowFlag.HIGH_PIXEL_DENSITY))
     val validation = if (Sdl.environmentVariable("KLYPH_VALIDATION") == "1") GpuValidation.ENABLED else GpuValidation.DISABLED
     val device = GpuDevice(setOf(ShaderFormat.MSL, ShaderFormat.SPIRV, ShaderFormat.DXIL), validation)
     device.claim(window)
-    val presentMode = if (Sdl.environmentVariable("KLYPH_VSYNC") == "1") PresentMode.VSYNC else PresentMode.IMMEDIATE
-    val supported = PresentMode.entries.filter { device.supportsPresentMode(window, it) }
-    device.setPresentMode(window, presentMode)
-    println("GPU driver: ${device.driverName}, present mode: $presentMode (supported: $supported), validation: $validation")
-
-    val spriteCount = Sdl.environmentVariable("KLYPH_SPRITES")?.toIntOrNull() ?: 10_000
+    println("GPU driver: ${device.driverName}, validation: $validation")
     val frameLimit = Sdl.environmentVariable("KLYPH_FRAMES")?.toIntOrNull()
-    val offscreen = Sdl.environmentVariable("KLYPH_OFFSCREEN") == "1"
 
     EventPump().use { events ->
-        SpriteBenchmark(device, window, spriteCount, offscreen).use { benchmark ->
-            var running = true
-            while (running) {
-                while (events.poll()) {
-                    if (events.isQuit || (events.isKeyDown && events.keyCode == KeyCode.ESCAPE)) running = false
-                }
-                benchmark.frame()
-                if (frameLimit != null && benchmark.frames >= frameLimit) running = false
+        var frames = 0
+        var running = true
+        while (running) {
+            while (events.poll()) {
+                if (events.isQuit || (events.isKeyDown && events.keyCode == KeyCode.ESCAPE)) running = false
             }
-            benchmark.printSummary()
+            val commands = device.acquireCommandBuffer()
+            val target = commands.acquireSwapchainTexture(window)
+            if (target != null) commands.beginRenderPass(target, CLEAR_COLOR).end()
+            commands.submit()
+            frames++
+            if (frameLimit != null && frames >= frameLimit) running = false
         }
+        println("Ran $frames frames.")
     }
 
     device.release(window)
@@ -54,4 +51,4 @@ fun main() {
     Sdl.quit()
 }
 
-internal val CLEAR_COLOR: Color = Color(red = 0.10f, green = 0.12f, blue = 0.18f)
+private val CLEAR_COLOR: Color = Color(red = 0.10f, green = 0.12f, blue = 0.18f)

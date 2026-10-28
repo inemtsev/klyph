@@ -15,7 +15,8 @@ automatically (Homebrew, /usr/local, /usr); override with `-Psdl3.prefix=<path>`
 
 Modules: `klyph-platform` (SDL3 cinterop and the thin Kotlin API over it; the only module allowed
 to import `kotlinx.cinterop`, `sdl3`, `cnames` or `platform.*`), `klyph` (the engine, no interop),
-`sandbox` (executable; hosts smoke tests and benchmarks), `samples` (the `@sample` functions from
+`sandbox` (executable; a smoke test that opens a window and clears it each frame), `benchmarks`
+(executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`). `./gradlew check`
 runs every module's tests and samples plus the interop-import rule; a single module's tests run
@@ -28,11 +29,20 @@ a display. Shared target config and SDL link flags live in
 KLYPH_FRAMES=120 sandbox/build/bin/macosArm64/debugExecutable/sandbox.kexe
 ```
 
-Use `linkReleaseExecutableMacosArm64` for optimized builds (benchmarks). The sandbox runs the
-sprite benchmark: `KLYPH_SPRITES=<n>` sprite count (default 10000), `KLYPH_FRAMES=<n>` exits after
-`n` frames, `KLYPH_VSYNC=1` caps at the display rate, `KLYPH_VALIDATION=1` turns on the GPU
-validation layer (slow; use it after touching the platform module). macOS has no `timeout`, so
-bound runs with `KLYPH_FRAMES`. Do not pipe `./gradlew` output into
+The sandbox exits after `KLYPH_FRAMES` frames and honors `KLYPH_VALIDATION`. Benchmarks run from
+the release build; the first argument names the benchmark, and the binary lists the available
+names when run without one.
+
+```
+./gradlew :benchmarks:linkReleaseExecutableMacosArm64
+KLYPH_OFFSCREEN=1 KLYPH_SPRITES=100000 KLYPH_FRAMES=600 benchmarks/build/bin/macosArm64/releaseExecutable/benchmarks.kexe sprites
+```
+
+`KLYPH_SPRITES=<n>` sprite count (default 10000), `KLYPH_FRAMES=<n>` exits after `n` frames,
+`KLYPH_VSYNC=1` caps at the display rate, `KLYPH_VALIDATION=1` turns on the GPU validation layer
+(slow; use it after touching the platform module), `KLYPH_OFFSCREEN=1` draws into a texture and
+waits for the GPU each frame so the display is out of the loop. macOS has no `timeout`, so bound
+runs with `KLYPH_FRAMES`. Do not pipe `./gradlew` output into
 another command: the daemon inherits the pipe and the shell never sees EOF. Redirect to a file.
 
 ## Shaders

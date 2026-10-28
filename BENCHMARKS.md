@@ -1,7 +1,8 @@
 # Benchmarks
 
-Results from the sandbox sprite benchmark. Reproduce with the release build and the environment
-variables listed in CLAUDE.md. Numbers are per-frame averages after a one-second warm-up.
+Results from the `sprites` benchmark. Reproduce with the release build of the `benchmarks`
+executable, `benchmarks.kexe sprites`, and the environment variables listed in CLAUDE.md.
+Numbers are per-frame averages after a one-second warm-up.
 
 ## Sprite rendering, vertex pulling (2026-10-27)
 
