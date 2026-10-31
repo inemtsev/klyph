@@ -9,12 +9,11 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class SpriteAnimationTest {
     @Test
-    fun framesAreACopyInOrder() {
+    fun framesAreTheGivenListNotACopy() {
         val texture = Texture(64, 16)
-        val source = mutableListOf(texture.region(0, 0, 16, 16), texture.region(16, 0, 16, 16))
+        val source = listOf(texture.region(0, 0, 16, 16), texture.region(16, 0, 16, 16))
         val animation = SpriteAnimation(source, 100.milliseconds)
-        source.clear()
-        assertEquals(listOf(texture.region(0, 0, 16, 16), texture.region(16, 0, 16, 16)), animation.frames)
+        assertSame(source, animation.frames)
         assertEquals(2, animation.animation.frameCount)
         assertEquals(100.milliseconds, animation.animation.frameDuration)
         assertEquals(AnimationMode.LOOP, animation.animation.mode)
@@ -24,7 +23,7 @@ class SpriteAnimationTest {
     fun currentFrameFollowsThePlayhead() {
         val sheet = SpriteSheet.fromGrid(Texture(48, 16), columns = 3, rows = 1)
         val animation = SpriteAnimation(sheet, 100.milliseconds, AnimationMode.ONCE)
-        assertEquals(sheet.regions, animation.frames)
+        assertSame(sheet.regions, animation.frames)
         assertSame(sheet[0], animation.currentFrame)
         animation.animation.advance(150.milliseconds)
         assertSame(sheet[1], animation.currentFrame)

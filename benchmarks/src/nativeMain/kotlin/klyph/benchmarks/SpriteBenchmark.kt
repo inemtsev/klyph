@@ -32,16 +32,19 @@ internal val spriteBenchmark: Benchmark = Benchmark(
         addSystem(Phase.STARTUP) { app ->
             println("textures=${settings.textureCount}")
             val regions = List(settings.textureCount) { app.assets.texture(circleImage(64, TINTS[it % TINTS.size])).asRegion() }
-            spawnSprites(app.world, regions, settings.spriteCount, app.window.pixelWidth.toFloat(), app.window.pixelHeight.toFloat())
+            // World units are points; dividing by the density keeps each sprite SPRITE_PIXELS pixels
+            // across on every display, so the GPU fills as many pixels as on a density-1 window.
+            val size = SPRITE_PIXELS / app.window.pixelDensity
+            spawnSprites(app.world, regions, settings.spriteCount, size, app.window.width.toFloat(), app.window.height.toFloat())
         }
         addSystem(Phase.UPDATE) { app ->
             sprites = app.stats.spriteCount
-            move(app.world, app.time.deltaSeconds.coerceAtMost(0.1f), app.window.pixelWidth.toFloat(), app.window.pixelHeight.toFloat())
+            move(app.world, app.time.deltaSeconds.coerceAtMost(0.1f), app.window.width.toFloat(), app.window.height.toFloat())
         }
     }
 }
 
-/** Straight-line motion in pixels per second, plus spin in radians per second. */
+/** Straight-line motion in world units (points) per second, plus spin in radians per second. */
 internal class Velocity(var dx: Float, var dy: Float, var spin: Float) {
     companion object : ComponentType<Velocity>("Velocity")
 }
@@ -58,11 +61,14 @@ private val TINTS: List<Color> = listOf(
     Color(red = 1f, green = 0.75f, blue = 0.4f),
 )
 
+/** Width and height of every benchmark sprite in physical pixels. */
+private const val SPRITE_PIXELS = 24f
+
 /**
- * Adds [count] sprites at random positions in a [width] by [height] area, with seed 42 so every
- * run is the same. Sprite `i` shows `regions[i % regions.size]`.
+ * Adds [count] sprites of [size] by [size] world units at random positions in a [width] by
+ * [height] area, with seed 42 so every run is the same. Sprite `i` shows `regions[i % regions.size]`.
  */
-private fun spawnSprites(world: World, regions: List<TextureRegion>, count: Int, width: Float, height: Float) {
+private fun spawnSprites(world: World, regions: List<TextureRegion>, count: Int, size: Float, width: Float, height: Float) {
     val random = Random(42)
     repeat(count) { i ->
         val entity = world.create()
@@ -72,8 +78,8 @@ private fun spawnSprites(world: World, regions: List<TextureRegion>, count: Int,
             Sprite,
             Sprite(
                 regions[i % regions.size],
-                width = 24f,
-                height = 24f,
+                width = size,
+                height = size,
                 color = Color(red = 0.5f + random.nextFloat() * 0.5f, green = 0.5f + random.nextFloat() * 0.5f, blue = 0.5f + random.nextFloat() * 0.5f, alpha = 0.9f),
             ),
         )

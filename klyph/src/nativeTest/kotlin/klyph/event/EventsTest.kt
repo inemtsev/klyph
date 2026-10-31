@@ -109,6 +109,8 @@ class EventsTest {
         assertEquals("KeyReleased(key=KeyCode(27))", KeyReleased(escape).toString())
         assertEquals(WindowResized(800, 600), WindowResized(800, 600))
         assertEquals("WindowResized(pixelWidth=800, pixelHeight=600)", WindowResized(800, 600).toString())
+        assertEquals(WindowDensityChanged(2f), WindowDensityChanged(2f))
+        assertEquals("WindowDensityChanged(pixelDensity=2.0)", WindowDensityChanged(2f).toString())
         assertEquals("QuitRequested", QuitRequested.toString())
     }
 }

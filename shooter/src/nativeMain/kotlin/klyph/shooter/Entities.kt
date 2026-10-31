@@ -62,8 +62,9 @@ fun World.spawnEnemy(art: Art, random: Random) {
 fun World.spawnExplosion(art: Art, x: Float, y: Float) {
     val explosion = create()
     add(explosion, Transform, Transform(x, y))
-    add(explosion, Sprite, Sprite(art.explosion[0], Tuning.EXPLOSION_SIZE, Tuning.EXPLOSION_SIZE, layer = Tuning.LAYER_EFFECTS))
-    add(explosion, SpriteAnimation, SpriteAnimation(art.explosion, Tuning.EXPLOSION_FRAME, AnimationMode.ONCE))
+    val animation = SpriteAnimation(art.explosion, Tuning.EXPLOSION_FRAME, AnimationMode.ONCE)
+    add(explosion, Sprite, Sprite(animation.currentFrame, Tuning.EXPLOSION_SIZE, Tuning.EXPLOSION_SIZE, layer = Tuning.LAYER_EFFECTS))
+    add(explosion, SpriteAnimation, animation)
     add(explosion, Explosion, Explosion())
 }
 

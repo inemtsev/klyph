@@ -144,6 +144,28 @@ class WorldTest {
     }
 
     @Test
+    fun forEachOneVisitsEveryEntityWithTheTypeInStorageOrder() {
+        val world = World()
+        val a = world.create()
+        val b = world.create()
+        val c = world.create()
+        world.add(a, Health, Health(1))
+        world.add(b, Mana, Mana(2))
+        world.add(c, Health, Health(3))
+        val visited = mutableListOf<Pair<Entity, Int>>()
+        world.forEach(Health) { e, h -> visited += e to h.points }
+        assertEquals(listOf(a to 1, c to 3), visited)
+        // Swap-remove moves the last component into the freed slot.
+        world.remove(a, Health)
+        visited.clear()
+        world.forEach(Health) { e, h -> visited += e to h.points }
+        assertEquals(listOf(c to 3), visited)
+        var calls = 0
+        world.forEach(Armor) { _, _ -> calls++ }
+        assertEquals(0, calls)
+    }
+
+    @Test
     fun forEachTwoVisitsOnlyEntitiesWithBoth() {
         val world = World()
         val both = world.create()

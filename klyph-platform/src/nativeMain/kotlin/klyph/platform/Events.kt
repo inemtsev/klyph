@@ -59,8 +59,11 @@ import sdl3.SDLK_Z
 import sdl3.SDL_EVENT_KEY_DOWN
 import sdl3.SDL_EVENT_KEY_UP
 import sdl3.SDL_EVENT_QUIT
+import sdl3.SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED
 import sdl3.SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED
 import sdl3.SDL_Event
+import sdl3.SDL_GetWindowFromID
+import sdl3.SDL_GetWindowPixelDensity
 import sdl3.SDL_PollEvent
 
 /**
@@ -231,6 +234,21 @@ public sealed class PlatformEvent {
 
         override fun toString(): String = "WindowResized(pixelWidth=$pixelWidth, pixelHeight=$pixelHeight)"
     }
+
+    /**
+     * Reports that a window's display scale changed, typically because it moved to a display with
+     * a different pixel density. [pixelDensity] is the window's [Window.pixelDensity] now.
+     *
+     * The display scale also covers the system's content scale, so the density can equal the one
+     * reported before; compare it with the last known value before acting on it.
+     */
+    public class WindowDensityChanged(public val pixelDensity: Float) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean = other is WindowDensityChanged && pixelDensity == other.pixelDensity
+
+        override fun hashCode(): Int = pixelDensity.hashCode()
+
+        override fun toString(): String = "WindowDensityChanged(pixelDensity=$pixelDensity)"
+    }
 }
 
 /**
@@ -256,6 +274,12 @@ public class EventPump : AutoCloseable {
                 SDL_EVENT_KEY_UP -> return PlatformEvent.KeyUp(KeyCode(event.key.key))
                 SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED ->
                     return PlatformEvent.WindowResized(pixelWidth = event.window.data1, pixelHeight = event.window.data2)
+                SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED -> {
+                    // The event carries no value; a window destroyed since it was queued is skipped.
+                    val window = SDL_GetWindowFromID(event.window.windowID) ?: continue
+                    val density = SDL_GetWindowPixelDensity(window)
+                    if (density > 0f) return PlatformEvent.WindowDensityChanged(density)
+                }
             }
         }
         return null

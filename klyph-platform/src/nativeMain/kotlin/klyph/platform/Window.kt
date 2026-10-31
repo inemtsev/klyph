@@ -9,6 +9,8 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
 import sdl3.SDL_CreateWindow
 import sdl3.SDL_DestroyWindow
+import sdl3.SDL_GetWindowPixelDensity
+import sdl3.SDL_GetWindowSize
 import sdl3.SDL_GetWindowSizeInPixels
 import sdl3.SDL_WINDOW_FULLSCREEN
 import sdl3.SDL_WINDOW_HIDDEN
@@ -34,6 +36,25 @@ public class Window internal constructor(
     internal val handle: CPointer<SDL_Window>,
     private val title: String,
 ) : AutoCloseable {
+    /**
+     * Width of the client area in points, the logical unit the window was created with. On a
+     * high-density display one point covers several pixels; see [pixelDensity].
+     */
+    public val width: Int
+        get() = memScoped {
+            val width = alloc<IntVar>()
+            SDL_GetWindowSize(handle, width.ptr, null)
+            width.value
+        }
+
+    /** Height of the client area in points. */
+    public val height: Int
+        get() = memScoped {
+            val height = alloc<IntVar>()
+            SDL_GetWindowSize(handle, null, height.ptr)
+            height.value
+        }
+
     /** Width of the drawable area in pixels, which exceeds the point size on high-density displays. */
     public val pixelWidth: Int
         get() = memScoped {
@@ -49,6 +70,15 @@ public class Window internal constructor(
             SDL_GetWindowSizeInPixels(handle, null, height.ptr)
             height.value
         }
+
+    /**
+     * Number of pixels per point along each axis: 2 on a Retina display, 1 on a standard one.
+     *
+     * [pixelWidth] is about [width] times this value. It changes when the window moves to a
+     * display with a different density, and it is 1 when the platform cannot report it.
+     */
+    public val pixelDensity: Float
+        get() = SDL_GetWindowPixelDensity(handle).takeIf { it > 0f } ?: 1f
 
     /** Destroys the window. Using it afterwards is an error. */
     override fun close() {

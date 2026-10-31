@@ -29,6 +29,25 @@ public class WindowResized(
 }
 
 /**
+ * Published when the window's pixel density changes, typically because it moved to a display
+ * with a different density. [pixelDensity] is the new number of pixels per point, as in
+ * [klyph.platform.Window.pixelDensity].
+ *
+ * Before publishing it the engine multiplies `App.camera.zoom` by the ratio of the new density to
+ * the old one, so the view keeps its framing in points.
+ */
+public class WindowDensityChanged(
+    /** The new number of pixels per point: 2 on a Retina display, 1 on a standard one. */
+    public val pixelDensity: Float,
+) {
+    override fun equals(other: Any?): Boolean = other is WindowDensityChanged && other.pixelDensity == pixelDensity
+
+    override fun hashCode(): Int = pixelDensity.hashCode()
+
+    override fun toString(): String = "WindowDensityChanged(pixelDensity=$pixelDensity)"
+}
+
+/**
  * Published when [key] goes down. Holding the key publishes further events with [isRepeat] set to
  * `true` at the system's key repeat rate.
  */

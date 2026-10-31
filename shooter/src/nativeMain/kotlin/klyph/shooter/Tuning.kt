@@ -10,8 +10,6 @@ object Tuning {
     const val WINDOW_HEIGHT = 720
     val SPACE_COLOR = Color(red = 0.015f, green = 0.015f, blue = 0.05f)
 
-    /** World units the camera shows top to bottom, whatever the window size and pixel density. */
-    const val VIEW_HEIGHT = 720f
     /** Rate at which the camera closes the gap to the player, per second. */
     const val CAMERA_FOLLOW_RATE = 5f
 

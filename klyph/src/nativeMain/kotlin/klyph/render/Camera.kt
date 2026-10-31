@@ -8,14 +8,16 @@ import kotlin.math.sin
  * A 2D view onto the world, centered on ([x], [y]) in world units.
  *
  * At [zoom] 1 one world unit is one screen pixel; at zoom 2 world units appear twice as large.
+ * The engine's own camera, `App.camera`, starts at the window's pixel density, so there one world
+ * unit is one logical point.
  * Screen coordinates are pixels with the origin at the top-left corner of the viewport and +y
  * pointing down, the same orientation the world uses.
  *
- * [rotation] is in radians, counter-clockwise, measured the same way as
- * [klyph.entity.Transform.rotation]: the camera turns like an entity with that rotation, so the
- * world turns the opposite way on screen and a sprite whose rotation equals the camera's appears
- * upright. With a rotation of a quarter turn, a point to the right of the camera in the world
- * appears above the viewport center.
+ * [rotation] is in radians, measured the same way as [klyph.entity.Transform.rotation]: a
+ * positive rotation turns the camera clockwise, because y points down. The camera turns like an
+ * entity with that rotation, so the world turns the opposite way, counter-clockwise, on screen,
+ * and a sprite whose rotation equals the camera's appears upright. With a rotation of a quarter
+ * turn, a point to the right of the camera in the world appears above the viewport center.
  *
  * [viewportWidth] and [viewportHeight] are the size of the drawing area in pixels. The engine
  * sets them from the window every frame; pass them to the constructor only for a camera the
@@ -35,7 +37,10 @@ public class Camera(
     /** Vertical world position of the viewport center. */
     public var y: Float = 0f,
     zoom: Float = 1f,
-    /** Rotation of the camera in radians, counter-clockwise, as in [klyph.entity.Transform.rotation]. */
+    /**
+     * Rotation of the camera in radians, as in [klyph.entity.Transform.rotation]: positive turns
+     * the camera clockwise, because y points down, so the world turns counter-clockwise on screen.
+     */
     public var rotation: Float = 0f,
     viewportWidth: Int = 1,
     viewportHeight: Int = 1,

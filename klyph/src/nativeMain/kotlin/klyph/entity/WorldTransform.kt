@@ -2,7 +2,8 @@ package klyph.entity
 
 /**
  * Position, rotation and scale of an entity in world space, after its [Transform] is combined
- * with the world transforms of its ancestors. Rotation is in radians, counter-clockwise.
+ * with the world transforms of its ancestors. Rotation is in radians; a positive rotation turns
+ * clockwise on screen, because y points down.
  *
  * Only entities that have a parent, at any depth of a hierarchy, have one. [propagateTransforms]
  * computes it every frame and adds it to each such entity that has a [Transform];
@@ -20,7 +21,7 @@ public class WorldTransform internal constructor(
     public var x: Float = 0f,
     /** Vertical position in world units. */
     public var y: Float = 0f,
-    /** Rotation in radians, counter-clockwise. */
+    /** Rotation in radians; positive turns clockwise on screen, because y points down. */
     public var rotation: Float = 0f,
     /** Horizontal scale factor. */
     public var scaleX: Float = 1f,

@@ -26,7 +26,6 @@ fun Game.start(app: App) {
     app.world.spawnStars(art, random)
     player = app.world.spawnPlayer(art)
     val ship = app.world.get(player, Transform)
-    fitZoom(app.camera)
     app.camera.lookAt(ship.x, ship.y)
     clampToArena(app.camera)
     printScore()
@@ -178,7 +177,7 @@ private fun Game.explodeWrecks(world: World) {
 fun Game.expire(app: App) {
     val dt = app.time.deltaSeconds
     val margin = Tuning.SHIP_SIZE
-    app.world.forEach(Lifetime, Transform) { entity, lifetime, _ ->
+    app.world.forEach(Lifetime) { entity, lifetime ->
         lifetime.remaining -= dt
         if (lifetime.remaining <= 0f) doomed.add(entity)
     }
@@ -222,14 +221,8 @@ fun Game.followCamera(app: App) {
     val camera = app.camera
     val ship = app.world.get(player, Transform)
     val t = approach(Tuning.CAMERA_FOLLOW_RATE, app.time.deltaSeconds)
-    fitZoom(camera)
     camera.lookAt(camera.x + (ship.x - camera.x) * t, camera.y + (ship.y - camera.y) * t)
     clampToArena(camera)
-}
-
-/** Zooms so the view is [Tuning.VIEW_HEIGHT] world units tall on any window and any pixel density. */
-private fun fitZoom(camera: Camera) {
-    camera.zoom = camera.viewportHeight / Tuning.VIEW_HEIGHT
 }
 
 private fun clampToArena(camera: Camera) {

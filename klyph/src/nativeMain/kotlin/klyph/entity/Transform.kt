@@ -1,8 +1,8 @@
 package klyph.entity
 
 /**
- * Position, rotation and scale of an entity in world units. Rotation is in radians,
- * counter-clockwise.
+ * Position, rotation and scale of an entity in world units. Rotation is in radians; a positive
+ * rotation turns the entity clockwise on screen, because y points down.
  *
  * @sample samples.entity.Components.transform
  */

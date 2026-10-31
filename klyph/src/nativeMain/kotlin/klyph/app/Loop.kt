@@ -4,6 +4,7 @@ import klyph.entity.propagateTransforms
 import klyph.event.KeyPressed
 import klyph.event.KeyReleased
 import klyph.event.QuitRequested
+import klyph.event.WindowDensityChanged
 import klyph.event.WindowResized
 import klyph.platform.EventPump
 import klyph.platform.Files
@@ -35,9 +36,12 @@ import kotlin.time.TimeSource
  * [App.camera] at the end of RENDER. A `QuitRequested` event also calls [App.quit], so closing
  * the window ends the app.
  *
- * The camera starts with the window's pixel size as its viewport, centered on the middle of the
- * window, so world (0, 0) is the top-left corner. When the window is resized the engine updates
- * the viewport and leaves the camera where it is.
+ * The camera starts with the window's pixel size as its viewport, a zoom equal to the window's
+ * pixel density so that one world unit is one point, and centered on the middle of the window, so
+ * world (0, 0) is the top-left corner. When the window is resized the engine updates the viewport
+ * and leaves the camera where it is. When the window's pixel density changes, for example because
+ * it moved to another display, the engine multiplies the zoom by the ratio of the new density to
+ * the old one, so the view keeps its framing, and publishes `WindowDensityChanged`.
  *
  * The SDL video subsystem, the window, the GPU device, [App.assets] and the renderer exist only
  * while this call runs, and only one app may run at a time. Exceptions thrown by [setup] or a system end
@@ -81,19 +85,25 @@ public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
 }
 
 /**
- * Returns a camera whose viewport is [window]'s drawable size, positioned so that world (0, 0) is
- * the window's top-left corner.
+ * Returns a camera whose viewport is [window]'s drawable size in pixels and whose zoom is its pixel
+ * density, so one world unit is one point, positioned so that world (0, 0) is the window's
+ * top-left corner.
  */
 private fun startCamera(window: Window): Camera {
     val width = window.pixelWidth.coerceAtLeast(1)
     val height = window.pixelHeight.coerceAtLeast(1)
-    return Camera(viewportWidth = width, viewportHeight = height).apply { lookAt(width / 2f, height / 2f) }
+    return Camera(zoom = window.pixelDensity, viewportWidth = width, viewportHeight = height).apply {
+        lookAt(window.width / 2f, window.height / 2f)
+    }
 }
 
 /** Runs [app]'s phases: startup, frames until a quit request, shutdown. */
 private class FrameLoop(private val app: App, private val pump: EventPump, private val pass: SpritePass) {
     private val clock = TimeSource.Monotonic
     private val stepper = FixedStepper(app.time.fixedDelta, app.config.maxFixedStepsPerFrame)
+
+    /** The window's pixel density the camera's zoom was last scaled for. */
+    private var pixelDensity = app.window.pixelDensity
 
     fun run() {
         val startup = clock.markNow()
@@ -173,6 +183,14 @@ private class FrameLoop(private val app: App, private val pump: EventPump, priva
                         app.camera.viewportHeight = event.pixelHeight
                     }
                     events.publish(WindowResized(pixelWidth = event.pixelWidth, pixelHeight = event.pixelHeight))
+                }
+                is PlatformEvent.WindowDensityChanged -> {
+                    // The platform also reports content scale changes that leave the density as it was.
+                    if (event.pixelDensity != pixelDensity) {
+                        app.camera.zoom *= event.pixelDensity / pixelDensity
+                        pixelDensity = event.pixelDensity
+                        events.publish(WindowDensityChanged(event.pixelDensity))
+                    }
                 }
             }
         }

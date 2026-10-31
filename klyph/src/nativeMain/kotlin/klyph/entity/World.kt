@@ -213,6 +213,22 @@ public class World(initialCapacity: Int = 1024) {
     public fun count(type: ComponentType<*>): Int = storeOrNull(type)?.size ?: 0
 
     /**
+     * Calls [action] for every entity that has an [a] component. Iterates the [a] components in
+     * storage order; do not add or remove components of this type inside [action].
+     *
+     * @sample samples.entity.Worlds.forEach
+     */
+    @Suppress("UNCHECKED_CAST")
+    public inline fun <A : Any> forEach(a: ComponentType<A>, action: (Entity, A) -> Unit) {
+        val storeA = storeOrNull(a) ?: return
+        val entities = storeA.entities
+        val itemsA = storeA.items
+        for (i in 0 until storeA.size) {
+            action(Entity(entities[i]), itemsA[i] as A)
+        }
+    }
+
+    /**
      * Calls [action] for every entity that has both an [a] and a [b] component. Iterates the
      * [a] components in storage order; do not add or remove components of these types inside [action].
      *

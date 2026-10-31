@@ -13,7 +13,9 @@ import kotlin.time.Duration
  * `SpriteAnimation` but no [Sprite] is not animated. Pause, restart or seek through [animation].
  *
  * [frames] must not be empty and [frameDuration] must be positive and finite. The frames may come
- * from different textures.
+ * from different textures. The animation keeps the [frames] list it is given instead of copying
+ * it, so many animations can share one list without allocating; that list must not change
+ * afterwards.
  *
  * [toString] gives the current frame, the frame count and the mode, for example
  * `SpriteAnimation(frame=2/6, mode=LOOP)`.
@@ -24,13 +26,11 @@ import kotlin.time.Duration
  *   infinite.
  */
 public class SpriteAnimation(
-    frames: List<TextureRegion>,
+    /** The regions shown in turn: the list passed to the constructor, kept rather than copied. */
+    public val frames: List<TextureRegion>,
     frameDuration: Duration,
     mode: AnimationMode = AnimationMode.LOOP,
 ) {
-    /** The regions shown in turn, a copy of the list passed to the constructor. */
-    public val frames: List<TextureRegion> = frames.toList()
-
     init {
         require(this.frames.isNotEmpty()) { "Sprite animation frame list is empty." }
     }
@@ -53,6 +53,9 @@ public class SpriteAnimation(
 /**
  * Creates a sprite animation that plays every region of [sheet] in index order, showing each one
  * for [frameDuration] in the order [mode] sets.
+ *
+ * The animation shares [SpriteSheet.regions] instead of copying it, so creating one allocates no
+ * frame list.
  *
  * Has no sample because creating a [Texture] needs a GPU device, which samples cannot open.
  *

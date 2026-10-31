@@ -22,7 +22,10 @@ import klyph.render.Camera
 public class App internal constructor(
     /** The settings [runApp] was called with. */
     public val config: AppConfig,
-    /** The window frames are presented to. Its drawable size is `window.pixelWidth` by `window.pixelHeight`. */
+    /**
+     * The window frames are presented to. Its size is `window.width` by `window.height` points and
+     * its drawable size `window.pixelWidth` by `window.pixelHeight` pixels.
+     */
     public val window: Window,
     /**
      * The present mode in effect. It may differ from [AppConfig.presentMode] when the requested
@@ -36,10 +39,15 @@ public class App internal constructor(
      */
     public val assets: Assets,
     /**
-     * The camera sprites are drawn through. It starts centered on the middle of the window, so
-     * world (0, 0) is the window's top-left corner at zoom 1. The engine keeps its viewport equal
-     * to the window's pixel size and never moves it; move, zoom or rotate it from a system, such
-     * as a [Phase.LATE_UPDATE] system that follows the player.
+     * The camera sprites are drawn through. It starts with a zoom equal to the window's
+     * [Window.pixelDensity], so one world unit is one logical point (the unit the window size is
+     * given in, two pixels across on a Retina display), and centered on the middle of the window, so
+     * world (0, 0) is the window's top-left corner. Its zoom is therefore the density times the
+     * game's own zoom: to show the world twice as large, set it to `2 * window.pixelDensity`. When
+     * the density changes, the engine scales the zoom by the same ratio.
+     *
+     * The engine keeps its viewport equal to the window's pixel size and never moves it; move, zoom
+     * or rotate it from a system, such as a [Phase.LATE_UPDATE] system that follows the player.
      */
     public val camera: Camera,
 ) {

@@ -4,6 +4,10 @@ Results from the `sprites` benchmark. Reproduce with
 `./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=<n>` (release build; the
 properties mirror the environment variables listed in CLAUDE.md).
 Numbers are per-frame averages after a one-second warm-up.
+Since 2026-10-31 a world unit is a logical point, so on a Retina display sprites would cover four
+times the pixels they did. The benchmarks spread sprites over the window's size in points and
+divide sprite sizes (and the hierarchy's ring radii) by the window's pixel density, so every
+sprite still covers the same pixels as in the earlier runs and the GPU fill work matches them.
 
 ## Propagation only for hierarchies (2026-10-31)
 

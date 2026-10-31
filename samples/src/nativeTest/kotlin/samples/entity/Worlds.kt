@@ -115,6 +115,10 @@ class Worlds {
         world.add(both, Mana, 5)
         world.add(world.create(), Health, 7)
 
+        val seenByOne = mutableListOf<Int>()
+        world.forEach(Health) { _, health -> seenByOne += health }
+        assertPrints(seenByOne, "[10, 7]")
+
         val seenByTwo = mutableListOf<Int>()
         world.forEach(Health, Mana) { _, health, mana -> seenByTwo += health + mana }
         assertPrints(seenByTwo, "[15]")

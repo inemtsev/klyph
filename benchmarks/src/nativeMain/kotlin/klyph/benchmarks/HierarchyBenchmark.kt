@@ -32,15 +32,17 @@ internal val hierarchyBenchmark: Benchmark = Benchmark(
                 circle.asRegion(),
                 settings.spriteCount,
                 settings.childCount,
-                app.window.pixelWidth.toFloat(),
-                app.window.pixelHeight.toFloat(),
+                // Sizes are in pixels; see spawnTree.
+                1f / app.window.pixelDensity,
+                app.window.width.toFloat(),
+                app.window.height.toFloat(),
             )
             println(shape)
         }
         addSystem(Phase.UPDATE) { app ->
             sprites = app.stats.spriteCount
             val delta = app.time.deltaSeconds.coerceAtMost(0.1f)
-            move(app.world, delta, app.window.pixelWidth.toFloat(), app.window.pixelHeight.toFloat())
+            move(app.world, delta, app.window.width.toFloat(), app.window.height.toFloat())
             app.world.forEach(Transform, Spin) { _, transform, spin -> transform.rotation += spin.radiansPerSecond * delta }
         }
     }
@@ -59,6 +61,7 @@ private class TreeShape(val parents: Int, val children: Int, val grandchildren: 
         "parents=$parents children=$children (up to $childrenPerParent each) grandchildren=$grandchildren total=$total depth=3"
 }
 
+// Sprite sizes and ring radii in physical pixels.
 private const val PARENT_SIZE = 32f
 private const val CHILD_SIZE = 12f
 private const val GRANDCHILD_SIZE = 6f
@@ -73,8 +76,19 @@ private const val GRANDCHILD_RING = 12f
  * parents without children, so the total is exact whenever [total] is at least one family.
  * Below one family, every sprite becomes a parent without children. Every sprite shows [region];
  * children are in layer 1 and grandchildren in layer 2, so they draw on top of their parents.
+ *
+ * Sizes and ring radii are the pixel constants above times [pointsPerPixel], so the GPU fills as
+ * many pixels on every display as on a density-1 window.
  */
-private fun spawnTree(world: World, region: TextureRegion, total: Int, childrenPerParent: Int, width: Float, height: Float): TreeShape {
+private fun spawnTree(
+    world: World,
+    region: TextureRegion,
+    total: Int,
+    childrenPerParent: Int,
+    pointsPerPixel: Float,
+    width: Float,
+    height: Float,
+): TreeShape {
     require(childrenPerParent >= 0) { "KLYPH_CHILDREN $childrenPerParent is less than zero." }
     val random = Random(42)
     val twoPi = 2f * PI.toFloat()
@@ -88,13 +102,15 @@ private fun spawnTree(world: World, region: TextureRegion, total: Int, childrenP
     fun spawnParent(): Entity {
         val entity = world.create()
         world.add(entity, Transform, Transform(x = random.nextFloat() * width, y = random.nextFloat() * height, rotation = random.nextFloat() * twoPi))
-        world.add(entity, Sprite, Sprite(region, width = PARENT_SIZE, height = PARENT_SIZE, color = color()))
+        world.add(entity, Sprite, Sprite(region, width = PARENT_SIZE * pointsPerPixel, height = PARENT_SIZE * pointsPerPixel, color = color()))
         world.add(entity, Velocity, Velocity(dx = random.nextFloat() * 200f - 100f, dy = random.nextFloat() * 200f - 100f, spin = random.nextFloat() * 4f - 2f))
         return entity
     }
 
-    fun spawnOnRing(parent: Entity, index: Int, count: Int, ring: Float, size: Float, layer: Int): Entity {
+    fun spawnOnRing(parent: Entity, index: Int, count: Int, ringPixels: Float, sizePixels: Float, layer: Int): Entity {
         val angle = twoPi * index / count
+        val ring = ringPixels * pointsPerPixel
+        val size = sizePixels * pointsPerPixel
         val entity = world.create()
         world.add(entity, Transform, Transform(x = cos(angle) * ring, y = sin(angle) * ring))
         world.add(entity, Sprite, Sprite(region, width = size, height = size, color = color(), layer = layer))
