@@ -72,12 +72,14 @@ Requirements:
   change a shader. Without it the build uses the checked-in compiled shaders and
   prints a warning.
 
-Build and run the sprite benchmark:
+Run the sprite benchmark in a window, or offscreen for clean numbers:
 
 ```
-./gradlew :benchmarks:linkReleaseExecutableMacosArm64
-KLYPH_OFFSCREEN=1 KLYPH_SPRITES=100000 KLYPH_FRAMES=600 benchmarks/build/bin/macosArm64/releaseExecutable/benchmarks.kexe sprites
+./gradlew :benchmarks:benchmarkSprites -Pklyph.sprites=50000
+./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ```
+
+IntelliJ picks up the same tasks as run configurations from `.run/`.
 
 Run the tests and samples:
 

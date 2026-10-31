@@ -26,18 +26,19 @@ because they need a display. Shared target config and SDL link flags live in
 `buildSrc/src/main/kotlin/klyph.native.gradle.kts`.
 
 ```
-./gradlew :sandbox:linkDebugExecutableMacosArm64
-KLYPH_FRAMES=120 sandbox/build/bin/macosArm64/debugExecutable/sandbox.kexe
+./gradlew :sandbox:run -Pklyph.frames=120
+./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
+./gradlew :benchmarks:benchmarkSprites -Pklyph.sprites=50000     # in a window
+./gradlew :benchmarks:benchmarkList
 ```
 
-The sandbox exits after `KLYPH_FRAMES` frames and honors `KLYPH_VALIDATION`. Benchmarks run from
-the release build; the first argument names the benchmark, and the binary lists the available
-names when run without one.
-
-```
-./gradlew :benchmarks:linkReleaseExecutableMacosArm64
-KLYPH_OFFSCREEN=1 KLYPH_SPRITES=100000 KLYPH_FRAMES=600 benchmarks/build/bin/macosArm64/releaseExecutable/benchmarks.kexe sprites
-```
+`:sandbox:run` runs the debug smoke test; the `benchmark*` tasks run the release build. Every
+`KLYPH_*` variable below can be given as a Gradle property instead (`-Pklyph.sprites=…`,
+`-Pklyph.frames=…`, `-Pklyph.offscreen=1`, `-Pklyph.vsync=1`, `-Pklyph.validation=1`), which is
+how the IntelliJ run configurations in `.run/` pass them. `benchmark<Name>Offscreen` sets
+`KLYPH_OFFSCREEN=1` and 2000 frames; `-Pklyph.benchmark=<name>` picks the benchmark for the
+generic `benchmark` task. The binaries are also runnable directly:
+`benchmarks/build/bin/macosArm64/releaseExecutable/benchmarks.kexe sprites`.
 
 `KLYPH_SPRITES=<n>` sprite count (default 10000), `KLYPH_FRAMES=<n>` exits after `n` frames,
 `KLYPH_VSYNC=1` caps at the display rate, `KLYPH_VALIDATION=1` turns on the GPU validation layer
