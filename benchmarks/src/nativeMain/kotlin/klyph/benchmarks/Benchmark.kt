@@ -24,6 +24,8 @@ internal class Benchmark(
 internal class BenchmarkSettings(
     /** `KLYPH_SPRITES`, default 10000. */
     val spriteCount: Int,
+    /** `KLYPH_CHILDREN`, default 8: children per parent in the hierarchy benchmark. */
+    val childCount: Int,
     /** `KLYPH_FRAMES`; `null` runs until the window closes or escape is pressed. */
     val frameLimit: Int?,
     /**
@@ -47,7 +49,7 @@ internal class BenchmarkSettings(
         )
 
     override fun toString(): String =
-        "BenchmarkSettings(spriteCount=$spriteCount, frameLimit=$frameLimit, offscreen=$offscreen, " +
+        "BenchmarkSettings(spriteCount=$spriteCount, childCount=$childCount, frameLimit=$frameLimit, offscreen=$offscreen, " +
             "presentMode=$presentMode, validation=$validation)"
 }
 

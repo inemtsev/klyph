@@ -29,6 +29,7 @@ because they need a display. Shared target config and SDL link flags live in
 ./gradlew :sandbox:run -Pklyph.frames=120
 ./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ./gradlew :benchmarks:benchmarkSprites -Pklyph.sprites=50000     # in a window
+./gradlew :benchmarks:benchmarkHierarchy -Pklyph.sprites=5000 -Pklyph.children=8
 ./gradlew :benchmarks:benchmarkList
 ```
 
@@ -40,7 +41,8 @@ how the IntelliJ run configurations in `.run/` pass them. `benchmark<Name>Offscr
 generic `benchmark` task. The binaries are also runnable directly:
 `benchmarks/build/bin/macosArm64/releaseExecutable/benchmarks.kexe sprites`.
 
-`KLYPH_SPRITES=<n>` sprite count (default 10000), `KLYPH_FRAMES=<n>` exits after `n` frames,
+`KLYPH_SPRITES=<n>` sprite count (default 10000), `KLYPH_CHILDREN=<n>` children per parent in the
+`hierarchy` benchmark (default 8), `KLYPH_FRAMES=<n>` exits after `n` frames,
 `KLYPH_VSYNC=1` caps at the display rate, `KLYPH_VALIDATION=1` turns on the GPU validation layer
 (slow; use it after touching the platform module), `KLYPH_OFFSCREEN=1` draws into a texture and
 waits for the GPU each frame so the display is out of the loop. macOS has no `timeout`, so bound

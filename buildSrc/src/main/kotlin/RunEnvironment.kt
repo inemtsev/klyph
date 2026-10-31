@@ -6,7 +6,7 @@ import org.gradle.api.Project
  * A Gradle property wins over the shell.
  */
 object RunEnvironment {
-    private val variables = listOf("SPRITES", "FRAMES", "OFFSCREEN", "VSYNC", "VALIDATION")
+    private val variables = listOf("SPRITES", "CHILDREN", "FRAMES", "OFFSCREEN", "VSYNC", "VALIDATION")
 
     fun of(project: Project, defaults: Map<String, String> = emptyMap()): Map<String, String> {
         val result = LinkedHashMap(defaults)

@@ -69,7 +69,7 @@ private fun spawnSprites(world: World, count: Int, width: Float, height: Float) 
 }
 
 /** Moves and spins every sprite by [delta] seconds of its velocity, bouncing off the edges of a [width] by [height] area. */
-private fun move(world: World, delta: Float, width: Float, height: Float) {
+internal fun move(world: World, delta: Float, width: Float, height: Float) {
     world.forEach(Transform, Velocity) { _, transform, velocity ->
         transform.x += velocity.dx * delta
         transform.y += velocity.dy * delta
@@ -82,7 +82,7 @@ private fun move(world: World, delta: Float, width: Float, height: Float) {
 }
 
 /** Builds a soft white disc as a sprite texture, so no image decoder is needed. */
-private fun uploadCircleTexture(device: GpuDevice, size: Int): GpuTexture {
+internal fun uploadCircleTexture(device: GpuDevice, size: Int): GpuTexture {
     val pixels = ByteArray(size * size * 4)
     val radius = size / 2f
     for (y in 0 until size) for (x in 0 until size) {

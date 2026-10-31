@@ -1,8 +1,35 @@
 # Benchmarks
 
-Results from the `sprites` benchmark. Reproduce with the release build of the `benchmarks`
-executable, `benchmarks.kexe sprites`, and the environment variables listed in CLAUDE.md.
+Results from the `sprites` benchmark. Reproduce with
+`./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=<n>` (release build; the
+properties mirror the environment variables listed in CLAUDE.md).
 Numbers are per-frame averages after a one-second warm-up.
+
+## Hierarchy propagation (2026-10-31)
+
+The `hierarchy` benchmark (`./gradlew :benchmarks:benchmarkHierarchyOffscreen -Pklyph.sprites=<n>`)
+draws the same circle sprites as `sprites`, arranged as a three-level tree. Each parent is a 32x32
+sprite that moves, spins and bounces like a `sprites` entity. It has `KLYPH_CHILDREN` (default 8)
+12x12 children on a ring of radius 28 in local space, and every fourth child has two 6x6
+grandchildren on a ring of radius 12. Children and grandchildren only spin in place (a `Spin`
+component), so they orbit because their parent rotates. A family is 13 sprites, so 10k sprites
+make 769 families plus 3 extra parents, and 100k make 7,692 families plus 4. Same machine and
+offscreen setup as above; 10k ran 6,000 frames and 100k ran 2,000.
+
+```
+parents=772 children=6152 (up to 8 each) grandchildren=3076 total=10000 depth=3
+sprites=10000 fps=2375 frame=0.420ms update=0.025ms propagate=0.118ms acquire=0.000ms extract=0.035ms record=0.010ms gpuwait=0.224ms other=0.005ms
+parents=7696 children=61536 (up to 8 each) grandchildren=30768 total=100000 depth=3
+sprites=100000 fps=279 frame=3.587ms update=0.380ms propagate=1.537ms acquire=0.002ms extract=0.393ms record=0.042ms gpuwait=1.195ms other=0.034ms
+```
+
+Propagating the tree costs about 4.7 times the flat `sprites` case at 100k (1.54 ms against 0.33 ms
+in a run on the same day) and 4.7 times at 10k (0.118 ms against 0.025 ms).
+
+The flat `sprites` propagate stage read 0.25 ms in the section below and 0.33 ms on the day this
+benchmark was added, with no change to the engine. The only difference was more benchmark code
+in the same binary. Kotlin/Native compiles the whole program together, so a tight loop's cost can
+shift when unrelated code changes. Compare numbers built from the same tree on the same day.
 
 ## Sprite rendering through App (2026-10-31)
 

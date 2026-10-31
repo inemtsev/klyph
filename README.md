@@ -23,7 +23,8 @@ What works today:
   draw call, with cycling transfer buffers for upload.
 - An HLSL shader pipeline through SDL_shadercross, with the compiled shaders
   checked in as Kotlin.
-- A benchmarks executable that runs named benchmarks, starting with `sprites`.
+- A benchmarks executable with named benchmarks: `sprites` (a flat world) and
+  `hierarchy` (a three-level tree of orbiting sprites).
 
 ## Design decisions
 
@@ -50,13 +51,14 @@ What works today:
 Sprite benchmark on an Apple M4 Pro, Metal, release build, rendering offscreen
 and waiting on a fence so the display is out of the loop. Each sprite is an
 alpha-blended textured quad with its own transform, moved and rotated every
-frame. Per-frame averages after a one-second warm-up.
+frame, through the full `runApp` loop with transform propagation. Per-frame
+averages after a one-second warm-up.
 
-| Sprites | Frame | CPU (update + extract) | GPU |
+| Sprites | Frame | CPU (update + propagate + extract) | GPU |
 |---|---|---|---|
-| 10,000 | 0.37 ms | 0.06 ms | 0.30 ms |
-| 100,000 | 2.30 ms | 0.58 ms | 1.71 ms |
-| 1,000,000 | 24.7 ms | 6.16 ms | 18.5 ms |
+| 10,000 | 0.41 ms | 0.08 ms | 0.31 ms |
+| 100,000 | 2.54 ms | 0.81 ms | 1.69 ms |
+| 1,000,000 | 26.5 ms | 8.79 ms | 17.6 ms |
 
 Full table, method and caveats in [BENCHMARKS.md](BENCHMARKS.md).
 
@@ -105,9 +107,14 @@ tested; `-Pklyph.target=<name>` picks a target explicitly.
 
 In order:
 
-1. Entity hierarchy, system phases and events.
-2. Scene files with stable entity ids.
-3. Linux CI.
+1. Rendering for a game: image loading, sprite sheets and animation, multiple
+   textures per frame, a camera, window resize.
+2. Input: keyboard, mouse and gamepad state. Windows CI.
+3. Audio: sound effects and music.
+4. Collision tests, particles, bitmap text and a debug overlay.
+5. A Gradle plugin and published artifacts.
+
+Done: entity hierarchy, system phases and events; macOS and Linux CI.
 
 ## Contributing
 
