@@ -18,7 +18,9 @@ to import `kotlinx.cinterop`, `sdl3`, `cnames` or `platform.*`), `klyph` (the en
 its `klyph.app` package owns the frame loop, which games and executables enter through `runApp`;
 systems get `app.assets`, which loads from `assets/` next to the executable unless
 `AppConfig.assetRoot` overrides it, and `app.camera`, which sprites are drawn through),
-`sandbox` (executable; a smoke test that opens a window and clears it each frame), `benchmarks`
+`sandbox` (executable; a smoke test that opens a window and clears it each frame), `shooter`
+(executable; the reference game sample, its art in `shooter/assets/` synced next to the binary
+after every link; `KLYPH_AUTOPILOT=1` plays itself), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`). `./gradlew check`
@@ -29,25 +31,29 @@ samples because they need a display. Shared target config and SDL link flags liv
 
 ```
 ./gradlew :sandbox:run -Pklyph.frames=120
+./gradlew :shooter:run                                          # WASD or arrows, Space, Escape
+./gradlew :shooter:run -Pklyph.autopilot=1 -Pklyph.frames=600   # plays itself, fails if no kill
 ./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ./gradlew :benchmarks:benchmarkSprites -Pklyph.sprites=50000     # in a window
 ./gradlew :benchmarks:benchmarkHierarchy -Pklyph.sprites=5000 -Pklyph.children=8
 ./gradlew :benchmarks:benchmarkList
 ```
 
-`:sandbox:run` runs the debug smoke test; the `benchmark*` tasks run the release build. Every
-`KLYPH_*` variable below can be given as a Gradle property instead (`-Pklyph.sprites=…`,
-`-Pklyph.frames=…`, `-Pklyph.offscreen=1`, `-Pklyph.vsync=1`, `-Pklyph.validation=1`), which is
-how the IntelliJ run configurations in `.run/` pass them. `benchmark<Name>Offscreen` sets
-`KLYPH_OFFSCREEN=1` and 2000 frames; `-Pklyph.benchmark=<name>` picks the benchmark for the
-generic `benchmark` task. The binaries are also runnable directly:
-`benchmarks/build/bin/macosArm64/releaseExecutable/benchmarks.kexe sprites`.
+`:sandbox:run` runs the debug smoke test and `:shooter:run` the debug game; the `benchmark*`
+tasks run the release build. Every `KLYPH_*` variable below can be given as a Gradle property
+instead (`-Pklyph.sprites=…`, `-Pklyph.frames=…`, `-Pklyph.offscreen=1`, `-Pklyph.vsync=1`,
+`-Pklyph.validation=1`, `-Pklyph.autopilot=1`), which is how the IntelliJ run configurations in
+`.run/` pass them. `benchmark<Name>Offscreen` sets `KLYPH_OFFSCREEN=1` and 2000 frames;
+`-Pklyph.benchmark=<name>` picks the benchmark for the generic `benchmark` task. The binaries
+are also runnable directly: `benchmarks/build/bin/macosArm64/releaseExecutable/benchmarks.kexe
+sprites`.
 
 `KLYPH_SPRITES=<n>` sprite count (default 10000), `KLYPH_CHILDREN=<n>` children per parent in the
 `hierarchy` benchmark (default 8), `KLYPH_FRAMES=<n>` exits after `n` frames,
 `KLYPH_VSYNC=1` caps at the display rate, `KLYPH_VALIDATION=1` turns on the GPU validation layer
 (slow; use it after touching the platform module), `KLYPH_OFFSCREEN=1` draws into a texture and
-waits for the GPU each frame so the display is out of the loop. macOS has no `timeout`, so bound
+waits for the GPU each frame so the display is out of the loop. `KLYPH_AUTOPILOT=1` makes the
+shooter play itself and fail at exit if it destroyed no enemy. macOS has no `timeout`, so bound
 runs with `KLYPH_FRAMES`. Do not pipe `./gradlew` output into
 another command: the daemon inherits the pipe and the shell never sees EOF. Redirect to a file.
 

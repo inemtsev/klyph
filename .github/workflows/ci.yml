@@ -55,6 +55,7 @@ jobs:
           ./gradlew --no-daemon
           check
           :sandbox:linkDebugExecutableMacosArm64
+          :shooter:linkDebugExecutableMacosArm64
           :benchmarks:linkReleaseExecutableMacosArm64
 
       - name: Upload test reports
@@ -137,6 +138,7 @@ jobs:
           -Psdl3.prefix="$SDL3_PREFIX"
           check
           :sandbox:linkDebugExecutableLinuxX64
+          :shooter:linkDebugExecutableLinuxX64
           :benchmarks:linkReleaseExecutableLinuxX64
 
       - name: Upload test reports

@@ -1,12 +1,12 @@
 import org.gradle.api.Project
 
 /**
- * Environment for the sandbox and benchmark run tasks. Each `KLYPH_*` variable can be set in the
- * shell or as a Gradle property, so IDE run configurations can pass `-Pklyph.sprites=50000`.
+ * Environment for the sandbox, shooter and benchmark run tasks. Each `KLYPH_*` variable can be set
+ * in the shell or as a Gradle property, so IDE run configurations can pass `-Pklyph.sprites=50000`.
  * A Gradle property wins over the shell.
  */
 object RunEnvironment {
-    private val variables = listOf("SPRITES", "CHILDREN", "TEXTURES", "FRAMES", "OFFSCREEN", "VSYNC", "VALIDATION")
+    private val variables = listOf("SPRITES", "CHILDREN", "TEXTURES", "FRAMES", "OFFSCREEN", "VSYNC", "VALIDATION", "AUTOPILOT")
 
     fun of(project: Project, defaults: Map<String, String> = emptyMap()): Map<String, String> {
         val result = LinkedHashMap(defaults)

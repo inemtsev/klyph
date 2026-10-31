@@ -16,5 +16,6 @@ rootProject.name = "klyph"
 include(":klyph-platform")
 include(":klyph")
 include(":sandbox")
+include(":shooter")
 include(":benchmarks")
 include(":samples")

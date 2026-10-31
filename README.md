@@ -25,6 +25,10 @@ What works today:
   checked in as Kotlin.
 - A benchmarks executable with named benchmarks: `sprites` (a flat world) and
   `hierarchy` (a three-level tree of orbiting sprites).
+- A top-down shooter sample: a ship flies and fires over a starfield in an
+  arena larger than the window, enemies drift down and explode with a
+  sprite-sheet animation, and the camera follows the ship. It loads PNG art from
+  an `assets/` folder next to the binary and can play itself for demos.
 
 ## Design decisions
 
@@ -81,6 +85,14 @@ Run the sprite benchmark in a window, or offscreen for clean numbers:
 ./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ```
 
+Play the shooter sample (WASD or arrow keys to fly, Space to fire, Escape to
+quit), or watch it play itself:
+
+```
+./gradlew :shooter:run
+./gradlew :shooter:run -Pklyph.autopilot=1
+```
+
 IntelliJ picks up the same tasks as run configurations from `.run/`.
 
 Run the tests and samples:
@@ -101,6 +113,7 @@ tested; `-Pklyph.target=<name>` picks a target explicitly.
 | `klyph` | The engine: entities, components, rendering, shaders. |
 | `samples` | The `@sample` functions referenced from KDoc, run as tests. |
 | `sandbox` | Executable smoke test: opens a window and clears it each frame. |
+| `shooter` | The reference game: a top-down shooter that exercises the engine end to end. |
 | `benchmarks` | Executable that runs a benchmark by name, such as `sprites`. |
 
 ## Roadmap
