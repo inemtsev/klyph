@@ -295,6 +295,38 @@ public fun GpuDevice.createTexture(
         GpuTexture(SDL_CreateGPUTexture(handle, info.ptr) ?: sdlFailure("SDL_CreateGPUTexture"))
     }
 
+/**
+ * Creates an [RGBA8][TextureFormat.RGBA8] texture of the size of [image] for
+ * [sampling][TextureUsage.SAMPLED] and uploads its pixels.
+ *
+ * The upload is submitted on its own command buffer before this function returns, so the texture
+ * can be drawn with right away. Later changes to [image] do not reach the texture.
+ *
+ * @throws SdlException if the texture or its staging memory cannot be created, or the upload
+ *   cannot be submitted.
+ */
+public fun GpuDevice.createTexture(image: Image): GpuTexture {
+    val texture = createTexture(image.width, image.height)
+    try {
+        val staging = createTransferBuffer(image.pixels.size)
+        try {
+            write(staging, image.pixels)
+            val commands = acquireCommandBuffer()
+            val copy = commands.beginCopyPass()
+            copy.uploadToTexture(staging, texture, image.width, image.height)
+            copy.end()
+            commands.submit()
+        } finally {
+            // SDL defers the release until the submitted copy has finished with it.
+            release(staging)
+        }
+    } catch (e: Throwable) {
+        release(texture)
+        throw e
+    }
+    return texture
+}
+
 /** Frees [texture]. Never call this on a swapchain texture. */
 public fun GpuDevice.release(texture: GpuTexture) {
     SDL_ReleaseGPUTexture(handle, texture.handle)

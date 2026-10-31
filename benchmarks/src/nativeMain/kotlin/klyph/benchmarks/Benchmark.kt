@@ -26,6 +26,8 @@ internal class BenchmarkSettings(
     val spriteCount: Int,
     /** `KLYPH_CHILDREN`, default 8: children per parent in the hierarchy benchmark. */
     val childCount: Int,
+    /** `KLYPH_TEXTURES`, default 1: textures the sprites benchmark spreads its sprites over. */
+    val textureCount: Int,
     /** `KLYPH_FRAMES`; `null` runs until the window closes or escape is pressed. */
     val frameLimit: Int?,
     /**
@@ -49,20 +51,19 @@ internal class BenchmarkSettings(
         )
 
     override fun toString(): String =
-        "BenchmarkSettings(spriteCount=$spriteCount, childCount=$childCount, frameLimit=$frameLimit, offscreen=$offscreen, " +
-            "presentMode=$presentMode, validation=$validation)"
+        "BenchmarkSettings(spriteCount=$spriteCount, childCount=$childCount, textureCount=$textureCount, frameLimit=$frameLimit, " +
+            "offscreen=$offscreen, presentMode=$presentMode, validation=$validation)"
 }
 
 /**
- * Adds what every benchmark app shares: a startup line naming the GPU driver and present mode,
+ * Adds what every benchmark app shares: a startup line naming the present mode and render target,
  * quitting on escape or after [BenchmarkSettings.frameLimit] frames, and [report] fed with each
  * frame's stats and printed at shutdown.
  */
 internal fun App.addBenchmarkSystems(settings: BenchmarkSettings, report: StatsReport) {
     addSystem(Phase.STARTUP) { app ->
-        val supported = PresentMode.entries.filter { app.device.supportsPresentMode(app.window, it) }
         println(
-            "GPU driver: ${app.device.driverName}, present mode: ${app.presentMode} (supported: $supported), " +
+            "Present mode: ${app.presentMode} (requested: ${app.config.presentMode}), " +
                 "validation: ${settings.validation}, target: ${app.config.target}",
         )
     }

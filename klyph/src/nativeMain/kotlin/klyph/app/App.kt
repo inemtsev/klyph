@@ -3,18 +3,17 @@ package klyph.app
 import klyph.entity.World
 import klyph.event.Events
 import klyph.platform.Color
-import klyph.platform.GpuDevice
-import klyph.platform.GpuTexture
 import klyph.platform.PresentMode
 import klyph.platform.Window
+import klyph.render.Camera
 
 /**
- * Represents a running klyph application: the world, the event bus, the clock and the systems the
- * frame loop runs. [runApp] creates the one instance and passes it to its `setup` block and to
+ * Represents a running klyph application: the world, the event bus, the clock, the assets, the
+ * camera and the systems the frame loop runs. [runApp] creates the one instance and passes it to its `setup` block and to
  * every [System].
  *
- * An `App` is only valid inside [runApp]. Once [runApp] returns, its window and device are
- * closed, so keeping a reference and using it afterwards is an error.
+ * An `App` is only valid inside [runApp]. Once [runApp] returns, its window, GPU device and
+ * assets are closed, so keeping a reference and using it afterwards is an error.
  *
  * Not thread-safe; call it from systems only.
  *
@@ -26,15 +25,23 @@ public class App internal constructor(
     /** The window frames are presented to. Its drawable size is `window.pixelWidth` by `window.pixelHeight`. */
     public val window: Window,
     /**
-     * The GPU device the engine renders with, for creating textures until M2 brings a texture API.
-     * Release what you create from it, at the latest in a [Phase.SHUTDOWN] system.
-     */
-    public val device: GpuDevice,
-    /**
      * The present mode in effect. It may differ from [AppConfig.presentMode] when the requested
      * mode is unsupported, in which case the app keeps [PresentMode.VSYNC].
      */
     public val presentMode: PresentMode,
+    /**
+     * Loads the textures, images and sprite sheets the app draws, from [AppConfig.assetRoot] or the
+     * `assets/` directory next to the executable. The engine closes it, and every texture it
+     * created, after the last [Phase.SHUTDOWN] system.
+     */
+    public val assets: Assets,
+    /**
+     * The camera sprites are drawn through. It starts centered on the middle of the window, so
+     * world (0, 0) is the window's top-left corner at zoom 1. The engine keeps its viewport equal
+     * to the window's pixel size and never moves it; move, zoom or rotate it from a system, such
+     * as a [Phase.LATE_UPDATE] system that follows the player.
+     */
+    public val camera: Camera,
 ) {
     private val schedule = Schedule()
     private var startupDone = false
@@ -57,16 +64,9 @@ public class App internal constructor(
     public var clearColor: Color = config.clearColor
 
     /**
-     * The texture every sprite is drawn with. While it is `null`, frames are cleared but no
-     * sprites are drawn. The app does not release it; release it in a [Phase.SHUTDOWN] system.
-     *
-     * Temporary: it goes away when M2 adds per-sprite textures.
-     */
-    public var spriteTexture: GpuTexture? = null
-
-    /**
      * Adds [system] to [phase]. It runs each time [phase] runs, after the systems added to [phase]
-     * before it, and after the engine's own work in [Phase.INPUT] and before it in [Phase.RENDER].
+     * before it, and after the engine's own work in [Phase.INPUT] and [Phase.LATE_UPDATE] and before
+     * it in [Phase.RENDER].
      *
      * Systems may be added from the `setup` block of [runApp] or from another system. A system
      * added to the running phase cannot run in it, and a [Phase.STARTUP] system added after

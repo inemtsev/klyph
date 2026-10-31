@@ -87,6 +87,9 @@ public class World(initialCapacity: Int = 1024) {
      * different parent it moves: it leaves the old parent's [childrenOf] and is appended to the
      * end of [parent]'s. Does nothing if [parent] already is the parent of [child].
      *
+     * From the next [propagateTransforms] on, [child] has a [WorldTransform], because only
+     * entities with a parent have one. Until then it keeps the one it had, or has none.
+     *
      * Both entities must be alive, must differ, and [parent] must not be a descendant of
      * [child], because that would make a cycle.
      *
@@ -119,7 +122,8 @@ public class World(initialCapacity: Int = 1024) {
 
     /**
      * Detaches [child] from its parent, making it a root whose [Transform] is in world space.
-     * Does nothing if [child] has no parent.
+     * Removes its [WorldTransform] right away, since only entities with a parent have one; its
+     * own children keep theirs. Does nothing if [child] has no parent.
      *
      * @sample samples.entity.Hierarchies.setParent
      */
@@ -128,6 +132,7 @@ public class World(initialCapacity: Int = 1024) {
         val link = parents.getOrNull(child) ?: return
         detach(link.entity, child)
         parents.remove(child)
+        storeOrNull(WorldTransform)?.remove(child)
     }
 
     /**

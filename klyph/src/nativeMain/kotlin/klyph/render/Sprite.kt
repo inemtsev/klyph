@@ -4,21 +4,43 @@ import klyph.entity.ComponentType
 import klyph.platform.Color
 
 /**
- * A textured quad of [width] by [height] world units centred on its entity's transform, showing
- * the texture region from ([u0], [v0]) to ([u1], [v1]) tinted by [color].
+ * A quad of [width] by [height] world units centred on its entity's transform, showing [region]
+ * tinted by [color].
  *
- * @sample samples.entity.Components.sprite
+ * The size starts as the region's size in texels, so with a view measured in pixels and a scale
+ * of 1 each texel covers one pixel. [isFlippedX] mirrors the region left to right and
+ * [isFlippedY] mirrors it top to bottom; neither changes the quad's position.
+ *
+ * Sprites in a higher [layer] draw on top of sprites in a lower one. Within a layer, sprites are
+ * grouped by texture, so where sprites with different textures overlap in one layer, which one
+ * is on top is not specified; give them different layers. Every distinct pair of layer and
+ * texture in a frame costs one draw call, so keep layers to a few draw-order groups such as
+ * background, world and effects, not one per sprite.
+ *
+ * Has no sample because creating a [Texture] needs a GPU device, which samples cannot open.
  */
 public class Sprite(
-    public var width: Float,
-    public var height: Float,
+    /** The part of a texture the quad shows. */
+    public var region: TextureRegion,
+    /** Width in world units before the entity's scale. */
+    public var width: Float = region.width.toFloat(),
+    /** Height in world units before the entity's scale. */
+    public var height: Float = region.height.toFloat(),
+    /** Tint multiplied with every texel. [Color.WHITE] shows the texture unchanged. */
     public var color: Color = Color.WHITE,
-    public var u0: Float = 0f,
-    public var v0: Float = 0f,
-    public var u1: Float = 1f,
-    public var v1: Float = 1f,
+    /** Draw-order group; higher layers draw on top. Any `Int`, negative included. */
+    public var layer: Int = 0,
+    /** Whether the region is mirrored left to right. */
+    public var isFlippedX: Boolean = false,
+    /** Whether the region is mirrored top to bottom. */
+    public var isFlippedY: Boolean = false,
 ) {
-    override fun toString(): String = "Sprite(size=$width x $height, color=$color, uv=($u0, $v0)-($u1, $v1))"
+    /**
+     * Returns `Sprite(size=16.0 x 32.0, color=Color(#ffffffff), layer=0, flippedX=false,
+     * flippedY=false, region=TextureRegion(...))`. The format may change.
+     */
+    override fun toString(): String =
+        "Sprite(size=$width x $height, color=$color, layer=$layer, flippedX=$isFlippedX, flippedY=$isFlippedY, region=$region)"
 
     /** Component key for [Sprite]. */
     public companion object : ComponentType<Sprite>("Sprite")

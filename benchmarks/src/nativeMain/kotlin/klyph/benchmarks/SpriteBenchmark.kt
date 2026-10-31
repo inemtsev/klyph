@@ -7,39 +7,36 @@ import klyph.entity.ComponentType
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.platform.Color
-import klyph.platform.GpuDevice
-import klyph.platform.GpuTexture
-import klyph.platform.beginCopyPass
-import klyph.platform.createTexture
-import klyph.platform.createTransferBuffer
-import klyph.platform.release
-import klyph.platform.uploadToTexture
-import klyph.platform.write
+import klyph.platform.Image
 import klyph.render.Sprite
+import klyph.render.TextureRegion
+import klyph.render.asRegion
 import kotlin.math.PI
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-/** Moves `KLYPH_SPRITES` sprites around the window and draws them through the app's sprite pass. */
+/**
+ * Moves `KLYPH_SPRITES` sprites around the window and draws them through the app's sprite pass.
+ * The sprites take `KLYPH_TEXTURES` circle textures in turn, all in layer 0, so each texture is
+ * one draw call.
+ */
 internal val spriteBenchmark: Benchmark = Benchmark(
     name = "sprites",
-    description = "Moves and spins KLYPH_SPRITES textured sprites and draws them with SpriteRenderer.",
+    description = "Moves and spins KLYPH_SPRITES textured sprites over KLYPH_TEXTURES textures and draws them with SpriteRenderer.",
 ) { settings ->
+    require(settings.textureCount > 0) { "KLYPH_TEXTURES ${settings.textureCount} is not positive." }
     var sprites = 0
-    val report = StatsReport { "sprites=$sprites" }
+    val report = StatsReport { "sprites=$sprites textures=${settings.textureCount}" }
     runApp(settings.appConfig("klyph sprites benchmark")) {
         addBenchmarkSystems(settings, report)
         addSystem(Phase.STARTUP) { app ->
-            app.spriteTexture = uploadCircleTexture(app.device, 64)
-            spawnSprites(app.world, settings.spriteCount, app.window.pixelWidth.toFloat(), app.window.pixelHeight.toFloat())
+            println("textures=${settings.textureCount}")
+            val regions = List(settings.textureCount) { app.assets.texture(circleImage(64, TINTS[it % TINTS.size])).asRegion() }
+            spawnSprites(app.world, regions, settings.spriteCount, app.window.pixelWidth.toFloat(), app.window.pixelHeight.toFloat())
         }
         addSystem(Phase.UPDATE) { app ->
             sprites = app.stats.spriteCount
             move(app.world, app.time.deltaSeconds.coerceAtMost(0.1f), app.window.pixelWidth.toFloat(), app.window.pixelHeight.toFloat())
-        }
-        addSystem(Phase.SHUTDOWN) { app ->
-            app.spriteTexture?.let { app.device.release(it) }
-            app.spriteTexture = null
         }
     }
 }
@@ -49,16 +46,32 @@ internal class Velocity(var dx: Float, var dy: Float, var spin: Float) {
     companion object : ComponentType<Velocity>("Velocity")
 }
 
-/** Adds [count] sprites at random positions in a [width] by [height] area, with seed 42 so every run is the same. */
-private fun spawnSprites(world: World, count: Int, width: Float, height: Float) {
+/** Tints baked into the benchmark's textures, the first white so one texture looks as before. */
+private val TINTS: List<Color> = listOf(
+    Color.WHITE,
+    Color(red = 1f, green = 0.55f, blue = 0.55f),
+    Color(red = 0.55f, green = 1f, blue = 0.55f),
+    Color(red = 0.55f, green = 0.65f, blue = 1f),
+    Color(red = 1f, green = 0.95f, blue = 0.5f),
+    Color(red = 0.5f, green = 1f, blue = 1f),
+    Color(red = 1f, green = 0.55f, blue = 1f),
+    Color(red = 1f, green = 0.75f, blue = 0.4f),
+)
+
+/**
+ * Adds [count] sprites at random positions in a [width] by [height] area, with seed 42 so every
+ * run is the same. Sprite `i` shows `regions[i % regions.size]`.
+ */
+private fun spawnSprites(world: World, regions: List<TextureRegion>, count: Int, width: Float, height: Float) {
     val random = Random(42)
-    repeat(count) {
+    repeat(count) { i ->
         val entity = world.create()
         world.add(entity, Transform, Transform(x = random.nextFloat() * width, y = random.nextFloat() * height, rotation = random.nextFloat() * 2f * PI.toFloat()))
         world.add(
             entity,
             Sprite,
             Sprite(
+                regions[i % regions.size],
                 width = 24f,
                 height = 24f,
                 color = Color(red = 0.5f + random.nextFloat() * 0.5f, green = 0.5f + random.nextFloat() * 0.5f, blue = 0.5f + random.nextFloat() * 0.5f, alpha = 0.9f),
@@ -81,30 +94,19 @@ internal fun move(world: World, delta: Float, width: Float, height: Float) {
     }
 }
 
-/** Builds a soft white disc as a sprite texture, so no image decoder is needed. */
-internal fun uploadCircleTexture(device: GpuDevice, size: Int): GpuTexture {
-    val pixels = ByteArray(size * size * 4)
+/**
+ * Draws a soft disc of [tint] into a [size] by [size] image, premultiplied by its coverage, so the
+ * benchmarks need no image files.
+ */
+internal fun circleImage(size: Int, tint: Color = Color.WHITE): Image {
+    val image = Image(size, size)
     val radius = size / 2f
     for (y in 0 until size) for (x in 0 until size) {
         val dx = x + 0.5f - radius
         val dy = y + 0.5f - radius
         val distance = sqrt(dx * dx + dy * dy)
         val coverage = (radius - distance).coerceIn(0f, 1f)
-        val i = (y * size + x) * 4
-        val value = (255 * coverage).toInt().toByte()
-        pixels[i] = value
-        pixels[i + 1] = value
-        pixels[i + 2] = value
-        pixels[i + 3] = value
+        image[x, y] = Color(red = coverage * tint.red, green = coverage * tint.green, blue = coverage * tint.blue, alpha = coverage)
     }
-    val texture = device.createTexture(size, size)
-    val staging = device.createTransferBuffer(pixels.size)
-    device.write(staging, pixels)
-    val commands = device.acquireCommandBuffer()
-    val copy = commands.beginCopyPass()
-    copy.uploadToTexture(staging, texture, size, size)
-    copy.end()
-    commands.submit()
-    device.release(staging)
-    return texture
+    return image
 }

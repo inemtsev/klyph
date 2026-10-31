@@ -3,7 +3,6 @@ package samples.entity
 import klyph.entity.ComponentType
 import klyph.entity.Transform
 import klyph.entity.World
-import klyph.render.Sprite
 import samples.Sample
 import samples.assertPrints
 
@@ -40,11 +39,5 @@ class Components {
         world.add(entity, Transform, Transform(x = 1f, y = 2f))
         world.get(entity, Transform).x += 4f
         assertPrints(world.get(entity, Transform), "Transform(x=5.0, y=2.0, rotation=0.0, scale=1.0 x 1.0)")
-    }
-
-    @Sample
-    fun sprite() {
-        val sprite = Sprite(width = 16f, height = 32f)
-        assertPrints(sprite, "Sprite(size=16.0 x 32.0, color=Color(#ffffffff), uv=(0.0, 0.0)-(1.0, 1.0))")
     }
 }

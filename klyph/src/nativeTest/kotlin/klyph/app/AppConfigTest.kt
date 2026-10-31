@@ -22,6 +22,7 @@ class AppConfigTest {
         assertEquals(GpuSync.NONE, config.gpuSync)
         assertEquals(GpuValidation.DISABLED, config.validation)
         assertEquals(Color(red = 0.10f, green = 0.12f, blue = 0.18f), config.clearColor)
+        assertEquals(null, config.assetRoot)
     }
 
     @Test
@@ -57,13 +58,14 @@ class AppConfigTest {
         assertNotEquals(AppConfig(), AppConfig(target = RenderTarget.OFFSCREEN))
         assertNotEquals(AppConfig(), AppConfig(gpuSync = GpuSync.WAIT_EACH_FRAME))
         assertNotEquals(AppConfig(), AppConfig(clearColor = Color.WHITE))
+        assertNotEquals(AppConfig(), AppConfig(assetRoot = "data/"))
     }
 
     @Test
     fun toStringListsEverySetting() {
         assertEquals(
             "AppConfig(title=klyph, width=1280, height=720, fixedRate=60, maxFixedStepsPerFrame=4, " +
-                "presentMode=VSYNC, target=WINDOW, gpuSync=NONE, validation=DISABLED, clearColor=Color(#1a1f2eff))",
+                "presentMode=VSYNC, target=WINDOW, gpuSync=NONE, validation=DISABLED, clearColor=Color(#1a1f2eff), assetRoot=null)",
             AppConfig().toString(),
         )
     }

@@ -16,6 +16,12 @@ kotlin {
                 packageName("sdl3")
                 includeDirs("$sdl3Prefix/include")
             }
+            // stb_image, vendored; its implementation is compiled into the interop stubs.
+            cinterops.create("stb") {
+                definitionFile.set(file("src/nativeInterop/cinterop/stb.def"))
+                packageName("stb")
+                includeDirs("src/nativeInterop/c/stb")
+            }
         }
     }
 

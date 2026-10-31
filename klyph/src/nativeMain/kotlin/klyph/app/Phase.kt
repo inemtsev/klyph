@@ -25,7 +25,8 @@ public enum class Phase {
 
     /**
      * Runs once per frame after every [UPDATE] system, for work that must see final positions,
-     * such as a camera that follows an entity.
+     * such as a camera that follows an entity. The engine first advances every
+     * [klyph.render.SpriteAnimation] and shows its current frame.
      */
     LATE_UPDATE,
 

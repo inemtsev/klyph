@@ -20,7 +20,7 @@ fun main() {
 
     runApp(AppConfig(title = "klyph sandbox", validation = validation)) {
         addSystem(Phase.STARTUP) { app ->
-            println("GPU driver: ${app.device.driverName}, validation: $validation")
+            println("${app.assets}, ${app.camera}, validation: $validation")
         }
         addSystem(Phase.UPDATE) { app ->
             app.events.forEach<KeyPressed> { if (it.key == KeyCode.ESCAPE) app.quit() }

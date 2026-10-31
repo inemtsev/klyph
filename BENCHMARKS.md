@@ -5,6 +5,68 @@ Results from the `sprites` benchmark. Reproduce with
 properties mirror the environment variables listed in CLAUDE.md).
 Numbers are per-frame averages after a one-second warm-up.
 
+## Propagation only for hierarchies (2026-10-31)
+
+`propagateTransforms` no longer copies every root `Transform` into a `WorldTransform`. Only
+entities with a parent have a `WorldTransform`, and the walk starts from roots that have
+children. `extract` iterates `Transform` and `Sprite` and does one sparse lookup per sprite into
+the `WorldTransform` store, skipped when the store is empty. The same build also moved the sort's
+per-texture cache from `Texture` fields into arrays indexed by texture id, and passes each run's
+first sprite as a uniform instead of as the draw's first vertex. Same machine and offscreen setup
+as below, 100k sprites, 2,000 frames, "before" from a build of the previous tree run the same
+session.
+
+```
+before textures=1: sprites=100000 textures=1 fps=354 frame=2.823ms update=0.217ms propagate=0.358ms acquire=0.001ms extract=0.470ms record=0.028ms gpuwait=1.721ms other=0.024ms
+after  textures=1: sprites=100000 textures=1 fps=409 frame=2.446ms update=0.219ms propagate=0.000ms acquire=0.000ms extract=0.460ms record=0.016ms gpuwait=1.729ms other=0.018ms
+before textures=8: sprites=100000 textures=8 fps=337 frame=2.963ms update=0.216ms propagate=0.346ms acquire=0.001ms extract=0.634ms record=0.021ms gpuwait=1.721ms other=0.021ms
+after  textures=8: sprites=100000 textures=8 fps=377 frame=2.652ms update=0.220ms propagate=0.000ms acquire=0.000ms extract=0.662ms record=0.019ms gpuwait=1.727ms other=0.021ms
+hierarchy before:  sprites=100000 fps=249 frame=4.020ms update=0.377ms propagate=1.513ms acquire=0.002ms extract=0.608ms record=0.042ms gpuwait=1.442ms other=0.033ms
+hierarchy after:   sprites=100000 fps=277 frame=3.609ms update=0.325ms propagate=1.211ms acquire=0.002ms extract=0.736ms record=0.042ms gpuwait=1.256ms other=0.034ms
+```
+
+The flat `sprites` frame drops by the whole propagate stage, and extract stays within noise because
+the `WorldTransform` store is empty. In `hierarchy`, propagate falls 0.30 ms: the 7.7k roots get
+no copy, and the pass visits the 23k entities that have children instead of all 100k. Extract
+rises 0.13 ms there because 92% of its sprites take the extra lookup, so the CPU stages together
+save about 0.22 ms. Its gpuwait also fell 0.19 ms, which this change does not explain. The
+texture-id cache and the per-run uniform push do not show in these numbers.
+
+## Multiple textures (2026-10-31)
+
+`SpriteRenderer` now takes each sprite's texture from its `TextureRegion` and sorts sprites by
+layer, then texture, with one draw call per run of sprites that share a texture. The `sprites`
+benchmark gained `KLYPH_TEXTURES` (`-Pklyph.textures`, default 1): that many 64x64 circle
+textures with different tints, assigned to sprites in turn, all in layer 0, so 8 textures give
+8 draw calls a frame. In the `hierarchy` benchmark, parents, children and grandchildren share
+one texture in layers 0, 1 and 2, so children draw on top of their parents. Same machine and
+offscreen setup as below, 100k sprites, 2,000 frames each. The "before" lines come from a build
+of the previous commit, run the same day.
+
+```
+before:     sprites=100000 fps=380 frame=2.629ms update=0.213ms propagate=0.324ms acquire=0.000ms extract=0.362ms record=0.014ms gpuwait=1.697ms other=0.016ms
+textures=1: sprites=100000 textures=1 fps=368 frame=2.721ms update=0.213ms propagate=0.338ms acquire=0.000ms extract=0.440ms record=0.013ms gpuwait=1.697ms other=0.016ms
+textures=8: sprites=100000 textures=8 fps=343 frame=2.919ms update=0.213ms propagate=0.334ms acquire=0.000ms extract=0.634ms record=0.014ms gpuwait=1.704ms other=0.016ms
+hierarchy before: sprites=100000 fps=279 frame=3.589ms update=0.356ms propagate=1.454ms acquire=0.001ms extract=0.379ms record=0.033ms gpuwait=1.333ms other=0.029ms
+hierarchy after:  sprites=100000 fps=253 frame=3.949ms update=0.370ms propagate=1.458ms acquire=0.001ms extract=0.590ms record=0.033ms gpuwait=1.463ms other=0.029ms
+```
+
+Sorting costs 0.08 ms of extract at 100k when the sprites are already in draw order (one texture),
+and 0.27 ms when every neighbour has a different texture (8 textures round robin). Eight draw
+calls instead of one leave gpuwait and record unchanged. The hierarchy's extract rises 0.21 ms
+because its layers alternate from one sprite to the next, so every frame writes records out of
+storage order. Its gpuwait rose 0.13 ms, which these runs do not explain.
+
+Extract walks the world once. Each texture caches its group for up to four layers, so finding a
+sprite's (layer, texture) group takes a few field reads. The previous frame picks how records are
+written. If it was already in draw order, records go out in storage order and only group sizes
+are counted. Otherwise the previous frame's group sizes give every sprite its final position
+during the walk. Either guess is checked after the walk. A wrong one, such as a frame that adds
+sprites to a group, costs a second walk into a scratch array and a copy to the sorted positions.
+Two earlier versions measured 0.92 ms (two walks, a key stored per sprite) and 0.60 ms (one walk,
+one function call per sprite). On Kotlin/Native a call that is not inlined costs a few
+nanoseconds of frame setup, so the per-sprite path is inline.
+
 ## Hierarchy propagation (2026-10-31)
 
 The `hierarchy` benchmark (`./gradlew :benchmarks:benchmarkHierarchyOffscreen -Pklyph.sprites=<n>`)

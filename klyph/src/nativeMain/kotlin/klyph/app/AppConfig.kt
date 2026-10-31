@@ -33,7 +33,7 @@ public class AppConfig(
     public val maxFixedStepsPerFrame: Int = 4,
     /**
      * How frames reach the display. A mode the window does not support is ignored and the window
-     * keeps [PresentMode.VSYNC]; check `app.device.supportsPresentMode(app.window, mode)` to find out.
+     * keeps [PresentMode.VSYNC]; [App.presentMode] tells which mode is in effect.
      */
     public val presentMode: PresentMode = PresentMode.VSYNC,
     /** Where frames are drawn: the window, or an offscreen texture for benchmarks. */
@@ -44,6 +44,11 @@ public class AppConfig(
     public val validation: GpuValidation = GpuValidation.DISABLED,
     /** The color every frame is cleared to before sprites are drawn; [App.clearColor] starts with it. */
     public val clearColor: Color = Color(red = 0.10f, green = 0.12f, blue = 0.18f),
+    /**
+     * The directory [App.assets] loads relative paths from, or `null` for the `assets/` directory
+     * next to the executable. A relative directory resolves against [klyph.platform.Files.basePath].
+     */
+    public val assetRoot: String? = null,
 ) {
     init {
         require(width > 0) { "Window width $width is not positive." }
@@ -63,7 +68,8 @@ public class AppConfig(
             target == other.target &&
             gpuSync == other.gpuSync &&
             validation == other.validation &&
-            clearColor == other.clearColor
+            clearColor == other.clearColor &&
+            assetRoot == other.assetRoot
 
     override fun hashCode(): Int {
         var result = title.hashCode()
@@ -76,6 +82,7 @@ public class AppConfig(
         result = 31 * result + gpuSync.hashCode()
         result = 31 * result + validation.hashCode()
         result = 31 * result + clearColor.hashCode()
+        result = 31 * result + assetRoot.hashCode()
         return result
     }
 
@@ -86,7 +93,7 @@ public class AppConfig(
     override fun toString(): String =
         "AppConfig(title=$title, width=$width, height=$height, fixedRate=$fixedRate, " +
             "maxFixedStepsPerFrame=$maxFixedStepsPerFrame, presentMode=$presentMode, target=$target, " +
-            "gpuSync=$gpuSync, validation=$validation, clearColor=$clearColor)"
+            "gpuSync=$gpuSync, validation=$validation, clearColor=$clearColor, assetRoot=$assetRoot)"
 
     private companion object {
         const val MAX_FIXED_RATE: Int = 1000

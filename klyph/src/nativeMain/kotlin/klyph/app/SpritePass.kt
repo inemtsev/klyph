@@ -13,17 +13,18 @@ import klyph.platform.beginRenderPass
 import klyph.platform.createTexture
 import klyph.platform.release
 import klyph.platform.waitFor
+import klyph.render.Camera
 import klyph.render.Sprite
 import klyph.render.SpriteRenderer
 import kotlin.time.TimeSource
 
 /**
  * The engine's part of [Phase.RENDER]: clears the target and draws every sprite through a
- * [SpriteRenderer], then submits the frame.
+ * [SpriteRenderer] and the app's [Camera], then submits the frame.
  *
- * Owns the renderer, which it replaces with one of twice the capacity when the world holds more
- * sprites than fit, and, for [RenderTarget.OFFSCREEN], the texture frames are drawn into, which
- * it recreates when the window's pixel size changes.
+ * Owns the renderer, whose capacity it grows when the world holds more sprites than fit, and,
+ * for [RenderTarget.OFFSCREEN], the texture frames are drawn into, which it recreates when the
+ * window's pixel size changes.
  */
 internal class SpritePass(
     private val device: GpuDevice,
@@ -33,15 +34,15 @@ internal class SpritePass(
 ) : AutoCloseable {
     private val colorFormat: TextureFormat =
         if (target == RenderTarget.OFFSCREEN) TextureFormat.RGBA8 else device.swapchainFormat(window)
-    private var renderer = SpriteRenderer(device, colorFormat, INITIAL_CAPACITY)
+    private val renderer = SpriteRenderer(device, colorFormat)
     private var offscreenTexture: GpuTexture? = null
     private var offscreenWidth = 0
     private var offscreenHeight = 0
 
-    /** The window's drawable width in pixels, kept current by [resize]. */
+    /** The window's drawable width in pixels, kept current by [resize]; the offscreen texture's size. */
     private var pixelWidth = window.pixelWidth
 
-    /** The window's drawable height in pixels, kept current by [resize]. */
+    /** The window's drawable height in pixels, kept current by [resize]; the offscreen texture's size. */
     private var pixelHeight = window.pixelHeight
 
     /** Number of sprites the last [render] drew. */
@@ -55,11 +56,11 @@ internal class SpritePass(
     }
 
     /**
-     * Draws [world]'s sprites with [texture] over [clearColor] and submits the frame, adding the
-     * time of each step to [stats]. With no [texture], only clears. While the window has no
-     * target to draw into (minimized), skips extraction and drawing and only submits the frame.
+     * Draws [world]'s sprites through [camera] over [clearColor] and submits the frame, adding the time of each
+     * step to [stats]. While the window has no target to draw into (minimized), skips extraction
+     * and drawing and only submits the frame.
      */
-    fun render(world: World, texture: GpuTexture?, clearColor: Color, stats: FrameStats) {
+    fun render(world: World, camera: Camera, clearColor: Color, stats: FrameStats) {
         val clock = TimeSource.Monotonic
         var mark = clock.markNow()
 
@@ -70,9 +71,8 @@ internal class SpritePass(
         mark = now
 
         var count = 0
-        if (texture != null && targetTexture != null) {
-            ensureCapacity(world.count(Sprite))
-            renderer.texture = texture
+        if (targetTexture != null) {
+            renderer.ensureCapacity(world.count(Sprite))
             count = renderer.extract(world)
         }
         spriteCount = count
@@ -83,7 +83,7 @@ internal class SpritePass(
         if (targetTexture != null) {
             if (count > 0) renderer.upload(commands)
             val pass = commands.beginRenderPass(targetTexture, clearColor)
-            if (count > 0) renderer.draw(commands, pass, pixelWidth.toFloat(), pixelHeight.toFloat())
+            if (count > 0) renderer.draw(commands, pass, camera)
             pass.end()
         }
         if (gpuSync == GpuSync.WAIT_EACH_FRAME) {
@@ -117,17 +117,6 @@ internal class SpritePass(
         return created
     }
 
-    /** Replaces the renderer with a larger one if [sprites] do not fit, doubling its capacity until they do. */
-    private fun ensureCapacity(sprites: Int) {
-        val current = renderer.capacity
-        if (sprites <= current) return
-        var capacity = current
-        while (capacity < sprites) capacity = if (capacity > Int.MAX_VALUE / 2) Int.MAX_VALUE else capacity * 2
-        // The GPU may still read the old renderer's buffers; SDL defers their release until it is done.
-        renderer.close()
-        renderer = SpriteRenderer(device, colorFormat, capacity)
-    }
-
     override fun close() {
         offscreenTexture?.let { device.release(it) }
         offscreenTexture = null
@@ -136,8 +125,4 @@ internal class SpritePass(
 
     override fun toString(): String =
         "SpritePass(target=$target, gpuSync=$gpuSync, renderer=$renderer, size=${pixelWidth}x$pixelHeight)"
-
-    private companion object {
-        const val INITIAL_CAPACITY: Int = 1024
-    }
 }

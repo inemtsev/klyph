@@ -6,6 +6,7 @@ import klyph.event.KeyReleased
 import klyph.event.QuitRequested
 import klyph.event.WindowResized
 import klyph.platform.EventPump
+import klyph.platform.Files
 import klyph.platform.GpuDevice
 import klyph.platform.PlatformEvent
 import klyph.platform.PresentMode
@@ -14,6 +15,9 @@ import klyph.platform.ShaderFormat
 import klyph.platform.Subsystem
 import klyph.platform.Window
 import klyph.platform.WindowFlag
+import klyph.render.Camera
+import klyph.render.advanceSpriteAnimations
+import klyph.render.lookAt
 import kotlin.time.Duration
 import kotlin.time.TimeSource
 
@@ -26,11 +30,17 @@ import kotlin.time.TimeSource
  * the transform propagation and [Phase.RENDER] once per frame until a frame ends with a quit
  * request, and finally [Phase.SHUTDOWN] runs once. STARTUP and SHUTDOWN run even when no frame
  * does. The engine translates platform events into `klyph.event` events at the start of INPUT,
- * and draws every entity with a `WorldTransform` and a `Sprite` at the end of RENDER. A
- * `QuitRequested` event also calls [App.quit], so closing the window ends the app.
+ * advances every `SpriteAnimation` and shows its current frame in the entity's `Sprite` at the
+ * start of LATE_UPDATE, and draws every entity with a `Transform` and a `Sprite` through
+ * [App.camera] at the end of RENDER. A `QuitRequested` event also calls [App.quit], so closing
+ * the window ends the app.
  *
- * The SDL video subsystem, the window, the GPU device and the renderer exist only while this
- * call runs, and only one app may run at a time. Exceptions thrown by [setup] or a system end
+ * The camera starts with the window's pixel size as its viewport, centered on the middle of the
+ * window, so world (0, 0) is the top-left corner. When the window is resized the engine updates
+ * the viewport and leaves the camera where it is.
+ *
+ * The SDL video subsystem, the window, the GPU device, [App.assets] and the renderer exist only
+ * while this call runs, and only one app may run at a time. Exceptions thrown by [setup] or a system end
  * the loop without running SHUTDOWN; everything is still released, and the exception propagates.
  * Initialization fails with an exception if SDL, the window or the GPU device cannot be created.
  *
@@ -51,11 +61,13 @@ public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
                     } else {
                         PresentMode.VSYNC
                     }
-                    EventPump().use { pump ->
-                        SpritePass(device, window, config.target, config.gpuSync).use { pass ->
-                            val app = App(config, window, device, presentMode)
-                            app.setup()
-                            FrameLoop(app, pump, pass).run()
+                    Assets(device, config.assetRoot ?: Files.basePath + "assets/").use { assets ->
+                        EventPump().use { pump ->
+                            SpritePass(device, window, config.target, config.gpuSync).use { pass ->
+                                val app = App(config, window, presentMode, assets, startCamera(window))
+                                app.setup()
+                                FrameLoop(app, pump, pass).run()
+                            }
                         }
                     }
                 } finally {
@@ -66,6 +78,16 @@ public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
     } finally {
         Sdl.quit()
     }
+}
+
+/**
+ * Returns a camera whose viewport is [window]'s drawable size, positioned so that world (0, 0) is
+ * the window's top-left corner.
+ */
+private fun startCamera(window: Window): Camera {
+    val width = window.pixelWidth.coerceAtLeast(1)
+    val height = window.pixelHeight.coerceAtLeast(1)
+    return Camera(viewportWidth = width, viewportHeight = height).apply { lookAt(width / 2f, height / 2f) }
 }
 
 /** Runs [app]'s phases: startup, frames until a quit request, shutdown. */
@@ -110,6 +132,7 @@ private class FrameLoop(private val app: App, private val pump: EventPump, priva
         app.run(Phase.UPDATE)
         mark = lap(Phase.UPDATE.ordinal, mark)
 
+        app.world.advanceSpriteAnimations(time.delta)
         app.run(Phase.LATE_UPDATE)
         mark = lap(Phase.LATE_UPDATE.ordinal, mark)
 
@@ -117,7 +140,7 @@ private class FrameLoop(private val app: App, private val pump: EventPump, priva
         mark = lap(FrameStats.PROPAGATION, mark)
 
         app.run(Phase.RENDER)
-        pass.render(app.world, app.spriteTexture, app.clearColor, stats)
+        pass.render(app.world, app.camera, app.clearColor, stats)
         lap(Phase.RENDER.ordinal, mark)
 
         time.endFrame()
@@ -144,6 +167,11 @@ private class FrameLoop(private val app: App, private val pump: EventPump, priva
                 is PlatformEvent.KeyUp -> events.publish(KeyReleased(event.key))
                 is PlatformEvent.WindowResized -> {
                     pass.resize(event.pixelWidth, event.pixelHeight)
+                    // A minimized window can report a zero size; the camera keeps its last viewport.
+                    if (event.pixelWidth > 0 && event.pixelHeight > 0) {
+                        app.camera.viewportWidth = event.pixelWidth
+                        app.camera.viewportHeight = event.pixelHeight
+                    }
                     events.publish(WindowResized(pixelWidth = event.pixelWidth, pixelHeight = event.pixelHeight))
                 }
             }

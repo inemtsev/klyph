@@ -8,8 +8,9 @@ import klyph.entity.Entity
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.platform.Color
-import klyph.platform.release
 import klyph.render.Sprite
+import klyph.render.TextureRegion
+import klyph.render.asRegion
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -25,9 +26,10 @@ internal val hierarchyBenchmark: Benchmark = Benchmark(
     runApp(settings.appConfig("klyph hierarchy benchmark")) {
         addBenchmarkSystems(settings, report)
         addSystem(Phase.STARTUP) { app ->
-            app.spriteTexture = uploadCircleTexture(app.device, 64)
+            val circle = app.assets.texture(circleImage(64))
             val shape = spawnTree(
                 app.world,
+                circle.asRegion(),
                 settings.spriteCount,
                 settings.childCount,
                 app.window.pixelWidth.toFloat(),
@@ -40,10 +42,6 @@ internal val hierarchyBenchmark: Benchmark = Benchmark(
             val delta = app.time.deltaSeconds.coerceAtMost(0.1f)
             move(app.world, delta, app.window.pixelWidth.toFloat(), app.window.pixelHeight.toFloat())
             app.world.forEach(Transform, Spin) { _, transform, spin -> transform.rotation += spin.radiansPerSecond * delta }
-        }
-        addSystem(Phase.SHUTDOWN) { app ->
-            app.spriteTexture?.let { app.device.release(it) }
-            app.spriteTexture = null
         }
     }
 }
@@ -73,9 +71,10 @@ private const val GRANDCHILD_RING = 12f
  * 1 + c + 2 * ceil(c / 4) sprites for c = [childrenPerParent]. The number of full families is
  * `total / familySize`, rounded down; the leftover sprites (fewer than one family) become extra
  * parents without children, so the total is exact whenever [total] is at least one family.
- * Below one family, every sprite becomes a parent without children.
+ * Below one family, every sprite becomes a parent without children. Every sprite shows [region];
+ * children are in layer 1 and grandchildren in layer 2, so they draw on top of their parents.
  */
-private fun spawnTree(world: World, total: Int, childrenPerParent: Int, width: Float, height: Float): TreeShape {
+private fun spawnTree(world: World, region: TextureRegion, total: Int, childrenPerParent: Int, width: Float, height: Float): TreeShape {
     require(childrenPerParent >= 0) { "KLYPH_CHILDREN $childrenPerParent is less than zero." }
     val random = Random(42)
     val twoPi = 2f * PI.toFloat()
@@ -89,16 +88,16 @@ private fun spawnTree(world: World, total: Int, childrenPerParent: Int, width: F
     fun spawnParent(): Entity {
         val entity = world.create()
         world.add(entity, Transform, Transform(x = random.nextFloat() * width, y = random.nextFloat() * height, rotation = random.nextFloat() * twoPi))
-        world.add(entity, Sprite, Sprite(width = PARENT_SIZE, height = PARENT_SIZE, color = color()))
+        world.add(entity, Sprite, Sprite(region, width = PARENT_SIZE, height = PARENT_SIZE, color = color()))
         world.add(entity, Velocity, Velocity(dx = random.nextFloat() * 200f - 100f, dy = random.nextFloat() * 200f - 100f, spin = random.nextFloat() * 4f - 2f))
         return entity
     }
 
-    fun spawnOnRing(parent: Entity, index: Int, count: Int, ring: Float, size: Float): Entity {
+    fun spawnOnRing(parent: Entity, index: Int, count: Int, ring: Float, size: Float, layer: Int): Entity {
         val angle = twoPi * index / count
         val entity = world.create()
         world.add(entity, Transform, Transform(x = cos(angle) * ring, y = sin(angle) * ring))
-        world.add(entity, Sprite, Sprite(width = size, height = size, color = color()))
+        world.add(entity, Sprite, Sprite(region, width = size, height = size, color = color(), layer = layer))
         world.add(entity, Spin, Spin(random.nextFloat() * 1f - 0.5f))
         world.setParent(entity, parent)
         return entity
@@ -109,11 +108,11 @@ private fun spawnTree(world: World, total: Int, childrenPerParent: Int, width: F
     repeat(families) {
         val parent = spawnParent()
         for (c in 0 until childrenPerParent) {
-            val child = spawnOnRing(parent, c, childrenPerParent, CHILD_RING, CHILD_SIZE)
+            val child = spawnOnRing(parent, c, childrenPerParent, CHILD_RING, CHILD_SIZE, layer = 1)
             children++
             if (c % 4 == 0) {
                 for (g in 0 until 2) {
-                    spawnOnRing(child, g, 2, GRANDCHILD_RING, GRANDCHILD_SIZE)
+                    spawnOnRing(child, g, 2, GRANDCHILD_RING, GRANDCHILD_SIZE, layer = 2)
                     grandchildren++
                 }
             }

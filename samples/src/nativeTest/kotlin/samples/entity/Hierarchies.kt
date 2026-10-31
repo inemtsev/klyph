@@ -64,6 +64,10 @@ class Hierarchies {
         world.get(ship, Transform).x = 0f
         world.propagateTransforms()
         assertPrints(world.get(gun, WorldTransform).x, "20.0")
-        assertTrue(world.has(ship, WorldTransform))
+
+        // Only entities with a parent get a WorldTransform: the ship's Transform is already in world space.
+        assertPrints(world.getOrNull(ship, WorldTransform), "null")
+        world.removeParent(gun)
+        assertFalse(world.has(gun, WorldTransform))
     }
 }

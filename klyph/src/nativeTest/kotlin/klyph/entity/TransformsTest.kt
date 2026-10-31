@@ -25,12 +25,27 @@ private fun assertWorld(world: WorldTransform, x: Float, y: Float, rotation: Flo
 
 class TransformsTest {
     @Test
-    fun rootCopiesLocal() {
+    fun rootGetsNoWorldTransform() {
         val world = World()
         val e = world.create()
         world.add(e, Transform, Transform(x = 3f, y = 4f, rotation = 0.5f, scaleX = 2f, scaleY = 3f))
         world.propagateTransforms()
-        assertWorld(world.get(e, WorldTransform), 3f, 4f, 0.5f, 2f, 3f)
+        assertNull(world.getOrNull(e, WorldTransform))
+        assertEquals(0, world.count(WorldTransform))
+    }
+
+    @Test
+    fun rootOfAHierarchyGetsNoWorldTransformButItsChildDoes() {
+        val world = World()
+        val parent = world.create()
+        val child = world.create()
+        world.add(parent, Transform, Transform(x = 3f, y = 4f, rotation = 0.5f, scaleX = 2f, scaleY = 3f))
+        world.add(child, Transform, Transform())
+        world.setParent(child, parent)
+        world.propagateTransforms()
+        assertNull(world.getOrNull(parent, WorldTransform))
+        assertWorld(world.get(child, WorldTransform), 3f, 4f, 0.5f, 2f, 3f)
+        assertEquals(1, world.count(WorldTransform))
     }
 
     @Test
@@ -69,12 +84,66 @@ class TransformsTest {
         assertSame(first, world.get(child, WorldTransform))
         assertWorld(first, 5f, 1f, 0f, 1f, 1f)
         world.removeParent(child)
+        assertNull(world.getOrNull(child, WorldTransform))
         world.propagateTransforms()
-        assertWorld(first, 0f, 1f, 0f, 1f, 1f)
+        assertNull(world.getOrNull(child, WorldTransform))
     }
 
     @Test
-    fun childOfParentWithoutTransformIsARoot() {
+    fun removeParentKeepsTheGrandchildsWorldTransform() {
+        val world = World()
+        val root = world.create()
+        val middle = world.create()
+        val leaf = world.create()
+        world.add(root, Transform, Transform(x = 100f))
+        world.add(middle, Transform, Transform(x = 10f))
+        world.add(leaf, Transform, Transform(x = 1f))
+        world.setParent(middle, root)
+        world.setParent(leaf, middle)
+        world.propagateTransforms()
+        assertWorld(world.get(leaf, WorldTransform), 111f, 0f, 0f, 1f, 1f)
+        world.removeParent(middle)
+        world.propagateTransforms()
+        assertNull(world.getOrNull(middle, WorldTransform))
+        assertWorld(world.get(leaf, WorldTransform), 11f, 0f, 0f, 1f, 1f)
+    }
+
+    @Test
+    fun reparentingRecomputesFromTheNewParent() {
+        val world = World()
+        val first = world.create()
+        val second = world.create()
+        val child = world.create()
+        world.add(first, Transform, Transform(x = 1f))
+        world.add(second, Transform, Transform(x = 2f))
+        world.add(child, Transform, Transform(y = 1f))
+        world.setParent(child, first)
+        world.propagateTransforms()
+        val kept = world.get(child, WorldTransform)
+        world.setParent(child, second)
+        world.propagateTransforms()
+        assertSame(kept, world.get(child, WorldTransform))
+        assertWorld(kept, 2f, 1f, 0f, 1f, 1f)
+    }
+
+    @Test
+    fun destroyingTheRootRemovesEveryWorldTransform() {
+        val world = World()
+        val root = world.create()
+        val child = world.create()
+        val grandchild = world.create()
+        for (e in listOf(root, child, grandchild)) world.add(e, Transform, Transform())
+        world.setParent(child, root)
+        world.setParent(grandchild, child)
+        world.propagateTransforms()
+        assertEquals(2, world.count(WorldTransform))
+        world.destroy(root)
+        world.propagateTransforms()
+        assertEquals(0, world.count(WorldTransform))
+    }
+
+    @Test
+    fun childOfParentWithoutTransformCopiesItsOwn() {
         val world = World()
         val group = world.create()
         val child = world.create()
@@ -86,11 +155,35 @@ class TransformsTest {
     }
 
     @Test
-    fun entityWithoutTransformGetsNoWorldTransform() {
+    fun middleWithoutTransformBreaksTheChain() {
         val world = World()
+        val root = world.create()
+        val middle = world.create()
+        val child = world.create()
+        val grandchild = world.create()
+        world.add(root, Transform, Transform(x = 100f))
+        world.add(child, Transform, Transform(x = 10f, scaleX = 2f, scaleY = 2f))
+        world.add(grandchild, Transform, Transform(x = 1f))
+        world.setParent(middle, root)
+        world.setParent(child, middle)
+        world.setParent(grandchild, child)
+        world.propagateTransforms()
+        assertFalse(world.has(middle, WorldTransform))
+        assertWorld(world.get(child, WorldTransform), 10f, 0f, 0f, 2f, 2f)
+        assertWorld(world.get(grandchild, WorldTransform), 12f, 0f, 0f, 2f, 2f)
+    }
+
+    @Test
+    fun childWithoutTransformGetsNoWorldTransform() {
+        val world = World()
+        val parent = world.create()
         val plain = world.create()
+        world.add(parent, Transform, Transform())
         world.add(plain, Health, Health(1))
-        world.add(world.create(), Transform, Transform())
+        world.setParent(plain, parent)
+        val other = world.create()
+        world.add(other, Transform, Transform())
+        world.setParent(other, parent)
         world.propagateTransforms()
         assertNull(world.getOrNull(plain, WorldTransform))
         assertEquals(1, world.count(WorldTransform))
@@ -99,8 +192,11 @@ class TransformsTest {
     @Test
     fun removingTransformRemovesWorldTransform() {
         val world = World()
+        val parent = world.create()
         val e = world.create()
+        world.add(parent, Transform, Transform())
         world.add(e, Transform, Transform())
+        world.setParent(e, parent)
         world.propagateTransforms()
         assertTrue(world.has(e, WorldTransform))
         world.remove(e, Transform)
@@ -137,8 +233,10 @@ class TransformsTest {
     @Test
     fun worldTransformToString() {
         val world = World()
+        val parent = world.create()
         val e = world.create()
         world.add(e, Transform, Transform(x = 1f, y = 2f))
+        world.setParent(e, parent)
         world.propagateTransforms()
         assertEquals("WorldTransform(x=1.0, y=2.0, rotation=0.0, scale=1.0 x 1.0)", world.get(e, WorldTransform).toString())
     }

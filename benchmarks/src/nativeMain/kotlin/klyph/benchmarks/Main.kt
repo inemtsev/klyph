@@ -13,7 +13,8 @@ internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenc
  * benchmarks and exits with status 0; with an unknown name, prints them and exits with status 1.
  *
  * Environment: `KLYPH_SPRITES` sprite count (default 10000), `KLYPH_CHILDREN` children per parent
- * in the hierarchy benchmark (default 8), `KLYPH_FRAMES` frames before exit,
+ * in the hierarchy benchmark (default 8), `KLYPH_TEXTURES` textures in the sprites benchmark
+ * (default 1), `KLYPH_FRAMES` frames before exit,
  * `KLYPH_VSYNC=1` to cap at the display rate, `KLYPH_VALIDATION=1` for the GPU validation layer,
  * `KLYPH_OFFSCREEN=1` to render to a texture and wait for the GPU each frame instead of presenting.
  */
@@ -29,6 +30,7 @@ fun main(args: Array<String>) {
     val settings = BenchmarkSettings(
         spriteCount = Sdl.environmentVariable("KLYPH_SPRITES")?.toIntOrNull() ?: 10_000,
         childCount = Sdl.environmentVariable("KLYPH_CHILDREN")?.toIntOrNull() ?: 8,
+        textureCount = Sdl.environmentVariable("KLYPH_TEXTURES")?.toIntOrNull() ?: 1,
         frameLimit = Sdl.environmentVariable("KLYPH_FRAMES")?.toIntOrNull(),
         offscreen = Sdl.environmentVariable("KLYPH_OFFSCREEN") == "1",
         presentMode = if (Sdl.environmentVariable("KLYPH_VSYNC") == "1") PresentMode.VSYNC else PresentMode.IMMEDIATE,

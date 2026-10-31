@@ -1,7 +1,8 @@
 package klyph.render
 
-import klyph.entity.WorldTransform
+import klyph.entity.Transform
 import klyph.entity.World
+import klyph.entity.WorldTransform
 import klyph.platform.BlendMode
 import klyph.platform.BufferUsage
 import klyph.platform.CommandBuffer
@@ -9,8 +10,8 @@ import klyph.platform.Cycle
 import klyph.platform.GpuBuffer
 import klyph.platform.GpuDevice
 import klyph.platform.GpuShader
-import klyph.platform.GpuTexture
 import klyph.platform.GraphicsPipeline
+import klyph.platform.MappedFloats
 import klyph.platform.RenderPass
 import klyph.platform.Sampler
 import klyph.platform.SamplerFilter
@@ -35,81 +36,268 @@ import klyph.render.generated.SpriteFragmentShader
 import klyph.render.generated.SpriteVertexShader
 
 /**
- * Draws every entity that has a [WorldTransform] and a [Sprite] from one texture in a single
- * draw call.
+ * Draws every entity that has a [Transform] and a [Sprite], with one draw call per run of
+ * sprites that share a texture. An entity in a hierarchy is drawn at its [WorldTransform], any
+ * other entity at its [Transform].
  *
- * Each frame has three steps so callers can time them: [extract] writes one 64-byte record per
- * sprite straight into mapped staging memory, [upload] copies the records to a GPU storage
- * buffer, and [draw] issues one draw of six vertices per sprite. The vertex shader pulls each
- * record by vertex index; there are no vertex buffers. The shaders come from
+ * Each frame has three steps so callers can time them: [extract] sorts the sprites by layer and
+ * texture and writes one 64-byte record per sprite into mapped staging memory, [upload] copies
+ * the records to a GPU storage buffer, and [draw] issues one draw of six vertices per sprite for
+ * each run. The vertex shader finds each record from the run's first sprite, passed as a
+ * uniform, and the vertex index; there are no vertex buffers. The shaders come from
  * `src/shaders/sprite.*.hlsl`, compiled by the `compileShaders` task.
  *
- * At most [capacity] sprites are drawn per frame; extra sprites are skipped.
+ * At most [capacity] sprites are drawn per frame; extra sprites are skipped. [ensureCapacity]
+ * grows it. The renderer starts with room for [initialCapacity] sprites.
+ *
+ * @throws IllegalArgumentException if [initialCapacity] is not positive or above [MAX_CAPACITY].
  */
 public class SpriteRenderer(
     private val device: GpuDevice,
     colorFormat: TextureFormat,
-    public val capacity: Int,
+    initialCapacity: Int = 1024,
     filter: SamplerFilter = SamplerFilter.LINEAR,
 ) : AutoCloseable {
-    private val storage: GpuBuffer = device.createBuffer(BufferUsage.STORAGE_READ, capacity * SPRITE_RECORD_BYTES)
-    private val staging: TransferBuffer = device.createTransferBuffer(capacity * SPRITE_RECORD_BYTES)
+    init {
+        require(initialCapacity > 0) { "Sprite capacity $initialCapacity is not positive." }
+        require(initialCapacity <= MAX_CAPACITY) { "Sprite capacity $initialCapacity is above the maximum of $MAX_CAPACITY." }
+    }
+
+    /** Number of sprites [extract] writes at most. Grows through [ensureCapacity]. */
+    public var capacity: Int = initialCapacity
+        private set
+
+    private var storage: GpuBuffer = device.createBuffer(BufferUsage.STORAGE_READ, capacity * SPRITE_RECORD_BYTES)
+    private var staging: TransferBuffer = device.createTransferBuffer(capacity * SPRITE_RECORD_BYTES)
     private val vertexShader: GpuShader = device.createShader(SpriteVertexShader)
     private val fragmentShader: GpuShader = device.createShader(SpriteFragmentShader)
     private val pipeline: GraphicsPipeline =
         device.createGraphicsPipeline(vertexShader, fragmentShader, colorFormat, BlendMode.ALPHA)
     private val sampler: Sampler = device.createSampler(filter)
-    private val viewProjection = FloatArray(16)
+    /**
+     * The vertex uniform block of `sprite.vert.hlsl`: the view-projection matrix in floats 0-15,
+     * then the run's first sprite as the bits of a `uint` in float 16, then three floats of
+     * padding to a multiple of 16 bytes.
+     */
+    private val uniforms = FloatArray(UNIFORM_FLOATS)
+    private val order = SpriteOrder()
 
-    /** Texture every sprite samples from. Must be set before [draw]. */
-    public var texture: GpuTexture? = null
+    /** Unsorted records of a frame whose guessed order was wrong; sized on first use. */
+    private var scratch = FloatArray(0)
+
+    /**
+     * Whether the last frame's sprites were already in draw order. If so, this frame is guessed
+     * to be in order too; if not, it is guessed to have the last frame's groups.
+     */
+    private var expectSorted = true
 
     /** Number of sprites written by the last [extract]. */
     public var spriteCount: Int = 0
         private set
 
-    init {
-        require(capacity > 0) { "Sprite capacity $capacity is not positive." }
+    /**
+     * Grows [capacity] to at least [spriteCount] by doubling it, replacing the record buffers.
+     * Does nothing if [spriteCount] already fits. The pipeline, shaders and sampler are kept.
+     *
+     * Work already submitted may still read the old buffers; the GPU device defers their release
+     * until it is done with them.
+     *
+     * @throws IllegalArgumentException if [spriteCount] is negative or above [MAX_CAPACITY].
+     */
+    public fun ensureCapacity(spriteCount: Int) {
+        require(spriteCount >= 0) { "Sprite count $spriteCount is less than zero." }
+        require(spriteCount <= MAX_CAPACITY) { "Sprite count $spriteCount is above the maximum of $MAX_CAPACITY." }
+        if (spriteCount <= capacity) return
+        var grown = capacity
+        while (grown < spriteCount) grown = if (grown > MAX_CAPACITY / 2) MAX_CAPACITY else grown * 2
+        val newStorage = device.createBuffer(BufferUsage.STORAGE_READ, grown * SPRITE_RECORD_BYTES)
+        val newStaging = try {
+            device.createTransferBuffer(grown * SPRITE_RECORD_BYTES)
+        } catch (e: Throwable) {
+            device.release(newStorage)
+            throw e
+        }
+        device.release(staging)
+        device.release(storage)
+        storage = newStorage
+        staging = newStaging
+        capacity = grown
     }
 
     /**
-     * Writes a record for every sprite in [world] into staging memory and returns how many were
-     * written. Allocates nothing.
+     * Writes a record for every sprite in [world] into staging memory, in draw order, and returns
+     * how many were written. Allocates nothing once its buffers have grown to the sprite count.
      *
-     * Positions, rotations and scales come from each entity's [WorldTransform], so run
-     * [klyph.entity.propagateTransforms] first; the engine does that before rendering. An entity
-     * with a [klyph.entity.Transform] but no [WorldTransform] yet is skipped.
+     * Draw order is by [Sprite.layer], lowest first; within a layer, sprites are grouped by
+     * texture, and keep their storage order inside a group. Positions, rotations and scales come
+     * from each entity's [WorldTransform] if it has one, which only entities with a parent do,
+     * and from its [Transform] otherwise. Run [klyph.entity.propagateTransforms] first so the
+     * world transforms are current; the engine does that before rendering.
      */
     public fun extract(world: World): Int {
-        val records = device.map(staging, Cycle.CYCLE)
+        // One walk over the world finds each sprite's group and writes its record, using a guess
+        // from the previous frame. If that frame came out in draw order, this one most likely is
+        // too: records are written in storage order and no group is stored per sprite. Otherwise
+        // the previous frame's groups most likely repeat, so each record goes straight to the
+        // position it had in that frame's sort. A wrong guess costs a second walk that writes to
+        // a scratch array, then a copy of each record to its sorted position.
         val limit = capacity
+        val order = order
+        order.begin()
         var count = 0
-        world.forEach(WorldTransform, Sprite) { _, transform, sprite ->
-            if (count < limit) {
-                val base = count * SPRITE_RECORD_FLOATS
-                records.set(base, transform.x)
-                records.set(base + 1, transform.y)
-                records.set(base + 2, transform.rotation)
-                records.set(base + 3, 0f)
-                records.set(base + 4, sprite.width * transform.scaleX)
-                records.set(base + 5, sprite.height * transform.scaleY)
-                records.set(base + 6, 0f)
-                records.set(base + 7, 0f)
-                records.set(base + 8, sprite.u0)
-                records.set(base + 9, sprite.v0)
-                records.set(base + 10, sprite.u1)
-                records.set(base + 11, sprite.v1)
-                val color = sprite.color
-                records.set(base + 12, color.red)
-                records.set(base + 13, color.green)
-                records.set(base + 14, color.blue)
-                records.set(base + 15, color.alpha)
-                count++
+        val records = device.map(staging, Cycle.CYCLE)
+        val guessHeld = if (expectSorted) {
+            forEachSprite(world) { local, hierarchy, sprite ->
+                if (count < limit) {
+                    order.addWithoutPosition(sprite.layer, sprite.region.texture)
+                    writeRecord(count * SPRITE_RECORD_FLOATS, local, hierarchy, sprite) { index, value -> records.set(index, value) }
+                    count++
+                }
             }
+            order.finish()
+            order.isSorted
+        } else {
+            forEachSprite(world) { local, hierarchy, sprite ->
+                if (count < limit) {
+                    val position = order.place(sprite.layer, sprite.region.texture)
+                    // Out of range only when the guess is wrong, and then every record is rewritten.
+                    if (position < limit) {
+                        writeRecord(position * SPRITE_RECORD_FLOATS, local, hierarchy, sprite) { index, value -> records.set(index, value) }
+                    }
+                    count++
+                }
+            }
+            order.finish()
+            order.predictionHeld
+        }
+        if (!guessHeld) {
+            fillScratch(world, count)
+            scatter(records, count)
         }
         device.unmap(staging)
+        expectSorted = order.isSorted
         spriteCount = count
         return count
+    }
+
+    /**
+     * Sorts the first [count] sprites of [world] again, this time recording positions, and writes
+     * them to the scratch array in storage order.
+     */
+    private fun fillScratch(world: World, count: Int) {
+        val scratch = scratchFor(capacity)
+        val order = order
+        order.begin()
+        var index = 0
+        forEachSprite(world) { local, hierarchy, sprite ->
+            if (index < count) {
+                order.add(sprite.layer, sprite.region.texture)
+                writeRecord(index * SPRITE_RECORD_FLOATS, local, hierarchy, sprite) { i, value -> scratch[i] = value }
+                index++
+            }
+        }
+        order.finish()
+    }
+
+    /** Copies the first [count] records of the scratch array to their sorted positions in [records]. */
+    private fun scatter(records: MappedFloats, count: Int) {
+        val scratch = scratch
+        val order = order
+        for (sprite in 0 until count) {
+            val from = sprite * SPRITE_RECORD_FLOATS
+            val to = order.claimPosition(sprite) * SPRITE_RECORD_FLOATS
+            for (k in 0 until SPRITE_RECORD_FLOATS) records.set(to + k, scratch[from + k])
+        }
+    }
+
+    private fun scratchFor(sprites: Int): FloatArray {
+        if (scratch.size < sprites * SPRITE_RECORD_FLOATS) scratch = FloatArray(sprites * SPRITE_RECORD_FLOATS)
+        return scratch
+    }
+
+    /**
+     * Calls [action] for every entity with a [Transform] and a [Sprite], in [Transform] storage
+     * order, with its [WorldTransform] or `null` if it has none. Finding the world transform costs
+     * one sparse-array read per sprite, and none in a world without hierarchies.
+     */
+    private inline fun forEachSprite(world: World, action: (Transform, WorldTransform?, Sprite) -> Unit) {
+        val worlds = world.storeOrNull(WorldTransform)
+        if (worlds == null || worlds.size == 0) {
+            world.forEach(Transform, Sprite) { _, local, sprite -> action(local, null, sprite) }
+            return
+        }
+        val worldSparse = worlds.sparse
+        val worldItems = worlds.items
+        world.forEach(Transform, Sprite) { entity, local, sprite ->
+            val slot = worldSparse[entity.index]
+            action(local, if (slot >= 0) worldItems.itemAt<WorldTransform>(slot) else null, sprite)
+        }
+    }
+
+    /**
+     * Reads a store item without a type check. A non-reified cast is erased, so this skips the
+     * check that `as WorldTransform` would emit on every sprite.
+     */
+    @Suppress("UNCHECKED_CAST", "NOTHING_TO_INLINE")
+    private inline fun <T> Array<Any?>.itemAt(slot: Int): T = this[slot] as T
+
+    /**
+     * Writes the record of [sprite] through [set], starting at float [base], placed at [hierarchy]
+     * if it is not `null` and at [local] otherwise.
+     */
+    private inline fun writeRecord(
+        base: Int,
+        local: Transform,
+        hierarchy: WorldTransform?,
+        sprite: Sprite,
+        set: (Int, Float) -> Unit,
+    ) {
+        val x: Float
+        val y: Float
+        val rotation: Float
+        val scaleX: Float
+        val scaleY: Float
+        if (hierarchy != null) {
+            x = hierarchy.x
+            y = hierarchy.y
+            rotation = hierarchy.rotation
+            scaleX = hierarchy.scaleX
+            scaleY = hierarchy.scaleY
+        } else {
+            x = local.x
+            y = local.y
+            rotation = local.rotation
+            scaleX = local.scaleX
+            scaleY = local.scaleY
+        }
+        val region = sprite.region
+        set(base, x)
+        set(base + 1, y)
+        set(base + 2, rotation)
+        set(base + 3, 0f)
+        set(base + 4, sprite.width * scaleX)
+        set(base + 5, sprite.height * scaleY)
+        set(base + 6, 0f)
+        set(base + 7, 0f)
+        if (sprite.isFlippedX) {
+            set(base + 8, region.u1)
+            set(base + 10, region.u0)
+        } else {
+            set(base + 8, region.u0)
+            set(base + 10, region.u1)
+        }
+        if (sprite.isFlippedY) {
+            set(base + 9, region.v1)
+            set(base + 11, region.v0)
+        } else {
+            set(base + 9, region.v0)
+            set(base + 11, region.v1)
+        }
+        val color = sprite.color
+        set(base + 12, color.red)
+        set(base + 13, color.green)
+        set(base + 14, color.blue)
+        set(base + 15, color.alpha)
     }
 
     /** Records the copy of the extracted records into GPU memory. Call before any render pass. */
@@ -121,31 +309,26 @@ public class SpriteRenderer(
     }
 
     /**
-     * Draws the uploaded sprites into the current [pass] with a view of [viewWidth] by
-     * [viewHeight] world units whose origin is the top-left corner.
-     *
-     * @throws IllegalStateException if [texture] is not set.
+     * Draws the uploaded sprites into the current [pass] as seen through [camera]: one draw call
+     * per run of sprites that share a texture, each with that texture bound. The camera's viewport
+     * should match the pass's target size in pixels. Draws nothing if the last [extract] found no
+     * sprites.
      */
-    public fun draw(commands: CommandBuffer, pass: RenderPass, viewWidth: Float, viewHeight: Float) {
-        val atlas = checkNotNull(texture) { "SpriteRenderer has no texture set." }
+    public fun draw(commands: CommandBuffer, pass: RenderPass, camera: Camera) {
         if (spriteCount == 0) return
-        orthographic(viewWidth, viewHeight)
+        val order = order
+        camera.writeProjection(uniforms)
         pass.bind(pipeline)
         pass.bindVertexStorageBuffer(0, storage)
-        pass.bindFragmentSampler(0, atlas, sampler)
-        commands.pushVertexUniforms(0, viewProjection)
-        pass.draw(spriteCount * 6)
-    }
-
-    private fun orthographic(width: Float, height: Float) {
-        val m = viewProjection
-        m.fill(0f)
-        m[0] = 2f / width
-        m[5] = -2f / height
-        m[10] = 1f
-        m[12] = -1f
-        m[13] = 1f
-        m[15] = 1f
+        // Each run draws from vertex 0 and passes its first sprite as a uniform: SDL_GPU does not
+        // promise that a draw's first vertex reaches SV_VertexID on every backend (D3D12 drops it).
+        val uniforms = uniforms
+        for (run in 0 until order.runCount) {
+            uniforms[FIRST_SPRITE_FLOAT] = Float.fromBits(order.runFirst(run))
+            commands.pushVertexUniforms(0, uniforms)
+            pass.bindFragmentSampler(0, order.runTexture(run).handle, sampler)
+            pass.draw(order.runSize(run) * 6)
+        }
     }
 
     override fun close() {
@@ -157,5 +340,18 @@ public class SpriteRenderer(
         device.release(storage)
     }
 
-    override fun toString(): String = "SpriteRenderer(capacity=$capacity, sprites=$spriteCount)"
+    /** Returns `SpriteRenderer(capacity=1024, sprites=100, runs=2)`. The format may change. */
+    override fun toString(): String = "SpriteRenderer(capacity=$capacity, sprites=$spriteCount, runs=${order.runCount})"
+
+    /** Holds [MAX_CAPACITY]. */
+    public companion object {
+        /** The largest [capacity] a renderer supports: the most records whose bytes fit in an `Int`. */
+        public const val MAX_CAPACITY: Int = Int.MAX_VALUE / SPRITE_RECORD_BYTES
+
+        /** Floats in the vertex uniform block: a 4x4 matrix, the first sprite, three of padding. */
+        private const val UNIFORM_FLOATS = 20
+
+        /** Index of the run's first sprite in the vertex uniform block. */
+        private const val FIRST_SPRITE_FLOAT = 16
+    }
 }

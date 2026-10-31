@@ -18,7 +18,7 @@ kotlin {
         }
 
         // Benchmarks always run from the release build. Environment comes from the shell or from
-        // Gradle properties: klyph.sprites, klyph.children, klyph.frames, klyph.offscreen, klyph.vsync,
+        // Gradle properties: klyph.sprites, klyph.children, klyph.textures, klyph.frames, klyph.offscreen, klyph.vsync,
         // klyph.validation. `benchmark` picks the benchmark with -Pklyph.benchmark=<name>.
         binaries.withType<Executable>().matching { it.buildType == NativeBuildType.RELEASE }.configureEach {
             val environment = RunEnvironment.of(project)

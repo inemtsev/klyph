@@ -4,9 +4,14 @@ package klyph.entity
  * Position, rotation and scale of an entity in world space, after its [Transform] is combined
  * with the world transforms of its ancestors. Rotation is in radians, counter-clockwise.
  *
- * [propagateTransforms] computes it every frame and adds it to each entity that has a
- * [Transform]. Never set it yourself: the next propagation overwrites it, and the constructor
- * is not public for that reason. Read it to find where an entity ends up in the world.
+ * Only entities that have a parent, at any depth of a hierarchy, have one. [propagateTransforms]
+ * computes it every frame and adds it to each such entity that has a [Transform];
+ * [World.removeParent] removes it. An entity without a parent has none, because its [Transform]
+ * already is in world space. To find where any entity ends up in the world, read its
+ * [WorldTransform] if it has one and its [Transform] otherwise.
+ *
+ * Never set it yourself: the next propagation overwrites it, and the constructor is not public
+ * for that reason.
  *
  * @sample samples.entity.Hierarchies.propagateTransforms
  */
