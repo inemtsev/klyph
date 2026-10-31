@@ -57,6 +57,19 @@ shooter play itself and fail at exit if it destroyed no enemy. macOS has no `tim
 runs with `KLYPH_FRAMES`. Do not pipe `./gradlew` output into
 another command: the daemon inherits the pipe and the shell never sees EOF. Redirect to a file.
 
+On Windows the host target is `mingwX64`, built with the MinGW toolchain Kotlin/Native downloads
+into `~/.konan`; no Visual Studio is needed. Install SDL3 from MSYS2 (`pacman -S
+mingw-w64-x86_64-sdl3` in an MSYS2 shell) and pass its MINGW64 folder with forward slashes,
+for example `-Psdl3.prefix=C:/msys64/mingw64`, or set `sdl3.prefix` in `gradle.properties`;
+nothing is found automatically on Windows. The official `SDL3-devel-<version>-mingw.zip` works
+too, with its `x86_64-w64-mingw32` folder as the prefix. Binaries link against the import library
+`lib/libSDL3.dll.a`, and every link copies `<prefix>/bin/SDL3.dll` next to its `.exe`, so tests
+and executables run without `PATH` changes. The `windows` CI job builds this target and runs the
+tests; it never opens a window, so the D3D12 rendering path is only checked by running the sandbox
+on a real machine. The same build cross-compiles from macOS or Linux with
+`-Pklyph.target=mingwX64 -Psdl3.prefix=<extracted MSYS2 package>/mingw64` (link only; the
+tests need Windows to run).
+
 ## Shaders
 
 Shaders are written once in HLSL under `klyph/src/shaders/` as `<name>.vert.hlsl` or

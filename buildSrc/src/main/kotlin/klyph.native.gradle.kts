@@ -3,6 +3,7 @@
 
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.konan.target.Family
+import java.io.File
 
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
@@ -33,6 +34,7 @@ kotlin {
     // Every binary (executables and test runners) links against SDL3, whose library name is
     // carried by the cinterop klib; only the search path and runtime path are added here.
     val sdl3Lib = Sdl3.prefix(project) + "/lib"
+    val sdl3Bin = Sdl3.prefix(project) + "/bin"
     targets.withType<KotlinNativeTarget>().configureEach {
         binaries.configureEach {
             linkerOpts("-L$sdl3Lib")
@@ -41,6 +43,23 @@ kotlin {
             // libSDL3.so from a current distro references newer glibc symbol versions. Skip the
             // link-time check; the loader resolves them against the host glibc at run time.
             if (konanTarget.family == Family.LINUX) linkerOpts("--allow-shlib-undefined")
+            // Windows has no rpath; it loads DLLs from the executable's own folder, so every link
+            // (executables and test runners) copies SDL3.dll next to its output. The link task
+            // does the copy itself, so the DLL is part of its outputs and its build cache entry.
+            if (konanTarget.family == Family.MINGW) {
+                val sdl3Dll = File(sdl3Bin, "SDL3.dll")
+                linkTaskProvider.configure {
+                    inputs.files(sdl3Dll).withPropertyName("sdl3Dll").withPathSensitivity(PathSensitivity.NONE)
+                    // Plain values only: the configuration cache cannot serialize the script.
+                    val destination = destinationDirectory
+                    doLast {
+                        if (!sdl3Dll.isFile) {
+                            throw GradleException("Cannot find $sdl3Dll to copy next to the binary. Check -Psdl3.prefix.")
+                        }
+                        sdl3Dll.copyTo(destination.get().asFile.resolve(sdl3Dll.name), overwrite = true)
+                    }
+                }
+            }
         }
     }
 }
