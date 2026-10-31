@@ -203,12 +203,35 @@ jobs:
       # find it at run time.
       - name: Test and link
         run: >-
-          ./gradlew --no-daemon
+          ./gradlew --no-daemon --continue
           -Psdl3.prefix="$SDL3_PREFIX"
           check
           :sandbox:linkDebugExecutableMingwX64
           :shooter:linkDebugExecutableMingwX64
           :benchmarks:linkReleaseExecutableMingwX64
+
+      # TEMPORARY diagnostic: calls SDL_SaveFile from Python next to the test binary.
+      - name: Diagnose SDL_SaveFile
+        if: failure()
+        shell: python
+        run: |
+          import ctypes, os
+          d = os.path.abspath(r"klyph-platform\build\bin\mingwX64\debugTest")
+          print("dir", d, os.listdir(d))
+          sdl = ctypes.CDLL(os.path.join(d, "SDL3.dll"))
+          sdl.SDL_SaveFile.restype = ctypes.c_bool
+          sdl.SDL_SaveFile.argtypes = [ctypes.c_char_p, ctypes.c_void_p, ctypes.c_size_t]
+          sdl.SDL_GetError.restype = ctypes.c_char_p
+          sdl.SDL_GetBasePath.restype = ctypes.c_char_p
+          print("base", sdl.SDL_GetBasePath())
+          data = "héllo, klyph\n".encode()
+          for name in ["diag-a.txt", "klyph-files-test.txt"]:
+              p = os.path.join(d, name)
+              ok = sdl.SDL_SaveFile(p.encode(), data, len(data))
+              print(name, "ok", ok, "error", sdl.SDL_GetError(), "exists", os.path.exists(p))
+          import subprocess
+          r = subprocess.run([os.path.join(d, "test.exe"), "--ktest_filter=*FilesTest*"], capture_output=True, text=True)
+          print(r.returncode, r.stdout[-3000:], r.stderr[-3000:])
 
       - name: Upload test reports
         if: failure()
