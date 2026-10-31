@@ -154,6 +154,8 @@ jobs:
   windows:
     runs-on: windows-2025
     timeout-minutes: 60
+    env:
+      SDL3_VERSION: "3.4.18"
     defaults:
       run:
         shell: bash
@@ -169,19 +171,15 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      # MSYS2's MINGW64 SDL3 package has the headers, the import library libSDL3.dll.a and SDL3.dll.
+      # SDL's own MinGW development package: headers, the import library libSDL3.dll.a and an
+      # SDL3.dll that needs only system DLLs. MSYS2's SDL3.dll also needs libiconv-2.dll.
+      # Gradle gets the prefix as a Windows path with forward slashes, which the JDK reads directly.
       - name: Install SDL3
-        id: msys2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          install: mingw-w64-x86_64-sdl3
-
-      # Gradle gets the prefix with forward slashes, as a Windows path that the JDK reads directly.
-      - name: Set SDL3 install folder
-        env:
-          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
-        run: echo "SDL3_PREFIX=${MSYS2_LOCATION//\\//}/mingw64" >> "$GITHUB_ENV"
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o sdl3.tar.gz "https://github.com/libsdl-org/SDL/releases/download/release-$SDL3_VERSION/SDL3-devel-$SDL3_VERSION-mingw.tar.gz"
+          tar -xzf sdl3.tar.gz
+          echo "SDL3_PREFIX=${RUNNER_TEMP//\\//}/SDL3-$SDL3_VERSION/x86_64-w64-mingw32" >> "$GITHUB_ENV"
 
       - name: Read Kotlin version
         id: kotlin
