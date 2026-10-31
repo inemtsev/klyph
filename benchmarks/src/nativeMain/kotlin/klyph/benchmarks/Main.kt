@@ -1,25 +1,12 @@
 package klyph.benchmarks
 
-import klyph.platform.Color
-import klyph.platform.EventPump
-import klyph.platform.GpuDevice
 import klyph.platform.GpuValidation
 import klyph.platform.PresentMode
 import klyph.platform.Sdl
-import klyph.platform.ShaderFormat
-import klyph.platform.Subsystem
-import klyph.platform.TextureUsage
-import klyph.platform.Window
-import klyph.platform.WindowFlag
-import klyph.platform.createTexture
-import klyph.platform.release
 import kotlin.system.exitProcess
 
 /** Every benchmark this executable can run, in the order they are listed. */
 internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark)
-
-/** The background every benchmark clears its frame to. */
-internal val CLEAR_COLOR: Color = Color(red = 0.10f, green = 0.12f, blue = 0.18f)
 
 /**
  * Runs the benchmark named by the first argument. Without an argument, prints the available
@@ -38,34 +25,14 @@ fun main(args: Array<String>) {
         exitProcess(if (name == null) 0 else 1)
     }
 
-    Sdl.init(setOf(Subsystem.VIDEO))
-    val window = Window("klyph ${benchmark.name} benchmark", 1280, 720, setOf(WindowFlag.RESIZABLE, WindowFlag.HIGH_PIXEL_DENSITY))
-    val validation = if (Sdl.environmentVariable("KLYPH_VALIDATION") == "1") GpuValidation.ENABLED else GpuValidation.DISABLED
-    val device = GpuDevice(setOf(ShaderFormat.MSL, ShaderFormat.SPIRV, ShaderFormat.DXIL), validation)
-    device.claim(window)
-    val presentMode = if (Sdl.environmentVariable("KLYPH_VSYNC") == "1") PresentMode.VSYNC else PresentMode.IMMEDIATE
-    val supported = PresentMode.entries.filter { device.supportsPresentMode(window, it) }
-    device.setPresentMode(window, presentMode)
-    println("GPU driver: ${device.driverName}, present mode: $presentMode (supported: $supported), validation: $validation")
-
-    val spriteCount = Sdl.environmentVariable("KLYPH_SPRITES")?.toIntOrNull() ?: 10_000
-    val frameLimit = Sdl.environmentVariable("KLYPH_FRAMES")?.toIntOrNull()
-    val offscreenTarget =
-        if (Sdl.environmentVariable("KLYPH_OFFSCREEN") == "1") {
-            device.createTexture(window.pixelWidth, window.pixelHeight, device.swapchainFormat(window), TextureUsage.RENDER_TARGET)
-        } else {
-            null
-        }
-
-    EventPump().use { events ->
-        benchmark.run(BenchmarkContext(device, window, events, spriteCount, frameLimit, offscreenTarget))
-    }
-
-    offscreenTarget?.let { device.release(it) }
-    device.release(window)
-    device.close()
-    window.close()
-    Sdl.quit()
+    val settings = BenchmarkSettings(
+        spriteCount = Sdl.environmentVariable("KLYPH_SPRITES")?.toIntOrNull() ?: 10_000,
+        frameLimit = Sdl.environmentVariable("KLYPH_FRAMES")?.toIntOrNull(),
+        offscreen = Sdl.environmentVariable("KLYPH_OFFSCREEN") == "1",
+        presentMode = if (Sdl.environmentVariable("KLYPH_VSYNC") == "1") PresentMode.VSYNC else PresentMode.IMMEDIATE,
+        validation = if (Sdl.environmentVariable("KLYPH_VALIDATION") == "1") GpuValidation.ENABLED else GpuValidation.DISABLED,
+    )
+    benchmark.run(settings)
 }
 
 private fun printUsage() {

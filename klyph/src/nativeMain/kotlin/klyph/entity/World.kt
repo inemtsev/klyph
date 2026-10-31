@@ -32,12 +32,40 @@ public class World(initialCapacity: Int = 1024) {
     }
 
     /**
-     * Removes [entity] and all its components. Does nothing if it is already gone.
+     * Removes [entity], all its descendants and all their components. Does nothing if it is
+     * already gone.
+     *
+     * Every child is gone before its parent, however deep the hierarchy is. [entity] is also
+     * removed from its own parent's [childrenOf].
      *
      * @sample samples.entity.Worlds.destroy
+     * @sample samples.entity.Hierarchies.destroy
      */
     public fun destroy(entity: Entity) {
         if (!isAlive(entity)) return
+        val childrenStore = storeOrNull(Children)
+        // Collect the subtree breadth first without recursion, so depth cannot overflow the stack.
+        var queue = destroyQueue
+        var size = 0
+        queue[size++] = entity.raw
+        var head = 0
+        if (childrenStore != null) {
+            while (head < size) {
+                val list = childrenStore.getOrNull(Entity(queue[head++]))?.entities ?: continue
+                for (k in 0 until list.size) {
+                    if (size == queue.size) queue = queue.copyOf(size * 2)
+                    queue[size++] = list[k].raw
+                }
+            }
+        }
+        destroyQueue = queue
+        removeParent(entity)
+        // Children come after their parents in the queue, so walking it backwards removes every child first.
+        for (i in size - 1 downTo 0) release(Entity(queue[i]))
+    }
+
+    /** Removes the components of [entity] and frees its slot. */
+    private fun release(entity: Entity) {
         for (store in stores.values) store.remove(entity)
         val index = entity.index
         alive[index] = false
@@ -51,6 +79,80 @@ public class World(initialCapacity: Int = 1024) {
     public fun isAlive(entity: Entity): Boolean {
         val index = entity.index
         return index < alive.size && alive[index] && generations[index] == entity.generation
+    }
+
+    /**
+     * Makes [parent] the parent of [child], so [child]'s [Transform] becomes relative to
+     * [parent] and [destroy] on [parent] also destroys [child]. If [child] already has a
+     * different parent it moves: it leaves the old parent's [childrenOf] and is appended to the
+     * end of [parent]'s. Does nothing if [parent] already is the parent of [child].
+     *
+     * Both entities must be alive, must differ, and [parent] must not be a descendant of
+     * [child], because that would make a cycle.
+     *
+     * @throws IllegalArgumentException if either entity is not alive, if [child] equals
+     *   [parent], or if [parent] is a descendant of [child].
+     *
+     * @sample samples.entity.Hierarchies.setParent
+     */
+    public fun setParent(child: Entity, parent: Entity) {
+        require(isAlive(child)) { "Child entity $child is not alive." }
+        require(isAlive(parent)) { "Parent entity $parent is not alive." }
+        require(child != parent) { "Entity $child cannot be its own parent." }
+        var ancestor = parentOrNull(parent)
+        while (ancestor != null) {
+            require(ancestor != child) { "Entity $parent is a descendant of $child, so it cannot be its parent." }
+            ancestor = parentOrNull(ancestor)
+        }
+        val link = storeOrNull(Parent)?.getOrNull(child)
+        if (link != null) {
+            if (link.entity == parent) return
+            detach(link.entity, child)
+            link.entity = parent
+        } else {
+            store(Parent).set(child, Parent(parent))
+        }
+        val childrenStore = store(Children)
+        val siblings = childrenStore.getOrNull(parent) ?: Children().also { childrenStore.set(parent, it) }
+        siblings.entities.add(child)
+    }
+
+    /**
+     * Detaches [child] from its parent, making it a root whose [Transform] is in world space.
+     * Does nothing if [child] has no parent.
+     *
+     * @sample samples.entity.Hierarchies.setParent
+     */
+    public fun removeParent(child: Entity) {
+        val parents = storeOrNull(Parent) ?: return
+        val link = parents.getOrNull(child) ?: return
+        detach(link.entity, child)
+        parents.remove(child)
+    }
+
+    /**
+     * Returns the parent of [child], or `null` if it has none or is not alive.
+     *
+     * @sample samples.entity.Hierarchies.setParent
+     */
+    public fun parentOrNull(child: Entity): Entity? = storeOrNull(Parent)?.getOrNull(child)?.entity
+
+    /**
+     * Returns the children of [parent] in the order they were attached, or an empty list if it
+     * has none. The list is a copy, so it does not change when the hierarchy does and it is safe
+     * to [destroy] or reparent its entities while iterating it.
+     *
+     * @sample samples.entity.Hierarchies.setParent
+     */
+    public fun childrenOf(parent: Entity): List<Entity> =
+        storeOrNull(Children)?.getOrNull(parent)?.entities?.toList() ?: emptyList()
+
+    /** Removes [child] from [parent]'s children, dropping the record once it is empty. */
+    private fun detach(parent: Entity, child: Entity) {
+        val childrenStore = storeOrNull(Children) ?: return
+        val siblings = childrenStore.getOrNull(parent) ?: return
+        siblings.entities.remove(child)
+        if (siblings.entities.isEmpty()) childrenStore.remove(parent)
     }
 
     /**
@@ -163,8 +265,14 @@ public class World(initialCapacity: Int = 1024) {
     internal fun <T : Any> storeOrNull(type: ComponentType<T>): ComponentStore<T>? =
         stores[type] as ComponentStore<T>?
 
+    /** Work stack of raw entity handles reused by [propagateTransforms] across frames. */
+    internal var transformStack: LongArray = LongArray(32)
+
+    /** Work queue of raw entity handles reused by [destroy] to collect a subtree. */
+    private var destroyQueue: LongArray = LongArray(32)
+
     @Suppress("UNCHECKED_CAST")
-    private fun <T : Any> store(type: ComponentType<T>): ComponentStore<T> =
+    internal fun <T : Any> store(type: ComponentType<T>): ComponentStore<T> =
         stores.getOrPut(type) { ComponentStore<T>(alive.size) } as ComponentStore<T>
 
     private fun allocateSlot(): Int {

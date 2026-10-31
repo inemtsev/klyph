@@ -11,3 +11,5 @@ local.properties
 GOALS.md
 CLAUDE.local.md
 PLAN.md
+PLAN-*.md
+.claude/worktrees/

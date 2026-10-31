@@ -13,6 +13,10 @@ Pre-alpha. There are no releases and the API changes without notice.
 
 What works today:
 
+- A framework core: `runApp` owns the loop and runs systems in phases (startup,
+  input, fixed update, update, late update, render, shutdown), with a fixed
+  timestep, a typed event bus fed from the platform, and an entity hierarchy
+  whose world transforms are propagated each frame.
 - An entity world with sparse-set component storage and typed queries over two
   or three components.
 - A sprite renderer that pulls per-sprite records from a storage buffer in one
@@ -34,7 +38,8 @@ What works today:
   does one buffer write and one draw.
 - **Entities, components, systems.** Entities are generational handles,
   components are plain data, and systems are plain functions over queries.
-  There are no archetypes, no scheduler and no query compiler.
+  Systems run in fixed phases, in the order they were added. There are no
+  archetypes, no dependency-based scheduler and no query compiler.
 - **Stdlib-style API.** Every public declaration follows
   [API_STYLE.md](API_STYLE.md): members hold only the core concept, extensions
   hold the rest, throwing calls have `OrNull` siblings, and every non-trivial

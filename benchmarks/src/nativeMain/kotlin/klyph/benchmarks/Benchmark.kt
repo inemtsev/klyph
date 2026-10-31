@@ -1,14 +1,14 @@
 package klyph.benchmarks
 
-import klyph.platform.CommandBuffer
-import klyph.platform.EventPump
-import klyph.platform.GpuDevice
-import klyph.platform.GpuTexture
+import klyph.app.App
+import klyph.app.AppConfig
+import klyph.app.GpuSync
+import klyph.app.Phase
+import klyph.app.RenderTarget
+import klyph.event.KeyPressed
+import klyph.platform.GpuValidation
 import klyph.platform.KeyCode
-import klyph.platform.Window
-import klyph.platform.acquireSwapchainTexture
-import klyph.platform.release
-import klyph.platform.waitFor
+import klyph.platform.PresentMode
 
 /** A named benchmark that [Main][main] can run from the command line. */
 internal class Benchmark(
@@ -16,64 +16,64 @@ internal class Benchmark(
     val name: String,
     /** One line shown in the list of available benchmarks. */
     val description: String,
-    /** Runs the benchmark until [BenchmarkContext.runFrames] returns, then prints its results. */
-    val run: (BenchmarkContext) -> Unit,
+    /** Configures and runs a klyph app with [BenchmarkSettings], then prints its results. */
+    val run: (BenchmarkSettings) -> Unit,
 )
 
-/**
- * Everything a benchmark shares with the others: the window, the device and the settings read
- * from the environment. [main] creates it and releases it after the benchmark returns.
- */
-internal class BenchmarkContext(
-    val device: GpuDevice,
-    val window: Window,
-    private val events: EventPump,
+/** The settings every benchmark reads from the environment. */
+internal class BenchmarkSettings(
     /** `KLYPH_SPRITES`, default 10000. */
     val spriteCount: Int,
     /** `KLYPH_FRAMES`; `null` runs until the window closes or escape is pressed. */
     val frameLimit: Int?,
     /**
-     * The texture frames are drawn into when `KLYPH_OFFSCREEN=1`, or `null` when frames go to
-     * the swapchain. Offscreen frames wait for the GPU, so the display is not in the loop.
+     * `KLYPH_OFFSCREEN=1`: draw into a texture and wait for the GPU each frame instead of
+     * presenting, so the display is not in the loop.
      */
-    val offscreenTarget: GpuTexture?,
+    val offscreen: Boolean,
+    /** `KLYPH_VSYNC=1` presents at the display rate; otherwise frames present immediately. */
+    val presentMode: PresentMode,
+    /** `KLYPH_VALIDATION=1` turns on the GPU validation layer. */
+    val validation: GpuValidation,
 ) {
-    val offscreen: Boolean get() = offscreenTarget != null
+    /** Returns the app configuration for a benchmark whose window is titled [title]. */
+    fun appConfig(title: String): AppConfig =
+        AppConfig(
+            title = title,
+            presentMode = presentMode,
+            target = if (offscreen) RenderTarget.OFFSCREEN else RenderTarget.WINDOW,
+            gpuSync = if (offscreen) GpuSync.WAIT_EACH_FRAME else GpuSync.NONE,
+            validation = validation,
+        )
 
-    /** Calls [frame] until the user quits, escape is pressed, or [frameLimit] frames have run. */
-    fun runFrames(frame: () -> Unit) {
-        var frames = 0
-        var running = true
-        while (running) {
-            while (events.poll()) {
-                if (events.isQuit || (events.isKeyDown && events.keyCode == KeyCode.ESCAPE)) running = false
-            }
-            frame()
-            frames++
-            if (frameLimit != null && frames >= frameLimit) running = false
-        }
+    override fun toString(): String =
+        "BenchmarkSettings(spriteCount=$spriteCount, frameLimit=$frameLimit, offscreen=$offscreen, " +
+            "presentMode=$presentMode, validation=$validation)"
+}
+
+/**
+ * Adds what every benchmark app shares: a startup line naming the GPU driver and present mode,
+ * quitting on escape or after [BenchmarkSettings.frameLimit] frames, and [report] fed with each
+ * frame's stats and printed at shutdown.
+ */
+internal fun App.addBenchmarkSystems(settings: BenchmarkSettings, report: StatsReport) {
+    addSystem(Phase.STARTUP) { app ->
+        val supported = PresentMode.entries.filter { app.device.supportsPresentMode(app.window, it) }
+        println(
+            "GPU driver: ${app.device.driverName}, present mode: ${app.presentMode} (supported: $supported), " +
+                "validation: ${settings.validation}, target: ${app.config.target}",
+        )
     }
-
-    /**
-     * Returns the texture to draw this frame into: [offscreenTarget], or the swapchain texture,
-     * which is `null` when the window is minimized.
-     */
-    fun acquireTarget(commands: CommandBuffer): GpuTexture? = offscreenTarget ?: commands.acquireSwapchainTexture(window)
-
-    /**
-     * Submits [commands] and ends the timer's next two stages: submission, then the GPU wait.
-     * Offscreen, the wait lasts until the GPU has finished the frame; otherwise it is empty.
-     */
-    fun submit(commands: CommandBuffer, timer: StageTimer) {
-        if (offscreen) {
-            val fence = commands.submitAndAcquireFence()
-            timer.endStage()
-            device.waitFor(fence)
-            device.release(fence)
-        } else {
-            commands.submit()
-            timer.endStage()
-        }
-        timer.endStage()
+    addSystem(Phase.INPUT) { app ->
+        // app.stats describes the previous frame, which does not exist yet during frame 0.
+        if (app.time.frame > 0) report.record(app.stats)
+        app.events.forEach<KeyPressed> { if (it.key == KeyCode.ESCAPE) app.quit() }
+        // time.frame counts completed frames, so this frame is number frame + 1.
+        val limit = settings.frameLimit
+        if (limit != null && app.time.frame + 1 >= limit) app.quit()
+    }
+    addSystem(Phase.SHUTDOWN) { app ->
+        if (app.time.frame > 0) report.record(app.stats)
+        report.printSummary()
     }
 }

@@ -1,6 +1,6 @@
 package klyph.render
 
-import klyph.entity.Transform
+import klyph.entity.WorldTransform
 import klyph.entity.World
 import klyph.platform.BlendMode
 import klyph.platform.BufferUsage
@@ -35,7 +35,8 @@ import klyph.render.generated.SpriteFragmentShader
 import klyph.render.generated.SpriteVertexShader
 
 /**
- * Draws every entity that has a [Transform] and a [Sprite] from one texture in a single draw call.
+ * Draws every entity that has a [WorldTransform] and a [Sprite] from one texture in a single
+ * draw call.
  *
  * Each frame has three steps so callers can time them: [extract] writes one 64-byte record per
  * sprite straight into mapped staging memory, [upload] copies the records to a GPU storage
@@ -74,12 +75,16 @@ public class SpriteRenderer(
     /**
      * Writes a record for every sprite in [world] into staging memory and returns how many were
      * written. Allocates nothing.
+     *
+     * Positions, rotations and scales come from each entity's [WorldTransform], so run
+     * [klyph.entity.propagateTransforms] first; the engine does that before rendering. An entity
+     * with a [klyph.entity.Transform] but no [WorldTransform] yet is skipped.
      */
     public fun extract(world: World): Int {
         val records = device.map(staging, Cycle.CYCLE)
         val limit = capacity
         var count = 0
-        world.forEach(Transform, Sprite) { _, transform, sprite ->
+        world.forEach(WorldTransform, Sprite) { _, transform, sprite ->
             if (count < limit) {
                 val base = count * SPRITE_RECORD_FLOATS
                 records.set(base, transform.x)

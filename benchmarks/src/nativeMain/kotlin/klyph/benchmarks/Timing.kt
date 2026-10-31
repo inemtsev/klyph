@@ -1,60 +1,61 @@
 package klyph.benchmarks
 
+import klyph.app.FrameStats
+import klyph.app.Phase
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
 /**
- * Times each stage of every frame. Prints one line per second of averages, prefixed by [label],
- * and keeps a run total that skips the first second as warm-up.
+ * Turns the [FrameStats] of each frame into one line per second of averages, prefixed by
+ * [label], and keeps a run total that skips the first second as warm-up.
  *
- * A frame is [beginFrame], one [endStage] per name in [stageNames], then [endFrame]. Each stage
- * lasts from the end of the previous one, so the stages add up to the whole frame.
+ * The stages are [STAGES]: the update phase, transform propagation, target acquisition, sprite
+ * extraction, command recording and submission, the GPU wait, and "other", the rest of the
+ * frame (input, fixed and late update, user render systems and the loop itself).
  */
-internal class StageTimer(private val stageNames: List<String>, private val label: () -> String) {
+internal class StatsReport(private val label: () -> String) {
     private val clock = TimeSource.Monotonic
-    private val oneSecond = StageTimes(stageNames)
-    private val total = StageTimes(stageNames)
+    private val oneSecond = StageTimes(STAGES)
+    private val total = StageTimes(STAGES)
     private var warmedUp = false
-    private var frameStart = clock.markNow()
-    private var stageStart = frameStart
-    private var lastReport = frameStart
-    private var stage = 0
+    private var lastReport = clock.markNow()
 
-    /** Starts a frame and returns the time since the previous frame started, or since the timer was created. */
-    fun beginFrame(): Duration {
-        val now = clock.markNow()
-        val sincePrevious = now - frameStart
-        frameStart = now
-        stageStart = now
-        stage = 0
-        return sincePrevious
-    }
-
-    /** Ends the current stage and starts the next. */
-    fun endStage() {
-        val now = clock.markNow()
-        oneSecond.add(stage, now - stageStart)
-        stage++
-        stageStart = now
-    }
-
-    /** Ends the frame at the end of its last stage, and prints the averages once a second has passed. */
-    fun endFrame() {
-        check(stage == stageNames.size) { "Frame ended after $stage stages; expected ${stageNames.size}." }
-        oneSecond.endFrame(stageStart - frameStart)
-        if (stageStart - lastReport >= 1.seconds) {
+    /** Adds one frame's [stats], and prints the averages once a second has passed since the last line. */
+    fun record(stats: FrameStats) {
+        val update = stats.durationOf(Phase.UPDATE)
+        val propagate = stats.transformPropagation
+        val acquire = stats.targetAcquisition
+        val extract = stats.spriteExtraction
+        val record = stats.spriteRecording
+        val gpuWait = stats.gpuWait
+        val frame = stats.total
+        oneSecond.add(0, update)
+        oneSecond.add(1, propagate)
+        oneSecond.add(2, acquire)
+        oneSecond.add(3, extract)
+        oneSecond.add(4, record)
+        oneSecond.add(5, gpuWait)
+        oneSecond.add(6, frame - update - propagate - acquire - extract - record - gpuWait)
+        oneSecond.endFrame(frame)
+        if (lastReport.elapsedNow() >= 1.seconds) {
             println("${label()} ${oneSecond.describe()}")
             if (warmedUp) total.addAll(oneSecond) else warmedUp = true
             oneSecond.reset()
-            lastReport = stageStart
+            lastReport = clock.markNow()
         }
     }
 
     /** Prints the averages over the whole run after the warm-up second. */
     fun printSummary() {
         println("--- summary (after 1 s warm-up, ${total.frames} frames) ---")
-        println(if (total.frames == 0) "too short to summarize" else total.describe())
+        println(if (total.frames == 0) "too short to summarize" else "${label()} ${total.describe()}")
+    }
+
+    override fun toString(): String = "StatsReport(frames=${total.frames})"
+
+    private companion object {
+        val STAGES: List<String> = listOf("update", "propagate", "acquire", "extract", "record", "gpuwait", "other")
     }
 }
 
