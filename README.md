@@ -27,8 +27,10 @@ What works today:
   `hierarchy` (a three-level tree of orbiting sprites).
 - A top-down shooter sample: a ship flies and fires over a starfield in an
   arena larger than the window, enemies drift down and explode with a
-  sprite-sheet animation, and the camera follows the ship. It loads PNG art from
-  an `assets/` folder next to the binary and can play itself for demos.
+  sprite-sheet animation, and the camera follows the ship. It plays with the
+  keyboard and mouse aim or with a gamepad, pauses when the window loses focus,
+  loads PNG art from an `assets/` folder next to the binary and can play itself
+  for demos.
 
 ## Design decisions
 
@@ -85,8 +87,9 @@ Run the sprite benchmark in a window, or offscreen for clean numbers:
 ./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ```
 
-Play the shooter sample (WASD or arrow keys to fly, Space to fire, Escape to
-quit), or watch it play itself:
+Play the shooter sample (WASD, arrow keys or the left stick to fly, the mouse or
+the right stick to aim, Space, left click, the south button or the right trigger
+to fire, Escape to quit), or watch it play itself:
 
 ```
 ./gradlew :shooter:run

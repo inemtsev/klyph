@@ -9,7 +9,8 @@ import klyph.platform.Color
  *
  * The size starts as the region's size in texels, so with a view measured in pixels and a scale
  * of 1 each texel covers one pixel. [isFlippedX] mirrors the region left to right and
- * [isFlippedY] mirrors it top to bottom; neither changes the quad's position.
+ * [isFlippedY] mirrors it top to bottom; neither changes the quad's position. A sprite whose
+ * [isVisible] is `false` is not drawn and costs no draw work.
  *
  * Sprites in a higher [layer] draw on top of sprites in a lower one. Within a layer, sprites are
  * grouped by texture, so where sprites with different textures overlap in one layer, which one
@@ -34,13 +35,16 @@ public class Sprite(
     public var isFlippedX: Boolean = false,
     /** Whether the region is mirrored top to bottom. */
     public var isFlippedY: Boolean = false,
+    /** Whether the sprite is drawn. */
+    public var isVisible: Boolean = true,
 ) {
     /**
      * Returns `Sprite(size=16.0 x 32.0, color=Color(#ffffffff), layer=0, flippedX=false,
-     * flippedY=false, region=TextureRegion(...))`. The format may change.
+     * flippedY=false, visible=true, region=TextureRegion(...))`. The format may change.
      */
     override fun toString(): String =
-        "Sprite(size=$width x $height, color=$color, layer=$layer, flippedX=$isFlippedX, flippedY=$isFlippedY, region=$region)"
+        "Sprite(size=$width x $height, color=$color, layer=$layer, flippedX=$isFlippedX, flippedY=$isFlippedY, " +
+            "visible=$isVisible, region=$region)"
 
     /** Component key for [Sprite]. */
     public companion object : ComponentType<Sprite>("Sprite")

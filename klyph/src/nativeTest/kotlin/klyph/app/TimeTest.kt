@@ -27,6 +27,27 @@ class TimeTest {
         assertEquals(Duration.ZERO, time.elapsed)
         assertEquals(0L, time.frame)
         assertEquals(0f, time.deltaSeconds)
+        assertEquals(0f, time.fixedStepAlpha)
+    }
+
+    @Test
+    fun fixedStepAlphaIsSetByTheLoopAndKeptInsideFixedSteps() {
+        val time = Time(60)
+        time.beginFrame(16.milliseconds)
+        time.fixedStepAlpha = 0.75f
+        time.beginFixedStep()
+        assertEquals(0.75f, time.fixedStepAlpha)
+        time.endFixedStep()
+        assertEquals(0.75f, time.fixedStepAlpha)
+    }
+
+    @Test
+    fun fixedStepAlphaRejectsValuesOutsideZeroUntilOne() {
+        val time = Time(60)
+        assertFailsWith<IllegalArgumentException> { time.fixedStepAlpha = 1f }
+        assertFailsWith<IllegalArgumentException> { time.fixedStepAlpha = -0.1f }
+        assertFailsWith<IllegalArgumentException> { time.fixedStepAlpha = Float.NaN }
+        assertEquals(0f, time.fixedStepAlpha)
     }
 
     @Test

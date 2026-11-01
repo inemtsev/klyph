@@ -20,9 +20,16 @@ internal class Schedule {
         systems[phase.ordinal].add(system)
     }
 
-    /** Runs every system of [phase] against [app] in the order they were added. */
+    /**
+     * Runs every system of [phase] against [app] in the order they were added, applying
+     * [App.commands] after each one so the next system sees its changes.
+     */
     fun run(phase: Phase, app: App) {
-        forEach(phase) { it.run(app) }
+        val commands = app.commands
+        forEach(phase) { system ->
+            system.run(app)
+            if (!commands.isEmpty) commands.apply()
+        }
     }
 
     /**

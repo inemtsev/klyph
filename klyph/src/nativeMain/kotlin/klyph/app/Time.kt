@@ -47,6 +47,22 @@ public class Time internal constructor(fixedRate: Int) {
     public var elapsed: Duration = Duration.ZERO
         private set
 
+    /**
+     * Returns how much of the next [Phase.FIXED_UPDATE] step has elapsed by the time the frame is
+     * drawn, as a fraction of [fixedDelta], from 0 up to but not including 1.
+     *
+     * The loop sets it once per frame, after it has counted the frame's fixed steps and before it
+     * runs them, so every phase of a frame, [Phase.FIXED_UPDATE] included, reads the same value.
+     * Rendering uses it to draw entities marked `Interpolated` between their last two fixed steps:
+     * 0 shows the state before the last step, and values near 1 come close to the current state.
+     * It is 0 until the first frame's steps are counted.
+     */
+    public var fixedStepAlpha: Float = 0f
+        internal set(value) {
+            require(value >= 0f && value < 1f) { "Fixed step alpha $value is not at least 0 and below 1." }
+            field = value
+        }
+
     /** Returns the number of frames completed so far. It is 0 during the first frame. */
     public var frame: Long = 0
         private set

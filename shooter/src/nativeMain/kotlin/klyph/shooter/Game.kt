@@ -1,5 +1,6 @@
 package klyph.shooter
 
+import klyph.app.App
 import klyph.app.Assets
 import klyph.entity.Entity
 import klyph.platform.Color
@@ -31,23 +32,16 @@ class Art(
 }
 
 /**
- * The state shared by the game's systems: art, controls, score and the scratch lists the systems
- * reuse every step.
+ * The state the game's systems share: art, controls, score and timers. It is an `App.resources`
+ * resource, inserted at startup and read through [App.game].
+ *
+ * [player] is a constructor value rather than a late-set field, because [Entity] is a value class
+ * and cannot be `lateinit`; startup spawns the ship first, which gives its handle at once.
  */
-class Game(val art: Art, val isAutopilot: Boolean) {
+class Game(val art: Art, val isAutopilot: Boolean, val player: Entity) {
     val random: Random = if (isAutopilot) Random(Tuning.AUTOPILOT_SEED) else Random.Default
 
-    val keys = HeldKeys()
     val controls = Controls()
-
-    private var playerOrNull: Entity? = null
-
-    /** The player's ship, created at startup. */
-    var player: Entity
-        get() = checkNotNull(playerOrNull) { "The player is created at startup." }
-        set(value) {
-            playerOrNull = value
-        }
 
     var score = 0
     var lives = Tuning.PLAYER_LIVES
@@ -57,16 +51,20 @@ class Game(val art: Art, val isAutopilot: Boolean) {
     /** Seconds until the next enemy spawns. */
     var spawnTimer = 0f
 
-    /** Entities to destroy once the running query is over. */
-    val doomed = ArrayList<Entity>()
+    /** Set while the window is in the background; the gameplay systems skip their work. */
+    var isPaused = false
 
-    /** Enemies shot or rammed in this step; each leaves an explosion before it goes. */
-    val wrecked = ArrayList<Entity>()
+    /** Set once the mouse moves and cleared by the right stick: the ship keeps facing the cursor while set. */
+    var isAimingWithMouse = false
 
     /** Prints the score line after the score or the lives changed. */
     fun printScore() {
         println("Score $score, lives $lives")
     }
 
-    override fun toString(): String = "Game(score=$score, lives=$lives, kills=$kills, autopilot=$isAutopilot)"
+    override fun toString(): String =
+        "Game(score=$score, lives=$lives, kills=$kills, paused=$isPaused, autopilot=$isAutopilot)"
 }
+
+/** The game state, inserted as a resource at startup. */
+val App.game: Game get() = resources.get()

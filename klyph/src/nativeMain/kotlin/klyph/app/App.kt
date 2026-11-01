@@ -1,15 +1,18 @@
 package klyph.app
 
+import klyph.entity.Commands
 import klyph.entity.World
 import klyph.event.Events
+import klyph.input.Input
 import klyph.platform.Color
 import klyph.platform.PresentMode
 import klyph.platform.Window
 import klyph.render.Camera
 
 /**
- * Represents a running klyph application: the world, the event bus, the clock, the assets, the
- * camera and the systems the frame loop runs. [runApp] creates the one instance and passes it to its `setup` block and to
+ * Represents a running klyph application: the world, its command queue, the event bus, the input
+ * state, the shared resources, the clock, the assets, the camera and the systems the frame loop
+ * runs. [runApp] creates the one instance and passes it to its `setup` block and to
  * every [System].
  *
  * An `App` is only valid inside [runApp]. Once [runApp] returns, its window, GPU device and
@@ -59,8 +62,33 @@ public class App internal constructor(
     /** The entities and components every system works on. */
     public val world: World = World()
 
+    /**
+     * Queues changes to [world] that a system makes while it iterates a query, such as spawning a
+     * bullet or destroying a hit enemy.
+     *
+     * The engine applies the queue after every system of every phase, so the changes one system
+     * queues are in the world when the next system runs, even within the same phase. It applies it
+     * once more after the transform propagation that follows [Phase.LATE_UPDATE], and once after
+     * the `setup` block of [runApp], so entities queued there exist when [Phase.STARTUP] runs. An
+     * exception thrown by a system skips the application after it.
+     */
+    public val commands: Commands = Commands(world)
+
     /** The event bus. The engine publishes `klyph.event` events into it during [Phase.INPUT]. */
     public val events: Events = Events()
+
+    /**
+     * The keyboard, mouse and gamepad state as of this frame. The engine updates it at the start of
+     * [Phase.INPUT], before any system runs, and computes `input.mouse.worldPosition` through
+     * [camera] as it stands then.
+     */
+    public val input: Input = Input()
+
+    /**
+     * Holds state that belongs to no entity, such as a score or the game's settings, one value per
+     * class, so systems can share it without globals.
+     */
+    public val resources: Resources = Resources()
 
     /** The frame clock. [Time.delta] equals [Time.fixedDelta] inside [Phase.FIXED_UPDATE]. */
     public val time: Time = Time(config.fixedRate)
@@ -100,7 +128,7 @@ public class App internal constructor(
         isQuitRequested = true
     }
 
-    /** Runs the systems of [phase]. */
+    /** Runs the systems of [phase], applying [commands] after each one. */
     internal fun run(phase: Phase) {
         schedule.run(phase, this)
         if (phase == Phase.STARTUP) startupDone = true

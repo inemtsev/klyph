@@ -1,13 +1,9 @@
 package klyph.shooter
 
 import klyph.entity.ComponentType
-import klyph.render.Sprite
 
-/**
- * The ship the player flies. [sprite] is kept here so the ship can leave the screen while it
- * waits to respawn and come back as it was.
- */
-class Player(val sprite: Sprite) {
+/** The ship the player flies. While it waits to respawn it is hidden at the arena's center. */
+class Player {
     /** Seconds until the next shot. Negative while catching up on shots owed to the fire rate. */
     var fireCooldown = 0f
 
@@ -16,9 +12,6 @@ class Player(val sprite: Sprite) {
 
     /** Seconds during which enemies pass through the ship. */
     var invulnerableTimer = 0f
-
-    /** Bank angle the ship is easing toward, in radians. */
-    var bank = 0f
 
     val isAlive: Boolean get() = respawnTimer <= 0f
 

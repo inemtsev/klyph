@@ -6,8 +6,9 @@ import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.time.DurationUnit
 
-// The autopilot (KLYPH_AUTOPILOT=1) plays the game for demos and smoke runs: it fires all the
-// time, lines up under the nearest enemy above it and patrols up and down so the camera moves.
+// The autopilot (KLYPH_AUTOPILOT=1) plays the game for demos and smoke runs: it faces up and fires
+// all the time, lines up under the nearest enemy above it and patrols up and down so the camera
+// moves. It fills the same Controls the keyboard, mouse and gamepad fill.
 
 private const val LINE_UP_DISTANCE = 40f
 private const val PATROL_HEIGHT = 300f
@@ -16,7 +17,7 @@ private const val SWEEP_RATE = 0.5f
 /** An enemy closer above the player than this is too late to line up under; the next one counts. */
 private const val MIN_TARGET_GAP = 80f
 
-/** Fills [Game.controls] as if a player were steering. */
+/** Fills [Game.controls] as if a player were steering, in place of the player's input. */
 fun Game.steerAutopilot(app: App) {
     val ship = app.world.get(player, Transform)
     val seconds = app.time.elapsed.toDouble(DurationUnit.SECONDS).toFloat()
@@ -27,6 +28,7 @@ fun Game.steerAutopilot(app: App) {
         ((targetX - ship.x) / LINE_UP_DISTANCE).coerceIn(-1f, 1f),
         ((targetY - ship.y) / LINE_UP_DISTANCE).coerceIn(-1f, 1f),
     )
+    controls.heading = 0f
     controls.isFiring = true
 }
 

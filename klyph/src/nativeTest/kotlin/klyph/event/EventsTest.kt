@@ -1,9 +1,14 @@
 package klyph.event
 
+import klyph.platform.GamepadButton
+import klyph.platform.GamepadId
 import klyph.platform.KeyCode
+import klyph.platform.MouseButton
+import klyph.platform.Scancode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 private class Hit(val id: Int)
@@ -104,9 +109,35 @@ class EventsTest {
     @Test
     fun engineEventsCompareByValueAndPrintTheirFields() {
         val escape = KeyCode(27u)
-        assertEquals(KeyPressed(escape, isRepeat = false), KeyPressed(escape, isRepeat = false))
-        assertEquals("KeyPressed(key=KeyCode(27), isRepeat=true)", KeyPressed(escape, isRepeat = true).toString())
-        assertEquals("KeyReleased(key=KeyCode(27))", KeyReleased(escape).toString())
+        val scancode = Scancode(41u)
+        assertEquals(KeyPressed(escape, isRepeat = false, scancode), KeyPressed(escape, isRepeat = false, scancode))
+        assertNotEquals(KeyPressed(escape, isRepeat = false, scancode), KeyPressed(escape, isRepeat = false, Scancode(1u)))
+        assertEquals(
+            "KeyPressed(key=KeyCode(27), isRepeat=true, scancode=Scancode(41))",
+            KeyPressed(escape, isRepeat = true, scancode).toString(),
+        )
+        assertEquals("KeyReleased(key=KeyCode(27), scancode=Scancode(41))", KeyReleased(escape, scancode).toString())
+        assertEquals(MouseMoved(1f, 2f, 3f, 4f), MouseMoved(1f, 2f, 3f, 4f))
+        assertEquals("MouseMoved(x=1.0, y=2.0, dx=3.0, dy=4.0)", MouseMoved(1f, 2f, 3f, 4f).toString())
+        assertEquals(MouseButtonPressed(MouseButton.LEFT, 1f, 2f, 1), MouseButtonPressed(MouseButton.LEFT, 1f, 2f, 1))
+        assertEquals(
+            "MouseButtonPressed(button=MouseButton(0), x=1.0, y=2.0, clicks=2)",
+            MouseButtonPressed(MouseButton.LEFT, 1f, 2f, 2).toString(),
+        )
+        assertEquals("MouseButtonReleased(button=MouseButton(2), x=1.0, y=2.0)", MouseButtonReleased(MouseButton.RIGHT, 1f, 2f).toString())
+        assertEquals(MouseWheel(0f, 1f), MouseWheel(0f, 1f))
+        assertEquals("MouseWheel(dx=0.0, dy=1.0)", MouseWheel(0f, 1f).toString())
+        val pad = GamepadId(7u)
+        assertEquals(GamepadConnected(pad, "Pad"), GamepadConnected(pad, "Pad"))
+        assertEquals("GamepadConnected(id=GamepadId(7), name=Pad)", GamepadConnected(pad, "Pad").toString())
+        assertEquals("GamepadDisconnected(id=GamepadId(7))", GamepadDisconnected(pad).toString())
+        assertEquals(GamepadButtonPressed(pad, GamepadButton.SOUTH), GamepadButtonPressed(pad, GamepadButton.SOUTH))
+        assertEquals(
+            "GamepadButtonReleased(id=GamepadId(7), button=${GamepadButton.SOUTH})",
+            GamepadButtonReleased(pad, GamepadButton.SOUTH).toString(),
+        )
+        assertEquals("WindowFocusGained", WindowFocusGained.toString())
+        assertEquals("WindowFocusLost", WindowFocusLost.toString())
         assertEquals(WindowResized(800, 600), WindowResized(800, 600))
         assertEquals("WindowResized(pixelWidth=800, pixelHeight=600)", WindowResized(800, 600).toString())
         assertEquals(WindowDensityChanged(2f), WindowDensityChanged(2f))

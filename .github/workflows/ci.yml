@@ -12,8 +12,6 @@ concurrency:
 permissions:
   contents: read
 
-# Windows (mingwX64) comes later.
-
 jobs:
   macos:
     # Apple silicon, so the build picks the macosArm64 target with no flags.
@@ -146,6 +144,75 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-reports-linux
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+          if-no-files-found: ignore
+
+  # Builds the mingwX64 target. The tests open no window, so this job proves the compile, the
+  # SDL3 cinterop, the link and the pure-Kotlin tests; the D3D12 rendering path never runs here.
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 60
+    env:
+      SDL3_VERSION: "3.4.18"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # The runner's Git converts line endings to CRLF on checkout, which breaks ./gradlew in bash.
+      - name: Keep LF line endings
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # SDL's own MinGW development package: headers, the import library libSDL3.dll.a and an
+      # SDL3.dll that needs only system DLLs. MSYS2's SDL3.dll also needs libiconv-2.dll.
+      # Gradle gets the prefix as a Windows path with forward slashes, which the JDK reads directly.
+      - name: Install SDL3
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o sdl3.tar.gz "https://github.com/libsdl-org/SDL/releases/download/release-$SDL3_VERSION/SDL3-devel-$SDL3_VERSION-mingw.tar.gz"
+          tar -xzf sdl3.tar.gz
+          echo "SDL3_PREFIX=${RUNNER_TEMP//\\//}/SDL3-$SDL3_VERSION/x86_64-w64-mingw32" >> "$GITHUB_ENV"
+
+      - name: Read Kotlin version
+        id: kotlin
+        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+
+      # The Kotlin/Native compiler and its LLVM and MinGW toolchains download into ~/.konan on first use.
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
+
+      # "basic" is the open-source cache; the default "enhanced" one is under separate terms of use.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      # Every link copies SDL3.dll from $SDL3_PREFIX/bin next to its binary, so test executables
+      # find it at run time.
+      - name: Test and link
+        run: >-
+          ./gradlew --no-daemon
+          -Psdl3.prefix="$SDL3_PREFIX"
+          check
+          :sandbox:linkDebugExecutableMingwX64
+          :shooter:linkDebugExecutableMingwX64
+          :benchmarks:linkReleaseExecutableMingwX64
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-windows
           path: |
             **/build/reports/tests/
             **/build/test-results/

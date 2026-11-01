@@ -2,9 +2,10 @@ package klyph.shooter
 
 import klyph.app.App
 import klyph.app.deltaSeconds
+import klyph.entity.Commands
+import klyph.entity.Entity
 import klyph.entity.Transform
 import klyph.entity.World
-import klyph.platform.Color
 import klyph.render.Camera
 import klyph.render.Sprite
 import klyph.render.SpriteAnimation
@@ -15,70 +16,69 @@ import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.sin
 
-// The game's systems, in the order Main registers them. Queries never create or destroy
-// entities while they run: they collect them in Game.doomed and Game.wrecked, and the system
-// applies the changes once its queries are over.
+// The game's systems, in the order Main registers them. Spawns and destroys go through
+// app.commands, which the engine applies after each system, so queries can queue them freely.
 
 // STARTUP
 
-/** Fills the sky, creates the player and points the camera at it. */
-fun Game.start(app: App) {
-    app.world.spawnStars(art, random)
-    player = app.world.spawnPlayer(art)
-    val ship = app.world.get(player, Transform)
-    app.camera.lookAt(ship.x, ship.y)
+/** Loads the art, creates the player, fills the sky, points the camera at the ship and shares the [Game]. */
+fun startGame(app: App, isAutopilot: Boolean) {
+    val art = Art.load(app.assets)
+    val game = Game(art, isAutopilot, app.commands.spawnPlayer(art))
+    app.commands.spawnStars(art, game.random)
+    app.resources.insert(game)
+    app.camera.lookAt(Tuning.ARENA_WIDTH / 2, Tuning.ARENA_HEIGHT / 2)
     clampToArena(app.camera)
-    printScore()
+    game.printScore()
 }
 
 // FIXED_UPDATE
 
-/** Respawns, steers and fires the player's ship. */
+/** Respawns, steers, turns and fires the player's ship. */
 fun Game.updatePlayer(app: App) {
     val dt = app.time.deltaSeconds
     val ship = app.world.get(player, Player)
-    val transform = app.world.get(player, Transform)
     if (!ship.isAlive) {
         ship.respawnTimer -= dt
-        if (ship.isAlive) respawn(app.world, ship, transform)
+        if (ship.isAlive) respawn(app.world, ship)
         return
     }
+    val transform = app.world.get(player, Transform)
     ship.invulnerableTimer = (ship.invulnerableTimer - dt).coerceAtLeast(0f)
-    steer(ship, transform, dt)
-    fire(app.world, ship, transform, dt)
+    steer(transform, dt)
+    fire(app.commands, ship, transform, dt)
 }
 
-private fun Game.steer(ship: Player, transform: Transform, dt: Float) {
+private fun Game.steer(transform: Transform, dt: Float) {
     val half = Tuning.SHIP_SIZE / 2
     transform.x = (transform.x + controls.moveX * Tuning.PLAYER_SPEED * dt).coerceIn(half, Tuning.ARENA_WIDTH - half)
     transform.y = (transform.y + controls.moveY * Tuning.PLAYER_SPEED * dt).coerceIn(half, Tuning.ARENA_HEIGHT - half)
-    // Positive rotation turns clockwise on screen, so moving right tips the nose right.
-    ship.bank += (controls.moveX * Tuning.PLAYER_BANK - ship.bank) * approach(Tuning.PLAYER_BANK_RATE, dt)
-    transform.rotation = ship.bank
+    if (!controls.heading.isNaN()) transform.rotation = controls.heading
 }
 
-/** Fires every [Tuning.FIRE_INTERVAL] while the trigger is held, carrying the remainder between steps. */
-private fun Game.fire(world: World, ship: Player, transform: Transform, dt: Float) {
+/** Fires along the ship's heading every [Tuning.FIRE_INTERVAL] while the trigger is held, carrying the remainder between steps. */
+private fun Game.fire(commands: Commands, ship: Player, transform: Transform, dt: Float) {
     ship.fireCooldown -= dt
     if (!controls.isFiring) {
         ship.fireCooldown = ship.fireCooldown.coerceAtLeast(0f)
         return
     }
+    if (ship.fireCooldown > 0f) return
+    // Rotation 0 faces up, so the nose is at (sin, -cos) of the heading.
+    val heading = transform.rotation
+    val noseX = transform.x + Tuning.SHIP_SIZE / 2 * sin(heading)
+    val noseY = transform.y - Tuning.SHIP_SIZE / 2 * cos(heading)
     while (ship.fireCooldown <= 0f) {
-        world.spawnBullet(art, transform.x, transform.y - Tuning.SHIP_SIZE / 2)
+        commands.spawnBullet(art, noseX, noseY, heading)
         ship.fireCooldown += Tuning.FIRE_INTERVAL
     }
 }
 
-private fun Game.respawn(world: World, ship: Player, transform: Transform) {
+private fun Game.respawn(world: World, ship: Player) {
     ship.respawnTimer = 0f
     ship.invulnerableTimer = Tuning.INVULNERABLE_TIME
-    ship.bank = 0f
     ship.fireCooldown = 0f
-    transform.x = Tuning.ARENA_WIDTH / 2
-    transform.y = Tuning.ARENA_HEIGHT / 2
-    transform.rotation = 0f
-    world.add(player, Sprite, ship.sprite)
+    world.get(player, Sprite).isVisible = true
     if (lives == 0) {
         lives = Tuning.PLAYER_LIVES
         score = 0
@@ -92,7 +92,7 @@ fun Game.spawnEnemies(app: App) {
     spawnTimer -= app.time.deltaSeconds
     while (spawnTimer <= 0f) {
         spawnTimer += Tuning.ENEMY_SPAWN_INTERVAL
-        if (app.world.count(Enemy) < Tuning.ENEMY_MAX_ALIVE) app.world.spawnEnemy(art, random)
+        if (app.world.count(Enemy) < Tuning.ENEMY_MAX_ALIVE) app.commands.spawnEnemy(art, random)
     }
 }
 
@@ -114,6 +114,7 @@ fun moveBodies(app: App) {
 /** Resolves bullet hits and enemies ramming the player, leaving an explosion for each wreck. */
 fun Game.collide(app: App) {
     val world = app.world
+    val commands = app.commands
     val scoreBefore = score
     world.forEach(Bullet, Transform, Sprite) { bulletEntity, bullet, bulletTransform, bulletSprite ->
         val bulletRadius = radiusOf(bulletSprite, scale = 1f)
@@ -121,42 +122,52 @@ fun Game.collide(app: App) {
             if (bullet.isSpent || enemy.isHit) return@forEach
             if (overlaps(bulletTransform, bulletRadius, enemyTransform, radiusOf(enemySprite, Tuning.SHIP_HITBOX_SCALE))) {
                 bullet.isSpent = true
-                enemy.isHit = true
-                doomed.add(bulletEntity)
-                wrecked.add(enemyEntity)
+                commands.destroy(bulletEntity)
+                wreck(commands, enemyEntity, enemy, enemyTransform)
                 score += Tuning.ENEMY_SCORE
                 kills++
             }
         }
     }
-    if (isRammed(world)) destroyPlayer(world)
+    if (isRammed(world, commands)) destroyPlayer(world, commands)
     else if (score != scoreBefore) printScore()
-    explodeWrecks(world)
-    destroyDoomed(world)
 }
 
-/** Returns `true` if an enemy touches the player's ship, and marks every such enemy wrecked. */
-private fun Game.isRammed(world: World): Boolean {
+/** Returns `true` if an enemy touches the player's ship, and wrecks every such enemy. */
+private fun Game.isRammed(world: World, commands: Commands): Boolean {
     val ship = world.get(player, Player)
     if (!ship.isAlive || ship.invulnerableTimer > 0f) return false
     val shipTransform = world.get(player, Transform)
-    val shipRadius = radiusOf(ship.sprite, Tuning.SHIP_HITBOX_SCALE)
+    val shipRadius = radiusOf(world.get(player, Sprite), Tuning.SHIP_HITBOX_SCALE)
     var isRammed = false
     world.forEach(Enemy, Transform, Sprite) { enemyEntity, enemy, enemyTransform, enemySprite ->
         if (!enemy.isHit && overlaps(shipTransform, shipRadius, enemyTransform, radiusOf(enemySprite, Tuning.SHIP_HITBOX_SCALE))) {
-            enemy.isHit = true
-            wrecked.add(enemyEntity)
+            wreck(commands, enemyEntity, enemy, enemyTransform)
             isRammed = true
         }
     }
     return isRammed
 }
 
-private fun Game.destroyPlayer(world: World) {
+/** Marks [enemy] hit, so nothing else counts it this step, and queues its explosion and removal. */
+private fun Game.wreck(commands: Commands, entity: Entity, enemy: Enemy, transform: Transform) {
+    enemy.isHit = true
+    commands.spawnExplosion(art, transform.x, transform.y)
+    commands.destroy(entity)
+}
+
+/**
+ * Blows up the ship, hides it and parks it at the arena's center facing up, where it respawns.
+ * Moving it while it is hidden keeps the interpolated respawn from sweeping across the arena.
+ */
+private fun Game.destroyPlayer(world: World, commands: Commands) {
     val ship = world.get(player, Player)
     val transform = world.get(player, Transform)
-    world.spawnExplosion(art, transform.x, transform.y)
-    world.remove(player, Sprite)
+    commands.spawnExplosion(art, transform.x, transform.y)
+    world.get(player, Sprite).isVisible = false
+    transform.x = Tuning.ARENA_WIDTH / 2
+    transform.y = Tuning.ARENA_HEIGHT / 2
+    transform.rotation = 0f
     ship.respawnTimer = Tuning.RESPAWN_DELAY
     lives--
     deaths++
@@ -164,55 +175,40 @@ private fun Game.destroyPlayer(world: World) {
     if (lives == 0) println("Game over. Final score $score.")
 }
 
-private fun Game.explodeWrecks(world: World) {
-    for (i in 0 until wrecked.size) {
-        val transform = world.get(wrecked[i], Transform)
-        world.spawnExplosion(art, transform.x, transform.y)
-        world.destroy(wrecked[i])
-    }
-    wrecked.clear()
-}
-
 /** Destroys bullets whose time is up and anything that has left the arena. */
-fun Game.expire(app: App) {
+fun expire(app: App) {
     val dt = app.time.deltaSeconds
     val margin = Tuning.SHIP_SIZE
+    val commands = app.commands
     app.world.forEach(Lifetime) { entity, lifetime ->
         lifetime.remaining -= dt
-        if (lifetime.remaining <= 0f) doomed.add(entity)
+        if (lifetime.remaining <= 0f) commands.destroy(entity)
     }
     app.world.forEach(Velocity, Transform) { entity, _, transform ->
         val isOutside = transform.x < -margin || transform.x > Tuning.ARENA_WIDTH + margin ||
             transform.y < -margin || transform.y > Tuning.ARENA_HEIGHT + margin
-        if (isOutside) doomed.add(entity)
+        // A bullet whose lifetime also ran out is queued twice; destroying a gone entity is skipped.
+        if (isOutside) commands.destroy(entity)
     }
-    destroyDoomed(app.world)
-}
-
-private fun Game.destroyDoomed(world: World) {
-    // destroy ignores entities that are already gone, so an entry listed twice is harmless.
-    for (i in 0 until doomed.size) world.destroy(doomed[i])
-    doomed.clear()
 }
 
 // UPDATE
 
 /** Removes explosions whose animation has played to the end. */
-fun Game.removeFinishedExplosions(app: App) {
+fun removeFinishedExplosions(app: App) {
+    val commands = app.commands
     app.world.forEach(Explosion, SpriteAnimation) { entity, _, animation ->
-        if (animation.animation.isFinished) doomed.add(entity)
+        if (animation.animation.isFinished) commands.destroy(entity)
     }
-    destroyDoomed(app.world)
 }
 
-/** Blinks the player's ship while enemies pass through it. */
+/** Blinks the player's ship while enemies pass through it. A ship waiting to respawn stays hidden. */
 fun Game.blinkPlayer(app: App) {
     val ship = app.world.get(player, Player)
-    val isDimmed = ship.invulnerableTimer > 0f && (ship.invulnerableTimer * Tuning.BLINK_RATE).toInt() % 2 == 0
-    ship.sprite.color = if (isDimmed) DIMMED else Color.WHITE
+    if (!ship.isAlive) return
+    val isBlinkedOut = ship.invulnerableTimer > 0f && (ship.invulnerableTimer * Tuning.BLINK_RATE).toInt() % 2 == 0
+    app.world.get(player, Sprite).isVisible = !isBlinkedOut
 }
-
-private val DIMMED = Color(1f, 1f, 1f, 0.3f)
 
 // LATE_UPDATE
 

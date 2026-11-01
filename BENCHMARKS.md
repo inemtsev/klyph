@@ -9,6 +9,41 @@ times the pixels they did. The benchmarks spread sprites over the window's size 
 divide sprite sizes (and the hierarchy's ring radii) by the window's pixel density, so every
 sprite still covers the same pixels as in the earlier runs and the GPU fill work matches them.
 
+## Fixed-step interpolation (2026-10-31)
+
+Entities marked `Interpolated` are drawn between their last two fixed steps. At the start of each
+fixed step the engine copies their `Transform` into an internal previous-transform component, and
+`extract` blends each such sprite from that copy toward the current `Transform` by
+`Time.fixedStepAlpha`, one sparse lookup per sprite, skipped when no entity has a copy. The same
+build added `Sprite.isVisible`, which `extract` checks for every sprite. `KLYPH_INTERPOLATE=1`
+(`-Pklyph.interpolate=1`) makes the `sprites` benchmark mark every sprite and move them in
+`FIXED_UPDATE` at the default 60 Hz instead of in `UPDATE`, at the same speeds. The benchmark
+lines gained a `fixed` stage (all of a frame's fixed steps, the engine's copy included) and the
+summary prints the fixed steps per frame. Same machine and offscreen setup as below, 100k sprites,
+2,000 frames. Three rounds alternated "before" (a build of the previous tree) with off and on; the
+lines are the second round, and the other rounds agree within 0.02 ms per stage except one noisy
+"before" round whose gpuwait rose 0.1 ms.
+
+```
+before:          sprites=100000 textures=1 fps=411 frame=2.431ms update=0.211ms propagate=0.000ms acquire=0.000ms extract=0.476ms record=0.016ms gpuwait=1.708ms other=0.018ms
+interpolate=off: sprites=100000 textures=1 fps=409 frame=2.447ms fixed=0.000ms update=0.210ms propagate=0.000ms acquire=0.000ms extract=0.493ms record=0.015ms gpuwait=1.709ms other=0.017ms
+interpolate=on:  sprites=100000 textures=1 fps=397 frame=2.517ms fixed=0.078ms update=0.000ms propagate=0.000ms acquire=0.001ms extract=0.676ms record=0.016ms gpuwait=1.724ms other=0.018ms
+hierarchy before: sprites=100000 fps=275 frame=3.638ms update=0.301ms propagate=1.264ms acquire=0.002ms extract=0.741ms record=0.041ms gpuwait=1.253ms other=0.033ms
+hierarchy after:  sprites=100000 fps=272 frame=3.678ms fixed=0.000ms update=0.301ms propagate=1.291ms acquire=0.002ms extract=0.763ms record=0.041ms gpuwait=1.244ms other=0.033ms
+```
+
+With interpolation off the frame is 0.7% slower than before, and extract 0.02 ms slower, which is
+the visibility check. The hierarchy frame is 1.1% slower, extract again 0.02 ms of it.
+
+With interpolation on, extract costs 0.18 ms more than off (1.8 ns per sprite for the lookup and
+the blend). Offscreen runs at about 400 fps, so a 60 Hz fixed step runs in only 0.15 of the
+frames, about every seventh. The `fixed` stage averages 0.078 ms per frame, or 0.52 ms per step,
+of which the movement is about 0.21 ms (the `update` stage of the off run), so the copy costs
+about 0.31 ms per step at 100k, or 0.05 ms per frame at this cadence. The per-frame cost of
+interpolation is therefore about 0.23 ms here. The on frame still comes out only 0.07 ms above
+off, because the movement runs 60 times a second instead of 400. At 60 fps with one step per
+frame the copy would cost its full 0.31 ms every frame.
+
 ## Propagation only for hierarchies (2026-10-31)
 
 `propagateTransforms` no longer copies every root `Transform` into a `WorldTransform`. Only

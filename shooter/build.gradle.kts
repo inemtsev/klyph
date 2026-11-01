@@ -37,8 +37,8 @@ kotlin {
             copyAssets.configure { dependsOn(binaryAssets) }
 
             // `run` plays the game from the debug build. Environment: KLYPH_FRAMES,
-            // KLYPH_VALIDATION, KLYPH_AUTOPILOT, or the Gradle properties klyph.frames,
-            // klyph.validation and klyph.autopilot.
+            // KLYPH_SECONDS, KLYPH_VALIDATION, KLYPH_AUTOPILOT, or the Gradle properties
+            // klyph.frames, klyph.seconds, klyph.validation and klyph.autopilot.
             if (buildType == NativeBuildType.DEBUG) {
                 val environment = RunEnvironment.of(project)
                 tasks.register<Exec>("run") {

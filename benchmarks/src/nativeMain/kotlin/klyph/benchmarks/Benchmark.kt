@@ -9,6 +9,7 @@ import klyph.event.KeyPressed
 import klyph.platform.GpuValidation
 import klyph.platform.KeyCode
 import klyph.platform.PresentMode
+import kotlin.time.Duration
 
 /** A named benchmark that [Main][main] can run from the command line. */
 internal class Benchmark(
@@ -28,8 +29,18 @@ internal class BenchmarkSettings(
     val childCount: Int,
     /** `KLYPH_TEXTURES`, default 1: textures the sprites benchmark spreads its sprites over. */
     val textureCount: Int,
+    /**
+     * `KLYPH_INTERPOLATE=1`: the sprites benchmark moves its sprites in `FIXED_UPDATE` and marks
+     * them `Interpolated` instead of moving them in `UPDATE`.
+     */
+    val interpolate: Boolean,
     /** `KLYPH_FRAMES`; `null` runs until the window closes or escape is pressed. */
     val frameLimit: Int?,
+    /**
+     * `KLYPH_SECONDS`: the app quits once `Time.elapsed` reaches it; `null` sets no limit. Either
+     * limit ends the run.
+     */
+    val timeLimit: Duration?,
     /**
      * `KLYPH_OFFSCREEN=1`: draw into a texture and wait for the GPU each frame instead of
      * presenting, so the display is not in the loop.
@@ -51,13 +62,14 @@ internal class BenchmarkSettings(
         )
 
     override fun toString(): String =
-        "BenchmarkSettings(spriteCount=$spriteCount, childCount=$childCount, textureCount=$textureCount, frameLimit=$frameLimit, " +
+        "BenchmarkSettings(spriteCount=$spriteCount, childCount=$childCount, textureCount=$textureCount, interpolate=$interpolate, frameLimit=$frameLimit, timeLimit=$timeLimit, " +
             "offscreen=$offscreen, presentMode=$presentMode, validation=$validation)"
 }
 
 /**
  * Adds what every benchmark app shares: a startup line naming the present mode and render target,
- * quitting on escape or after [BenchmarkSettings.frameLimit] frames, and [report] fed with each
+ * quitting on escape, after [BenchmarkSettings.frameLimit] frames or after
+ * [BenchmarkSettings.timeLimit], and [report] fed with each
  * frame's stats and printed at shutdown.
  */
 internal fun App.addBenchmarkSystems(settings: BenchmarkSettings, report: StatsReport) {
@@ -74,6 +86,8 @@ internal fun App.addBenchmarkSystems(settings: BenchmarkSettings, report: StatsR
         // time.frame counts completed frames, so this frame is number frame + 1.
         val limit = settings.frameLimit
         if (limit != null && app.time.frame + 1 >= limit) app.quit()
+        val timeLimit = settings.timeLimit
+        if (timeLimit != null && app.time.elapsed >= timeLimit) app.quit()
     }
     addSystem(Phase.SHUTDOWN) { app ->
         if (app.time.frame > 0) report.record(app.stats)

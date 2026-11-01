@@ -1,5 +1,6 @@
 package klyph.app
 
+import kotlin.math.nextDown
 import kotlin.time.Duration
 
 /**
@@ -7,7 +8,8 @@ import kotlin.time.Duration
  *
  * Frame time accumulates until it covers a step. At most [maxStepsPerFrame] steps run per frame;
  * whole steps beyond that are discarded so a stall does not make the next frames slower still.
- * The part of a step that does not yet add up to a whole one carries over to the next frame.
+ * The part of a step that does not yet add up to a whole one carries over to the next frame;
+ * [alpha] reports it as a fraction of a step.
  */
 internal class FixedStepper(private val fixedDelta: Duration, private val maxStepsPerFrame: Int) {
     private val stepNanos: Long
@@ -34,6 +36,21 @@ internal class FixedStepper(private val fixedDelta: Duration, private val maxSte
         return if (available > maxStepsPerFrame) maxStepsPerFrame else available.toInt()
     }
 
+    /**
+     * Returns the part of a fixed step left in the accumulator after the last [accumulate], as a
+     * fraction of [fixedDelta]: at least 0 and below 1. It is 0 before the first [accumulate].
+     *
+     * The leftover is always shorter than a step, but the division can round up to 1 in `Float`;
+     * the result is capped just below 1 so it never claims a whole step that did not run.
+     */
+    val alpha: Float
+        get() = (accumulatedNanos.toDouble() / stepNanos).toFloat().coerceAtMost(LAST_FRACTION)
+
     override fun toString(): String =
         "FixedStepper(fixedDelta=$fixedDelta, maxStepsPerFrame=$maxStepsPerFrame)"
+
+    private companion object {
+        /** The largest `Float` below 1, the cap of [alpha]. */
+        val LAST_FRACTION: Float = 1f.nextDown()
+    }
 }

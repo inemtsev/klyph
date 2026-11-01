@@ -57,10 +57,11 @@ internal class SpritePass(
 
     /**
      * Draws [world]'s sprites through [camera] over [clearColor] and submits the frame, adding the time of each
-     * step to [stats]. While the window has no target to draw into (minimized), skips extraction
-     * and drawing and only submits the frame.
+     * step to [stats]. Entities marked `Interpolated` are drawn [fixedStepAlpha] of the way from
+     * their transform at the start of the last fixed step to their current one. While the window
+     * has no target to draw into (minimized), skips extraction and drawing and only submits the frame.
      */
-    fun render(world: World, camera: Camera, clearColor: Color, stats: FrameStats) {
+    fun render(world: World, camera: Camera, clearColor: Color, fixedStepAlpha: Float, stats: FrameStats) {
         val clock = TimeSource.Monotonic
         var mark = clock.markNow()
 
@@ -73,7 +74,7 @@ internal class SpritePass(
         var count = 0
         if (targetTexture != null) {
             renderer.ensureCapacity(world.count(Sprite))
-            count = renderer.extract(world)
+            count = renderer.extract(world, fixedStepAlpha)
         }
         spriteCount = count
         now = clock.markNow()

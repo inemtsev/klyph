@@ -1,8 +1,11 @@
 package klyph.render
 
+import klyph.entity.Interpolated
+import klyph.entity.PreviousTransform
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.entity.WorldTransform
+import klyph.entity.blendRotation
 import klyph.platform.BlendMode
 import klyph.platform.BufferUsage
 import klyph.platform.CommandBuffer
@@ -36,9 +39,9 @@ import klyph.render.generated.SpriteFragmentShader
 import klyph.render.generated.SpriteVertexShader
 
 /**
- * Draws every entity that has a [Transform] and a [Sprite], with one draw call per run of
- * sprites that share a texture. An entity in a hierarchy is drawn at its [WorldTransform], any
- * other entity at its [Transform].
+ * Draws every entity that has a [Transform] and a visible [Sprite], with one draw call per run of
+ * sprites that share a texture. An entity in a hierarchy is drawn at its [WorldTransform], an
+ * [Interpolated] entity between its last two fixed steps, and any other entity at its [Transform].
  *
  * Each frame has three steps so callers can time them: [extract] sorts the sprites by layer and
  * texture and writes one 64-byte record per sprite into mapped staging memory, [upload] copies
@@ -125,16 +128,26 @@ public class SpriteRenderer(
     }
 
     /**
-     * Writes a record for every sprite in [world] into staging memory, in draw order, and returns
-     * how many were written. Allocates nothing once its buffers have grown to the sprite count.
+     * Writes a record for every visible sprite in [world] into staging memory, in draw order, and
+     * returns how many were written. Sprites whose [Sprite.isVisible] is `false` are skipped.
+     * Allocates nothing once its buffers have grown to the sprite count.
      *
      * Draw order is by [Sprite.layer], lowest first; within a layer, sprites are grouped by
      * texture, and keep their storage order inside a group. Positions, rotations and scales come
      * from each entity's [WorldTransform] if it has one, which only entities with a parent do,
      * and from its [Transform] otherwise. Run [klyph.entity.propagateTransforms] first so the
      * world transforms are current; the engine does that before rendering.
+     *
+     * An [Interpolated] entity without a parent that has been through a fixed step since it was
+     * marked is drawn [fixedStepAlpha] of the way from its transform at the start of the last
+     * fixed step to its current [Transform]: position and scale linearly, rotation the shorter
+     * way round the circle. [fixedStepAlpha] is normally `Time.fixedStepAlpha`; the default of 1
+     * draws the current transforms. It must be between 0 and 1.
+     *
+     * @throws IllegalArgumentException if [fixedStepAlpha] is below 0 or above 1.
      */
-    public fun extract(world: World): Int {
+    public fun extract(world: World, fixedStepAlpha: Float = 1f): Int {
+        require(fixedStepAlpha >= 0f && fixedStepAlpha <= 1f) { "Fixed step alpha $fixedStepAlpha is not between 0 and 1." }
         // One walk over the world finds each sprite's group and writes its record, using a guess
         // from the previous frame. If that frame came out in draw order, this one most likely is
         // too: records are written in storage order and no group is stored per sprite. Otherwise
@@ -143,26 +156,27 @@ public class SpriteRenderer(
         // a scratch array, then a copy of each record to its sorted position.
         val limit = capacity
         val order = order
+        val alpha = fixedStepAlpha
         order.begin()
         var count = 0
         val records = device.map(staging, Cycle.CYCLE)
         val guessHeld = if (expectSorted) {
-            forEachSprite(world) { local, hierarchy, sprite ->
+            forEachSprite(world) { local, hierarchy, previous, sprite ->
                 if (count < limit) {
                     order.addWithoutPosition(sprite.layer, sprite.region.texture)
-                    writeRecord(count * SPRITE_RECORD_FLOATS, local, hierarchy, sprite) { index, value -> records.set(index, value) }
+                    writeRecord(count * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { index, value -> records.set(index, value) }
                     count++
                 }
             }
             order.finish()
             order.isSorted
         } else {
-            forEachSprite(world) { local, hierarchy, sprite ->
+            forEachSprite(world) { local, hierarchy, previous, sprite ->
                 if (count < limit) {
                     val position = order.place(sprite.layer, sprite.region.texture)
                     // Out of range only when the guess is wrong, and then every record is rewritten.
                     if (position < limit) {
-                        writeRecord(position * SPRITE_RECORD_FLOATS, local, hierarchy, sprite) { index, value -> records.set(index, value) }
+                        writeRecord(position * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { index, value -> records.set(index, value) }
                     }
                     count++
                 }
@@ -171,7 +185,7 @@ public class SpriteRenderer(
             order.predictionHeld
         }
         if (!guessHeld) {
-            fillScratch(world, count)
+            fillScratch(world, count, alpha)
             scatter(records, count)
         }
         device.unmap(staging)
@@ -182,17 +196,17 @@ public class SpriteRenderer(
 
     /**
      * Sorts the first [count] sprites of [world] again, this time recording positions, and writes
-     * them to the scratch array in storage order.
+     * them to the scratch array in storage order, blending interpolated ones by [alpha].
      */
-    private fun fillScratch(world: World, count: Int) {
+    private fun fillScratch(world: World, count: Int, alpha: Float) {
         val scratch = scratchFor(capacity)
         val order = order
         order.begin()
         var index = 0
-        forEachSprite(world) { local, hierarchy, sprite ->
+        forEachSprite(world) { local, hierarchy, previous, sprite ->
             if (index < count) {
                 order.add(sprite.layer, sprite.region.texture)
-                writeRecord(index * SPRITE_RECORD_FLOATS, local, hierarchy, sprite) { i, value -> scratch[i] = value }
+                writeRecord(index * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { i, value -> scratch[i] = value }
                 index++
             }
         }
@@ -216,21 +230,55 @@ public class SpriteRenderer(
     }
 
     /**
-     * Calls [action] for every entity with a [Transform] and a [Sprite], in [Transform] storage
-     * order, with its [WorldTransform] or `null` if it has none. Finding the world transform costs
-     * one sparse-array read per sprite, and none in a world without hierarchies.
+     * Calls [action] for every entity with a [Transform] and a visible [Sprite], in [Transform]
+     * storage order, with its [WorldTransform] or `null` if it has none, and, only when it has no
+     * world transform, its [PreviousTransform] or `null` if it has none. Each of the two lookups
+     * costs one sparse-array read per sprite, and none in a world with no component of that type.
      */
-    private inline fun forEachSprite(world: World, action: (Transform, WorldTransform?, Sprite) -> Unit) {
-        val worlds = world.storeOrNull(WorldTransform)
-        if (worlds == null || worlds.size == 0) {
-            world.forEach(Transform, Sprite) { _, local, sprite -> action(local, null, sprite) }
+    private inline fun forEachSprite(world: World, action: (Transform, WorldTransform?, PreviousTransform?, Sprite) -> Unit) {
+        val worlds = world.storeOrNull(WorldTransform)?.takeIf { it.size > 0 }
+        val previous = world.storeOrNull(PreviousTransform)?.takeIf { it.size > 0 }
+        if (previous == null) {
+            if (worlds == null) {
+                world.forEach(Transform, Sprite) { _, local, sprite ->
+                    if (sprite.isVisible) action(local, null, null, sprite)
+                }
+                return
+            }
+            val worldSparse = worlds.sparse
+            val worldItems = worlds.items
+            world.forEach(Transform, Sprite) { entity, local, sprite ->
+                if (sprite.isVisible) {
+                    val slot = worldSparse[entity.index]
+                    action(local, if (slot >= 0) worldItems.itemAt<WorldTransform>(slot) else null, null, sprite)
+                }
+            }
+            return
+        }
+        val previousSparse = previous.sparse
+        val previousItems = previous.items
+        if (worlds == null) {
+            world.forEach(Transform, Sprite) { entity, local, sprite ->
+                if (sprite.isVisible) {
+                    val slot = previousSparse[entity.index]
+                    action(local, null, if (slot >= 0) previousItems.itemAt<PreviousTransform>(slot) else null, sprite)
+                }
+            }
             return
         }
         val worldSparse = worlds.sparse
         val worldItems = worlds.items
         world.forEach(Transform, Sprite) { entity, local, sprite ->
-            val slot = worldSparse[entity.index]
-            action(local, if (slot >= 0) worldItems.itemAt<WorldTransform>(slot) else null, sprite)
+            if (sprite.isVisible) {
+                val index = entity.index
+                val worldSlot = worldSparse[index]
+                if (worldSlot >= 0) {
+                    action(local, worldItems.itemAt<WorldTransform>(worldSlot), null, sprite)
+                } else {
+                    val slot = previousSparse[index]
+                    action(local, null, if (slot >= 0) previousItems.itemAt<PreviousTransform>(slot) else null, sprite)
+                }
+            }
         }
     }
 
@@ -243,12 +291,15 @@ public class SpriteRenderer(
 
     /**
      * Writes the record of [sprite] through [set], starting at float [base], placed at [hierarchy]
-     * if it is not `null` and at [local] otherwise.
+     * if it is not `null`, [alpha] of the way from [previous] to [local] if [previous] is not
+     * `null`, and at [local] otherwise.
      */
     private inline fun writeRecord(
         base: Int,
         local: Transform,
         hierarchy: WorldTransform?,
+        previous: PreviousTransform?,
+        alpha: Float,
         sprite: Sprite,
         set: (Int, Float) -> Unit,
     ) {
@@ -263,6 +314,12 @@ public class SpriteRenderer(
             rotation = hierarchy.rotation
             scaleX = hierarchy.scaleX
             scaleY = hierarchy.scaleY
+        } else if (previous != null) {
+            x = previous.x + alpha * (local.x - previous.x)
+            y = previous.y + alpha * (local.y - previous.y)
+            rotation = blendRotation(previous.rotation, local.rotation, alpha)
+            scaleX = previous.scaleX + alpha * (local.scaleX - previous.scaleX)
+            scaleY = previous.scaleY + alpha * (local.scaleY - previous.scaleY)
         } else {
             x = local.x
             y = local.y

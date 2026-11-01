@@ -10,9 +10,11 @@ import kotlin.time.TimeSource
  * Turns the [FrameStats] of each frame into one line per second of averages, prefixed by
  * [label], and keeps a run total that skips the first second as warm-up.
  *
- * The stages are [STAGES]: the update phase, transform propagation, target acquisition, sprite
- * extraction, command recording and submission, the GPU wait, and "other", the rest of the
- * frame (input, fixed and late update, user render systems and the loop itself).
+ * The stages are [STAGES]: the fixed update phase (all of the frame's steps, including the
+ * engine's copy of interpolated transforms), the update phase, transform propagation, target
+ * acquisition, sprite extraction, command recording and submission, the GPU wait, and "other",
+ * the rest of the frame (input, late update, user render systems and the loop itself). The
+ * summary also prints how many fixed steps ran per frame on average.
  */
 internal class StatsReport(private val label: () -> String) {
     private val clock = TimeSource.Monotonic
@@ -20,9 +22,12 @@ internal class StatsReport(private val label: () -> String) {
     private val total = StageTimes(STAGES)
     private var warmedUp = false
     private var lastReport = clock.markNow()
+    private var oneSecondSteps = 0L
+    private var totalSteps = 0L
 
     /** Adds one frame's [stats], and prints the averages once a second has passed since the last line. */
     fun record(stats: FrameStats) {
+        val fixed = stats.durationOf(Phase.FIXED_UPDATE)
         val update = stats.durationOf(Phase.UPDATE)
         val propagate = stats.transformPropagation
         val acquire = stats.targetAcquisition
@@ -30,18 +35,26 @@ internal class StatsReport(private val label: () -> String) {
         val record = stats.spriteRecording
         val gpuWait = stats.gpuWait
         val frame = stats.total
-        oneSecond.add(0, update)
-        oneSecond.add(1, propagate)
-        oneSecond.add(2, acquire)
-        oneSecond.add(3, extract)
-        oneSecond.add(4, record)
-        oneSecond.add(5, gpuWait)
-        oneSecond.add(6, frame - update - propagate - acquire - extract - record - gpuWait)
+        oneSecond.add(0, fixed)
+        oneSecond.add(1, update)
+        oneSecond.add(2, propagate)
+        oneSecond.add(3, acquire)
+        oneSecond.add(4, extract)
+        oneSecond.add(5, record)
+        oneSecond.add(6, gpuWait)
+        oneSecond.add(7, frame - fixed - update - propagate - acquire - extract - record - gpuWait)
         oneSecond.endFrame(frame)
+        oneSecondSteps += stats.fixedSteps
         if (lastReport.elapsedNow() >= 1.seconds) {
             println("${label()} ${oneSecond.describe()}")
-            if (warmedUp) total.addAll(oneSecond) else warmedUp = true
+            if (warmedUp) {
+                total.addAll(oneSecond)
+                totalSteps += oneSecondSteps
+            } else {
+                warmedUp = true
+            }
             oneSecond.reset()
+            oneSecondSteps = 0L
             lastReport = clock.markNow()
         }
     }
@@ -49,13 +62,18 @@ internal class StatsReport(private val label: () -> String) {
     /** Prints the averages over the whole run after the warm-up second. */
     fun printSummary() {
         println("--- summary (after 1 s warm-up, ${total.frames} frames) ---")
-        println(if (total.frames == 0) "too short to summarize" else "${label()} ${total.describe()}")
+        if (total.frames == 0) {
+            println("too short to summarize")
+            return
+        }
+        println("${label()} ${total.describe()}")
+        println("fixed steps per frame: ${fixed(totalSteps.toDouble() / total.frames, 3)}")
     }
 
     override fun toString(): String = "StatsReport(frames=${total.frames})"
 
     private companion object {
-        val STAGES: List<String> = listOf("update", "propagate", "acquire", "extract", "record", "gpuwait", "other")
+        val STAGES: List<String> = listOf("fixed", "update", "propagate", "acquire", "extract", "record", "gpuwait", "other")
     }
 }
 

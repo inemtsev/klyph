@@ -32,10 +32,6 @@ object Tuning {
     const val SHIP_HITBOX_SCALE = 0.7f
 
     const val PLAYER_SPEED = 400f
-    /** Bank angle in radians at full horizontal speed. */
-    const val PLAYER_BANK = 0.3f
-    /** Rate at which the bank follows the horizontal speed, per second. */
-    const val PLAYER_BANK_RATE = 10f
     const val PLAYER_LIVES = 3
     const val RESPAWN_DELAY = 1f
     /** Time after a respawn during which enemies pass through the player, which blinks. */
@@ -43,6 +39,10 @@ object Tuning {
     const val BLINK_RATE = 8f
 
     const val FIRE_INTERVAL = 0.12f
+    /** How far a gamepad trigger, from 0 to 1, must be pressed to fire. */
+    const val TRIGGER_THRESHOLD = 0.5f
+    /** A cursor closer to the ship than this gives no direction to face. */
+    const val MIN_AIM_DISTANCE = 4f
     const val BULLET_WIDTH = 14f
     const val BULLET_HEIGHT = 26f
     const val BULLET_SPEED = 700f

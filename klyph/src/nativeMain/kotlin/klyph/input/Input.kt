@@ -1,0 +1,131 @@
+package klyph.input
+
+import klyph.platform.GamepadId
+import klyph.platform.PlatformEvent
+import klyph.platform.Scancode
+import klyph.render.Camera
+
+/**
+ * Holds the state of the keyboard, the mouse and every connected gamepad as of this frame, so a
+ * system asks "is this key down?" instead of following key events. Read it through `App.input`.
+ *
+ * The engine updates it at the start of each frame's `Phase.INPUT`, from the platform events that
+ * arrived since the previous frame, before any system runs; it stays the same for the rest of the
+ * frame. The matching `klyph.event` events are published in the same step, for code that needs
+ * every event in order. When the window loses focus, every held key and button is released and
+ * reads as just released that frame, and every gamepad axis reads 0, so nothing stays stuck while
+ * the window is in the background.
+ *
+ * [toString] gives the number of keys and mouse buttons down and the number of gamepads, for
+ * example `Input(keysDown=2, mouseButtonsDown=0, gamepads=1)`.
+ *
+ * Not thread-safe. Samples live in the sandbox because they need a display.
+ */
+public class Input internal constructor() {
+    private val connected = ArrayList<Gamepad>()
+
+    /** The keyboard's keys. */
+    public val keyboard: Keyboard = Keyboard()
+
+    /** The mouse's position, movement, wheel and buttons. */
+    public val mouse: Mouse = Mouse()
+
+    /**
+     * The connected gamepads, in the order they were connected. The list is a read-only view that
+     * the engine updates at the start of a frame as pads come and go, so a reference to it stays
+     * current.
+     */
+    public val gamepads: List<Gamepad> = connected
+
+    /**
+     * The radial dead zone [Gamepad.leftStick] and [Gamepad.rightStick] apply to every gamepad, as
+     * a distance from the stick's center from 0 (none) up to but excluding 1. Starts at 0.15, which
+     * hides the drift of most worn sticks.
+     *
+     * Setting it outside that range throws.
+     *
+     * @throws IllegalArgumentException if set to a value below 0 or not below 1.
+     */
+    public var deadZone: Float = DEFAULT_DEAD_ZONE
+        set(value) {
+            require(value >= 0f && value < 1f) { "Dead zone $value is outside 0 until 1." }
+            field = value
+            for (gamepad in connected) gamepad.deadZone = value
+        }
+
+    /** Returns the connected gamepad [id], or `null` when no gamepad with that id is connected. */
+    public fun gamepadOrNull(id: GamepadId): Gamepad? {
+        for (gamepad in connected) if (gamepad.id == id) return gamepad
+        return null
+    }
+
+    /** Forgets the previous frame's just-pressed and just-released edges, mouse movement and scrolling. */
+    internal fun beginFrame() {
+        keyboard.clearEdges()
+        mouse.beginFrame()
+        for (gamepad in connected) gamepad.beginFrame()
+    }
+
+    /** Applies [event] to the state. Events that carry no input state are ignored. */
+    internal fun handle(event: PlatformEvent) {
+        when (event) {
+            is PlatformEvent.KeyDown -> if (!event.isRepeat) keyboard.press(event.scancode)
+            is PlatformEvent.KeyUp -> keyboard.release(event.scancode)
+            is PlatformEvent.MouseMoved -> mouse.move(event.x, event.y, event.dx, event.dy)
+            is PlatformEvent.MouseButtonDown -> {
+                mouse.moveTo(event.x, event.y)
+                mouse.press(event.button)
+            }
+            is PlatformEvent.MouseButtonUp -> {
+                mouse.moveTo(event.x, event.y)
+                mouse.release(event.button)
+            }
+            is PlatformEvent.MouseWheel -> mouse.scroll(event.dx, event.dy)
+            is PlatformEvent.GamepadConnected ->
+                if (gamepadOrNull(event.id) == null) connected.add(Gamepad(event.id, event.name, deadZone))
+            is PlatformEvent.GamepadDisconnected -> {
+                val gamepad = gamepadOrNull(event.id) ?: return
+                connected.remove(gamepad)
+                gamepad.disconnect()
+            }
+            is PlatformEvent.GamepadButtonDown -> gamepadOrNull(event.id)?.press(event.button)
+            is PlatformEvent.GamepadButtonUp -> gamepadOrNull(event.id)?.release(event.button)
+            is PlatformEvent.GamepadAxisMoved -> gamepadOrNull(event.id)?.moveAxis(event.axis, event.value)
+            PlatformEvent.WindowFocusLost -> {
+                keyboard.releaseAll()
+                mouse.releaseAll()
+                for (gamepad in connected) gamepad.releaseAll()
+            }
+            PlatformEvent.Quit,
+            PlatformEvent.WindowFocusGained,
+            is PlatformEvent.WindowResized,
+            is PlatformEvent.WindowDensityChanged -> {}
+        }
+    }
+
+    /**
+     * Finishes the frame's update: publishes the mouse's vectors and computes its world position
+     * through [camera], whose screen coordinates are pixels, [pixelDensity] pixels per point.
+     */
+    internal fun endFrame(camera: Camera, pixelDensity: Float) {
+        mouse.endFrame(camera, pixelDensity)
+    }
+
+    override fun toString(): String =
+        "Input(keysDown=${keyboard.downCount}, mouseButtonsDown=${mouse.downCount}, gamepads=${connected.size})"
+
+    private companion object {
+        const val DEFAULT_DEAD_ZONE = 0.15f
+    }
+}
+
+/**
+ * Returns -1 while only the key at [negative] is down, 1 while only the key at [positive] is
+ * down, and 0 while both or neither are, for movement on a pair of keys such as A and D.
+ */
+public fun Input.axis(negative: Scancode, positive: Scancode): Float {
+    var value = 0f
+    if (keyboard.isDown(negative)) value -= 1f
+    if (keyboard.isDown(positive)) value += 1f
+    return value
+}

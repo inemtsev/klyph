@@ -4,6 +4,7 @@ import klyph.app.Phase
 import klyph.app.deltaSeconds
 import klyph.app.runApp
 import klyph.entity.ComponentType
+import klyph.entity.Interpolated
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.platform.Color
@@ -18,11 +19,12 @@ import kotlin.random.Random
 /**
  * Moves `KLYPH_SPRITES` sprites around the window and draws them through the app's sprite pass.
  * The sprites take `KLYPH_TEXTURES` circle textures in turn, all in layer 0, so each texture is
- * one draw call.
+ * one draw call. With `KLYPH_INTERPOLATE=1` they move in `FIXED_UPDATE` at the same speeds and are
+ * marked [Interpolated], so each frame draws them blended between their last two fixed steps.
  */
 internal val spriteBenchmark: Benchmark = Benchmark(
     name = "sprites",
-    description = "Moves and spins KLYPH_SPRITES textured sprites over KLYPH_TEXTURES textures and draws them with SpriteRenderer.",
+    description = "Moves and spins KLYPH_SPRITES textured sprites over KLYPH_TEXTURES textures and draws them with SpriteRenderer; KLYPH_INTERPOLATE=1 moves them in fixed steps.",
 ) { settings ->
     require(settings.textureCount > 0) { "KLYPH_TEXTURES ${settings.textureCount} is not positive." }
     var sprites = 0
@@ -30,15 +32,18 @@ internal val spriteBenchmark: Benchmark = Benchmark(
     runApp(settings.appConfig("klyph sprites benchmark")) {
         addBenchmarkSystems(settings, report)
         addSystem(Phase.STARTUP) { app ->
-            println("textures=${settings.textureCount}")
+            println("textures=${settings.textureCount} interpolate=${if (settings.interpolate) "on" else "off"}")
             val regions = List(settings.textureCount) { app.assets.texture(circleImage(64, TINTS[it % TINTS.size])).asRegion() }
             // World units are points; dividing by the density keeps each sprite SPRITE_PIXELS pixels
             // across on every display, so the GPU fills as many pixels as on a density-1 window.
             val size = SPRITE_PIXELS / app.window.pixelDensity
             spawnSprites(app.world, regions, settings.spriteCount, size, app.window.width.toFloat(), app.window.height.toFloat())
+            if (settings.interpolate) app.world.forEach(Velocity) { entity, _ -> app.world.add(entity, Interpolated, Interpolated) }
         }
-        addSystem(Phase.UPDATE) { app ->
-            sprites = app.stats.spriteCount
+        addSystem(Phase.UPDATE) { app -> sprites = app.stats.spriteCount }
+        // Time.deltaSeconds is the fixed step inside FIXED_UPDATE and the frame time in UPDATE, so
+        // both move the sprites at the same speed in points per second.
+        addSystem(if (settings.interpolate) Phase.FIXED_UPDATE else Phase.UPDATE) { app ->
             move(app.world, app.time.deltaSeconds.coerceAtMost(0.1f), app.window.width.toFloat(), app.window.height.toFloat())
         }
     }

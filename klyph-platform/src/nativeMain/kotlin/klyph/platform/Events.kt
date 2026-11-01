@@ -1,195 +1,48 @@
 package klyph.platform
 
-import kotlin.jvm.JvmInline
+import cnames.structs.SDL_Gamepad
+import kotlin.time.Duration
+import kotlin.time.TimeSource
+import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.free
 import kotlinx.cinterop.nativeHeap
 import kotlinx.cinterop.ptr
-import sdl3.SDLK_0
-import sdl3.SDLK_1
-import sdl3.SDLK_2
-import sdl3.SDLK_3
-import sdl3.SDLK_4
-import sdl3.SDLK_5
-import sdl3.SDLK_6
-import sdl3.SDLK_7
-import sdl3.SDLK_8
-import sdl3.SDLK_9
-import sdl3.SDLK_A
-import sdl3.SDLK_B
-import sdl3.SDLK_BACKSPACE
-import sdl3.SDLK_C
-import sdl3.SDLK_D
-import sdl3.SDLK_DOWN
-import sdl3.SDLK_E
-import sdl3.SDLK_ESCAPE
-import sdl3.SDLK_F
-import sdl3.SDLK_G
-import sdl3.SDLK_H
-import sdl3.SDLK_I
-import sdl3.SDLK_J
-import sdl3.SDLK_K
-import sdl3.SDLK_L
-import sdl3.SDLK_LALT
-import sdl3.SDLK_LCTRL
-import sdl3.SDLK_LEFT
-import sdl3.SDLK_LSHIFT
-import sdl3.SDLK_M
-import sdl3.SDLK_N
-import sdl3.SDLK_O
-import sdl3.SDLK_P
-import sdl3.SDLK_Q
-import sdl3.SDLK_R
-import sdl3.SDLK_RALT
-import sdl3.SDLK_RCTRL
-import sdl3.SDLK_RETURN
-import sdl3.SDLK_RIGHT
-import sdl3.SDLK_RSHIFT
-import sdl3.SDLK_S
-import sdl3.SDLK_SPACE
-import sdl3.SDLK_T
-import sdl3.SDLK_TAB
-import sdl3.SDLK_U
-import sdl3.SDLK_UP
-import sdl3.SDLK_V
-import sdl3.SDLK_W
-import sdl3.SDLK_X
-import sdl3.SDLK_Y
-import sdl3.SDLK_Z
+import kotlinx.cinterop.toKString
+import sdl3.SDL_CloseGamepad
+import sdl3.SDL_EVENT_GAMEPAD_ADDED
+import sdl3.SDL_EVENT_GAMEPAD_AXIS_MOTION
+import sdl3.SDL_EVENT_GAMEPAD_BUTTON_DOWN
+import sdl3.SDL_EVENT_GAMEPAD_BUTTON_UP
+import sdl3.SDL_EVENT_GAMEPAD_REMOVED
 import sdl3.SDL_EVENT_KEY_DOWN
 import sdl3.SDL_EVENT_KEY_UP
+import sdl3.SDL_EVENT_MOUSE_BUTTON_DOWN
+import sdl3.SDL_EVENT_MOUSE_BUTTON_UP
+import sdl3.SDL_EVENT_MOUSE_MOTION
+import sdl3.SDL_EVENT_MOUSE_WHEEL
 import sdl3.SDL_EVENT_QUIT
 import sdl3.SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED
+import sdl3.SDL_EVENT_WINDOW_FOCUS_GAINED
+import sdl3.SDL_EVENT_WINDOW_FOCUS_LOST
 import sdl3.SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED
 import sdl3.SDL_Event
+import sdl3.SDL_GetGamepadName
 import sdl3.SDL_GetWindowFromID
 import sdl3.SDL_GetWindowPixelDensity
+import sdl3.SDL_MouseWheelDirection
+import sdl3.SDL_OpenGamepad
 import sdl3.SDL_PollEvent
-
-/**
- * A keyboard key, identified by SDL's key code.
- *
- * Key codes follow the active keyboard layout, so [A] is the key that types `a`, wherever it sits.
- */
-@JvmInline
-public value class KeyCode(public val code: UInt) {
-    override fun toString(): String = "KeyCode($code)"
-
-    public companion object {
-        /** The A key. */
-        public val A: KeyCode = KeyCode(SDLK_A)
-        /** The B key. */
-        public val B: KeyCode = KeyCode(SDLK_B)
-        /** The C key. */
-        public val C: KeyCode = KeyCode(SDLK_C)
-        /** The D key. */
-        public val D: KeyCode = KeyCode(SDLK_D)
-        /** The E key. */
-        public val E: KeyCode = KeyCode(SDLK_E)
-        /** The F key. */
-        public val F: KeyCode = KeyCode(SDLK_F)
-        /** The G key. */
-        public val G: KeyCode = KeyCode(SDLK_G)
-        /** The H key. */
-        public val H: KeyCode = KeyCode(SDLK_H)
-        /** The I key. */
-        public val I: KeyCode = KeyCode(SDLK_I)
-        /** The J key. */
-        public val J: KeyCode = KeyCode(SDLK_J)
-        /** The K key. */
-        public val K: KeyCode = KeyCode(SDLK_K)
-        /** The L key. */
-        public val L: KeyCode = KeyCode(SDLK_L)
-        /** The M key. */
-        public val M: KeyCode = KeyCode(SDLK_M)
-        /** The N key. */
-        public val N: KeyCode = KeyCode(SDLK_N)
-        /** The O key. */
-        public val O: KeyCode = KeyCode(SDLK_O)
-        /** The P key. */
-        public val P: KeyCode = KeyCode(SDLK_P)
-        /** The Q key. */
-        public val Q: KeyCode = KeyCode(SDLK_Q)
-        /** The R key. */
-        public val R: KeyCode = KeyCode(SDLK_R)
-        /** The S key. */
-        public val S: KeyCode = KeyCode(SDLK_S)
-        /** The T key. */
-        public val T: KeyCode = KeyCode(SDLK_T)
-        /** The U key. */
-        public val U: KeyCode = KeyCode(SDLK_U)
-        /** The V key. */
-        public val V: KeyCode = KeyCode(SDLK_V)
-        /** The W key. */
-        public val W: KeyCode = KeyCode(SDLK_W)
-        /** The X key. */
-        public val X: KeyCode = KeyCode(SDLK_X)
-        /** The Y key. */
-        public val Y: KeyCode = KeyCode(SDLK_Y)
-        /** The Z key. */
-        public val Z: KeyCode = KeyCode(SDLK_Z)
-
-        /** The 0 key on the main keyboard row. */
-        public val DIGIT_0: KeyCode = KeyCode(SDLK_0)
-        /** The 1 key on the main keyboard row. */
-        public val DIGIT_1: KeyCode = KeyCode(SDLK_1)
-        /** The 2 key on the main keyboard row. */
-        public val DIGIT_2: KeyCode = KeyCode(SDLK_2)
-        /** The 3 key on the main keyboard row. */
-        public val DIGIT_3: KeyCode = KeyCode(SDLK_3)
-        /** The 4 key on the main keyboard row. */
-        public val DIGIT_4: KeyCode = KeyCode(SDLK_4)
-        /** The 5 key on the main keyboard row. */
-        public val DIGIT_5: KeyCode = KeyCode(SDLK_5)
-        /** The 6 key on the main keyboard row. */
-        public val DIGIT_6: KeyCode = KeyCode(SDLK_6)
-        /** The 7 key on the main keyboard row. */
-        public val DIGIT_7: KeyCode = KeyCode(SDLK_7)
-        /** The 8 key on the main keyboard row. */
-        public val DIGIT_8: KeyCode = KeyCode(SDLK_8)
-        /** The 9 key on the main keyboard row. */
-        public val DIGIT_9: KeyCode = KeyCode(SDLK_9)
-
-        /** The up arrow key. */
-        public val UP: KeyCode = KeyCode(SDLK_UP)
-        /** The down arrow key. */
-        public val DOWN: KeyCode = KeyCode(SDLK_DOWN)
-        /** The left arrow key. */
-        public val LEFT: KeyCode = KeyCode(SDLK_LEFT)
-        /** The right arrow key. */
-        public val RIGHT: KeyCode = KeyCode(SDLK_RIGHT)
-
-        /** The space bar. */
-        public val SPACE: KeyCode = KeyCode(SDLK_SPACE)
-        /** The enter (return) key on the main keyboard. */
-        public val ENTER: KeyCode = KeyCode(SDLK_RETURN)
-        /** The escape key. */
-        public val ESCAPE: KeyCode = KeyCode(SDLK_ESCAPE)
-        /** The tab key. */
-        public val TAB: KeyCode = KeyCode(SDLK_TAB)
-        /** The backspace key. */
-        public val BACKSPACE: KeyCode = KeyCode(SDLK_BACKSPACE)
-
-        /** The left shift key. */
-        public val LEFT_SHIFT: KeyCode = KeyCode(SDLK_LSHIFT)
-        /** The right shift key. */
-        public val RIGHT_SHIFT: KeyCode = KeyCode(SDLK_RSHIFT)
-        /** The left control key. */
-        public val LEFT_CTRL: KeyCode = KeyCode(SDLK_LCTRL)
-        /** The right control key. */
-        public val RIGHT_CTRL: KeyCode = KeyCode(SDLK_RCTRL)
-        /** The left alt (option) key. */
-        public val LEFT_ALT: KeyCode = KeyCode(SDLK_LALT)
-        /** The right alt (option) key. */
-        public val RIGHT_ALT: KeyCode = KeyCode(SDLK_RALT)
-    }
-}
+import sdl3.SDL_WaitEventTimeout
 
 /**
  * An event taken from the platform's event queue by [EventPump.pollOrNull].
  *
  * The set of events is closed, so a `when` over them is exhaustive. The pump skips platform
  * events that have no subclass here.
+ *
+ * Mouse positions are in window points with (0, 0) at the top-left corner of the client area, the
+ * unit of [Window.width]; multiply by [Window.pixelDensity] for pixels.
  *
  * Samples live in the sandbox because they need a display.
  */
@@ -200,24 +53,165 @@ public sealed class PlatformEvent {
     }
 
     /**
-     * Reports that [key] was pressed. [isRepeat] is `true` when the key is being held down and the
-     * event comes from key repeat rather than a new press.
+     * Reports that a key was pressed: [key] is its label under the current layout and [scancode]
+     * its physical position. [isRepeat] is `true` when the key is being held down and the event
+     * comes from key repeat rather than a new press.
      */
-    public class KeyDown(public val key: KeyCode, public val isRepeat: Boolean) : PlatformEvent() {
-        override fun equals(other: Any?): Boolean = other is KeyDown && key == other.key && isRepeat == other.isRepeat
+    public class KeyDown(
+        public val key: KeyCode,
+        public val isRepeat: Boolean,
+        public val scancode: Scancode,
+    ) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean =
+            other is KeyDown && key == other.key && isRepeat == other.isRepeat && scancode == other.scancode
 
-        override fun hashCode(): Int = 31 * key.hashCode() + isRepeat.hashCode()
+        override fun hashCode(): Int = 31 * (31 * key.hashCode() + isRepeat.hashCode()) + scancode.hashCode()
 
-        override fun toString(): String = "KeyDown(key=$key, isRepeat=$isRepeat)"
+        override fun toString(): String = "KeyDown(key=$key, isRepeat=$isRepeat, scancode=$scancode)"
     }
 
-    /** Reports that [key] was released. */
-    public class KeyUp(public val key: KeyCode) : PlatformEvent() {
-        override fun equals(other: Any?): Boolean = other is KeyUp && key == other.key
+    /**
+     * Reports that a key was released: [key] is its label under the current layout and [scancode]
+     * its physical position.
+     */
+    public class KeyUp(public val key: KeyCode, public val scancode: Scancode) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean = other is KeyUp && key == other.key && scancode == other.scancode
 
-        override fun hashCode(): Int = key.hashCode()
+        override fun hashCode(): Int = 31 * key.hashCode() + scancode.hashCode()
 
-        override fun toString(): String = "KeyUp(key=$key)"
+        override fun toString(): String = "KeyUp(key=$key, scancode=$scancode)"
+    }
+
+    /**
+     * Reports that the mouse moved to ([x], [y]) in window points, by [dx] and [dy] points since
+     * the previous [MouseMoved].
+     *
+     * Positive [dx] is to the right and positive [dy] is down, like the window's coordinates.
+     */
+    public class MouseMoved(
+        public val x: Float,
+        public val y: Float,
+        public val dx: Float,
+        public val dy: Float,
+    ) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean =
+            other is MouseMoved && x.equals(other.x) && y.equals(other.y) && dx.equals(other.dx) && dy.equals(other.dy)
+
+        override fun hashCode(): Int = 31 * (31 * (31 * x.hashCode() + y.hashCode()) + dx.hashCode()) + dy.hashCode()
+
+        override fun toString(): String = "MouseMoved(x=$x, y=$y, dx=$dx, dy=$dy)"
+    }
+
+    /**
+     * Reports that [button] was pressed with the mouse at ([x], [y]) in window points.
+     *
+     * [clicks] counts presses in quick succession: 1 for a single click, 2 for a double click, and
+     * so on. Buttons past [MouseButton.X2] are not reported.
+     */
+    public class MouseButtonDown(
+        public val button: MouseButton,
+        public val x: Float,
+        public val y: Float,
+        public val clicks: Int,
+    ) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean =
+            other is MouseButtonDown && button == other.button && x.equals(other.x) && y.equals(other.y) &&
+                clicks == other.clicks
+
+        override fun hashCode(): Int = 31 * (31 * (31 * button.hashCode() + x.hashCode()) + y.hashCode()) + clicks
+
+        override fun toString(): String = "MouseButtonDown(button=$button, x=$x, y=$y, clicks=$clicks)"
+    }
+
+    /**
+     * Reports that [button] was released with the mouse at ([x], [y]) in window points. Buttons
+     * past [MouseButton.X2] are not reported.
+     */
+    public class MouseButtonUp(public val button: MouseButton, public val x: Float, public val y: Float) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean =
+            other is MouseButtonUp && button == other.button && x.equals(other.x) && y.equals(other.y)
+
+        override fun hashCode(): Int = 31 * (31 * button.hashCode() + x.hashCode()) + y.hashCode()
+
+        override fun toString(): String = "MouseButtonUp(button=$button, x=$x, y=$y)"
+    }
+
+    /**
+     * Reports that the mouse wheel or a touchpad scrolled by [dx] and [dy].
+     *
+     * Positive [dx] scrolls right and positive [dy] scrolls up, the wheel rolled away from the
+     * user. SDL reports the opposite signs when the system uses "natural" scrolling; the pump flips
+     * them back, so the sign means the same on every system. One notch of a wheel is usually 1;
+     * touchpads report fractions.
+     */
+    public class MouseWheel(public val dx: Float, public val dy: Float) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean = other is MouseWheel && dx.equals(other.dx) && dy.equals(other.dy)
+
+        override fun hashCode(): Int = 31 * dx.hashCode() + dy.hashCode()
+
+        override fun toString(): String = "MouseWheel(dx=$dx, dy=$dy)"
+    }
+
+    /**
+     * Reports that a gamepad named [name] was connected and is now known as [id].
+     *
+     * Gamepads that are already plugged in when [Subsystem.GAMEPAD] starts are reported this way
+     * too, by the first polls after [Sdl.init], so no separate enumeration is needed. Some systems
+     * (macOS, Windows with Windows.Gaming.Input) announce them a little later, after event
+     * processing has begun. [name] is empty when SDL knows no name for the device.
+     */
+    public class GamepadConnected(public val id: GamepadId, public val name: String) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean = other is GamepadConnected && id == other.id && name == other.name
+
+        override fun hashCode(): Int = 31 * id.hashCode() + name.hashCode()
+
+        override fun toString(): String = "GamepadConnected(id=$id, name=$name)"
+    }
+
+    /** Reports that the gamepad [id] was disconnected. The id is not used again. */
+    public class GamepadDisconnected(public val id: GamepadId) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean = other is GamepadDisconnected && id == other.id
+
+        override fun hashCode(): Int = id.hashCode()
+
+        override fun toString(): String = "GamepadDisconnected(id=$id)"
+    }
+
+    /** Reports that [button] was pressed on the gamepad [id]. */
+    public class GamepadButtonDown(public val id: GamepadId, public val button: GamepadButton) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean = other is GamepadButtonDown && id == other.id && button == other.button
+
+        override fun hashCode(): Int = 31 * id.hashCode() + button.hashCode()
+
+        override fun toString(): String = "GamepadButtonDown(id=$id, button=$button)"
+    }
+
+    /** Reports that [button] was released on the gamepad [id]. */
+    public class GamepadButtonUp(public val id: GamepadId, public val button: GamepadButton) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean = other is GamepadButtonUp && id == other.id && button == other.button
+
+        override fun hashCode(): Int = 31 * id.hashCode() + button.hashCode()
+
+        override fun toString(): String = "GamepadButtonUp(id=$id, button=$button)"
+    }
+
+    /**
+     * Reports that [axis] on the gamepad [id] moved to [value].
+     *
+     * Stick values run from -1 to 1, negative being left or up; trigger values run from 0
+     * (released) to 1 (fully pressed). Sticks rarely rest at exactly 0, so apply a dead zone.
+     */
+    public class GamepadAxisMoved(
+        public val id: GamepadId,
+        public val axis: GamepadAxis,
+        public val value: Float,
+    ) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean =
+            other is GamepadAxisMoved && id == other.id && axis == other.axis && value.equals(other.value)
+
+        override fun hashCode(): Int = 31 * (31 * id.hashCode() + axis.hashCode()) + value.hashCode()
+
+        override fun toString(): String = "GamepadAxisMoved(id=$id, axis=$axis, value=$value)"
     }
 
     /**
@@ -249,16 +243,31 @@ public sealed class PlatformEvent {
 
         override fun toString(): String = "WindowDensityChanged(pixelDensity=$pixelDensity)"
     }
+
+    /** Reports that a window gained keyboard focus, so key events go to it. */
+    public object WindowFocusGained : PlatformEvent() {
+        override fun toString(): String = "WindowFocusGained"
+    }
+
+    /** Reports that a window lost keyboard focus, so key events stop going to it. */
+    public object WindowFocusLost : PlatformEvent() {
+        override fun toString(): String = "WindowFocusLost"
+    }
 }
 
 /**
  * Drains SDL's event queue. Owns one native event record, so polling allocates nothing beyond the
- * returned [PlatformEvent]. [close] it when the pump is no longer needed.
+ * returned [PlatformEvent]. [close] it when the pump is no longer needed, before [Sdl.quit].
+ *
+ * The pump opens every gamepad SDL announces, because SDL only delivers button and axis events for
+ * open gamepads, and closes each one when it is disconnected or the pump is closed. Start
+ * [Subsystem.GAMEPAD] to get gamepad events at all.
  *
  * Samples live in the sandbox because they need a display.
  */
 public class EventPump : AutoCloseable {
     private val event = nativeHeap.alloc<SDL_Event>()
+    private val gamepads = HashMap<UInt, CPointer<SDL_Gamepad>>()
 
     /**
      * Returns the next event from the queue, or `null` when the queue is empty.
@@ -268,26 +277,109 @@ public class EventPump : AutoCloseable {
      */
     public fun pollOrNull(): PlatformEvent? {
         while (SDL_PollEvent(event.ptr)) {
-            when (event.type) {
-                SDL_EVENT_QUIT -> return PlatformEvent.Quit
-                SDL_EVENT_KEY_DOWN -> return PlatformEvent.KeyDown(KeyCode(event.key.key), isRepeat = event.key.repeat)
-                SDL_EVENT_KEY_UP -> return PlatformEvent.KeyUp(KeyCode(event.key.key))
-                SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED ->
-                    return PlatformEvent.WindowResized(pixelWidth = event.window.data1, pixelHeight = event.window.data2)
-                SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED -> {
-                    // The event carries no value; a window destroyed since it was queued is skipped.
-                    val window = SDL_GetWindowFromID(event.window.windowID) ?: continue
-                    val density = SDL_GetWindowPixelDensity(window)
-                    if (density > 0f) return PlatformEvent.WindowDensityChanged(density)
-                }
-            }
+            translateOrNull()?.let { return it }
         }
         return null
     }
 
+    /**
+     * Returns the next event from the queue, waiting up to [timeout] for one to arrive, or `null`
+     * when none arrives in time. [Duration.INFINITE] waits until an event arrives.
+     *
+     * Use it instead of [pollOrNull] in a loop that has nothing to do between events. The wait can
+     * run past [timeout] by the system's scheduling delay. [timeout] must not be negative.
+     *
+     * @throws IllegalArgumentException if [timeout] is negative.
+     */
+    public fun waitOrNull(timeout: Duration): PlatformEvent? {
+        require(!timeout.isNegative()) { "Timeout $timeout is negative." }
+        pollOrNull()?.let { return it }
+        val deadline = TimeSource.Monotonic.markNow() + timeout
+        while (true) {
+            val remaining = -deadline.elapsedNow()
+            if (remaining <= Duration.ZERO) return null
+            // SDL waits forever on -1; a finite wait of less than a millisecond still waits one.
+            val milliseconds = if (timeout.isInfinite()) -1 else remaining.inWholeMilliseconds.coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
+            if (!SDL_WaitEventTimeout(event.ptr, milliseconds)) return null
+            translateOrNull()?.let { return it }
+        }
+    }
+
+    /** Returns the [PlatformEvent] for the native event record, or `null` when it is not modelled. */
+    private fun translateOrNull(): PlatformEvent? = when (event.type) {
+        SDL_EVENT_QUIT -> PlatformEvent.Quit
+        SDL_EVENT_KEY_DOWN ->
+            PlatformEvent.KeyDown(KeyCode(event.key.key), isRepeat = event.key.repeat, scancode = Scancode(event.key.scancode))
+        SDL_EVENT_KEY_UP -> PlatformEvent.KeyUp(KeyCode(event.key.key), scancode = Scancode(event.key.scancode))
+        SDL_EVENT_MOUSE_MOTION -> PlatformEvent.MouseMoved(
+            x = event.motion.x,
+            y = event.motion.y,
+            dx = event.motion.xrel,
+            dy = event.motion.yrel,
+        )
+        SDL_EVENT_MOUSE_BUTTON_DOWN -> mouseButtonOrNull(event.button.button.toInt())?.let {
+            PlatformEvent.MouseButtonDown(it, x = event.button.x, y = event.button.y, clicks = event.button.clicks.toInt())
+        }
+        SDL_EVENT_MOUSE_BUTTON_UP -> mouseButtonOrNull(event.button.button.toInt())?.let {
+            PlatformEvent.MouseButtonUp(it, x = event.button.x, y = event.button.y)
+        }
+        SDL_EVENT_MOUSE_WHEEL -> {
+            val wheel = event.wheel
+            if (wheel.direction == SDL_MouseWheelDirection.SDL_MOUSEWHEEL_FLIPPED) {
+                // Subtracting from zero flips the sign without turning 0 into -0.
+                PlatformEvent.MouseWheel(dx = 0f - wheel.x, dy = 0f - wheel.y)
+            } else {
+                PlatformEvent.MouseWheel(dx = wheel.x, dy = wheel.y)
+            }
+        }
+        SDL_EVENT_GAMEPAD_ADDED -> connectGamepadOrNull(event.gdevice.which)
+        SDL_EVENT_GAMEPAD_REMOVED -> disconnectGamepadOrNull(event.gdevice.which)
+        SDL_EVENT_GAMEPAD_BUTTON_DOWN ->
+            PlatformEvent.GamepadButtonDown(GamepadId(event.gbutton.which), GamepadButton(event.gbutton.button.toInt()))
+        SDL_EVENT_GAMEPAD_BUTTON_UP ->
+            PlatformEvent.GamepadButtonUp(GamepadId(event.gbutton.which), GamepadButton(event.gbutton.button.toInt()))
+        SDL_EVENT_GAMEPAD_AXIS_MOTION -> PlatformEvent.GamepadAxisMoved(
+            GamepadId(event.gaxis.which),
+            GamepadAxis(event.gaxis.axis.toInt()),
+            normalizedAxisValue(event.gaxis.value),
+        )
+        SDL_EVENT_WINDOW_FOCUS_GAINED -> PlatformEvent.WindowFocusGained
+        SDL_EVENT_WINDOW_FOCUS_LOST -> PlatformEvent.WindowFocusLost
+        SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED ->
+            PlatformEvent.WindowResized(pixelWidth = event.window.data1, pixelHeight = event.window.data2)
+        SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED -> {
+            // The event carries no value; a window destroyed since it was queued is skipped.
+            val window = SDL_GetWindowFromID(event.window.windowID)
+            val density = if (window == null) 0f else SDL_GetWindowPixelDensity(window)
+            if (density > 0f) PlatformEvent.WindowDensityChanged(density) else null
+        }
+        else -> null
+    }
+
+    /**
+     * Opens the gamepad [id] and returns its connection event, or `null` when it is already open or
+     * SDL cannot open it. SDL sends a second ADDED event when a joystick gains a mapping.
+     */
+    private fun connectGamepadOrNull(id: UInt): PlatformEvent? {
+        if (id in gamepads) return null
+        val gamepad = SDL_OpenGamepad(id) ?: return null
+        gamepads[id] = gamepad
+        val name = SDL_GetGamepadName(gamepad)?.toKString().orEmpty()
+        return PlatformEvent.GamepadConnected(GamepadId(id), name)
+    }
+
+    /** Closes the gamepad [id] and returns its disconnection event, or `null` when it was not open. */
+    private fun disconnectGamepadOrNull(id: UInt): PlatformEvent? {
+        val gamepad = gamepads.remove(id) ?: return null
+        SDL_CloseGamepad(gamepad)
+        return PlatformEvent.GamepadDisconnected(GamepadId(id))
+    }
+
     override fun close() {
+        for (gamepad in gamepads.values) SDL_CloseGamepad(gamepad)
+        gamepads.clear()
         nativeHeap.free(event)
     }
 
-    override fun toString(): String = "EventPump"
+    override fun toString(): String = "EventPump(gamepads=${gamepads.size})"
 }

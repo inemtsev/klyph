@@ -1,9 +1,20 @@
 package klyph.app
 
 import klyph.entity.propagateTransforms
+import klyph.entity.recordPreviousTransforms
+import klyph.event.GamepadButtonPressed
+import klyph.event.GamepadButtonReleased
+import klyph.event.GamepadConnected
+import klyph.event.GamepadDisconnected
 import klyph.event.KeyPressed
 import klyph.event.KeyReleased
+import klyph.event.MouseButtonPressed
+import klyph.event.MouseButtonReleased
+import klyph.event.MouseMoved
+import klyph.event.MouseWheel
 import klyph.event.QuitRequested
+import klyph.event.WindowFocusGained
+import klyph.event.WindowFocusLost
 import klyph.event.WindowDensityChanged
 import klyph.event.WindowResized
 import klyph.platform.EventPump
@@ -30,11 +41,14 @@ import kotlin.time.TimeSource
  * [Phase.INPUT], [Phase.FIXED_UPDATE] (zero or more steps), [Phase.UPDATE], [Phase.LATE_UPDATE],
  * the transform propagation and [Phase.RENDER] once per frame until a frame ends with a quit
  * request, and finally [Phase.SHUTDOWN] runs once. STARTUP and SHUTDOWN run even when no frame
- * does. The engine translates platform events into `klyph.event` events at the start of INPUT,
- * advances every `SpriteAnimation` and shows its current frame in the entity's `Sprite` at the
- * start of LATE_UPDATE, and draws every entity with a `Transform` and a `Sprite` through
- * [App.camera] at the end of RENDER. A `QuitRequested` event also calls [App.quit], so closing
- * the window ends the app.
+ * does. At the start of INPUT the engine updates [App.input] from the platform events and
+ * translates them into `klyph.event` events. It advances every `SpriteAnimation` and shows its
+ * current frame in the entity's `Sprite` at the start of LATE_UPDATE, and draws every entity with a `Transform` and a `Sprite` through
+ * [App.camera] at the end of RENDER. Before each FIXED_UPDATE step it records the transform of
+ * every entity marked `Interpolated`, and the drawing blends those entities between that record
+ * and their current transform by [Time.fixedStepAlpha]. A `QuitRequested` event also calls
+ * [App.quit], so closing the window ends the app. [App.commands] is applied after `setup`, after
+ * every system and after the transform propagation.
  *
  * The camera starts with the window's pixel size as its viewport, a zoom equal to the window's
  * pixel density so that one world unit is one point, and centered on the middle of the window, so
@@ -43,7 +57,7 @@ import kotlin.time.TimeSource
  * it moved to another display, the engine multiplies the zoom by the ratio of the new density to
  * the old one, so the view keeps its framing, and publishes `WindowDensityChanged`.
  *
- * The SDL video subsystem, the window, the GPU device, [App.assets] and the renderer exist only
+ * The SDL video and gamepad subsystems, the window, the GPU device, [App.assets] and the renderer exist only
  * while this call runs, and only one app may run at a time. Exceptions thrown by [setup] or a system end
  * the loop without running SHUTDOWN; everything is still released, and the exception propagates.
  * Initialization fails with an exception if SDL, the window or the GPU device cannot be created.
@@ -53,7 +67,7 @@ import kotlin.time.TimeSource
  * @throws klyph.platform.SdlException if SDL, the window or the GPU device cannot be initialized.
  */
 public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
-    Sdl.init(setOf(Subsystem.VIDEO))
+    Sdl.init(setOf(Subsystem.VIDEO, Subsystem.GAMEPAD))
     try {
         Window(config.title, config.width, config.height, setOf(WindowFlag.RESIZABLE, WindowFlag.HIGH_PIXEL_DENSITY)).use { window ->
             GpuDevice(setOf(ShaderFormat.MSL, ShaderFormat.SPIRV, ShaderFormat.DXIL), config.validation).use { device ->
@@ -70,6 +84,7 @@ public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
                             SpritePass(device, window, config.target, config.gpuSync).use { pass ->
                                 val app = App(config, window, presentMode, assets, startCamera(window))
                                 app.setup()
+                                if (!app.commands.isEmpty) app.commands.apply()
                                 FrameLoop(app, pump, pass).run()
                             }
                         }
@@ -126,14 +141,18 @@ private class FrameLoop(private val app: App, private val pump: EventPump, priva
         app.events.endFrame()
         time.beginFrame(delta)
 
+        app.input.beginFrame()
         translatePlatformEvents()
+        app.input.endFrame(app.camera, pixelDensity)
         app.run(Phase.INPUT)
         var mark = clock.markNow()
         stats.add(Phase.INPUT.ordinal, (mark - start).inWholeNanoseconds)
 
         val steps = stepper.accumulate(time.delta)
+        time.fixedStepAlpha = stepper.alpha
         for (step in 0 until steps) {
             time.beginFixedStep()
+            app.world.recordPreviousTransforms()
             app.run(Phase.FIXED_UPDATE)
             time.endFixedStep()
         }
@@ -147,10 +166,11 @@ private class FrameLoop(private val app: App, private val pump: EventPump, priva
         mark = lap(Phase.LATE_UPDATE.ordinal, mark)
 
         app.world.propagateTransforms()
+        if (!app.commands.isEmpty) app.commands.apply()
         mark = lap(FrameStats.PROPAGATION, mark)
 
         app.run(Phase.RENDER)
-        pass.render(app.world, app.camera, app.clearColor, stats)
+        pass.render(app.world, app.camera, app.clearColor, time.fixedStepAlpha, stats)
         lap(Phase.RENDER.ordinal, mark)
 
         time.endFrame()
@@ -164,17 +184,36 @@ private class FrameLoop(private val app: App, private val pump: EventPump, priva
         return now
     }
 
-    /** Drains the platform's event queue into [App.events], the engine's first step of [Phase.INPUT]. */
+    /**
+     * Drains the platform's event queue into [App.input] and [App.events], the engine's first step
+     * of [Phase.INPUT].
+     */
     private fun translatePlatformEvents() {
         val events = app.events
+        val input = app.input
         while (true) {
-            when (val event = pump.pollOrNull() ?: return) {
+            val event = pump.pollOrNull() ?: return
+            input.handle(event)
+            when (event) {
                 PlatformEvent.Quit -> {
                     events.publish(QuitRequested)
                     app.quit()
                 }
-                is PlatformEvent.KeyDown -> events.publish(KeyPressed(event.key, isRepeat = event.isRepeat))
-                is PlatformEvent.KeyUp -> events.publish(KeyReleased(event.key))
+                is PlatformEvent.KeyDown -> events.publish(KeyPressed(event.key, isRepeat = event.isRepeat, event.scancode))
+                is PlatformEvent.KeyUp -> events.publish(KeyReleased(event.key, event.scancode))
+                is PlatformEvent.MouseMoved -> events.publish(MouseMoved(x = event.x, y = event.y, dx = event.dx, dy = event.dy))
+                is PlatformEvent.MouseButtonDown ->
+                    events.publish(MouseButtonPressed(event.button, x = event.x, y = event.y, clicks = event.clicks))
+                is PlatformEvent.MouseButtonUp -> events.publish(MouseButtonReleased(event.button, x = event.x, y = event.y))
+                is PlatformEvent.MouseWheel -> events.publish(MouseWheel(dx = event.dx, dy = event.dy))
+                is PlatformEvent.GamepadConnected -> events.publish(GamepadConnected(event.id, event.name))
+                is PlatformEvent.GamepadDisconnected -> events.publish(GamepadDisconnected(event.id))
+                is PlatformEvent.GamepadButtonDown -> events.publish(GamepadButtonPressed(event.id, event.button))
+                is PlatformEvent.GamepadButtonUp -> events.publish(GamepadButtonReleased(event.id, event.button))
+                // Axis motion is state only: App.input holds the latest value.
+                is PlatformEvent.GamepadAxisMoved -> {}
+                PlatformEvent.WindowFocusGained -> events.publish(WindowFocusGained)
+                PlatformEvent.WindowFocusLost -> events.publish(WindowFocusLost)
                 is PlatformEvent.WindowResized -> {
                     pass.resize(event.pixelWidth, event.pixelHeight)
                     // A minimized window can report a zero size; the camera keeps its last viewport.
