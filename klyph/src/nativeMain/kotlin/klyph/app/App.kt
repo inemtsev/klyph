@@ -1,5 +1,6 @@
 package klyph.app
 
+import klyph.audio.Audio
 import klyph.entity.Commands
 import klyph.entity.World
 import klyph.event.Events
@@ -11,12 +12,12 @@ import klyph.render.Camera
 
 /**
  * Represents a running klyph application: the world, its command queue, the event bus, the input
- * state, the shared resources, the clock, the assets, the camera and the systems the frame loop
- * runs. [runApp] creates the one instance and passes it to its `setup` block and to
+ * state, the shared resources, the clock, the assets, the camera, the audio and the systems the
+ * frame loop runs. [runApp] creates the one instance and passes it to its `setup` block and to
  * every [System].
  *
- * An `App` is only valid inside [runApp]. Once [runApp] returns, its window, GPU device and
- * assets are closed, so keeping a reference and using it afterwards is an error.
+ * An `App` is only valid inside [runApp]. Once [runApp] returns, its window, GPU device, audio
+ * and assets are closed, so keeping a reference and using it afterwards is an error.
  *
  * Not thread-safe; call it from systems only.
  *
@@ -53,6 +54,13 @@ public class App internal constructor(
      * or rotate it from a system, such as a [Phase.LATE_UPDATE] system that follows the player.
      */
     public val camera: Camera,
+    /**
+     * Plays sound effects and music, mixed on the audio device's own thread. Load sounds and
+     * tracks through [assets]. When [AppConfig.audio] turns audio off, or the engine cannot open
+     * an audio device, `audio.isEnabled` is `false` and every call does nothing, so the game runs
+     * the same without sound. The engine closes it after the last [Phase.SHUTDOWN] system.
+     */
+    public val audio: Audio,
 ) {
     private val schedule = Schedule()
     private var startupDone = false

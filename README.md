@@ -23,13 +23,19 @@ What works today:
   draw call, with cycling transfer buffers for upload.
 - An HLSL shader pipeline through SDL_shadercross, with the compiled shaders
   checked in as Kotlin.
-- A benchmarks executable with named benchmarks: `sprites` (a flat world) and
-  `hierarchy` (a three-level tree of orbiting sprites).
+- Audio: sound effects from WAV or Ogg Vorbis with volume, pitch and pan, and
+  streamed Ogg Vorbis music with fades, mixed by klyph on SDL's audio thread.
+  The main thread never waits on the mixer, and a game runs silently when
+  there is no audio device.
+- A benchmarks executable with named benchmarks: `sprites` (a flat world),
+  `hierarchy` (a three-level tree of orbiting sprites) and `mixer` (32 voices
+  and music, mixed headless).
 - A top-down shooter sample: a ship flies and fires over a starfield in an
   arena larger than the window, enemies drift down and explode with a
-  sprite-sheet animation, and the camera follows the ship. It plays with the
+  sprite-sheet animation, and the camera follows the ship. Shots, explosions
+  and hits have sounds and a music loop plays. It plays with the
   keyboard and mouse aim or with a gamepad, pauses when the window loses focus,
-  loads PNG art from an `assets/` folder next to the binary and can play itself
+  loads its art and sounds from an `assets/` folder next to the binary and can play itself
   for demos.
 
 ## Design decisions
@@ -113,7 +119,7 @@ tested; `-Pklyph.target=<name>` picks a target explicitly.
 | Module | Contents |
 |---|---|
 | `klyph-platform` | SDL3 bindings and the thin Kotlin API over them. The only module that touches C interop. |
-| `klyph` | The engine: entities, components, rendering, shaders. |
+| `klyph` | The engine: entities, components, rendering, shaders, audio. |
 | `samples` | The `@sample` functions referenced from KDoc, run as tests. |
 | `sandbox` | Executable smoke test: opens a window and clears it each frame. |
 | `shooter` | The reference game: a top-down shooter that exercises the engine end to end. |
@@ -123,14 +129,12 @@ tested; `-Pklyph.target=<name>` picks a target explicitly.
 
 In order:
 
-1. Rendering for a game: image loading, sprite sheets and animation, multiple
-   textures per frame, a camera, window resize.
-2. Input: keyboard, mouse and gamepad state. Windows CI.
-3. Audio: sound effects and music.
-4. Collision tests, particles, bitmap text and a debug overlay.
-5. A Gradle plugin and published artifacts.
+1. Collision tests, particles, bitmap text and a debug overlay.
+2. A Gradle plugin and published artifacts.
 
-Done: entity hierarchy, system phases and events; macOS and Linux CI.
+Done: entity hierarchy, system phases and events; image loading, sprite sheets,
+animation, multiple textures and a camera; keyboard, mouse and gamepad state;
+sound effects and music; macOS, Linux and Windows CI.
 
 ## Contributing
 

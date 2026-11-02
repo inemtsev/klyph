@@ -2,6 +2,8 @@ package klyph.shooter
 
 import klyph.app.App
 import klyph.app.Assets
+import klyph.audio.MusicTrack
+import klyph.audio.Sound
 import klyph.entity.Entity
 import klyph.platform.Color
 import klyph.platform.Image
@@ -31,15 +33,39 @@ class Art(
     }
 }
 
+/** The sound effects and the music the game plays, loaded once at startup. */
+class Sounds(
+    val shot: Sound,
+    val explosion: Sound,
+    val hit: Sound,
+    val gameOver: Sound,
+    val music: MusicTrack,
+) {
+    override fun toString(): String = "Sounds(music=$music)"
+
+    companion object {
+        fun load(assets: Assets): Sounds = Sounds(
+            shot = assets.sound("shot.wav"),
+            explosion = assets.sound("explosion.wav"),
+            hit = assets.sound("hit.wav"),
+            gameOver = assets.sound("gameover.wav"),
+            music = assets.music("music.ogg"),
+        )
+    }
+}
+
 /**
- * The state the game's systems share: art, controls, score and timers. It is an `App.resources`
- * resource, inserted at startup and read through [App.game].
+ * The state the game's systems share: art, sounds, controls, score and timers. It is an
+ * `App.resources` resource, inserted at startup and read through [App.game].
  *
  * [player] is a constructor value rather than a late-set field, because [Entity] is a value class
  * and cannot be `lateinit`; startup spawns the ship first, which gives its handle at once.
  */
-class Game(val art: Art, val isAutopilot: Boolean, val player: Entity) {
+class Game(val art: Art, val sounds: Sounds, val isAutopilot: Boolean, val player: Entity) {
     val random: Random = if (isAutopilot) Random(Tuning.AUTOPILOT_SEED) else Random.Default
+
+    /** Picks shot pitches. Kept apart from [random] so sound leaves the autopilot's runs unchanged. */
+    val soundRandom: Random = Random.Default
 
     val controls = Controls()
 

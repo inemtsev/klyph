@@ -17,10 +17,13 @@ import sdl3.SDL_getenv
 public class SdlException(message: String) : KlyphException(message)
 
 /** Throws [SdlException] for the SDL function [call], reading the reason from SDL's error state. */
-internal fun sdlFailure(call: String): Nothing {
-    val reason = SDL_GetError()?.toKString().orEmpty()
-    throw SdlException("$call failed: $reason.")
-}
+internal fun sdlFailure(call: String): Nothing = throw SdlException(sdlFailureMessage(call))
+
+/** Returns the [SdlException] message for the SDL function [call], reading the reason from SDL's error state. */
+internal fun sdlFailureMessage(call: String): String = "$call failed: ${sdlErrorText()}."
+
+/** Returns SDL's current error text without its trailing period, or `unknown error` when it is empty. */
+internal fun sdlErrorText(): String = SDL_GetError()?.toKString().orEmpty().trim().trimEnd('.').ifEmpty { "unknown error" }
 
 /**
  * Parts of SDL that [Sdl.init] can start.
@@ -38,7 +41,9 @@ public enum class Subsystem(internal val flag: UInt) {
  */
 public object Sdl {
     /**
-     * Starts the given [subsystems]. Call once before any other platform function.
+     * Starts the given [subsystems] in addition to those already running; SDL counts each
+     * subsystem separately, so the call may be repeated for different subsystems. Start video
+     * before using any other platform function. [quit] shuts all of them down.
      *
      * @throws SdlException if SDL cannot start one of them.
      */
@@ -48,7 +53,7 @@ public object Sdl {
         if (!SDL_Init(flags)) sdlFailure("SDL_Init")
     }
 
-    /** Shuts down every subsystem. Nothing from this package may be used afterwards. */
+    /** Shuts down every running subsystem, however many times [init] started it. Nothing from this package may be used afterwards. */
     public fun quit() {
         SDL_Quit()
     }

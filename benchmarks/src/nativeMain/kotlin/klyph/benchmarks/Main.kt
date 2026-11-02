@@ -7,7 +7,7 @@ import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 
 /** Every benchmark this executable can run, in the order they are listed. */
-internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark)
+internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, mixerBenchmark)
 
 /**
  * Runs the benchmark named by the first argument. Without an argument, prints the available
@@ -18,7 +18,11 @@ internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenc
  * (default 1), `KLYPH_INTERPOLATE=1` to move the sprites benchmark in fixed steps and draw it
  * interpolated, `KLYPH_FRAMES` frames before exit, `KLYPH_SECONDS` seconds of frame time before exit,
  * `KLYPH_VSYNC=1` to cap at the display rate, `KLYPH_VALIDATION=1` for the GPU validation layer,
- * `KLYPH_OFFSCREEN=1` to render to a texture and wait for the GPU each frame instead of presenting.
+ * `KLYPH_OFFSCREEN=1` to render to a texture and wait for the GPU each frame instead of presenting,
+ * `KLYPH_MUSIC=<path to an .ogg>` to make the mixer benchmark stream that Ogg Vorbis file instead of
+ * its synthetic music, so the time includes real decoding. A relative path resolves against the
+ * executable's directory when run directly, and against the repository root through the Gradle
+ * tasks.
  */
 fun main(args: Array<String>) {
     val name = args.firstOrNull()
@@ -39,6 +43,7 @@ fun main(args: Array<String>) {
         offscreen = Sdl.environmentVariable("KLYPH_OFFSCREEN") == "1",
         presentMode = if (Sdl.environmentVariable("KLYPH_VSYNC") == "1") PresentMode.VSYNC else PresentMode.IMMEDIATE,
         validation = if (Sdl.environmentVariable("KLYPH_VALIDATION") == "1") GpuValidation.ENABLED else GpuValidation.DISABLED,
+        musicPath = Sdl.environmentVariable("KLYPH_MUSIC")?.ifEmpty { null },
     )
     benchmark.run(settings)
 }

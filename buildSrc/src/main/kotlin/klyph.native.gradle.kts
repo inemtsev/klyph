@@ -73,7 +73,7 @@ val checkNoInteropImports = tasks.register("checkNoInteropImports") {
     dependsOn(tasks.matching { it.name == "compileShaders" })
     // Plain values only: the configuration cache cannot serialize references to the script itself.
     val root = projectDir
-    val interopImport = Regex("""^\s*import\s+(kotlinx\.cinterop|sdl3|cnames|platform)\.""")
+    val interopImport = Regex("""^\s*import\s+(kotlinx\.cinterop|sdl3|cnames|platform|stb|vorbis)\.""")
     doLast {
         val offenders = sources.files.filter { file ->
             file.useLines { lines -> lines.any { interopImport.containsMatchIn(it) } }

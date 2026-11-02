@@ -57,6 +57,7 @@ in the same PR rather than inventing a one-off.
 | `MutableX` | Mutable counterpart of a read-only interface `X`. | `MutableGraph` |
 | `AbstractX` | Skeletal implementation for users who extend `X`. | `AbstractGraph` |
 | `isX` / `hasX` | Boolean property or function. No `getIsX`, no bare adjectives. | `isEmpty`, `hasCycle` |
+| `setX(handle, value)` | Changes property `x` of the thing a value-class handle refers to, on the service that owns it. Only for handles, which cannot hold mutable properties; everything else uses `var x`. | `audio.setVolume(voice, 0.5f)`, `audio.setPan(voice, -1f)` |
 | `XImpl` | Private or internal implementation of `X`. Never public. | `GraphImpl` |
 
 General rules:
@@ -102,7 +103,10 @@ public fun <N> buildGraph(directed: Boolean = false, builder: GraphBuilder<N>.()
   `Collection`, `Iterable` or `Sequence`. Never `MutableX`, `ArrayList`, or
   `HashMap` in a public signature.
 - Arrays MUST NOT appear in public signatures. If an array is unavoidable, copy
-  it on the way in and on the way out.
+  it on the way in and on the way out. One exception: audio types in
+  `klyph.audio` and `klyph.platform` may take a `FloatArray` sample buffer
+  without copying, such as `AudioRenderer.render` and `PcmStream.read`, because
+  the mix path runs on the audio thread and must not allocate.
 - Return `List` for eager operations and `Sequence` for lazy ones. A function on
   `Sequence` MUST stay lazy and MUST NOT consume the receiver before the result
   is iterated.

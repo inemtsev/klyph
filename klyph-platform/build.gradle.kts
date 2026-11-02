@@ -22,6 +22,12 @@ kotlin {
                 packageName("stb")
                 includeDirs("src/nativeInterop/c/stb")
             }
+            // stb_vorbis, vendored and compiled into the interop stubs the same way.
+            cinterops.create("vorbis") {
+                definitionFile.set(file("src/nativeInterop/cinterop/vorbis.def"))
+                packageName("vorbis")
+                includeDirs("src/nativeInterop/c/stb")
+            }
         }
     }
 

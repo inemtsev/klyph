@@ -3,6 +3,7 @@ package klyph.shooter
 import klyph.platform.Color
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /** Every tuning value of the game in one place. Distances are world units, times are seconds. */
 object Tuning {
@@ -62,6 +63,15 @@ object Tuning {
 
     const val EXPLOSION_SIZE = 96f
     val EXPLOSION_FRAME: Duration = 60.milliseconds
+
+    const val SHOT_VOLUME = 0.6f
+    /** Each shot plays at a random pitch in this range, so rapid fire does not drone. */
+    const val SHOT_MIN_PITCH = 0.95f
+    const val SHOT_MAX_PITCH = 1.05f
+    /** Fade of the music at the start of a game and after game over. */
+    val MUSIC_FADE: Duration = 1.seconds
+    /** Music volume while the game is paused; it plays at full volume otherwise. */
+    const val PAUSED_MUSIC_VOLUME = 0.2f
 
     /** Seed of the random source in autopilot mode, so smoke runs repeat. */
     const val AUTOPILOT_SEED = 42

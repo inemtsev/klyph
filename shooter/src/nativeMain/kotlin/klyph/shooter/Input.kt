@@ -40,8 +40,9 @@ fun Game.readInput(app: App) {
 }
 
 /**
- * Pauses when the window loses focus and resumes when it gets it back or a key is pressed. The
- * autopilot never pauses, so demos and smoke runs play on in the background.
+ * Pauses when the window loses focus and resumes when it gets it back or a key is pressed, turning
+ * the music down while paused. The autopilot never pauses, so demos and smoke runs play on in the
+ * background.
  */
 private fun Game.updatePause(app: App) {
     val wasPaused = isPaused
@@ -53,7 +54,11 @@ private fun Game.updatePause(app: App) {
         events.forEach<KeyPressed> { if (!it.isRepeat) isResumed = true }
         if (isResumed) isPaused = false
     }
-    if (isPaused != wasPaused) println(if (isPaused) "Paused." else "Resumed.")
+    if (isPaused != wasPaused) {
+        // The music ducks while paused instead of stopping, so resuming does not restart it.
+        app.audio.music.volume = if (isPaused) Tuning.PAUSED_MUSIC_VOLUME else 1f
+        println(if (isPaused) "Paused." else "Resumed.")
+    }
 }
 
 private fun Game.steerFromInput(app: App) {

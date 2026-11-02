@@ -1,5 +1,6 @@
 package klyph.app
 
+import klyph.audio.AudioConfig
 import klyph.platform.Color
 import klyph.platform.GpuValidation
 import klyph.platform.PresentMode
@@ -59,13 +60,17 @@ class AppConfigTest {
         assertNotEquals(AppConfig(), AppConfig(gpuSync = GpuSync.WAIT_EACH_FRAME))
         assertNotEquals(AppConfig(), AppConfig(clearColor = Color.WHITE))
         assertNotEquals(AppConfig(), AppConfig(assetRoot = "data/"))
+        assertNotEquals(AppConfig(), AppConfig(audio = AudioConfig(enabled = false)))
+        assertEquals(AppConfig(audio = AudioConfig(maxVoices = 8)), AppConfig(audio = AudioConfig(maxVoices = 8)))
+        assertEquals(AppConfig(audio = AudioConfig(maxVoices = 8)).hashCode(), AppConfig(audio = AudioConfig(maxVoices = 8)).hashCode())
     }
 
     @Test
     fun toStringListsEverySetting() {
         assertEquals(
             "AppConfig(title=klyph, width=1280, height=720, fixedRate=60, maxFixedStepsPerFrame=4, " +
-                "presentMode=VSYNC, target=WINDOW, gpuSync=NONE, validation=DISABLED, clearColor=Color(#1a1f2eff), assetRoot=null)",
+                "presentMode=VSYNC, target=WINDOW, gpuSync=NONE, validation=DISABLED, clearColor=Color(#1a1f2eff), assetRoot=null, " +
+                "audio=AudioConfig(enabled=true, maxVoices=32, sampleRate=48000, bufferFrames=1024))",
             AppConfig().toString(),
         )
     }

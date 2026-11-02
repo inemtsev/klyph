@@ -9,6 +9,32 @@ times the pixels they did. The benchmarks spread sprites over the window's size 
 divide sprite sizes (and the hierarchy's ring radii) by the window's pixel density, so every
 sprite still covers the same pixels as in the earlier runs and the GPU fill work matches them.
 
+## Mixer (2026-11-02)
+
+The `mixer` benchmark mixes audio headless, with no window and no audio device, through the public
+`Audio(config)` and `Audio.renderer`. It plays 32 looping voices of a one-second mono sine at
+44.1 kHz, at pitches from 0.5 to 2 and pans across the field, plus a looping music track, and
+renders 60 s of 48 kHz stereo in 1024-frame blocks, the device's default block. By default the
+music is a synthetic stereo stream that copies from a precomputed table, so it measures the
+mixer alone; `KLYPH_MUSIC=<file.ogg>` streams a real Ogg Vorbis file instead, decoded by
+stb_vorbis as it plays. Reproduce with `./gradlew :benchmarks:benchmarkMixer` and
+`./gradlew :benchmarks:benchmarkMixer -Pklyph.music=shooter/assets/music.ogg` (the shooter's
+46.8 s mono 44.1 kHz track, which loops once during the run). Same machine as below, release
+build. Three runs of each, alternated; the lines are the second pair, and the other runs agree
+within 3 us on the mean.
+
+```
+synthetic music: 32 voices + music, 2812 blocks of 1024 frames at 48000 Hz: per block mean=54.08us max=85.00us budget=21333us (0.254% of the block's real time)
+Ogg Vorbis music: 32 voices + music, 2812 blocks of 1024 frames at 48000 Hz: per block mean=60.29us max=116.88us budget=21333us (0.283% of the block's real time)
+```
+
+A block is 21.3 ms of sound, and mixing it takes about 0.06 ms, 0.3% of the audio thread's time,
+or 1.7 us per voice. Decoding the Vorbis track adds about 6 us per block, roughly 940 source
+frames of mono, so music costs about as much as three or four effect voices. The worst block
+stays under 0.2 ms in every run. The headroom matters because Kotlin/Native's garbage collector
+can pause the audio thread along with the main thread, and the 1024-frame device buffer has to
+ride that out; the mixer itself allocates nothing, so it never starts a collection.
+
 ## Fixed-step interpolation (2026-10-31)
 
 Entities marked `Interpolated` are drawn between their last two fixed steps. At the start of each

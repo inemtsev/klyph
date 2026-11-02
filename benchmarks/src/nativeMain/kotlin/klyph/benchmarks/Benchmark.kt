@@ -50,6 +50,11 @@ internal class BenchmarkSettings(
     val presentMode: PresentMode,
     /** `KLYPH_VALIDATION=1` turns on the GPU validation layer. */
     val validation: GpuValidation,
+    /**
+     * `KLYPH_MUSIC`: an Ogg Vorbis file the mixer benchmark streams in place of its synthetic
+     * music, to measure the decoding cost; `null` keeps the synthetic stream.
+     */
+    val musicPath: String?,
 ) {
     /** Returns the app configuration for a benchmark whose window is titled [title]. */
     fun appConfig(title: String): AppConfig =
@@ -63,7 +68,7 @@ internal class BenchmarkSettings(
 
     override fun toString(): String =
         "BenchmarkSettings(spriteCount=$spriteCount, childCount=$childCount, textureCount=$textureCount, interpolate=$interpolate, frameLimit=$frameLimit, timeLimit=$timeLimit, " +
-            "offscreen=$offscreen, presentMode=$presentMode, validation=$validation)"
+            "offscreen=$offscreen, presentMode=$presentMode, validation=$validation, musicPath=$musicPath)"
 }
 
 /**

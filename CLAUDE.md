@@ -14,22 +14,25 @@ Kotlin/Native only, no JVM target. The build configures one target per run: the 
 automatically (Homebrew, /usr/local, /usr); override with `-Psdl3.prefix=<path>`.
 
 Modules: `klyph-platform` (SDL3 cinterop and the thin Kotlin API over it; the only module allowed
-to import `kotlinx.cinterop`, `sdl3`, `cnames` or `platform.*`), `klyph` (the engine, no interop;
+to import `kotlinx.cinterop`, `sdl3`, `stb`, `vorbis`, `cnames` or `platform.*`), `klyph` (the engine, no interop;
 its `klyph.app` package owns the frame loop, which games and executables enter through `runApp`;
 systems get `app.assets`, which loads from `assets/` next to the executable unless
 `AppConfig.assetRoot` overrides it, `app.camera`, which sprites are drawn through, `app.input`, the
 keyboard, mouse and gamepad state updated at the start of INPUT, `app.commands`, the world command
-queue applied after every system, and `app.resources`, shared state keyed by class),
+queue applied after every system, `app.resources`, shared state keyed by class, and `app.audio`,
+sound effects and music, with sounds and tracks loaded through `app.assets.sound` and
+`app.assets.music`),
 `sandbox` (executable; a smoke test that opens a window and clears it each frame), `shooter`
-(executable; the reference game sample, keyboard with mouse aim or gamepad, its art in
+(executable; the reference game sample, keyboard with mouse aim or gamepad, its art and sounds in
 `shooter/assets/` synced next to the binary after every link; `KLYPH_AUTOPILOT=1` plays itself,
 and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`). `./gradlew check`
 runs every module's tests and samples plus the interop-import rule; a single module's tests run
-with `:<module>:macosArm64Test`. GPU, window and event functions, `runApp`, `App` and `Assets` have no
-samples because they need a display. Shared target config and SDL link flags live in
+with `:<module>:macosArm64Test`. GPU, window, event and audio device functions, `runApp`, `App` and
+`Assets` have no samples because they need a display or a device; `Audio` has samples because it
+also mixes without a device. Shared target config and SDL link flags live in
 `buildSrc/src/main/kotlin/klyph.native.gradle.kts`.
 
 ```
@@ -39,13 +42,15 @@ samples because they need a display. Shared target config and SDL link flags liv
 ./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ./gradlew :benchmarks:benchmarkSprites -Pklyph.sprites=50000     # in a window
 ./gradlew :benchmarks:benchmarkHierarchy -Pklyph.sprites=5000 -Pklyph.children=8
+./gradlew :benchmarks:benchmarkMixer                            # headless, no window or device
+./gradlew :benchmarks:benchmarkMixer -Pklyph.music=shooter/assets/music.ogg
 ./gradlew :benchmarks:benchmarkList
 ```
 
 `:sandbox:run` runs the debug smoke test and `:shooter:run` the debug game; the `benchmark*`
 tasks run the release build. Every `KLYPH_*` variable below can be given as a Gradle property
 instead (`-Pklyph.sprites=…`, `-Pklyph.frames=…`, `-Pklyph.offscreen=1`, `-Pklyph.vsync=1`,
-`-Pklyph.validation=1`, `-Pklyph.autopilot=1`), which is how the IntelliJ run configurations in
+`-Pklyph.validation=1`, `-Pklyph.autopilot=1`, `-Pklyph.music=…`), which is how the IntelliJ run configurations in
 `.run/` pass them. `benchmark<Name>Offscreen` sets `KLYPH_OFFSCREEN=1` and 2000 frames;
 `-Pklyph.benchmark=<name>` picks the benchmark for the generic `benchmark` task. The binaries
 are also runnable directly: `benchmarks/build/bin/macosArm64/releaseExecutable/benchmarks.kexe
@@ -57,7 +62,10 @@ exits once `Time.elapsed` reaches `s` seconds (sandbox, benchmarks and shooter),
 `KLYPH_VSYNC=1` caps at the display rate, `KLYPH_VALIDATION=1` turns on the GPU validation layer
 (slow; use it after touching the platform module), `KLYPH_OFFSCREEN=1` draws into a texture and
 waits for the GPU each frame so the display is out of the loop. `KLYPH_AUTOPILOT=1` makes the
-shooter play itself and fail at exit if it destroyed no enemy. macOS has no `timeout`, so bound
+shooter play itself and fail at exit if it destroyed no enemy. `KLYPH_MUSIC=<path to an .ogg>` makes
+the `mixer` benchmark stream that file instead of its synthetic music, to measure Vorbis decoding;
+a relative path resolves against the executable's directory, or the repository root through
+Gradle. macOS has no `timeout`, so bound
 runs with `KLYPH_FRAMES`. Do not pipe `./gradlew` output into
 another command: the daemon inherits the pipe and the shell never sees EOF. Redirect to a file.
 
@@ -74,6 +82,20 @@ The `windows` CI job builds this target and runs the tests; it never opens a win
 rendering path is only checked by running the sandbox on a real machine. The same build
 cross-compiles from macOS or Linux with `-Pklyph.target=mingwX64 -Psdl3.prefix=<that folder>`
 (compile and link only; the tests need Windows to run).
+
+## Audio
+
+klyph mixes its own voices (`klyph.audio`) on SDL's audio thread: `AudioDevice` in
+`klyph-platform` calls `Audio.renderer` from its callback, and effects are resampled, panned and
+summed there with music decoded a block at a time by stb_vorbis. The main thread talks to the
+mixer only through lock-free single-producer single-consumer rings (commands in, finished music
+streams back) and atomics, and the mix path allocates nothing. `Audio`, `Music` and `Assets` are
+main thread only. Without an audio device `runApp` prints one line to stderr, and with
+`AppConfig(audio = AudioConfig(enabled = false))` it prints nothing; either way every audio call
+does nothing, so CI and autopilot runs are quiet. `Audio(config)` without an app mixes through `renderer` by hand, which the tests,
+samples and the `benchmarkMixer` task use. `SDL_AUDIO_DRIVER=dummy` gives a device that discards
+its output; environment variables that are not `KLYPH_*` reach a Gradle run task only with
+`--no-configuration-cache`, because the cached task keeps the environment it was configured with.
 
 ## Shaders
 

@@ -1,0 +1,15 @@
+headers = stb_vorbis.c
+headerFilter = stb_vorbis.c
+# Include path comes from build.gradle.kts (src/nativeInterop/c/stb). stb_vorbis ships as one .c
+# file that is also its own header: with STB_VORBIS_HEADER_ONLY defined, including it yields only
+# the declarations, and the bindings are generated from those. The C section below undefines that
+# macro and includes the file again; the header guard skips the declarations and the
+# implementation is compiled into the interop stubs, so nothing else is built or linked.
+# klyph decodes from memory with the pull API only, so stdio and the pushdata API are left out.
+compilerOpts = -DSTB_VORBIS_HEADER_ONLY -DSTB_VORBIS_NO_STDIO -DSTB_VORBIS_NO_PUSHDATA_API
+package = vorbis
+
+---
+
+#undef STB_VORBIS_HEADER_ONLY
+#include "stb_vorbis.c"

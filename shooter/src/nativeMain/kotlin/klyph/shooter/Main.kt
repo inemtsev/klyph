@@ -13,7 +13,8 @@ import kotlin.time.Duration.Companion.seconds
  * mouse or the right stick; fire with Space, the left mouse button, the gamepad's south button or
  * the right trigger; quit with Escape. The game pauses while the window is in the background.
  * Enemies drift down from the top of an arena larger than the window, and the camera follows the
- * ship. Score and lives are printed to the terminal until the engine draws text.
+ * ship. Shots, explosions, hits and game over have sounds, and a music track loops, turned down
+ * while paused. Score and lives are printed to the terminal until the engine draws text.
  *
  * Environment: `KLYPH_FRAMES=<n>` quits after n frames, `KLYPH_SECONDS=<s>` once `Time.elapsed`
  * reaches s seconds, `KLYPH_VALIDATION=1` turns on the GPU validation layer, `KLYPH_AUTOPILOT=1`

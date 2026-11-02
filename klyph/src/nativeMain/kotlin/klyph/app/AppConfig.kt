@@ -1,5 +1,6 @@
 package klyph.app
 
+import klyph.audio.AudioConfig
 import klyph.platform.Color
 import klyph.platform.GpuValidation
 import klyph.platform.PresentMode
@@ -49,6 +50,11 @@ public class AppConfig(
      * next to the executable. A relative directory resolves against [klyph.platform.Files.basePath].
      */
     public val assetRoot: String? = null,
+    /**
+     * The audio settings [App.audio] mixes with. With `AudioConfig(enabled = false)` the engine
+     * opens no audio device and every audio call does nothing.
+     */
+    public val audio: AudioConfig = AudioConfig(),
 ) {
     init {
         require(width > 0) { "Window width $width is not positive." }
@@ -69,7 +75,8 @@ public class AppConfig(
             gpuSync == other.gpuSync &&
             validation == other.validation &&
             clearColor == other.clearColor &&
-            assetRoot == other.assetRoot
+            assetRoot == other.assetRoot &&
+            audio == other.audio
 
     override fun hashCode(): Int {
         var result = title.hashCode()
@@ -83,6 +90,7 @@ public class AppConfig(
         result = 31 * result + validation.hashCode()
         result = 31 * result + clearColor.hashCode()
         result = 31 * result + assetRoot.hashCode()
+        result = 31 * result + audio.hashCode()
         return result
     }
 
@@ -93,7 +101,7 @@ public class AppConfig(
     override fun toString(): String =
         "AppConfig(title=$title, width=$width, height=$height, fixedRate=$fixedRate, " +
             "maxFixedStepsPerFrame=$maxFixedStepsPerFrame, presentMode=$presentMode, target=$target, " +
-            "gpuSync=$gpuSync, validation=$validation, clearColor=$clearColor, assetRoot=$assetRoot)"
+            "gpuSync=$gpuSync, validation=$validation, clearColor=$clearColor, assetRoot=$assetRoot, audio=$audio)"
 
     private companion object {
         const val MAX_FIXED_RATE: Int = 1000

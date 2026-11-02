@@ -1,5 +1,7 @@
 package klyph.app
 
+import klyph.audio.Audio
+import klyph.audio.AudioConfig
 import klyph.entity.propagateTransforms
 import klyph.entity.recordPreviousTransforms
 import klyph.event.GamepadButtonPressed
@@ -17,13 +19,16 @@ import klyph.event.WindowFocusGained
 import klyph.event.WindowFocusLost
 import klyph.event.WindowDensityChanged
 import klyph.event.WindowResized
+import klyph.platform.AudioDevice
 import klyph.platform.EventPump
 import klyph.platform.Files
 import klyph.platform.GpuDevice
 import klyph.platform.PlatformEvent
 import klyph.platform.PresentMode
 import klyph.platform.Sdl
+import klyph.platform.SdlException
 import klyph.platform.ShaderFormat
+import klyph.platform.printError
 import klyph.platform.Subsystem
 import klyph.platform.Window
 import klyph.platform.WindowFlag
@@ -57,8 +62,17 @@ import kotlin.time.TimeSource
  * it moved to another display, the engine multiplies the zoom by the ratio of the new density to
  * the old one, so the view keeps its framing, and publishes `WindowDensityChanged`.
  *
- * The SDL video and gamepad subsystems, the window, the GPU device, [App.assets] and the renderer exist only
- * while this call runs, and only one app may run at a time. Exceptions thrown by [setup] or a system end
+ * Audio starts before the window when [AppConfig.audio] enables it: the engine starts SDL's audio
+ * subsystem and opens the default playback device, which calls [App.audio]'s mixer on its own
+ * thread. Without a device, or when the audio subsystem cannot start, it prints one line to
+ * standard error and the app runs with `App.audio.isEnabled` set to `false`. At the start of every
+ * frame, before INPUT, the engine closes the music streams the mixer is done with and refreshes
+ * `App.audio.stats`; if the mixer has thrown on the audio thread, it prints the exception once and
+ * turns audio off. At shutdown it closes the device, then [App.audio].
+ *
+ * The SDL video, gamepad and audio subsystems, the window, the GPU device, the audio device,
+ * [App.assets], [App.audio] and the renderer exist only while this call runs, and only one app may
+ * run at a time. Exceptions thrown by [setup] or a system end
  * the loop without running SHUTDOWN; everything is still released, and the exception propagates.
  * Initialization fails with an exception if SDL, the window or the GPU device cannot be created.
  *
@@ -69,33 +83,64 @@ import kotlin.time.TimeSource
 public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
     Sdl.init(setOf(Subsystem.VIDEO, Subsystem.GAMEPAD))
     try {
-        Window(config.title, config.width, config.height, setOf(WindowFlag.RESIZABLE, WindowFlag.HIGH_PIXEL_DENSITY)).use { window ->
-            GpuDevice(setOf(ShaderFormat.MSL, ShaderFormat.SPIRV, ShaderFormat.DXIL), config.validation).use { device ->
-                device.claim(window)
-                try {
-                    val presentMode = if (device.supportsPresentMode(window, config.presentMode)) {
-                        device.setPresentMode(window, config.presentMode)
-                        config.presentMode
-                    } else {
-                        PresentMode.VSYNC
-                    }
-                    Assets(device, config.assetRoot ?: Files.basePath + "assets/").use { assets ->
-                        EventPump().use { pump ->
-                            SpritePass(device, window, config.target, config.gpuSync).use { pass ->
-                                val app = App(config, window, presentMode, assets, startCamera(window))
-                                app.setup()
-                                if (!app.commands.isEmpty) app.commands.apply()
-                                FrameLoop(app, pump, pass).run()
+        val audio = Audio(config.audio)
+        try {
+            // The device closes first, so the mixer is no longer called when audio closes.
+            openAudioDeviceOrNull(audio, config.audio).use { audioDevice ->
+                Window(config.title, config.width, config.height, setOf(WindowFlag.RESIZABLE, WindowFlag.HIGH_PIXEL_DENSITY)).use { window ->
+                    GpuDevice(setOf(ShaderFormat.MSL, ShaderFormat.SPIRV, ShaderFormat.DXIL), config.validation).use { device ->
+                        device.claim(window)
+                        try {
+                            val presentMode = if (device.supportsPresentMode(window, config.presentMode)) {
+                                device.setPresentMode(window, config.presentMode)
+                                config.presentMode
+                            } else {
+                                PresentMode.VSYNC
                             }
+                            Assets(device, config.assetRoot ?: Files.basePath + "assets/").use { assets ->
+                                EventPump().use { pump ->
+                                    SpritePass(device, window, config.target, config.gpuSync).use { pass ->
+                                        val app = App(config, window, presentMode, assets, startCamera(window), audio)
+                                        app.setup()
+                                        if (!app.commands.isEmpty) app.commands.apply()
+                                        FrameLoop(app, pump, pass, audioDevice).run()
+                                    }
+                                }
+                            }
+                        } finally {
+                            device.release(window)
                         }
                     }
-                } finally {
-                    device.release(window)
                 }
             }
+        } finally {
+            audio.close()
         }
     } finally {
         Sdl.quit()
+    }
+}
+
+/**
+ * Starts SDL's audio subsystem and opens the default playback device fed by [audio]'s mixer, or
+ * turns [audio] off and returns `null` when [config] disables audio or no device can be opened.
+ * A disabled config is silent; a failure prints one line to standard error naming the reason.
+ *
+ * The audio subsystem starts on its own, after video, so a missing or broken audio driver leaves
+ * the rest of the app running.
+ */
+private fun openAudioDeviceOrNull(audio: Audio, config: AudioConfig): AudioDevice? {
+    if (!config.enabled) {
+        audio.isEnabled = false
+        return null
+    }
+    return try {
+        Sdl.init(setOf(Subsystem.AUDIO))
+        AudioDevice.open(config.sampleRate, config.bufferFrames, audio.renderer)
+    } catch (e: SdlException) {
+        audio.isEnabled = false
+        printError("klyph: audio is off: ${e.message}")
+        null
     }
 }
 
@@ -113,7 +158,12 @@ private fun startCamera(window: Window): Camera {
 }
 
 /** Runs [app]'s phases: startup, frames until a quit request, shutdown. */
-private class FrameLoop(private val app: App, private val pump: EventPump, private val pass: SpritePass) {
+private class FrameLoop(
+    private val app: App,
+    private val pump: EventPump,
+    private val pass: SpritePass,
+    private val audioDevice: AudioDevice?,
+) {
     private val clock = TimeSource.Monotonic
     private val stepper = FixedStepper(app.time.fixedDelta, app.config.maxFixedStepsPerFrame)
 
@@ -140,6 +190,7 @@ private class FrameLoop(private val app: App, private val pump: EventPump, priva
         val stats = app.stats
         app.events.endFrame()
         time.beginFrame(delta)
+        updateAudio()
 
         app.input.beginFrame()
         translatePlatformEvents()
@@ -175,6 +226,22 @@ private class FrameLoop(private val app: App, private val pump: EventPump, priva
 
         time.endFrame()
         stats.publish(totalNanos = start.elapsedNow().inWholeNanoseconds, fixedSteps = steps, spriteCount = pass.spriteCount)
+    }
+
+    /**
+     * Turns audio off, with one line to standard error, once the mixer has failed on the audio
+     * thread, then closes the music streams the mixer is done with and refreshes the audio stats.
+     */
+    private fun updateAudio() {
+        val audio = app.audio
+        if (audio.isEnabled) {
+            val failure = audioDevice?.failureOrNull()
+            if (failure != null) {
+                audio.isEnabled = false
+                printError("klyph: audio is off: the mixer failed on the audio thread: $failure")
+            }
+        }
+        audio.endFrame()
     }
 
     /** Adds the time since [mark] to [slot] of the frame's stats and returns the current time. */
