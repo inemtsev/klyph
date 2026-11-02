@@ -31,7 +31,7 @@ chosen when it loads, picks linear or nearest sampling),
 `sandbox` (executable; a smoke test that opens a window and clears it each frame), `shooter`
 (executable; the reference game sample, keyboard with mouse aim or gamepad, its art and sounds in
 `shooter/assets/` synced next to the binary after every link; `KLYPH_AUTOPILOT=1` plays itself,
-and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `benchmarks`
+and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `squish` (executable; a bug-squishing game for young children, same layout and variables as the shooter), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`). `./gradlew check`
@@ -45,6 +45,7 @@ also mixes without a device. Shared target config and SDL link flags live in
 ./gradlew :sandbox:run -Pklyph.frames=120
 ./gradlew :shooter:run                                          # WASD/arrows/stick, mouse aim, Space/click/south
 ./gradlew :shooter:run -Pklyph.autopilot=1 -Pklyph.seconds=10   # plays itself, fails if no kill
+./gradlew :squish:run                                           # click or arrows/stick + Space/south; autopilot fails if no squish
 ./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ./gradlew :benchmarks:benchmarkSprites -Pklyph.sprites=50000     # in a window
 ./gradlew :benchmarks:benchmarkHierarchy -Pklyph.sprites=5000 -Pklyph.children=8

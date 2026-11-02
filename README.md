@@ -55,6 +55,10 @@ What works today:
   keyboard and mouse aim or with a gamepad, pauses when the window loses focus,
   loads its art and sounds from an `assets/` folder next to the binary and can play itself
   for demos.
+- A bug-squishing sample for young children: bugs crawl over a picnic blanket
+  toward the food and the player squishes them with a fly swatter moved by the
+  mouse, the keyboard or a gamepad, in one-minute rounds with a title, pause and
+  end screen.
 
 ## Design decisions
 
