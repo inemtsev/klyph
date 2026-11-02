@@ -32,7 +32,7 @@ public class Events {
      * @sample samples.event.EventBus.publish
      */
     public fun <T : Any> publish(event: T) {
-        channels.getOrPut(event::class) { Channel() }.add(event)
+        channelFor(event::class).add(event)
     }
 
     /**
@@ -64,6 +64,13 @@ public class Events {
     /** Returns the events of class [type], or `null` if no event of that class was ever published. */
     @PublishedApi
     internal fun channelOrNull(type: KClass<*>): Channel? = channels[type]
+
+    /**
+     * Returns the channel of events of class [type], creating it if needed, so an engine step
+     * that publishes many events of one class looks the class up once. Adding to the channel is
+     * the same as [publish]; the caller must add only events of exactly class [type].
+     */
+    internal fun channelFor(type: KClass<*>): Channel = channels.getOrPut(type) { Channel() }
 
     /**
      * Marks the frame boundary: drops every event of the frame that just ended. The engine calls

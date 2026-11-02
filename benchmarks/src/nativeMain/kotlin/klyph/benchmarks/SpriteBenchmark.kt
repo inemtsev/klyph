@@ -28,7 +28,7 @@ internal val spriteBenchmark: Benchmark = Benchmark(
 ) { settings ->
     require(settings.textureCount > 0) { "KLYPH_TEXTURES ${settings.textureCount} is not positive." }
     var sprites = 0
-    val report = StatsReport { "sprites=$sprites textures=${settings.textureCount}" }
+    val report = StatsReport(settings.frameLimit) { "sprites=$sprites textures=${settings.textureCount}" }
     runApp(settings.appConfig("klyph sprites benchmark")) {
         addBenchmarkSystems(settings, report)
         addSystem(Phase.STARTUP) { app ->

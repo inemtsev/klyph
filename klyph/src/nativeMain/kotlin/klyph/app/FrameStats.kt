@@ -15,8 +15,12 @@ import kotlin.time.DurationUnit
  * [durationOf] covers the systems of one phase. [Phase.INPUT] includes the engine's translation
  * of platform events and [Phase.RENDER] includes the engine's sprite pass, which
  * [targetAcquisition], [spriteExtraction], [spriteRecording] and [gpuWait] break down.
- * [transformPropagation] runs between [Phase.LATE_UPDATE] and [Phase.RENDER] and belongs to no
- * phase. [total] covers the whole frame, so it is slightly more than the sum of its parts.
+ * [transformPropagation] covers the two transform propagations, the one between
+ * [Phase.FIXED_UPDATE] and [Phase.UPDATE] and the one between [Phase.LATE_UPDATE] and
+ * [Phase.RENDER], [collisionDetection] the overlap detection that follows the first, and
+ * [particleAdvance] the particle step between [Phase.UPDATE] and [Phase.LATE_UPDATE]; none of
+ * them belongs to a phase. [total] covers the whole frame, so it is slightly more than the sum
+ * of its parts.
  *
  * Samples live in the sandbox because they need a display.
  */
@@ -32,12 +36,56 @@ public class FrameStats internal constructor() {
     public var fixedSteps: Int = 0
         private set
 
-    /** Returns how many sprites the last frame drew. */
+    /**
+     * Returns how many quads the last frame drew: entity sprites, one per visible glyph of `Text`
+     * components, and everything queued on `App.canvas`, a text one quad per visible glyph.
+     */
     public var spriteCount: Int = 0
         private set
 
-    /** Returns how long the transform propagation that follows [Phase.LATE_UPDATE] took in the last frame. */
+    /**
+     * Returns how many particles of `ParticleEmitter` components were alive after the engine
+     * advanced them in the last frame. The ones drawn are also counted in [spriteCount].
+     */
+    public var particleCount: Int = 0
+        private set
+
+    /**
+     * Returns how many draw calls the last frame's sprite pass issued. Each is one run of quads in
+     * draw order that share a texture and a `DrawSpace`, so it grows with the number of distinct
+     * layer and texture pairs, not with the number of sprites.
+     */
+    public var drawCalls: Int = 0
+        private set
+
+    /** Returns how many overlapping pairs `App.collisions` found in the last frame. */
+    public var collisionPairs: Int = 0
+        private set
+
+    /**
+     * Returns how many entities the world held when the last frame ended, after its commands and
+     * scene transitions were applied.
+     */
+    public var entityCount: Int = 0
+        internal set
+
+    /**
+     * Returns how long the transform propagations that follow [Phase.FIXED_UPDATE] and
+     * [Phase.LATE_UPDATE] took together in the last frame.
+     */
     public val transformPropagation: Duration get() = published[PROPAGATION].nanoseconds
+
+    /**
+     * Returns how long `App.collisions` took in the last frame to find the overlapping pairs and
+     * publish their `Overlap` events, after [Phase.FIXED_UPDATE].
+     */
+    public val collisionDetection: Duration get() = published[COLLISION].nanoseconds
+
+    /**
+     * Returns how long the engine took in the last frame to advance every `ParticleEmitter`, between
+     * [Phase.UPDATE] and [Phase.LATE_UPDATE]. Drawing the particles counts in [spriteExtraction].
+     */
+    public val particleAdvance: Duration get() = published[PARTICLES].nanoseconds
 
     /**
      * Returns how long the sprite pass took to get a command buffer and a texture to draw into in
@@ -79,7 +127,7 @@ public class FrameStats internal constructor() {
     }
 
     /** Ends the frame in progress: makes its numbers the published ones and clears them for the next frame. */
-    internal fun publish(totalNanos: Long, fixedSteps: Int, spriteCount: Int) {
+    internal fun publish(totalNanos: Long, fixedSteps: Int, spriteCount: Int, drawCalls: Int, collisionPairs: Int, particleCount: Int) {
         val startup = published[Phase.STARTUP.ordinal]
         pending.copyInto(published)
         published[Phase.STARTUP.ordinal] = startup
@@ -87,20 +135,27 @@ public class FrameStats internal constructor() {
         total = totalNanos.nanoseconds
         this.fixedSteps = fixedSteps
         this.spriteCount = spriteCount
+        this.drawCalls = drawCalls
+        this.collisionPairs = collisionPairs
+        this.particleCount = particleCount
     }
 
     /**
      * Returns the last frame in one line, as
-     * `FrameStats(total=2.512ms, input=0.004ms, ..., fixedSteps=1, spriteCount=100000)`, with
-     * durations in milliseconds. The format may change.
+     * `FrameStats(total=2.512ms, input=0.004ms, ..., fixedSteps=1, spriteCount=100000, drawCalls=1,
+     * collisionPairs=12, entityCount=100000, particleAdvance=0.000ms, particleCount=0)`, with durations
+     * in milliseconds. The format may change.
      */
     override fun toString(): String =
         "FrameStats(total=${ms(total)}, input=${ms(durationOf(Phase.INPUT))}, " +
-            "fixedUpdate=${ms(durationOf(Phase.FIXED_UPDATE))}, update=${ms(durationOf(Phase.UPDATE))}, " +
-            "lateUpdate=${ms(durationOf(Phase.LATE_UPDATE))}, transformPropagation=${ms(transformPropagation)}, " +
+            "fixedUpdate=${ms(durationOf(Phase.FIXED_UPDATE))}, collisionDetection=${ms(collisionDetection)}, " +
+            "update=${ms(durationOf(Phase.UPDATE))}, lateUpdate=${ms(durationOf(Phase.LATE_UPDATE))}, " +
+            "transformPropagation=${ms(transformPropagation)}, " +
             "render=${ms(durationOf(Phase.RENDER))}, targetAcquisition=${ms(targetAcquisition)}, " +
             "spriteExtraction=${ms(spriteExtraction)}, spriteRecording=${ms(spriteRecording)}, " +
-            "gpuWait=${ms(gpuWait)}, fixedSteps=$fixedSteps, spriteCount=$spriteCount)"
+            "gpuWait=${ms(gpuWait)}, fixedSteps=$fixedSteps, spriteCount=$spriteCount, drawCalls=$drawCalls, " +
+            "collisionPairs=$collisionPairs, entityCount=$entityCount, " +
+            "particleAdvance=${ms(particleAdvance)}, particleCount=$particleCount)"
 
     private fun ms(duration: Duration): String = duration.toString(DurationUnit.MILLISECONDS, 3)
 
@@ -111,6 +166,8 @@ public class FrameStats internal constructor() {
         val EXTRACTION: Int = PROPAGATION + 2
         val RECORDING: Int = PROPAGATION + 3
         val GPU_WAIT: Int = PROPAGATION + 4
-        val SLOT_COUNT: Int = PROPAGATION + 5
+        val COLLISION: Int = PROPAGATION + 5
+        val PARTICLES: Int = PROPAGATION + 6
+        val SLOT_COUNT: Int = PROPAGATION + 7
     }
 }

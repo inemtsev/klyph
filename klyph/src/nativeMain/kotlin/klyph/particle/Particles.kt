@@ -1,0 +1,110 @@
+package klyph.particle
+
+import klyph.entity.Transform
+import klyph.entity.World
+import klyph.entity.WorldTransform
+import klyph.render.DrawSpace
+import klyph.render.QuadBuffer
+import klyph.render.SPRITE_RECORD_FLOATS
+import klyph.scene.SceneStack
+
+/**
+ * Advances every [ParticleEmitter] whose entity has a [Transform] by [delta] seconds, emitting at
+ * the entity's [WorldTransform] if it has one and at its [Transform] otherwise, and returns the
+ * number of live particles across them. When [scenes] is given, an emitter owned by a scene frozen
+ * below its top neither advances nor emits, but its particles still count. The engine calls it
+ * once per frame after [klyph.app.Phase.UPDATE] with `App.scenes`. Allocates nothing.
+ *
+ * @throws IllegalArgumentException if [delta] is negative or not finite.
+ */
+internal fun World.advanceParticles(delta: Float, scenes: SceneStack? = null): Int {
+    require(delta >= 0f && delta.isFinite()) { "Delta $delta is not a finite number of at least zero." }
+    if (count(ParticleEmitter) == 0) return 0
+    val frozen = if (scenes != null && scenes.hasFrozen) scenes else null
+    var total = 0
+    forEach(ParticleEmitter, Transform) { entity, emitter, local ->
+        if (frozen != null && frozen.isFrozen(ownerAt(entity.index))) {
+            total += emitter.count
+            return@forEach
+        }
+        val hierarchy = getOrNull(entity, WorldTransform)
+        total += if (hierarchy != null) {
+            emitter.advance(delta, hierarchy.x, hierarchy.y)
+        } else {
+            emitter.advance(delta, local.x, local.y)
+        }
+    }
+    return total
+}
+
+/**
+ * Appends one [DrawSpace.WORLD] quad per live particle of every visible [ParticleEmitter] whose
+ * entity has a [Transform] to [destination], and returns how many were added. Each quad is centred
+ * on its particle, turned by its rotation, in the emitter's layer, with the color and size blended
+ * at the particle's age as [ParticleEmitter] describes.
+ */
+internal fun World.extractParticles(destination: QuadBuffer): Int {
+    if (count(ParticleEmitter) == 0) return 0
+    val before = destination.count
+    forEach(ParticleEmitter, Transform) { _, emitter, _ ->
+        if (emitter.isVisible) destination.addParticles(emitter)
+    }
+    return destination.count - before
+}
+
+/** Appends one quad per live particle of [emitter], writing the records straight into the buffer. */
+private fun QuadBuffer.addParticles(emitter: ParticleEmitter) {
+    val count = emitter.count
+    if (count == 0) return
+    val region = emitter.region
+    val first = reserve(count, region.texture, emitter.layer, DrawSpace.WORLD)
+    val records = records
+    val width = region.width.toFloat()
+    val height = region.height.toFloat()
+    val u0 = region.u0
+    val v0 = region.v0
+    val u1 = region.u1
+    val v1 = region.v1
+    val start = emitter.startColor
+    val end = emitter.endColor
+    val red = start.red
+    val green = start.green
+    val blue = start.blue
+    val alpha = start.alpha
+    val redChange = end.red - red
+    val greenChange = end.green - green
+    val blueChange = end.blue - blue
+    val alphaChange = end.alpha - alpha
+    val scale = emitter.startScale
+    val scaleChange = emitter.endScale - scale
+    val xs = emitter.xs
+    val ys = emitter.ys
+    val ages = emitter.ages
+    val lifetimes = emitter.lifetimes
+    val rotations = emitter.rotations
+    var base = first * SPRITE_RECORD_FLOATS
+    for (i in 0 until count) {
+        val lifetime = lifetimes[i]
+        // A particle with no lifetime is drawn once, as emitted.
+        val t = if (lifetime > 0f) ages[i] / lifetime else 0f
+        val size = scale + scaleChange * t
+        // The layout QuadBuffer.add writes.
+        records[base] = xs[i]
+        records[base + 1] = ys[i]
+        records[base + 2] = rotations[i]
+        records[base + 3] = 0f
+        records[base + 4] = width * size
+        records[base + 5] = height * size
+        records[base + 6] = 0f
+        records[base + 7] = 0f
+        records[base + 8] = u0
+        records[base + 9] = v0
+        records[base + 10] = u1
+        records[base + 11] = v1
+        records[base + 12] = red + redChange * t
+        records[base + 13] = green + greenChange * t
+        records[base + 14] = blue + blueChange * t
+        records[base + 15] = alpha + alphaChange * t
+        base += SPRITE_RECORD_FLOATS
+    }
+}

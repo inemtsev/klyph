@@ -46,6 +46,8 @@ in the same PR rather than inventing a one-off.
 | `xOf(...)` | Top-level factory from explicit elements. | `graphOf(a to b)` |
 | `buildX { }` | Top-level factory through a builder DSL. | `buildGraph { edge(a, b) }` |
 | `emptyX()` | Shared immutable empty instance. | `emptyGraph()` |
+| `X.of(...)` | Companion factory for a value class whose constructor takes the raw representation, building it from the value users think in. | `CollisionLayers.of(3)` |
+| `onX { }` | Builder function that registers an action run when `X` happens. | `buildScene("title") { onEnter { } }` |
 | `xOrNull()` | Same as `x()` but returns `null` instead of throwing. May stand alone when absence is normal rather than an error. | `firstOrNull()`, `nodeOrNull(id)`, `parentOrNull(child)` |
 | `xOf(argument)` | Member or extension that returns the `x` associated with [argument]. Not a factory. | `neighborsOf(node)`, `childrenOf(parent)`, `durationOf(phase)` |
 | `xOrElse { }` | Same as `x()` but calls the lambda instead of throwing. | `getOrElse { default }` |

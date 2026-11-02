@@ -10,6 +10,9 @@ package klyph.entity
 public class World(initialCapacity: Int = 1024) {
     private var generations = IntArray(initialCapacity)
     private var alive = BooleanArray(initialCapacity)
+
+    /** The scene that owns each slot's entity, or [NO_OWNER]; see [currentOwner]. */
+    private var owners = IntArray(initialCapacity)
     private var freeSlots = IntArray(16)
     private var freeCount = 0
     private var nextSlot = 0
@@ -22,11 +25,16 @@ public class World(initialCapacity: Int = 1024) {
     /**
      * Creates an entity with no components.
      *
+     * In an app, an entity created while a scene's `onEnter` action or one of its systems runs
+     * belongs to that scene and is destroyed when the scene leaves `App.scenes`; see
+     * [klyph.scene.SceneStack].
+     *
      * @sample samples.entity.Worlds.create
      */
     public fun create(): Entity {
         val index = if (freeCount > 0) freeSlots[--freeCount] else allocateSlot()
         alive[index] = true
+        owners[index] = currentOwner
         entityCount++
         return Entity.of(index, generations[index])
     }
@@ -69,10 +77,47 @@ public class World(initialCapacity: Int = 1024) {
         for (store in stores.values) store.remove(entity)
         val index = entity.index
         alive[index] = false
+        owners[index] = NO_OWNER
         generations[index]++
         if (freeCount == freeSlots.size) freeSlots = freeSlots.copyOf(freeCount * 2)
         freeSlots[freeCount++] = index
         entityCount--
+    }
+
+    /**
+     * The owner that [create] records for every entity it creates, [NO_OWNER] by default. The
+     * engine sets it to a scene's owner id while that scene's `onEnter` or one of its systems runs,
+     * together with the command application right after it, so the entities they spawn belong to
+     * the scene, and resets it to [NO_OWNER] for App-level systems and its own steps.
+     */
+    internal var currentOwner: Int = NO_OWNER
+
+    /**
+     * Returns the owner recorded for [entity] when it was created, or [NO_OWNER] if it has none or
+     * is not alive. Reparenting does not change it.
+     */
+    internal fun ownerOf(entity: Entity): Int = if (isAlive(entity)) owners[entity.index] else NO_OWNER
+
+    /**
+     * Returns the owner recorded for the live entity in slot [index], as [ownerOf] does but without
+     * checking that the slot holds a live entity. The engine steps call it for entities a query has
+     * just returned, so it costs one array read.
+     */
+    internal fun ownerAt(index: Int): Int = owners[index]
+
+    /**
+     * Destroys every entity whose owner is [owner], with its descendants whatever their owner, as
+     * [destroy] does. An owned entity that is a child of an unowned one is destroyed too, and its
+     * parent stays.
+     *
+     * @throws IllegalArgumentException if [owner] is [NO_OWNER].
+     */
+    internal fun destroyOwnedBy(owner: Int) {
+        require(owner != NO_OWNER) { "Owner $owner means no owner, so it names no scene's entities." }
+        // destroy() only frees slots, so slots past nextSlot never hold a live entity.
+        for (index in 0 until nextSlot) {
+            if (alive[index] && owners[index] == owner) destroy(Entity.of(index, generations[index]))
+        }
     }
 
     /** Returns `true` while [entity] exists in this world. */
@@ -300,6 +345,7 @@ public class World(initialCapacity: Int = 1024) {
         if (nextSlot == alive.size) {
             val capacity = alive.size * 2
             alive = alive.copyOf(capacity)
+            owners = owners.copyOf(capacity)
             generations = generations.copyOf(capacity)
             for (store in stores.values) store.ensureEntityCapacity(capacity)
         }
@@ -307,4 +353,9 @@ public class World(initialCapacity: Int = 1024) {
     }
 
     override fun toString(): String = "World(entities=$entityCount, componentTypes=${stores.size})"
+
+    internal companion object {
+        /** The owner of entities that belong to no scene. */
+        const val NO_OWNER: Int = 0
+    }
 }

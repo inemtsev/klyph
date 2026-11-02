@@ -4,6 +4,7 @@ import klyph.audio.Audio
 import klyph.audio.AudioConfig
 import klyph.entity.propagateTransforms
 import klyph.entity.recordPreviousTransforms
+import klyph.particle.advanceParticles
 import klyph.event.GamepadButtonPressed
 import klyph.event.GamepadButtonReleased
 import klyph.event.GamepadConnected
@@ -43,17 +44,34 @@ import kotlin.time.TimeSource
  * and releases everything before it returns.
  *
  * [setup] registers systems with [App.addSystem]. Then [Phase.STARTUP] runs once, the loop runs
- * [Phase.INPUT], [Phase.FIXED_UPDATE] (zero or more steps), [Phase.UPDATE], [Phase.LATE_UPDATE],
- * the transform propagation and [Phase.RENDER] once per frame until a frame ends with a quit
+ * [Phase.INPUT], [Phase.FIXED_UPDATE] (zero or more steps), a transform propagation followed by
+ * overlap detection through [App.collisions], [Phase.UPDATE], [Phase.LATE_UPDATE], another
+ * transform propagation and [Phase.RENDER] once per frame until a frame ends with a quit
  * request, and finally [Phase.SHUTDOWN] runs once. STARTUP and SHUTDOWN run even when no frame
  * does. At the start of INPUT the engine updates [App.input] from the platform events and
- * translates them into `klyph.event` events. It advances every `SpriteAnimation` and shows its
- * current frame in the entity's `Sprite` at the start of LATE_UPDATE, and draws every entity with a `Transform` and a `Sprite` through
- * [App.camera] at the end of RENDER. Before each FIXED_UPDATE step it records the transform of
+ * translates them into `klyph.event` events. Between UPDATE and LATE_UPDATE it advances every
+ * `ParticleEmitter` by the frame's delta, emitting at the entity's current world position. It advances every `SpriteAnimation` and shows its
+ * current frame in the entity's `Sprite` at the start of LATE_UPDATE, and draws every entity with a `Transform` and a `Sprite` or `Text` through
+ * [App.camera] at the end of RENDER, together with what RENDER systems queued on [App.canvas], which
+ * it then empties. Before each FIXED_UPDATE step it records the transform of
  * every entity marked `Interpolated`, and the drawing blends those entities between that record
  * and their current transform by [Time.fixedStepAlpha]. A `QuitRequested` event also calls
  * [App.quit], so closing the window ends the app. [App.commands] is applied after `setup`, after
  * every system and after the transform propagation.
+ *
+ * Right after it updates [App.input], the engine shows or hides [App.overlay] if
+ * [AppConfig.overlayKey] went down this frame. While the overlay is visible, the engine queues it
+ * on [App.canvas] after the last RENDER system, so it is drawn over everything else.
+ *
+ * In every phase but STARTUP and SHUTDOWN, the systems of the scene on top of [App.scenes] run
+ * after the App-level systems. A pushed scene freezes the one below: its systems do not run, its
+ * particle emitters, sprite animations and colliders stand still, its entities keep rendering. The
+ * engine skips the emitters and animations of entities a frozen scene owns when it advances them,
+ * and leaves their colliders out of overlap detection, so they are in no `Overlap` event and no
+ * [App.collisions] query finds them. Entities of no scene are never frozen. The scene transitions queued during a frame apply at its end, after
+ * drawing, and those queued in `setup` or STARTUP apply after STARTUP, before the first frame.
+ * After the last frame every scene leaves the stack, top first, running its `onExit` action and
+ * losing its entities, and then SHUTDOWN runs.
  *
  * The camera starts with the window's pixel size as its viewport, a zoom equal to the window's
  * pixel density so that one world unit is one point, and centered on the middle of the window, so
@@ -97,6 +115,7 @@ public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
                             } else {
                                 PresentMode.VSYNC
                             }
+                            // Opening the assets also uploads the built-in font, so the device must exist.
                             Assets(device, config.assetRoot ?: Files.basePath + "assets/").use { assets ->
                                 EventPump().use { pump ->
                                     SpritePass(device, window, config.target, config.gpuSync).use { pass ->
@@ -173,6 +192,7 @@ private class FrameLoop(
     fun run() {
         val startup = clock.markNow()
         app.run(Phase.STARTUP)
+        app.applySceneTransitions()
         app.stats.recordStartup(startup.elapsedNow().inWholeNanoseconds)
 
         var frameStart = clock.markNow()
@@ -182,6 +202,7 @@ private class FrameLoop(
             frameStart = now
             frame(delta, now)
         }
+        app.exitScenes()
         app.run(Phase.SHUTDOWN)
     }
 
@@ -195,6 +216,7 @@ private class FrameLoop(
         app.input.beginFrame()
         translatePlatformEvents()
         app.input.endFrame(app.camera, pixelDensity)
+        toggleOverlay()
         app.run(Phase.INPUT)
         var mark = clock.markNow()
         stats.add(Phase.INPUT.ordinal, (mark - start).inWholeNanoseconds)
@@ -209,10 +231,19 @@ private class FrameLoop(
         }
         mark = lap(Phase.FIXED_UPDATE.ordinal, mark)
 
+        // Parented colliders need this frame's world transforms before detection.
+        app.world.propagateTransforms()
+        mark = lap(FrameStats.PROPAGATION, mark)
+        app.collisions.detect(app.world, app.events, app.scenes)
+        mark = lap(FrameStats.COLLISION, mark)
+
         app.run(Phase.UPDATE)
         mark = lap(Phase.UPDATE.ordinal, mark)
 
-        app.world.advanceSpriteAnimations(time.delta)
+        val particleCount = app.world.advanceParticles(time.deltaSeconds, app.scenes)
+        mark = lap(FrameStats.PARTICLES, mark)
+
+        app.world.advanceSpriteAnimations(time.delta, app.scenes)
         app.run(Phase.LATE_UPDATE)
         mark = lap(Phase.LATE_UPDATE.ordinal, mark)
 
@@ -220,12 +251,31 @@ private class FrameLoop(
         if (!app.commands.isEmpty) app.commands.apply()
         mark = lap(FrameStats.PROPAGATION, mark)
 
+        // The canvas accepts calls from the first RENDER system until the pass has read it.
+        app.canvas.open()
         app.run(Phase.RENDER)
-        pass.render(app.world, app.camera, app.clearColor, time.fixedStepAlpha, stats)
+        if (app.overlay.isVisible) app.overlay.draw(app.canvas, app.assets.defaultFont, stats, time.fixedDelta, app.audio.stats.activeVoices)
+        pass.render(app.world, app.camera, app.canvas, app.clearColor, time.fixedStepAlpha, stats)
         lap(Phase.RENDER.ordinal, mark)
 
+        app.applySceneTransitions()
         time.endFrame()
-        stats.publish(totalNanos = start.elapsedNow().inWholeNanoseconds, fixedSteps = steps, spriteCount = pass.spriteCount)
+        stats.entityCount = app.world.entityCount
+        stats.publish(
+            totalNanos = start.elapsedNow().inWholeNanoseconds,
+            fixedSteps = steps,
+            spriteCount = pass.spriteCount,
+            drawCalls = pass.drawCalls,
+            collisionPairs = app.collisions.pairCount,
+            particleCount = particleCount,
+        )
+        app.overlay.record(stats.total)
+    }
+
+    /** Shows or hides [App.overlay] when [AppConfig.overlayKey] went down this frame. */
+    private fun toggleOverlay() {
+        val key = app.config.overlayKey ?: return
+        if (app.input.keyboard.isJustPressed(key)) app.overlay.isVisible = !app.overlay.isVisible
     }
 
     /**

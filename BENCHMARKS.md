@@ -1,13 +1,89 @@
 # Benchmarks
 
-Results from the `sprites` benchmark. Reproduce with
-`./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=<n>` (release build; the
+Results from the benchmarks executable. Reproduce with
+`./gradlew :benchmarks:benchmark<Name>Offscreen -Pklyph.sprites=<n>` (release build; the
 properties mirror the environment variables listed in CLAUDE.md).
-Numbers are per-frame averages after a one-second warm-up.
+Numbers are per-frame averages after a warm-up. Before 2026-11-03 the warm-up was always one
+second; since then it ends after one second or after a quarter of the frame limit, whichever
+comes first (see "Benchmark warm-up" below).
 Since 2026-10-31 a world unit is a logical point, so on a Retina display sprites would cover four
 times the pixels they did. The benchmarks spread sprites over the window's size in points and
 divide sprite sizes (and the hierarchy's ring radii) by the window's pixel density, so every
 sprite still covers the same pixels as in the earlier runs and the GPU fill work matches them.
+
+## Benchmark warm-up (2026-11-03)
+
+The summary used to skip the first second and then add up whole seconds, so a run whose frame
+limit ended inside the first second printed a summary over 0 frames, and the frames after the
+last whole second were dropped. The 10k `collisions` run at the default 2,000 frames lasts about
+1.5 s, so no whole second followed the warm-up, and it printed this:
+
+```
+--- summary (after 1 s warm-up, 0 frames) ---
+too short to summarize
+```
+
+The warm-up now starts at the first recorded frame and ends after one second or after a quarter
+of `KLYPH_FRAMES`, whichever comes first, so it never skips more frames than it leaves. Every frame
+after it counts. The summary line names the warm-up it used, for example
+`--- summary of 1500 frames after a warm-up of 500 frames (0.44 s) ---`. Runs longer than about
+four seconds still warm up for one second, so the 100k `sprites` numbers did not move: 2.410 ms
+before and 2.409 ms after.
+
+## Collisions (2026-11-03)
+
+The `collisions` benchmark moves `KLYPH_SPRITES` circle colliders with radii from 4 to 12 world
+units at 20 to 100 units per second inside a 4000 by 4000 area, bouncing at its edges, with seed
+42 so every run places them the same. The engine detects overlaps once per frame after
+`FIXED_UPDATE` on a uniform grid of `KLYPH_CELL` units (default 64). The `collide` stage is the
+detection alone, including the `Overlap` events it publishes; the circles are also drawn, with the
+camera zoomed out to fit the area. Same machine and offscreen setup as below, 2,000 frames, two
+runs of each; the lines are the second run, and the first agrees within 0.01 ms on `collide` at
+10k and 0.09 ms at 100k.
+
+```
+colliders=10000 cell=64.0 fps=1528 frame=0.654ms fixed=0.000ms collide=0.355ms update=0.000ms propagate=0.000ms acquire=0.000ms extract=0.048ms record=0.011ms gpuwait=0.229ms other=0.008ms
+collision pairs per frame: 2631.4
+colliders=100000 cell=64.0 fps=46 frame=21.894ms fixed=0.343ms collide=18.160ms update=0.001ms propagate=0.000ms acquire=0.006ms extract=0.562ms record=0.055ms gpuwait=2.629ms other=0.134ms
+collision pairs per frame: 261542.8
+```
+
+At 10k the area is sparse: about 2,600 pairs a frame, and detection costs 36 ns per collider.
+At 100k in the same area the density is ten times higher and the pairs grow a hundredfold, to
+about 262,000 a frame, so the 100k run is a stress case rather than a game scene. Detection then
+costs 18.2 ms, about 70 ns per reported pair including its event. A game with 10k colliders
+spread like the 10k run spends about a third of a millisecond a frame on collisions.
+
+## Particles (2026-11-03)
+
+The `particles` benchmark runs one emitter per 1000 of `KLYPH_SPRITES`, spread over the window in
+a grid. Each emitter starts with a full pool of 1000 particles and a rate that refills it faster
+than particles die, so about 100,000 particles are alive at 100k. Particles are 12 pixels across
+at emission and shrink to 6, with random rotation speed, gravity and a per-emitter tint, all from
+one texture in one layer, so the frame is one draw call. The `particles` stage is the engine's
+advance (aging, removal, emission and movement); writing their records counts in `extract`. Same
+machine and offscreen setup as below, 6,000 frames; three 2,000-frame runs gave `extract`
+1.20 to 1.28 ms and `particles` 0.19 to 0.21 ms, with `gpuwait` from 0.87 to 1.39 ms.
+
+```
+emitters=100 particles=99954 fps=416 frame=2.401ms fixed=0.000ms collide=0.000ms update=0.000ms propagate=0.000ms acquire=0.000ms extract=1.246ms record=0.017ms gpuwait=0.918ms particles=0.203ms other=0.015ms
+```
+
+Advancing costs 2 ns per particle. Extraction costs 12.5 ns per particle against 4.6 ns per
+sprite in the `sprites` benchmark. Each particle's record is written twice: first into the
+pass's quad buffer, with its color and scale blended by age, then copied into staging memory
+with a group lookup per quad, the path text and `App.canvas` quads take. Entity sprites are
+written into staging memory once.
+
+## Draw spaces and text (2026-11-02)
+
+The sprite pass now sorts every record by space, then layer, then texture, and draws the `WORLD`
+runs through the camera and the `SCREEN` runs through a projection in points. `Text` components,
+particles and `App.canvas` quads go through the same record buffer. The 100k `sprites` run measured
+2.43 ms after the change, against 2.45 ms in the interpolation section below, so a world with no
+text and no screen-space quads pays nothing measurable. Each texture also carries a sampler filter
+since 2026-11-03; the renderer holds a linear and a nearest sampler and binds the one that matches
+each run's texture with it, and the 100k run stayed at 2.41 ms (2.410 ms before, 2.409 ms after).
 
 ## Mixer (2026-11-02)
 

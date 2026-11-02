@@ -7,20 +7,22 @@ import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 
 /** Every benchmark this executable can run, in the order they are listed. */
-internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, mixerBenchmark)
+internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, collisionBenchmark, particleBenchmark, mixerBenchmark)
 
 /**
  * Runs the benchmark named by the first argument. Without an argument, prints the available
  * benchmarks and exits with status 0; with an unknown name, prints them and exits with status 1.
  *
- * Environment: `KLYPH_SPRITES` sprite count (default 10000), `KLYPH_CHILDREN` children per parent
+ * Environment: `KLYPH_SPRITES` sprite count (default 10000; the particles benchmark runs one
+ * emitter of 1000 particles per 1000), `KLYPH_CHILDREN` children per parent
  * in the hierarchy benchmark (default 8), `KLYPH_TEXTURES` textures in the sprites benchmark
  * (default 1), `KLYPH_INTERPOLATE=1` to move the sprites benchmark in fixed steps and draw it
  * interpolated, `KLYPH_FRAMES` frames before exit, `KLYPH_SECONDS` seconds of frame time before exit,
  * `KLYPH_VSYNC=1` to cap at the display rate, `KLYPH_VALIDATION=1` for the GPU validation layer,
  * `KLYPH_OFFSCREEN=1` to render to a texture and wait for the GPU each frame instead of presenting,
  * `KLYPH_MUSIC=<path to an .ogg>` to make the mixer benchmark stream that Ogg Vorbis file instead of
- * its synthetic music, so the time includes real decoding. A relative path resolves against the
+ * its synthetic music, so the time includes real decoding, `KLYPH_CELL` the collision grid's cell
+ * size in world units (default 64). A relative path resolves against the
  * executable's directory when run directly, and against the repository root through the Gradle
  * tasks.
  */
@@ -44,6 +46,7 @@ fun main(args: Array<String>) {
         presentMode = if (Sdl.environmentVariable("KLYPH_VSYNC") == "1") PresentMode.VSYNC else PresentMode.IMMEDIATE,
         validation = if (Sdl.environmentVariable("KLYPH_VALIDATION") == "1") GpuValidation.ENABLED else GpuValidation.DISABLED,
         musicPath = Sdl.environmentVariable("KLYPH_MUSIC")?.ifEmpty { null },
+        cellSize = Sdl.environmentVariable("KLYPH_CELL")?.toFloatOrNull() ?: 64f,
     )
     benchmark.run(settings)
 }

@@ -2,6 +2,7 @@ package klyph.render
 
 import klyph.entity.ComponentType
 import klyph.entity.World
+import klyph.scene.SceneStack
 import kotlin.time.Duration
 
 /**
@@ -70,10 +71,14 @@ public fun SpriteAnimation(
 
 /**
  * Advances every [SpriteAnimation] whose entity also has a [Sprite] by [delta] and shows its
- * current frame in that sprite. The engine calls it at the start of LATE_UPDATE.
+ * current frame in that sprite. When [scenes] is given, an animation owned by a scene frozen below
+ * its top does not advance and its sprite keeps the frame it shows. The engine calls it at the
+ * start of LATE_UPDATE with `App.scenes`.
  */
-internal fun World.advanceSpriteAnimations(delta: Duration) {
-    forEach(SpriteAnimation, Sprite) { _, spriteAnimation, sprite ->
+internal fun World.advanceSpriteAnimations(delta: Duration, scenes: SceneStack? = null) {
+    val frozen = if (scenes != null && scenes.hasFrozen) scenes else null
+    forEach(SpriteAnimation, Sprite) { entity, spriteAnimation, sprite ->
+        if (frozen != null && frozen.isFrozen(ownerAt(entity.index))) return@forEach
         spriteAnimation.animation.advance(delta)
         sprite.region = spriteAnimation.currentFrame
     }

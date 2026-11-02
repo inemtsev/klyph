@@ -73,6 +73,18 @@ import sdl3.SDL_SCANCODE_DOWN
 import sdl3.SDL_SCANCODE_E
 import sdl3.SDL_SCANCODE_ESCAPE
 import sdl3.SDL_SCANCODE_F
+import sdl3.SDL_SCANCODE_F1
+import sdl3.SDL_SCANCODE_F2
+import sdl3.SDL_SCANCODE_F3
+import sdl3.SDL_SCANCODE_F4
+import sdl3.SDL_SCANCODE_F5
+import sdl3.SDL_SCANCODE_F6
+import sdl3.SDL_SCANCODE_F7
+import sdl3.SDL_SCANCODE_F8
+import sdl3.SDL_SCANCODE_F9
+import sdl3.SDL_SCANCODE_F10
+import sdl3.SDL_SCANCODE_F11
+import sdl3.SDL_SCANCODE_F12
 import sdl3.SDL_SCANCODE_G
 import sdl3.SDL_SCANCODE_H
 import sdl3.SDL_SCANCODE_I
@@ -329,6 +341,31 @@ public value class Scancode(public val code: UInt) {
         public val DIGIT_8: Scancode = Scancode(SDL_SCANCODE_8)
         /** The key where 9 sits on the main row of a US layout. */
         public val DIGIT_9: Scancode = Scancode(SDL_SCANCODE_9)
+
+        /** The F1 function key. */
+        public val F1: Scancode = Scancode(SDL_SCANCODE_F1)
+        /** The F2 function key. */
+        public val F2: Scancode = Scancode(SDL_SCANCODE_F2)
+        /** The F3 function key. */
+        public val F3: Scancode = Scancode(SDL_SCANCODE_F3)
+        /** The F4 function key. */
+        public val F4: Scancode = Scancode(SDL_SCANCODE_F4)
+        /** The F5 function key. */
+        public val F5: Scancode = Scancode(SDL_SCANCODE_F5)
+        /** The F6 function key. */
+        public val F6: Scancode = Scancode(SDL_SCANCODE_F6)
+        /** The F7 function key. */
+        public val F7: Scancode = Scancode(SDL_SCANCODE_F7)
+        /** The F8 function key. */
+        public val F8: Scancode = Scancode(SDL_SCANCODE_F8)
+        /** The F9 function key. */
+        public val F9: Scancode = Scancode(SDL_SCANCODE_F9)
+        /** The F10 function key. */
+        public val F10: Scancode = Scancode(SDL_SCANCODE_F10)
+        /** The F11 function key. */
+        public val F11: Scancode = Scancode(SDL_SCANCODE_F11)
+        /** The F12 function key. */
+        public val F12: Scancode = Scancode(SDL_SCANCODE_F12)
 
         /** The up arrow key. */
         public val UP: Scancode = Scancode(SDL_SCANCODE_UP)

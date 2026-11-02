@@ -55,6 +55,8 @@ internal class BenchmarkSettings(
      * music, to measure the decoding cost; `null` keeps the synthetic stream.
      */
     val musicPath: String?,
+    /** `KLYPH_CELL`, default 64: the collision grid's cell size in world units. */
+    val cellSize: Float,
 ) {
     /** Returns the app configuration for a benchmark whose window is titled [title]. */
     fun appConfig(title: String): AppConfig =
@@ -64,11 +66,12 @@ internal class BenchmarkSettings(
             target = if (offscreen) RenderTarget.OFFSCREEN else RenderTarget.WINDOW,
             gpuSync = if (offscreen) GpuSync.WAIT_EACH_FRAME else GpuSync.NONE,
             validation = validation,
+            collisionCellSize = cellSize,
         )
 
     override fun toString(): String =
         "BenchmarkSettings(spriteCount=$spriteCount, childCount=$childCount, textureCount=$textureCount, interpolate=$interpolate, frameLimit=$frameLimit, timeLimit=$timeLimit, " +
-            "offscreen=$offscreen, presentMode=$presentMode, validation=$validation, musicPath=$musicPath)"
+            "offscreen=$offscreen, presentMode=$presentMode, validation=$validation, musicPath=$musicPath, cellSize=$cellSize)"
 }
 
 /**

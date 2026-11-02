@@ -6,9 +6,10 @@ import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.time.DurationUnit
 
-// The autopilot (KLYPH_AUTOPILOT=1) plays the game for demos and smoke runs: it faces up and fires
-// all the time, lines up under the nearest enemy above it and patrols up and down so the camera
-// moves. It fills the same Controls the keyboard, mouse and gamepad fill.
+// The autopilot (KLYPH_AUTOPILOT=1) plays the game for demos and smoke runs: it leaves the title
+// screen at once and the game over screen after a second (GameScenes does that), and in play it
+// faces up and fires all the time, lines up under the nearest enemy above it and patrols up and
+// down so the camera moves. It fills the same Controls the keyboard, mouse and gamepad fill.
 
 private const val LINE_UP_DISTANCE = 40f
 private const val PATROL_HEIGHT = 300f
@@ -18,7 +19,8 @@ private const val SWEEP_RATE = 0.5f
 private const val MIN_TARGET_GAP = 80f
 
 /** Fills [Game.controls] as if a player were steering, in place of the player's input. */
-fun Game.steerAutopilot(app: App) {
+fun Round.steerAutopilot(app: App) {
+    val controls = game.controls
     val ship = app.world.get(player, Transform)
     val seconds = app.time.elapsed.toDouble(DurationUnit.SECONDS).toFloat()
     val enemyX = nextEnemyXOrNaN(app, ship)
@@ -33,7 +35,7 @@ fun Game.steerAutopilot(app: App) {
 }
 
 /** Returns where to stand to hit the enemy above [ship] that is closest sideways, or NaN when there is none. */
-private fun Game.nextEnemyXOrNaN(app: App, ship: Transform): Float {
+private fun nextEnemyXOrNaN(app: App, ship: Transform): Float {
     var bestX = Float.NaN
     var bestDistance = Float.POSITIVE_INFINITY
     app.world.forEach(Enemy, Transform, Velocity) { _, enemy, transform, velocity ->

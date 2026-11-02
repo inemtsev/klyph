@@ -2,10 +2,9 @@ package klyph.shooter
 
 import klyph.app.App
 import klyph.entity.Transform
-import klyph.event.KeyPressed
-import klyph.event.WindowFocusGained
 import klyph.event.WindowFocusLost
 import klyph.input.Gamepad
+import klyph.input.Input
 import klyph.input.axis
 import klyph.platform.GamepadAxis
 import klyph.platform.GamepadButton
@@ -28,41 +27,47 @@ class Controls {
     override fun toString(): String = "Controls(move=$moveX, $moveY, heading=$heading, firing=$isFiring)"
 }
 
-/** INPUT system: quits on Escape, pauses while the window is in the background and fills [Game.controls]. */
-fun Game.readInput(app: App) {
-    if (app.input.keyboard.isJustPressed(Scancode.ESCAPE)) app.quit()
-    if (isAutopilot) {
-        steerAutopilot(app)
-    } else {
-        updatePause(app)
-        steerFromInput(app)
-    }
+/** Play scene INPUT system: fills [Game.controls] from the player's input or from the autopilot. */
+fun Round.readControls(app: App) {
+    if (game.isAutopilot) steerAutopilot(app) else steerFromInput(app)
 }
+
+// Menu keys. Every check is for a press this frame, so holding a key does not run through screens.
+
+/** Returns `true` if the title screen should start a game: Space, a left click, or Start or South on a gamepad. */
+fun isStartPressed(input: Input): Boolean =
+    input.keyboard.isJustPressed(Scancode.SPACE) || input.mouse.isJustPressed(MouseButton.LEFT) ||
+        input.isGamepadJustPressed(GamepadButton.START) || input.isGamepadJustPressed(GamepadButton.SOUTH)
+
+/** Returns `true` if the game over screen should start another game: Space or Start. */
+fun isRetryPressed(input: Input): Boolean =
+    input.keyboard.isJustPressed(Scancode.SPACE) || input.isGamepadJustPressed(GamepadButton.START)
+
+/** Returns `true` if Escape or a gamepad's Start went down: pause during play, resume while paused. */
+fun isPausePressed(input: Input): Boolean =
+    input.keyboard.isJustPressed(Scancode.ESCAPE) || input.isGamepadJustPressed(GamepadButton.START)
+
+/** Returns `true` if Escape went down: quit from the title screen, back to it from game over. */
+fun isEscapePressed(input: Input): Boolean = input.keyboard.isJustPressed(Scancode.ESCAPE)
 
 /**
- * Pauses when the window loses focus and resumes when it gets it back or a key is pressed, turning
- * the music down while paused. The autopilot never pauses, so demos and smoke runs play on in the
- * background.
+ * Returns `true` if the play scene should pause: Escape, Start, or the window going to the
+ * background. The autopilot never pauses, so demos and smoke runs play on in the background.
  */
-private fun Game.updatePause(app: App) {
-    val wasPaused = isPaused
-    val events = app.events
-    if (events.any<WindowFocusLost>()) {
-        isPaused = true
-    } else if (isPaused) {
-        var isResumed = events.any<WindowFocusGained>()
-        events.forEach<KeyPressed> { if (!it.isRepeat) isResumed = true }
-        if (isResumed) isPaused = false
+fun isPauseRequested(app: App): Boolean =
+    !app.game.isAutopilot && (isPausePressed(app.input) || app.events.any<WindowFocusLost>())
+
+private fun Input.isGamepadJustPressed(button: GamepadButton): Boolean {
+    val gamepads = gamepads
+    for (index in gamepads.indices) {
+        if (gamepads[index].isJustPressed(button)) return true
     }
-    if (isPaused != wasPaused) {
-        // The music ducks while paused instead of stopping, so resuming does not restart it.
-        app.audio.music.volume = if (isPaused) Tuning.PAUSED_MUSIC_VOLUME else 1f
-        println(if (isPaused) "Paused." else "Resumed.")
-    }
+    return false
 }
 
-private fun Game.steerFromInput(app: App) {
+private fun Round.steerFromInput(app: App) {
     val input = app.input
+    val controls = game.controls
     val gamepad = input.gamepads.firstOrNull()
     var x = input.axis(Scancode.A, Scancode.D) + input.axis(Scancode.LEFT, Scancode.RIGHT)
     var y = input.axis(Scancode.W, Scancode.S) + input.axis(Scancode.UP, Scancode.DOWN)
@@ -82,17 +87,17 @@ private fun Game.steerFromInput(app: App) {
  * or NaN to keep the current heading. Whichever of the two moved last steers; a released stick
  * leaves the ship as it is, while the cursor keeps the ship facing it as both move.
  */
-private fun Game.aimHeading(app: App, gamepad: Gamepad?): Float {
+private fun Round.aimHeading(app: App, gamepad: Gamepad?): Float {
     val mouse = app.input.mouse
     if (gamepad != null) {
         val stick = gamepad.rightStick
         if (stick.x != 0f || stick.y != 0f) {
-            isAimingWithMouse = false
+            game.isAimingWithMouse = false
             return headingOf(stick.x, stick.y)
         }
     }
-    if (mouse.delta.x != 0f || mouse.delta.y != 0f) isAimingWithMouse = true
-    if (!isAimingWithMouse) return Float.NaN
+    if (mouse.delta.x != 0f || mouse.delta.y != 0f) game.isAimingWithMouse = true
+    if (!game.isAimingWithMouse) return Float.NaN
     val ship = app.world.get(player, Transform)
     val target = mouse.worldPosition
     val dx = target.x - ship.x
@@ -113,4 +118,12 @@ fun Controls.setMove(x: Float, y: Float) {
     val scale = if (lengthSquared > 1f) 1f / sqrt(lengthSquared) else 1f
     moveX = x * scale
     moveY = y * scale
+}
+
+/** Lets go of everything, so a new game does not start with the last game's steering or trigger. */
+fun Controls.release() {
+    moveX = 0f
+    moveY = 0f
+    heading = Float.NaN
+    isFiring = false
 }

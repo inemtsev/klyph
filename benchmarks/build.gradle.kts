@@ -8,7 +8,7 @@ plugins {
 
 // Names registered in klyph.benchmarks.Main; each gets a `benchmark<Name>` task. Windowed
 // benchmarks also get `benchmark<Name>Offscreen`; headless ones open no window, so they do not.
-val benchmarkNames = listOf("sprites", "hierarchy")
+val benchmarkNames = listOf("sprites", "hierarchy", "collisions", "particles")
 val headlessBenchmarkNames = listOf("mixer")
 
 kotlin {
@@ -21,7 +21,7 @@ kotlin {
 
         // Benchmarks always run from the release build. Environment comes from the shell or from
         // Gradle properties: klyph.sprites, klyph.children, klyph.textures, klyph.frames, klyph.offscreen, klyph.vsync,
-        // klyph.validation, klyph.music. `benchmark` picks the benchmark with -Pklyph.benchmark=<name>.
+        // klyph.validation, klyph.music, klyph.cell. `benchmark` picks the benchmark with -Pklyph.benchmark=<name>.
         binaries.withType<Executable>().matching { it.buildType == NativeBuildType.RELEASE }.configureEach {
             val environment = RunEnvironment.of(project)
             val selected = providers.gradleProperty("klyph.benchmark").getOrElse(benchmarkNames.first())

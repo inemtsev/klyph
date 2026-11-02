@@ -123,6 +123,14 @@ public class Commands(private val world: World) {
         }
     }
 
+    /**
+     * Empties the queue without running its commands. The engine calls it when a scene action
+     * throws, so the commands it queued do not apply later as if they belonged to no scene.
+     */
+    internal fun discard() {
+        clear()
+    }
+
     override fun toString(): String = "Commands(queued=$size)"
 
     @Suppress("UNCHECKED_CAST")

@@ -247,4 +247,56 @@ class WorldTest {
         assertEquals("ComponentType(Health)", Health.toString())
         assertEquals("Entity(3:1)", Entity.of(3, 1).toString())
     }
+
+    @Test
+    fun createRecordsTheCurrentOwner() {
+        val world = World()
+        val unowned = world.create()
+        world.currentOwner = 7
+        val owned = world.create()
+        world.currentOwner = World.NO_OWNER
+        assertEquals(World.NO_OWNER, world.ownerOf(unowned))
+        assertEquals(7, world.ownerOf(owned))
+        val parent = world.create()
+        world.setParent(owned, parent)
+        assertEquals(7, world.ownerOf(owned))
+        world.destroy(owned)
+        assertEquals(World.NO_OWNER, world.ownerOf(owned))
+        val reused = world.create()
+        assertEquals(owned.index, reused.index)
+        assertEquals(World.NO_OWNER, world.ownerOf(reused))
+    }
+
+    @Test
+    fun ownersSurviveGrowth() {
+        val world = World(initialCapacity = 2)
+        world.currentOwner = 3
+        val entities = List(10) { world.create() }
+        world.currentOwner = World.NO_OWNER
+        for (e in entities) assertEquals(3, world.ownerOf(e))
+    }
+
+    @Test
+    fun destroyOwnedByDestroysOnlyThatOwnersEntitiesAndTheirDescendants() {
+        val world = World()
+        world.currentOwner = 1
+        val a = world.create()
+        val b = world.create()
+        world.currentOwner = 2
+        val other = world.create()
+        world.currentOwner = World.NO_OWNER
+        val childOfA = world.create()
+        world.setParent(childOfA, a)
+        val holder = world.create()
+        world.setParent(b, holder)
+
+        world.destroyOwnedBy(1)
+        assertFalse(world.isAlive(a))
+        assertFalse(world.isAlive(b))
+        assertFalse(world.isAlive(childOfA))
+        assertTrue(world.isAlive(other))
+        assertTrue(world.isAlive(holder))
+        assertEquals(emptyList(), world.childrenOf(holder))
+        assertFailsWith<IllegalArgumentException> { world.destroyOwnedBy(World.NO_OWNER) }
+    }
 }

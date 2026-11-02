@@ -19,9 +19,15 @@ its `klyph.app` package owns the frame loop, which games and executables enter t
 systems get `app.assets`, which loads from `assets/` next to the executable unless
 `AppConfig.assetRoot` overrides it, `app.camera`, which sprites are drawn through, `app.input`, the
 keyboard, mouse and gamepad state updated at the start of INPUT, `app.commands`, the world command
-queue applied after every system, `app.resources`, shared state keyed by class, and `app.audio`,
+queue applied after every system, `app.resources`, shared state keyed by class, `app.audio`,
 sound effects and music, with sounds and tracks loaded through `app.assets.sound` and
-`app.assets.music`),
+`app.assets.music`, `app.scenes`, a scene stack whose top scene's systems run and whose scenes own
+the entities they spawn, `app.collisions`, overlap detection after FIXED_UPDATE that publishes
+`Overlap` events and answers shape queries, `app.canvas`, immediate quads and text in `WORLD` or
+`SCREEN` space queued during RENDER, and `app.overlay`, the debug overlay toggled with F3; the
+`Text` and `ParticleEmitter` components draw with the sprites, fonts load through
+`app.assets.font` or come built in as `app.assets.defaultFont`, and a texture's `SamplerFilter`,
+chosen when it loads, picks linear or nearest sampling),
 `sandbox` (executable; a smoke test that opens a window and clears it each frame), `shooter`
 (executable; the reference game sample, keyboard with mouse aim or gamepad, its art and sounds in
 `shooter/assets/` synced next to the binary after every link; `KLYPH_AUTOPILOT=1` plays itself,
@@ -42,6 +48,8 @@ also mixes without a device. Shared target config and SDL link flags live in
 ./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ./gradlew :benchmarks:benchmarkSprites -Pklyph.sprites=50000     # in a window
 ./gradlew :benchmarks:benchmarkHierarchy -Pklyph.sprites=5000 -Pklyph.children=8
+./gradlew :benchmarks:benchmarkCollisionsOffscreen -Pklyph.sprites=10000 -Pklyph.cell=64
+./gradlew :benchmarks:benchmarkParticlesOffscreen -Pklyph.sprites=100000   # 100 emitters of 1000
 ./gradlew :benchmarks:benchmarkMixer                            # headless, no window or device
 ./gradlew :benchmarks:benchmarkMixer -Pklyph.music=shooter/assets/music.ogg
 ./gradlew :benchmarks:benchmarkList
@@ -51,7 +59,10 @@ also mixes without a device. Shared target config and SDL link flags live in
 tasks run the release build. Every `KLYPH_*` variable below can be given as a Gradle property
 instead (`-Pklyph.sprites=…`, `-Pklyph.frames=…`, `-Pklyph.offscreen=1`, `-Pklyph.vsync=1`,
 `-Pklyph.validation=1`, `-Pklyph.autopilot=1`, `-Pklyph.music=…`), which is how the IntelliJ run configurations in
-`.run/` pass them. `benchmark<Name>Offscreen` sets `KLYPH_OFFSCREEN=1` and 2000 frames;
+`.run/` pass them. `sprites`, `hierarchy`, `collisions` and `particles` each have a
+`benchmark<Name>` task in a window and a `benchmark<Name>Offscreen` task, which sets
+`KLYPH_OFFSCREEN=1` and 2000 frames; a run's summary skips a warm-up of one second or a quarter
+of the frame limit, whichever is shorter;
 `-Pklyph.benchmark=<name>` picks the benchmark for the generic `benchmark` task. The binaries
 are also runnable directly: `benchmarks/build/bin/macosArm64/releaseExecutable/benchmarks.kexe
 sprites`.
@@ -65,7 +76,9 @@ waits for the GPU each frame so the display is out of the loop. `KLYPH_AUTOPILOT
 shooter play itself and fail at exit if it destroyed no enemy. `KLYPH_MUSIC=<path to an .ogg>` makes
 the `mixer` benchmark stream that file instead of its synthetic music, to measure Vorbis decoding;
 a relative path resolves against the executable's directory, or the repository root through
-Gradle. macOS has no `timeout`, so bound
+Gradle. `KLYPH_CELL=<units>` sets the collision grid's cell size in the `collisions` benchmark
+(default 64), and `KLYPH_OVERLAY=1` starts the sandbox with the debug overlay shown. macOS has no
+`timeout`, so bound
 runs with `KLYPH_FRAMES`. Do not pipe `./gradlew` output into
 another command: the daemon inherits the pipe and the shell never sees EOF. Redirect to a file.
 
@@ -82,6 +95,22 @@ The `windows` CI job builds this target and runs the tests; it never opens a win
 rendering path is only checked by running the sandbox on a real machine. The same build
 cross-compiles from macOS or Linux with `-Pklyph.target=mingwX64 -Psdl3.prefix=<that folder>`
 (compile and link only; the tests need Windows to run).
+
+## Frame order
+
+`runApp` runs STARTUP once and applies the scene transitions queued so far. Each frame then runs:
+drop last frame's events, refresh audio, translate platform events into `app.input` and
+`app.events`, toggle the overlay, INPUT, FIXED_UPDATE zero or more times (interpolated transforms
+recorded before each step), propagate transforms, detect collisions and publish `Overlap` events,
+UPDATE, advance particles, advance sprite animations, LATE_UPDATE, propagate transforms, RENDER,
+queue the overlay on `app.canvas`, draw sprites, `Text`, particles and `app.canvas` (WORLD runs, then
+SCREEN runs) and present, apply scene transitions. Commands apply after every system and after
+the second propagation. Scene systems run after the App-level systems of the same phase. A pushed
+scene freezes the one below: its systems do not run, its particle emitters, sprite animations and
+colliders stand still (the particle and animation steps skip them and collision detection leaves
+them out), its entities keep rendering. `SceneStack.isFrozen(owner)` answers for an entity's owner
+id; entities of no scene are never frozen. After the last frame every scene leaves the stack, top
+first, and SHUTDOWN runs.
 
 ## Audio
 

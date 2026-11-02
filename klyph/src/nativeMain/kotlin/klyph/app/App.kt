@@ -1,6 +1,7 @@
 package klyph.app
 
 import klyph.audio.Audio
+import klyph.collision.Collisions
 import klyph.entity.Commands
 import klyph.entity.World
 import klyph.event.Events
@@ -9,11 +10,16 @@ import klyph.platform.Color
 import klyph.platform.PresentMode
 import klyph.platform.Window
 import klyph.render.Camera
+import klyph.render.Canvas
+import klyph.scene.Scene
+import klyph.scene.SceneHost
+import klyph.scene.SceneStack
 
 /**
  * Represents a running klyph application: the world, its command queue, the event bus, the input
- * state, the shared resources, the clock, the assets, the camera, the audio and the systems the
- * frame loop runs. [runApp] creates the one instance and passes it to its `setup` block and to
+ * state, the shared resources, the clock, the assets, the camera, the canvas, the audio, the
+ * overlap detection, the debug overlay, the scene stack and the systems the frame loop runs.
+ * [runApp] creates the one instance and passes it to its `setup` block and to
  * every [System].
  *
  * An `App` is only valid inside [runApp]. Once [runApp] returns, its window, GPU device, audio
@@ -77,13 +83,27 @@ public class App internal constructor(
      * The engine applies the queue after every system of every phase, so the changes one system
      * queues are in the world when the next system runs, even within the same phase. It applies it
      * once more after the transform propagation that follows [Phase.LATE_UPDATE], and once after
-     * the `setup` block of [runApp], so entities queued there exist when [Phase.STARTUP] runs. An
+     * the `setup` block of [runApp], so entities queued there exist when [Phase.STARTUP] runs. It
+     * also applies it after every `onEnter` and `onExit` action of a scene in [scenes]. An
      * exception thrown by a system skips the application after it.
      */
     public val commands: Commands = Commands(world)
 
-    /** The event bus. The engine publishes `klyph.event` events into it during [Phase.INPUT]. */
+    /**
+     * The event bus. The engine publishes `klyph.event` events into it during [Phase.INPUT], and
+     * `klyph.collision.Overlap` events between [Phase.FIXED_UPDATE] and [Phase.UPDATE].
+     */
     public val events: Events = Events()
+
+    /**
+     * Finds overlapping colliders. Once per frame, after the last [Phase.FIXED_UPDATE] step and
+     * before [Phase.UPDATE], the engine propagates transforms and then calls [Collisions.detect],
+     * which publishes an `Overlap` event into [events] for every overlapping pair; systems from
+     * [Phase.UPDATE] on read them. Its shape queries read the positions of that detection, so they
+     * are current from [Phase.UPDATE] to the end of the frame. Its cell size starts as
+     * [AppConfig.collisionCellSize].
+     */
+    public val collisions: Collisions = Collisions(config.collisionCellSize)
 
     /**
      * The keyboard, mouse and gamepad state as of this frame. The engine updates it at the start of
@@ -98,11 +118,44 @@ public class App internal constructor(
      */
     public val resources: Resources = Resources()
 
+    /**
+     * The stack of scenes, such as a title screen, a level and a pause menu over it. Only the scene
+     * on top runs its systems, after the App-level systems of each phase; the scenes below it are
+     * frozen, and their particle emitters, sprite animations and colliders stand still. The
+     * entities a scene spawns are destroyed when it leaves the stack. Changes queue and apply at the end of the
+     * frame. It starts empty, and the app runs only its App-level systems while it is.
+     */
+    public val scenes: SceneStack = SceneStack()
+
+    private val sceneHost = object : SceneHost {
+        override val world: World get() = this@App.world
+        override val commands: Commands get() = this@App.commands
+        override fun enter(scene: Scene) = scene.onEnter(this@App)
+        override fun exit(scene: Scene) = scene.onExit(this@App)
+        override fun toString(): String = "SceneHost(app=${this@App})"
+    }
+
     /** The frame clock. [Time.delta] equals [Time.fixedDelta] inside [Phase.FIXED_UPDATE]. */
     public val time: Time = Time(config.fixedRate)
 
     /** The timings of the last completed frame. */
     public val stats: FrameStats = FrameStats()
+
+    /**
+     * Queues sprites, rectangles and text to draw this frame without entities, in world space
+     * through [camera] or in screen space in points from the window's top-left corner. Call it
+     * from [Phase.RENDER] systems only; anywhere else it throws [IllegalStateException]. The
+     * engine draws what was queued at the end of RENDER, with the world's sprites, and empties it.
+     * `assets.defaultFont` draws text with no font file.
+     */
+    public val canvas: Canvas = Canvas(assets.whitePixel)
+
+    /**
+     * The debug overlay: frame rate, frame and phase times, counts and a frame-time graph in the
+     * window's top-left corner. It starts hidden; [AppConfig.overlayKey], F3 by default, shows and
+     * hides it, and setting `overlay.isVisible` does the same from a system.
+     */
+    public val overlay: DebugOverlay = DebugOverlay()
 
     /** The color the next frames are cleared to. Starts as [AppConfig.clearColor]. */
     public var clearColor: Color = config.clearColor
@@ -110,7 +163,8 @@ public class App internal constructor(
     /**
      * Adds [system] to [phase]. It runs each time [phase] runs, after the systems added to [phase]
      * before it, and after the engine's own work in [Phase.INPUT] and [Phase.LATE_UPDATE] and before
-     * it in [Phase.RENDER].
+     * it in [Phase.RENDER]. It runs whatever [scenes] holds, before the systems the top scene has
+     * for [phase]. Entities it creates belong to no scene, even while a scene is on top.
      *
      * Systems may be added from the `setup` block of [runApp] or from another system. A system
      * added to the running phase cannot run in it, and a [Phase.STARTUP] system added after
@@ -136,10 +190,20 @@ public class App internal constructor(
         isQuitRequested = true
     }
 
-    /** Runs the systems of [phase], applying [commands] after each one. */
+    /** Runs the systems of [phase] and then the top scene's, applying [commands] after each one. */
     internal fun run(phase: Phase) {
         schedule.run(phase, this)
         if (phase == Phase.STARTUP) startupDone = true
+    }
+
+    /** Applies the transitions queued on [scenes]. */
+    internal fun applySceneTransitions() {
+        scenes.applyTransitions(sceneHost)
+    }
+
+    /** Makes every scene leave [scenes], top first, before [Phase.SHUTDOWN]. */
+    internal fun exitScenes() {
+        scenes.exitEveryScene(sceneHost)
     }
 
     /** Returns `App(title=klyph, frame=12, entities=100)`. The format may change. */

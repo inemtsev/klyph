@@ -50,6 +50,14 @@ import klyph.render.generated.SpriteVertexShader
  * uniform, and the vertex index; there are no vertex buffers. The shaders come from
  * `src/shaders/sprite.*.hlsl`, compiled by the `compileShaders` task.
  *
+ * Inside `runApp` the engine also feeds it the glyphs of `Text` components and the quads of
+ * `App.canvas`, some of them in [DrawSpace.SCREEN]; those records sort after every
+ * [DrawSpace.WORLD] record and are drawn with a projection in points. Entity sprites are always in
+ * [DrawSpace.WORLD].
+ *
+ * Each texture is sampled with its own [Texture.filter]. The renderer holds one sampler per
+ * [SamplerFilter] and binds the matching one with each run's texture.
+ *
  * At most [capacity] sprites are drawn per frame; extra sprites are skipped. [ensureCapacity]
  * grows it. The renderer starts with room for [initialCapacity] sprites.
  *
@@ -59,7 +67,6 @@ public class SpriteRenderer(
     private val device: GpuDevice,
     colorFormat: TextureFormat,
     initialCapacity: Int = 1024,
-    filter: SamplerFilter = SamplerFilter.LINEAR,
 ) : AutoCloseable {
     init {
         require(initialCapacity > 0) { "Sprite capacity $initialCapacity is not positive." }
@@ -76,7 +83,9 @@ public class SpriteRenderer(
     private val fragmentShader: GpuShader = device.createShader(SpriteFragmentShader)
     private val pipeline: GraphicsPipeline =
         device.createGraphicsPipeline(vertexShader, fragmentShader, colorFormat, BlendMode.ALPHA)
-    private val sampler: Sampler = device.createSampler(filter)
+    private val linearSampler: Sampler = device.createSampler(SamplerFilter.LINEAR)
+    private val nearestSampler: Sampler = device.createSampler(SamplerFilter.NEAREST)
+
     /**
      * The vertex uniform block of `sprite.vert.hlsl`: the view-projection matrix in floats 0-15,
      * then the run's first sprite as the bits of a `uint` in float 16, then three floats of
@@ -100,7 +109,7 @@ public class SpriteRenderer(
 
     /**
      * Grows [capacity] to at least [spriteCount] by doubling it, replacing the record buffers.
-     * Does nothing if [spriteCount] already fits. The pipeline, shaders and sampler are kept.
+     * Does nothing if [spriteCount] already fits. The pipeline, shaders and samplers are kept.
      *
      * Work already submitted may still read the old buffers; the GPU device defers their release
      * until it is done with them.
@@ -146,7 +155,14 @@ public class SpriteRenderer(
      *
      * @throws IllegalArgumentException if [fixedStepAlpha] is below 0 or above 1.
      */
-    public fun extract(world: World, fixedStepAlpha: Float = 1f): Int {
+    public fun extract(world: World, fixedStepAlpha: Float = 1f): Int = extract(world, fixedStepAlpha, null, null)
+
+    /**
+     * Writes the records of [world]'s sprites as the public [extract] does, followed by the quads
+     * of [first] and then [second] when they are not `null`, all sorted together by space, layer
+     * and texture, and returns how many were written in total.
+     */
+    internal fun extract(world: World, fixedStepAlpha: Float, first: QuadBuffer?, second: QuadBuffer?): Int {
         require(fixedStepAlpha >= 0f && fixedStepAlpha <= 1f) { "Fixed step alpha $fixedStepAlpha is not between 0 and 1." }
         // One walk over the world finds each sprite's group and writes its record, using a guess
         // from the previous frame. If that frame came out in draw order, this one most likely is
@@ -168,6 +184,8 @@ public class SpriteRenderer(
                     count++
                 }
             }
+            if (first != null) count = appendInOrder(first, records, count, limit)
+            if (second != null) count = appendInOrder(second, records, count, limit)
             order.finish()
             order.isSorted
         } else {
@@ -181,11 +199,13 @@ public class SpriteRenderer(
                     count++
                 }
             }
+            if (first != null) count = appendPlaced(first, records, count, limit)
+            if (second != null) count = appendPlaced(second, records, count, limit)
             order.finish()
             order.predictionHeld
         }
         if (!guessHeld) {
-            fillScratch(world, count, alpha)
+            fillScratch(world, count, alpha, first, second)
             scatter(records, count)
         }
         device.unmap(staging)
@@ -195,10 +215,55 @@ public class SpriteRenderer(
     }
 
     /**
-     * Sorts the first [count] sprites of [world] again, this time recording positions, and writes
-     * them to the scratch array in storage order, blending interpolated ones by [alpha].
+     * Adds the quads of [quads] to the order as a frame expected to be sorted and writes them at
+     * the next positions of [records], from [count] up to [limit] records in all. Returns the new
+     * count.
      */
-    private fun fillScratch(world: World, count: Int, alpha: Float) {
+    private fun appendInOrder(quads: QuadBuffer, records: MappedFloats, count: Int, limit: Int): Int {
+        val order = order
+        val source = quads.records
+        var written = count
+        for (quad in 0 until quads.count) {
+            if (written >= limit) break
+            order.addGroupWithoutPosition(order.groupFor(quads.layers[quad], quads.textureAt(quad), quads.spaceAt(quad)))
+            copyRecord(source, quad * SPRITE_RECORD_FLOATS, written * SPRITE_RECORD_FLOATS) { index, value -> records.set(index, value) }
+            written++
+        }
+        return written
+    }
+
+    /**
+     * Adds the quads of [quads] to the order as a frame expected to repeat the last one's groups and
+     * writes each at its predicted position in [records], from [count] up to [limit] records in
+     * all. Returns the new count.
+     */
+    private fun appendPlaced(quads: QuadBuffer, records: MappedFloats, count: Int, limit: Int): Int {
+        val order = order
+        val source = quads.records
+        var written = count
+        for (quad in 0 until quads.count) {
+            if (written >= limit) break
+            val position = order.placeGroup(order.groupFor(quads.layers[quad], quads.textureAt(quad), quads.spaceAt(quad)))
+            // Out of range only when the guess is wrong, and then every record is rewritten.
+            if (position < limit) {
+                copyRecord(source, quad * SPRITE_RECORD_FLOATS, position * SPRITE_RECORD_FLOATS) { index, value -> records.set(index, value) }
+            }
+            written++
+        }
+        return written
+    }
+
+    /** Copies the record at float [from] of [source] through [set], starting at float [to]. */
+    private inline fun copyRecord(source: FloatArray, from: Int, to: Int, set: (Int, Float) -> Unit) {
+        for (k in 0 until SPRITE_RECORD_FLOATS) set(to + k, source[from + k])
+    }
+
+    /**
+     * Sorts the first [count] sprites of [world], then the quads of [first] and [second], again,
+     * this time recording positions, and writes them to the scratch array in that order, blending
+     * interpolated sprites by [alpha].
+     */
+    private fun fillScratch(world: World, count: Int, alpha: Float, first: QuadBuffer?, second: QuadBuffer?) {
         val scratch = scratchFor(capacity)
         val order = order
         order.begin()
@@ -210,7 +275,26 @@ public class SpriteRenderer(
                 index++
             }
         }
+        if (first != null) index = scratchQuads(first, scratch, index, count)
+        if (second != null) scratchQuads(second, scratch, index, count)
         order.finish()
+    }
+
+    /**
+     * Adds the quads of [quads] to the order with positions and copies them into [scratch] from
+     * record [index] on, stopping at [count] records in all. Returns the next record index.
+     */
+    private fun scratchQuads(quads: QuadBuffer, scratch: FloatArray, index: Int, count: Int): Int {
+        val order = order
+        val source = quads.records
+        var next = index
+        for (quad in 0 until quads.count) {
+            if (next >= count) break
+            order.addGroup(order.groupFor(quads.layers[quad], quads.textureAt(quad), quads.spaceAt(quad)))
+            source.copyInto(scratch, next * SPRITE_RECORD_FLOATS, quad * SPRITE_RECORD_FLOATS, (quad + 1) * SPRITE_RECORD_FLOATS)
+            next++
+        }
+        return next
     }
 
     /** Copies the first [count] records of the scratch array to their sorted positions in [records]. */
@@ -367,23 +451,51 @@ public class SpriteRenderer(
 
     /**
      * Draws the uploaded sprites into the current [pass] as seen through [camera]: one draw call
-     * per run of sprites that share a texture, each with that texture bound. The camera's viewport
+     * per run of sprites that share a texture, each with that texture bound with the sampler for
+     * its [Texture.filter]. The camera's viewport
      * should match the pass's target size in pixels. Draws nothing if the last [extract] found no
      * sprites.
      */
     public fun draw(commands: CommandBuffer, pass: RenderPass, camera: Camera) {
-        if (spriteCount == 0) return
+        draw(commands, pass, camera, camera.viewportWidth.toFloat(), camera.viewportHeight.toFloat())
+    }
+
+    /**
+     * Draws the uploaded records as the public [draw] does: the [DrawSpace.WORLD] runs through
+     * [camera], then the [DrawSpace.SCREEN] runs through a projection that maps
+     * [screenWidth] by [screenHeight] points onto the target, origin top-left. Returns the number
+     * of draw calls issued, one per run.
+     */
+    internal fun draw(commands: CommandBuffer, pass: RenderPass, camera: Camera, screenWidth: Float, screenHeight: Float): Int {
+        if (spriteCount == 0) return 0
         val order = order
-        camera.writeProjection(uniforms)
+        val uniforms = uniforms
         pass.bind(pipeline)
         pass.bindVertexStorageBuffer(0, storage)
+        val firstScreen = order.firstScreenRun
+        if (firstScreen > 0) {
+            camera.writeProjection(uniforms)
+            drawRuns(commands, pass, 0, firstScreen)
+        }
+        if (firstScreen < order.runCount) {
+            writeScreenProjection(uniforms, screenWidth, screenHeight)
+            drawRuns(commands, pass, firstScreen, order.runCount)
+        }
+        return order.runCount
+    }
+
+    /** Issues one draw call for each run from [from] until [until] with the matrix already in the uniforms. */
+    private fun drawRuns(commands: CommandBuffer, pass: RenderPass, from: Int, until: Int) {
+        val order = order
+        val uniforms = uniforms
         // Each run draws from vertex 0 and passes its first sprite as a uniform: SDL_GPU does not
         // promise that a draw's first vertex reaches SV_VertexID on every backend (D3D12 drops it).
-        val uniforms = uniforms
-        for (run in 0 until order.runCount) {
+        for (run in from until until) {
             uniforms[FIRST_SPRITE_FLOAT] = Float.fromBits(order.runFirst(run))
             commands.pushVertexUniforms(0, uniforms)
-            pass.bindFragmentSampler(0, order.runTexture(run).handle, sampler)
+            val texture = order.runTexture(run)
+            val sampler = if (texture.filter == SamplerFilter.NEAREST) nearestSampler else linearSampler
+            pass.bindFragmentSampler(0, texture.handle, sampler)
             pass.draw(order.runSize(run) * 6)
         }
     }
@@ -392,7 +504,8 @@ public class SpriteRenderer(
         device.release(pipeline)
         device.release(vertexShader)
         device.release(fragmentShader)
-        device.release(sampler)
+        device.release(linearSampler)
+        device.release(nearestSampler)
         device.release(staging)
         device.release(storage)
     }

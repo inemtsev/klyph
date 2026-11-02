@@ -27,13 +27,31 @@ What works today:
   streamed Ogg Vorbis music with fades, mixed by klyph on SDL's audio thread.
   The main thread never waits on the mixer, and a game runs silently when
   there is no audio device.
+- Scenes: a stack of scenes, each with its own systems and enter and exit
+  actions. Only the top scene's systems run, and entities a scene spawns are
+  destroyed when it leaves the stack.
+- Collisions: box and circle colliders with layers and masks, checked on a
+  uniform grid once per frame after the fixed steps. Overlapping pairs arrive as
+  `Overlap` events, and `app.collisions` answers shape queries.
+- Particles: an emitter component with bursts, a continuous rate, ranges for
+  speed, lifetime and rotation, gravity, and color and scale blended over each
+  particle's life. Particles live in a pool inside the emitter, not as entities.
+- Text: BMFont fonts with kerning and a built-in 8x8 font that needs no files,
+  drawn through a `Text` component in the world or through `app.canvas` in world
+  or screen space, with alignment, color and scale. Each texture is sampled
+  linear or nearest, so pixel art and the built-in font stay crisp.
+- A debug overlay on F3 with frame rate, frame and phase times, entity, sprite
+  and draw call counts, audio voices and a frame-time graph.
 - A benchmarks executable with named benchmarks: `sprites` (a flat world),
-  `hierarchy` (a three-level tree of orbiting sprites) and `mixer` (32 voices
-  and music, mixed headless).
+  `hierarchy` (a three-level tree of orbiting sprites), `collisions` (moving
+  circle colliders), `particles` (emitters of 1000 particles each, kept full)
+  and `mixer` (32 voices and music, mixed headless).
 - A top-down shooter sample: a ship flies and fires over a starfield in an
   arena larger than the window, enemies drift down and explode with a
-  sprite-sheet animation, and the camera follows the ship. Shots, explosions
-  and hits have sounds and a music loop plays. It plays with the
+  sprite-sheet animation and a particle burst, and the camera follows the ship.
+  It has a title screen, a pause screen and a game-over screen, shows the score
+  and lives on screen, and finds hits through the engine's collisions. Shots,
+  explosions and hits have sounds and a music loop plays. It plays with the
   keyboard and mouse aim or with a gamepad, pauses when the window loses focus,
   loads its art and sounds from an `assets/` folder next to the binary and can play itself
   for demos.
@@ -60,17 +78,23 @@ What works today:
 
 ## Performance
 
-Sprite benchmark on an Apple M4 Pro, Metal, release build, rendering offscreen
-and waiting on a fence so the display is out of the loop. Each sprite is an
-alpha-blended textured quad with its own transform, moved and rotated every
-frame, through the full `runApp` loop with transform propagation. Per-frame
-averages after a one-second warm-up.
+Benchmarks on an Apple M4 Pro, Metal, release build, rendering offscreen and
+waiting on a fence so the display is out of the loop, through the full
+`runApp` loop. In the sprite rows each sprite is an alpha-blended textured quad
+with its own transform, moved and rotated every frame, and the CPU column is
+update, transform propagation and extraction. The collision row moves 10,000
+circles of radius 4 to 12 in a 4000 by 4000 area, about 2,600 overlapping pairs
+a frame, and its CPU column is detection alone. The particle row runs 100
+emitters kept full at 1000 particles each, and its CPU column is advancing and
+extracting them. Per-frame averages after a warm-up.
 
-| Sprites | Frame | CPU (update + propagate + extract) | GPU |
+| Benchmark | Frame | CPU | GPU |
 |---|---|---|---|
-| 10,000 | 0.41 ms | 0.08 ms | 0.31 ms |
-| 100,000 | 2.54 ms | 0.81 ms | 1.69 ms |
-| 1,000,000 | 26.5 ms | 8.79 ms | 17.6 ms |
+| 10,000 sprites | 0.41 ms | 0.08 ms | 0.31 ms |
+| 100,000 sprites | 2.54 ms | 0.81 ms | 1.69 ms |
+| 1,000,000 sprites | 26.5 ms | 8.79 ms | 17.6 ms |
+| 10,000 colliders | 0.65 ms | 0.36 ms | 0.23 ms |
+| 100,000 particles | 2.40 ms | 1.45 ms | 0.92 ms |
 
 Full table, method and caveats in [BENCHMARKS.md](BENCHMARKS.md).
 
@@ -95,7 +119,7 @@ Run the sprite benchmark in a window, or offscreen for clean numbers:
 
 Play the shooter sample (WASD, arrow keys or the left stick to fly, the mouse or
 the right stick to aim, Space, left click, the south button or the right trigger
-to fire, Escape to quit), or watch it play itself:
+to fire, Escape or Start to pause), or watch it play itself:
 
 ```
 ./gradlew :shooter:run
@@ -119,7 +143,7 @@ tested; `-Pklyph.target=<name>` picks a target explicitly.
 | Module | Contents |
 |---|---|
 | `klyph-platform` | SDL3 bindings and the thin Kotlin API over them. The only module that touches C interop. |
-| `klyph` | The engine: entities, components, rendering, shaders, audio. |
+| `klyph` | The engine: entities, components, scenes, rendering, text, particles, collisions, shaders, audio. |
 | `samples` | The `@sample` functions referenced from KDoc, run as tests. |
 | `sandbox` | Executable smoke test: opens a window and clears it each frame. |
 | `shooter` | The reference game: a top-down shooter that exercises the engine end to end. |
@@ -127,14 +151,12 @@ tested; `-Pklyph.target=<name>` picks a target explicitly.
 
 ## Roadmap
 
-In order:
-
-1. Collision tests, particles, bitmap text and a debug overlay.
-2. A Gradle plugin and published artifacts.
+Next: a Gradle plugin and published artifacts.
 
 Done: entity hierarchy, system phases and events; image loading, sprite sheets,
 animation, multiple textures and a camera; keyboard, mouse and gamepad state;
-sound effects and music; macOS, Linux and Windows CI.
+sound effects and music; macOS, Linux and Windows CI; scenes, collision tests,
+particles, bitmap text and a debug overlay.
 
 ## Contributing
 

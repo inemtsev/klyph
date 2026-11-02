@@ -4,13 +4,15 @@ import klyph.audio.AudioConfig
 import klyph.platform.Color
 import klyph.platform.GpuValidation
 import klyph.platform.PresentMode
+import klyph.platform.Scancode
 
 /**
  * Holds the settings [runApp] opens the window, the GPU device and the frame loop with.
  *
  * Every parameter has a default, so callers pass only what they change, by name:
  * `AppConfig(title = "Shooter", fixedRate = 50)`. [width] and [height] must be positive,
- * [fixedRate] must be between 1 and 1000, and [maxFixedStepsPerFrame] must be at least 1.
+ * [fixedRate] must be between 1 and 1000, [maxFixedStepsPerFrame] must be at least 1, and
+ * [collisionCellSize] must be a positive finite number.
  *
  * Two configs are equal when every setting is equal.
  *
@@ -55,12 +57,26 @@ public class AppConfig(
      * opens no audio device and every audio call does nothing.
      */
     public val audio: AudioConfig = AudioConfig(),
+    /**
+     * The width and height in world units of the grid cells [App.collisions] sorts colliders into,
+     * a positive finite number. A size near that of a typical collider works best.
+     */
+    public val collisionCellSize: Float = 64f,
+    /**
+     * The key that shows and hides [App.overlay], the debug overlay, or `null` for no key, which
+     * leaves showing it to the game through `App.overlay.isVisible`. The engine checks it once a
+     * frame, after it has updated [App.input] and before any [Phase.INPUT] system runs.
+     */
+    public val overlayKey: Scancode? = Scancode.F3,
 ) {
     init {
         require(width > 0) { "Window width $width is not positive." }
         require(height > 0) { "Window height $height is not positive." }
         require(fixedRate in 1..MAX_FIXED_RATE) { "Fixed rate $fixedRate is not between 1 and $MAX_FIXED_RATE." }
         require(maxFixedStepsPerFrame >= 1) { "Max fixed steps per frame $maxFixedStepsPerFrame is less than one." }
+        require(collisionCellSize > 0f && collisionCellSize.isFinite()) {
+            "Collision cell size $collisionCellSize is not a positive finite number."
+        }
     }
 
     override fun equals(other: Any?): Boolean =
@@ -76,7 +92,9 @@ public class AppConfig(
             validation == other.validation &&
             clearColor == other.clearColor &&
             assetRoot == other.assetRoot &&
-            audio == other.audio
+            audio == other.audio &&
+            collisionCellSize == other.collisionCellSize &&
+            overlayKey == other.overlayKey
 
     override fun hashCode(): Int {
         var result = title.hashCode()
@@ -91,6 +109,8 @@ public class AppConfig(
         result = 31 * result + clearColor.hashCode()
         result = 31 * result + assetRoot.hashCode()
         result = 31 * result + audio.hashCode()
+        result = 31 * result + collisionCellSize.hashCode()
+        result = 31 * result + overlayKey.hashCode()
         return result
     }
 
@@ -101,7 +121,8 @@ public class AppConfig(
     override fun toString(): String =
         "AppConfig(title=$title, width=$width, height=$height, fixedRate=$fixedRate, " +
             "maxFixedStepsPerFrame=$maxFixedStepsPerFrame, presentMode=$presentMode, target=$target, " +
-            "gpuSync=$gpuSync, validation=$validation, clearColor=$clearColor, assetRoot=$assetRoot, audio=$audio)"
+            "gpuSync=$gpuSync, validation=$validation, clearColor=$clearColor, assetRoot=$assetRoot, audio=$audio, " +
+            "collisionCellSize=$collisionCellSize, overlayKey=$overlayKey)"
 
     private companion object {
         const val MAX_FIXED_RATE: Int = 1000

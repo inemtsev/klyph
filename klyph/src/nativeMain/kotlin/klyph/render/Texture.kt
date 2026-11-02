@@ -2,6 +2,7 @@ package klyph.render
 
 import klyph.platform.GpuDevice
 import klyph.platform.GpuTexture
+import klyph.platform.SamplerFilter
 import klyph.platform.release
 
 /**
@@ -9,6 +10,10 @@ import klyph.platform.release
  *
  * A `Texture` owns its GPU texture: [close] releases it through the device it was created on.
  * Drawing a sprite whose texture is closed is an error that the renderer does not detect.
+ *
+ * [filter] is fixed at creation and decides how the renderer samples the texture when a sprite
+ * draws it larger or smaller than its texels: [SamplerFilter.LINEAR] blends neighbouring texels,
+ * [SamplerFilter.NEAREST] keeps pixel art and bitmap fonts crisp.
  *
  * Has no sample because creating a texture needs a GPU device, which samples cannot open.
  *
@@ -26,20 +31,30 @@ public class Texture : AutoCloseable {
     /** Height in texels. */
     public val height: Int
 
+    /** How the renderer samples this texture when it draws it scaled. */
+    public val filter: SamplerFilter
+
     /**
      * Creates a texture that takes ownership of [handle], a texture of [width] by [height] texels
-     * created on [device]. The sizes are not checked against [handle], so they must be the ones
-     * it was created with.
+     * created on [device], sampled with [filter]. The sizes are not checked against [handle], so
+     * they must be the ones it was created with.
      *
      * @throws IllegalArgumentException if [width] or [height] is not positive.
      */
-    public constructor(device: GpuDevice, handle: GpuTexture, width: Int, height: Int) {
+    public constructor(
+        device: GpuDevice,
+        handle: GpuTexture,
+        width: Int,
+        height: Int,
+        filter: SamplerFilter = SamplerFilter.LINEAR,
+    ) {
         require(width > 0) { "Texture width $width is not positive." }
         require(height > 0) { "Texture height $height is not positive." }
         this.device = device
         this.gpuTexture = handle
         this.width = width
         this.height = height
+        this.filter = filter
     }
 
     /**
@@ -47,13 +62,14 @@ public class Texture : AutoCloseable {
      * check region math and draw order without a device. Its internal GPU handle throws and [close]
      * does nothing. Tests only: [GpuTexture] has no public constructor, so no other code can make one.
      */
-    internal constructor(width: Int, height: Int) {
+    internal constructor(width: Int, height: Int, filter: SamplerFilter = SamplerFilter.LINEAR) {
         require(width > 0) { "Texture width $width is not positive." }
         require(height > 0) { "Texture height $height is not positive." }
         this.device = null
         this.gpuTexture = null
         this.width = width
         this.height = height
+        this.filter = filter
     }
 
     /**
@@ -79,8 +95,12 @@ public class Texture : AutoCloseable {
         device?.release(texture)
     }
 
-    /** Returns `Texture(256x256)`: the size in texels. */
-    override fun toString(): String = "Texture(${width}x$height)"
+    /**
+     * Returns `Texture(256x256)`: the size in texels, followed by the filter when it is not the
+     * default, as in `Texture(160x60, NEAREST)`.
+     */
+    override fun toString(): String =
+        if (filter == SamplerFilter.LINEAR) "Texture(${width}x$height)" else "Texture(${width}x$height, $filter)"
 
     private companion object {
         /**

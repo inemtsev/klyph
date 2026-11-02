@@ -1,13 +1,16 @@
 package klyph.render
 
 /**
- * Computes the order a frame's sprites are drawn in: by layer, lowest first, then grouped by
- * texture, keeping storage order inside each group. It is a counting sort, O(n) in the number of
- * sprites plus O(g log g) in the number g of distinct (layer, texture) groups, and allocates
- * nothing once its arrays have grown to the frame's size.
+ * Computes the order a frame's sprites are drawn in: by [DrawSpace], [DrawSpace.WORLD] first, then
+ * by layer, lowest first, then grouped by texture, keeping storage order inside each group. It is
+ * a counting sort, O(n) in the number of sprites plus O(g log g) in the number g of distinct
+ * (space, layer, texture) groups, and allocates nothing once its arrays have grown to the frame's
+ * size.
  *
  * Each frame calls [begin], then one of the three add functions once per sprite in storage
- * order, then [finish]:
+ * order, then [finish]. The functions that take a layer and a texture add a [DrawSpace.WORLD]
+ * sprite; for any space, find the group with the three-argument [groupFor] and pass it to
+ * [addGroup], [addGroupWithoutPosition] or [placeGroup]:
  * - [add] records each sprite's group; after [finish], [claimPosition] returns each sprite's
  *   sorted position, called once per sprite in the same order.
  * - [addWithoutPosition] is for a frame expected to be in draw order already. It stores no group
@@ -20,15 +23,17 @@ package klyph.render
  *
  * After [finish], [isSorted] tells whether every sprite already is at its sorted position, and the
  * runs ([runCount], [runTexture], [runFirst], [runSize]) list the consecutive stretches of sorted
- * sprites that share a texture; each is one draw call. Neighbouring groups with the same texture
- * in adjacent layers merge into one run. Group sizes are summed per unbroken stretch of one group,
- * not per sprite.
+ * sprites that share a texture and a space; each is one draw call. Neighbouring groups with the
+ * same texture in adjacent layers of one space merge into one run. Runs before [firstScreenRun]
+ * are [DrawSpace.WORLD] runs, the rest [DrawSpace.SCREEN] runs. Group sizes are summed per
+ * unbroken stretch of one group, not per sprite.
  *
  * For each texture this order keeps, in an array indexed by [Texture.id] and stamped with the
- * frame number, the texture's slot and the groups of up to four layers, one per value of
- * `layer and 3`. A sprite whose texture has its layer cached finds its group with a few array
- * reads; otherwise an open-addressing hash table keyed by (layer, texture slot) finds it. The
- * state belongs to the order, so any number of orders can be in use at once.
+ * frame number, the texture's slot and the [DrawSpace.WORLD] groups of up to four layers, one per
+ * value of `layer and 3`. A world sprite whose texture has its layer cached finds its group with a
+ * few array reads; otherwise, and for every screen sprite, an open-addressing hash table keyed by
+ * (space, layer, texture slot) finds it. The state belongs to the order, so any number of orders
+ * can be in use at once.
  *
  * The per-sprite functions are inline: on Kotlin/Native a call that is not inlined costs a few
  * nanoseconds of frame setup, which doubled the extract time. The state they touch is therefore
@@ -55,8 +60,7 @@ internal class SpriteOrder {
     private var textures = arrayOfNulls<Texture>(8)
     private var textureCount = 0
 
-    // Groups: packed key (layer in the high 32 bits, texture slot in the low 32), sprite count,
-    // and during claimPosition the next free position.
+    // Groups: packed key (see keyOf), sprite count, and during claimPosition the next free position.
     private var groupKeys = LongArray(16)
     internal var groupSizes = IntArray(16)
     internal var groupCursors = IntArray(16)
@@ -103,6 +107,10 @@ internal class SpriteOrder {
     /** Number of runs found by the last [finish]. */
     var runCount: Int = 0
         private set
+
+    /** Index of the first [DrawSpace.SCREEN] run found by the last [finish], or [runCount] if there is none. */
+    var firstScreenRun: Int = 0
+        private set
     private var runTextures = arrayOfNulls<Texture>(8)
     private var runFirsts = IntArray(8)
     private var runSizes = IntArray(8)
@@ -117,15 +125,21 @@ internal class SpriteOrder {
         groupCount = 0
         runTextures.fill(null, 0, runCount)
         runCount = 0
+        firstScreenRun = 0
         lastGroup = -1
         stretchStart = 0
         entries = 0
     }
 
-    /** Adds the next sprite in storage order, drawn in [layer] from [texture]. */
+    /** Adds the next sprite in storage order, drawn in [layer] from [texture] in [DrawSpace.WORLD]. */
     @Suppress("NOTHING_TO_INLINE")
     inline fun add(layer: Int, texture: Texture) {
-        val group = groupFor(layer, texture)
+        addGroup(groupFor(layer, texture))
+    }
+
+    /** Adds the next sprite in storage order, of [group] as [groupFor] returned it. */
+    @Suppress("NOTHING_TO_INLINE")
+    inline fun addGroup(group: Int) {
         val index = size
         enter(group, index)
         if (index == keys.size) keys = keys.copyOf(index * 2)
@@ -136,8 +150,14 @@ internal class SpriteOrder {
     /** Adds the next sprite like [add] but without recording its group for [claimPosition]. */
     @Suppress("NOTHING_TO_INLINE")
     inline fun addWithoutPosition(layer: Int, texture: Texture) {
+        addGroupWithoutPosition(groupFor(layer, texture))
+    }
+
+    /** Adds the next sprite like [addGroup] but without recording its group for [claimPosition]. */
+    @Suppress("NOTHING_TO_INLINE")
+    inline fun addGroupWithoutPosition(group: Int) {
         val index = size
-        enter(groupFor(layer, texture), index)
+        enter(group, index)
         size = index + 1
     }
 
@@ -148,8 +168,11 @@ internal class SpriteOrder {
      * [UNPLACED], so callers can bounds-check it.
      */
     @Suppress("NOTHING_TO_INLINE")
-    inline fun place(layer: Int, texture: Texture): Int {
-        val group = groupFor(layer, texture)
+    inline fun place(layer: Int, texture: Texture): Int = placeGroup(groupFor(layer, texture))
+
+    /** Adds the next sprite of [group] and returns its position, as [place] does. */
+    @Suppress("NOTHING_TO_INLINE")
+    inline fun placeGroup(group: Int): Int {
         val index = size
         enter(group, index)
         size = index + 1
@@ -158,6 +181,16 @@ internal class SpriteOrder {
         return position
     }
 
+    /**
+     * Returns the group of [layer] and [texture] in [space], creating it if new. A
+     * [DrawSpace.WORLD] group goes through the per-texture cache; a [DrawSpace.SCREEN] group
+     * always takes the hash table, which is fine for the few hundred quads a screen overlay has.
+     */
+    @Suppress("NOTHING_TO_INLINE")
+    internal inline fun groupFor(layer: Int, texture: Texture, space: DrawSpace): Int =
+        if (space === DrawSpace.WORLD) groupFor(layer, texture) else screenGroupOf(layer, texture)
+
+    /** Returns the [DrawSpace.WORLD] group of [layer] and [texture], creating it if new. */
     @Suppress("NOTHING_TO_INLINE")
     internal inline fun groupFor(layer: Int, texture: Texture): Int {
         val state = textureState
@@ -207,11 +240,12 @@ internal class SpriteOrder {
         }
         if (sortedKeys.size < count) sortedKeys = LongArray(groupKeys.size)
         groupKeys.copyInto(sortedKeys, 0, 0, count)
-        // Signed order of the packed key is (layer, texture slot) order: the slot is non-negative.
+        // Signed order of the packed key is (space, layer, texture slot) order; see keyOf.
         sortedKeys.sort(0, count)
         // Groups are numbered in first-added order, so stretches in sorted order number 0, 1, 2...
         var sorted = entries == count
         var start = 0
+        var screenRun = -1
         for (k in 0 until count) {
             val key = sortedKeys[k]
             val group = find(key)
@@ -219,8 +253,11 @@ internal class SpriteOrder {
             val groupSize = groupSizes[group]
             groupCursors[group] = start
             predictedStarts[group] = start
-            val texture = textures[key.toInt()]
-            if (runCount > 0 && runTextures[runCount - 1] === texture) {
+            val texture = textures[(key and SLOT_MASK).toInt()]
+            val isScreen = key >= SCREEN_KEY_START
+            val startsScreen = isScreen && screenRun < 0
+            if (startsScreen) screenRun = runCount
+            if (runCount > 0 && !startsScreen && runTextures[runCount - 1] === texture) {
                 runSizes[runCount - 1] += groupSize
             } else {
                 if (runCount == runTextures.size) growRuns()
@@ -231,6 +268,7 @@ internal class SpriteOrder {
             }
             start += groupSize
         }
+        firstScreenRun = if (screenRun < 0) runCount else screenRun
         isSorted = sorted
         groupKeys.copyInto(predictedKeys, 0, 0, count)
         groupSizes.copyInto(predictedSizes, 0, 0, count)
@@ -258,9 +296,12 @@ internal class SpriteOrder {
     /** Returns the number of sprites in run [run]. */
     fun runSize(run: Int): Int = runSizes[run]
 
-    /** Returns the group of [layer] and [texture], creating it if new, and caches it for [texture]. */
+    /**
+     * Returns the [DrawSpace.WORLD] group of [layer] and [texture], creating it if new, and caches
+     * it for [texture].
+     */
     internal fun groupOf(layer: Int, texture: Texture): Int {
-        val group = groupOf(layer, slotOf(texture))
+        val group = groupOf(keyOf(WORLD_SPACE, layer, slotOf(texture)))
         val entry = texture.id * TEXTURE_STRIDE + PAIRS + ((layer and 3) shl 1)
         textureState[entry] = layer
         textureState[entry + 1] = group + 1
@@ -291,8 +332,11 @@ internal class SpriteOrder {
         textureState = textureState.copyOf(grown)
     }
 
-    private fun groupOf(layer: Int, slot: Int): Int {
-        val key = (layer.toLong() shl 32) or slot.toLong()
+    /** Returns the [DrawSpace.SCREEN] group of [layer] and [texture], creating it if new. Nothing is cached. */
+    internal fun screenGroupOf(layer: Int, texture: Texture): Int = groupOf(keyOf(SCREEN_SPACE, layer, slotOf(texture)))
+
+    /** Returns the group of the packed [key], creating it if new. */
+    private fun groupOf(key: Long): Int {
         val mask = table.size - 1
         var i = hash(key) and mask
         while (true) {
@@ -358,6 +402,24 @@ internal class SpriteOrder {
 
         /** Offset of the first (layer, group + 1) pair inside a texture's entry. */
         const val PAIRS: Int = 2
+
+        private const val WORLD_SPACE = 0L
+        private const val SCREEN_SPACE = 1L
+
+        /** Bits of a packed key that hold the texture slot. */
+        private const val SLOT_BITS = 30
+        private const val SLOT_MASK = (1L shl SLOT_BITS) - 1
+
+        /** The smallest packed key of a [DrawSpace.SCREEN] group. */
+        private const val SCREEN_KEY_START = SCREEN_SPACE shl (32 + SLOT_BITS)
+
+        /**
+         * Packs a group into a non-negative `Long` whose signed order is (space, layer, slot) order:
+         * the layer, shifted to unsigned so negative layers sort first, plus the space times 2^32,
+         * fills 33 bits above a 30-bit slot. A frame has far fewer than 2^30 distinct textures.
+         */
+        private fun keyOf(space: Long, layer: Int, slot: Int): Long =
+            (((space shl 32) + (layer.toLong() - Int.MIN_VALUE)) shl SLOT_BITS) or slot.toLong()
 
         private fun hash(key: Long): Int {
             val mixed = key * -7046029254386353131L

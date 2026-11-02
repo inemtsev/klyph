@@ -22,7 +22,7 @@ internal val hierarchyBenchmark: Benchmark = Benchmark(
     description = "A three-level tree of parents, orbiting children and grandchildren; measures transform propagation.",
 ) { settings ->
     var sprites = 0
-    val report = StatsReport { "sprites=$sprites" }
+    val report = StatsReport(settings.frameLimit) { "sprites=$sprites" }
     runApp(settings.appConfig("klyph hierarchy benchmark")) {
         addBenchmarkSystems(settings, report)
         addSystem(Phase.STARTUP) { app ->

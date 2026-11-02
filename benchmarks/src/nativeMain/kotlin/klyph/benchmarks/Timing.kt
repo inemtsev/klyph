@@ -4,30 +4,84 @@ import klyph.app.FrameStats
 import klyph.app.Phase
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
 /**
  * Turns the [FrameStats] of each frame into one line per second of averages, prefixed by
- * [label], and keeps a run total that skips the first second as warm-up.
+ * [label], and keeps a run total that skips a warm-up.
+ *
+ * The warm-up ends after [WARM_UP] or after a quarter of [frameLimit] frames, whichever comes
+ * first, so a short run still leaves at least three times as many frames as it skipped. Without a
+ * frame limit it lasts [WARM_UP]. The summary line names how long it lasted.
  *
  * The stages are [STAGES]: the fixed update phase (all of the frame's steps, including the
- * engine's copy of interpolated transforms), the update phase, transform propagation, target
- * acquisition, sprite extraction, command recording and submission, the GPU wait, and "other",
- * the rest of the frame (input, late update, user render systems and the loop itself). The
- * summary also prints how many fixed steps ran per frame on average.
+ * engine's copy of interpolated transforms), collision detection, the update phase, transform
+ * propagation (both passes), target acquisition, sprite extraction, command recording and
+ * submission, the GPU wait, each of [extraStages] (a name and how to read that stage from the
+ * stats; they print before "other" and are taken out of it), and "other", the rest of the frame
+ * (input, late update, user render systems and the loop itself). The summary also prints how
+ * many fixed steps ran per frame on average and, when there were any, how many collision pairs;
+ * each line once a second adds the pairs per frame when there were any.
  */
-internal class StatsReport(private val label: () -> String) {
+internal class StatsReport(
+    frameLimit: Int?,
+    private val extraStages: List<Pair<String, (FrameStats) -> Duration>> = emptyList(),
+    private val label: () -> String,
+) {
     private val clock = TimeSource.Monotonic
-    private val oneSecond = StageTimes(STAGES)
-    private val total = StageTimes(STAGES)
-    private var warmedUp = false
+    private val stageNames = STAGES.dropLast(1) + extraStages.map { it.first } + STAGES.last()
+    private val oneSecond = StageTimes(stageNames)
+    private val total = StageTimes(stageNames)
+
+    /** Frames the warm-up may last at most: a quarter of [frameLimit], or no bound without one. */
+    private val warmUpFrameLimit = if (frameLimit == null) Int.MAX_VALUE else frameLimit / 4
+    private var warmedUp = warmUpFrameLimit == 0
+    /** When the first frame was recorded; the warm-up counts from there, not from startup. */
+    private var warmUpStart: TimeMark? = null
+    private var warmUpFrames = 0
+    private var warmUpLength = Duration.ZERO
     private var lastReport = clock.markNow()
     private var oneSecondSteps = 0L
     private var totalSteps = 0L
+    private var oneSecondPairs = 0L
+    private var totalPairs = 0L
 
-    /** Adds one frame's [stats], and prints the averages once a second has passed since the last line. */
+    /**
+     * Adds one frame's [stats] to the line of the current second and, once the warm-up is over, to
+     * the run total, and prints the line once a second has passed since the last one.
+     */
     fun record(stats: FrameStats) {
+        add(oneSecond, stats)
+        oneSecondSteps += stats.fixedSteps
+        oneSecondPairs += stats.collisionPairs
+        if (warmedUp) {
+            add(total, stats)
+            totalSteps += stats.fixedSteps
+            totalPairs += stats.collisionPairs
+        } else {
+            warmUpFrames++
+            val start = warmUpStart ?: clock.markNow().also { warmUpStart = it }
+            val elapsed = start.elapsedNow()
+            if (elapsed >= WARM_UP || warmUpFrames >= warmUpFrameLimit) {
+                warmedUp = true
+                warmUpLength = elapsed
+            }
+        }
+        if (lastReport.elapsedNow() >= 1.seconds) {
+            val pairs = if (oneSecondPairs > 0) " pairs=${oneSecondPairs / oneSecond.frames}" else ""
+            println("${label()} ${oneSecond.describe()}$pairs")
+            oneSecond.reset()
+            oneSecondSteps = 0L
+            oneSecondPairs = 0L
+            lastReport = clock.markNow()
+        }
+    }
+
+    /** Adds the stage durations of one frame's [stats] to [times]. */
+    private fun add(times: StageTimes, stats: FrameStats) {
         val fixed = stats.durationOf(Phase.FIXED_UPDATE)
+        val collide = stats.collisionDetection
         val update = stats.durationOf(Phase.UPDATE)
         val propagate = stats.transformPropagation
         val acquire = stats.targetAcquisition
@@ -35,45 +89,44 @@ internal class StatsReport(private val label: () -> String) {
         val record = stats.spriteRecording
         val gpuWait = stats.gpuWait
         val frame = stats.total
-        oneSecond.add(0, fixed)
-        oneSecond.add(1, update)
-        oneSecond.add(2, propagate)
-        oneSecond.add(3, acquire)
-        oneSecond.add(4, extract)
-        oneSecond.add(5, record)
-        oneSecond.add(6, gpuWait)
-        oneSecond.add(7, frame - fixed - update - propagate - acquire - extract - record - gpuWait)
-        oneSecond.endFrame(frame)
-        oneSecondSteps += stats.fixedSteps
-        if (lastReport.elapsedNow() >= 1.seconds) {
-            println("${label()} ${oneSecond.describe()}")
-            if (warmedUp) {
-                total.addAll(oneSecond)
-                totalSteps += oneSecondSteps
-            } else {
-                warmedUp = true
-            }
-            oneSecond.reset()
-            oneSecondSteps = 0L
-            lastReport = clock.markNow()
+        times.add(0, fixed)
+        times.add(1, collide)
+        times.add(2, update)
+        times.add(3, propagate)
+        times.add(4, acquire)
+        times.add(5, extract)
+        times.add(6, record)
+        times.add(7, gpuWait)
+        var other = frame - fixed - collide - update - propagate - acquire - extract - record - gpuWait
+        for (k in extraStages.indices) {
+            val duration = extraStages[k].second(stats)
+            times.add(8 + k, duration)
+            other -= duration
         }
+        times.add(stageNames.size - 1, other)
+        times.endFrame(frame)
     }
 
-    /** Prints the averages over the whole run after the warm-up second. */
+    /** Prints the averages over the whole run after the warm-up. */
     fun printSummary() {
-        println("--- summary (after 1 s warm-up, ${total.frames} frames) ---")
+        val warmUp = "$warmUpFrames frames (${fixed(warmUpLength.inWholeMicroseconds / 1e6, 2)} s)"
+        println("--- summary of ${total.frames} frames after a warm-up of $warmUp ---")
         if (total.frames == 0) {
             println("too short to summarize")
             return
         }
         println("${label()} ${total.describe()}")
         println("fixed steps per frame: ${fixed(totalSteps.toDouble() / total.frames, 3)}")
+        if (totalPairs > 0) println("collision pairs per frame: ${fixed(totalPairs.toDouble() / total.frames, 1)}")
     }
 
     override fun toString(): String = "StatsReport(frames=${total.frames})"
 
     private companion object {
-        val STAGES: List<String> = listOf("fixed", "update", "propagate", "acquire", "extract", "record", "gpuwait", "other")
+        /** The longest warm-up, used whole when there is no frame limit or it is far away. */
+        val WARM_UP: Duration = 1.seconds
+
+        val STAGES: List<String> = listOf("fixed", "collide", "update", "propagate", "acquire", "extract", "record", "gpuwait", "other")
     }
 }
 
@@ -91,12 +144,6 @@ internal class StageTimes(private val stageNames: List<String>) {
     fun endFrame(frame: Duration) {
         frames++
         frameNanos += frame.inWholeNanoseconds
-    }
-
-    fun addAll(other: StageTimes) {
-        frames += other.frames
-        frameNanos += other.frameNanos
-        for (i in stageNanos.indices) stageNanos[i] += other.stageNanos[i]
     }
 
     fun reset() {

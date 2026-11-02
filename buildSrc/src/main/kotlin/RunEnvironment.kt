@@ -7,7 +7,7 @@ import org.gradle.api.Project
  * project directory, since the tasks run in their own module's directory.
  */
 object RunEnvironment {
-    private val variables = listOf("SPRITES", "CHILDREN", "TEXTURES", "INTERPOLATE", "FRAMES", "SECONDS", "OFFSCREEN", "VSYNC", "VALIDATION", "AUTOPILOT", "MUSIC")
+    private val variables = listOf("SPRITES", "CHILDREN", "TEXTURES", "INTERPOLATE", "FRAMES", "SECONDS", "OFFSCREEN", "VSYNC", "VALIDATION", "AUTOPILOT", "MUSIC", "CELL", "OVERLAY")
 
     private val paths = setOf("MUSIC")
 
