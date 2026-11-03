@@ -1,6 +1,9 @@
 plugins {
     id("klyph.native")
+    id("klyph.publish")
 }
+
+description = "A 2D game engine in pure Kotlin/Native on SDL3 and SDL_GPU."
 
 kotlin {
     explicitApi()
@@ -38,6 +41,11 @@ val compileShaders = tasks.register<CompileShadersTask>("compileShaders") {
     }
 }
 
-tasks.matching { it.name.startsWith("compileKotlin") }.configureEach {
+// Everything that reads src/nativeMain runs after the shaders are generated into it: the Kotlin
+// compilations of every target, the shared metadata compilation and the published sources jars.
+tasks.matching {
+    it.name.startsWith("compileKotlin") || it.name.endsWith("KotlinMetadata") ||
+        it.name == "sourcesJar" || it.name.endsWith("SourcesJar")
+}.configureEach {
     dependsOn(compileShaders)
 }

@@ -28,7 +28,8 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      # Lands in /opt/homebrew/opt/sdl3, which buildSrc/src/main/kotlin/Sdl3.kt checks first.
+      # Lands in /opt/homebrew/opt/sdl3, which buildSrc/src/main/kotlin/Sdl3.kt and the klyph
+      # plugin's Sdl3Locator check first, so nothing is downloaded.
       - name: Install SDL3
         run: brew install sdl3
 
@@ -55,6 +56,23 @@ jobs:
           :sandbox:linkDebugExecutableMacosArm64
           :shooter:linkDebugExecutableMacosArm64
           :benchmarks:linkReleaseExecutableMacosArm64
+
+      # Builds the klibs of every target and the cinterop klibs, and publishes them to ~/.m2 as a
+      # release would. Unsigned: signing runs only when signingInMemoryKey is set, and CI has none.
+      - name: Publish to mavenLocal
+        run: ./gradlew --no-daemon publishToMavenLocal -Pklyph.targets=all
+
+      # The plugin's unit and TestKit tests, then its jar and marker to ~/.m2 for the consumer test.
+      - name: Test and publish the Gradle plugin to mavenLocal
+        run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
+
+      # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
+      # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.
+      # The runner has no display or GPU, so the game is linked, not run.
+      - name: Consumer test
+        env:
+          KLYPH_CONSUMER_RUN: "0"
+        run: tools/consumer-test.sh local
 
       - name: Upload test reports
         if: failure()
@@ -139,6 +157,24 @@ jobs:
           :shooter:linkDebugExecutableLinuxX64
           :benchmarks:linkReleaseExecutableLinuxX64
 
+      # Every target except macosArm64, which Kotlin/Native builds only on macOS. Unsigned:
+      # signing runs only when signingInMemoryKey is set, and CI has none.
+      - name: Publish to mavenLocal
+        run: ./gradlew --no-daemon -Psdl3.prefix="$SDL3_PREFIX" publishToMavenLocal -Pklyph.targets=all
+
+      # The plugin's unit and TestKit tests, then its jar and marker to ~/.m2 for the consumer test.
+      - name: Test and publish the Gradle plugin to mavenLocal
+        run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
+
+      # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
+      # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.
+      # The script passes $SDL3_PREFIX on as sdl3.prefix, the SDL built above.
+      # The runner has no display or GPU, so the game is linked, not run.
+      - name: Consumer test
+        env:
+          KLYPH_CONSUMER_RUN: "0"
+        run: tools/consumer-test.sh local
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v7
@@ -207,6 +243,24 @@ jobs:
           :sandbox:linkDebugExecutableMingwX64
           :shooter:linkDebugExecutableMingwX64
           :benchmarks:linkReleaseExecutableMingwX64
+
+      # Every target except macosArm64, which Kotlin/Native builds only on macOS. Unsigned:
+      # signing runs only when signingInMemoryKey is set, and CI has none.
+      - name: Publish to mavenLocal
+        run: ./gradlew --no-daemon -Psdl3.prefix="$SDL3_PREFIX" publishToMavenLocal -Pklyph.targets=all
+
+      # The plugin's unit and TestKit tests, then its jar and marker to ~/.m2 for the consumer test.
+      - name: Test and publish the Gradle plugin to mavenLocal
+        run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
+
+      # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
+      # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.
+      # The script passes $SDL3_PREFIX on as sdl3.prefix, so the zip gets that SDL3.dll.
+      # The runner has no display or GPU, so the game is linked, not run.
+      - name: Consumer test
+        env:
+          KLYPH_CONSUMER_RUN: "0"
+        run: tools/consumer-test.sh local
 
       - name: Upload test reports
         if: failure()

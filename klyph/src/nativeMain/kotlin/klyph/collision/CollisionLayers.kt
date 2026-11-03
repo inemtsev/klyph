@@ -1,7 +1,5 @@
 package klyph.collision
 
-import kotlin.jvm.JvmInline
-
 /**
  * A set of up to 32 collision layers, numbered 0 to 31, one bit each. A [Collider] uses one set
  * for the layers it is on and another for the layers it hits.
@@ -14,7 +12,6 @@ import kotlin.jvm.JvmInline
  *
  * @sample samples.collision.CollisionLayerSets.collisionLayers
  */
-@JvmInline
 public value class CollisionLayers(
     /** The layers as bits: layer `i` is in the set when bit `i` is set. */
     public val bits: Int,

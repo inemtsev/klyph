@@ -1,39 +1,54 @@
-// Convention plugin shared by every klyph module: the Kotlin/Native target for this host and the
-// rule that native interop stays inside klyph-platform.
+// Convention plugin for the engine modules (klyph-platform, klyph, samples): the Kotlin/Native
+// targets selected by klyph.targets, the SDL3 link flags their test binaries need, and, through
+// klyph.lint, the rule that native interop stays inside klyph-platform. The executables build
+// with the com.eventslooped.klyph plugin instead, which does the same for games.
 
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 import org.jetbrains.kotlin.konan.target.Family
 import java.io.File
 
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
+    id("klyph.lint")
 }
 
-// One target per build: the host's own, or the one named by -Pklyph.target=<name>.
-// Cross-compiling needs SDL3 headers and libraries for the other platform, so it is opt-in.
-val hostOs: String = System.getProperty("os.name")
-val hostArch: String = System.getProperty("os.arch")
-val hostTarget: String = when {
-    hostOs == "Mac OS X" && hostArch == "aarch64" -> "macosArm64"
-    hostOs == "Linux" && hostArch == "aarch64" -> "linuxArm64"
-    hostOs == "Linux" -> "linuxX64"
-    hostOs.startsWith("Windows") -> "mingwX64"
-    else -> throw GradleException("Unsupported host: $hostOs $hostArch.")
-}
-val targetName: String = providers.gradleProperty("klyph.target").getOrElse(hostTarget)
+// The targets named by -Pklyph.targets (host, all, or a comma-separated list; see KlyphTargets).
+// A macOS host compiles every target and runs its cinterop with the toolchains Kotlin/Native keeps
+// in ~/.konan; Linux and Windows hosts cannot build macosArm64, and Kotlin/Native disables it there
+// with a warning. Linking needs an SDL3 library built for the target, so foreign targets are opt-in.
+val selectedTargets: List<String> = KlyphTargets.selected(project)
 
 kotlin {
-    when (targetName) {
-        "macosArm64" -> macosArm64()
-        "linuxX64" -> linuxX64()
-        "linuxArm64" -> linuxArm64()
-        "mingwX64" -> mingwX64()
-        else -> throw GradleException("Unknown klyph.target '$targetName'.")
+    for (targetName in selectedTargets) {
+        when (targetName) {
+            "macosArm64" -> macosArm64()
+            "linuxX64" -> linuxX64()
+            "linuxArm64" -> linuxArm64()
+            "mingwX64" -> mingwX64()
+        }
+    }
+
+    // Tests run only on the host's own target: another target's test binary cannot execute here,
+    // and linking it needs that target's SDL3 library. `check` still compiles the main and test
+    // sources of every other target, without linking them.
+    targets.withType<KotlinNativeTarget>().matching { it.name != KlyphTargets.host }.configureEach {
+        val target = this
+        binaries.withType<TestExecutable>().configureEach {
+            linkTaskProvider.configure { enabled = false }
+        }
+        tasks.matching { it.name == target.name + "Test" }.configureEach { enabled = false }
+        tasks.named("check") {
+            dependsOn(target.compilations.getByName("main").compileTaskProvider)
+            dependsOn(target.compilations.getByName("test").compileTaskProvider)
+        }
     }
 
     // Every binary (executables and test runners) links against SDL3, whose library name is
     // carried by the cinterop klib; only the search path and runtime path are added here.
-    val sdl3Lib = Sdl3.prefix(project) + "/lib"
+    // Engine binaries link for the host only (see above), so the library folder is the host's:
+    // lib/, or lib64/ and lib/<architecture>-linux-gnu/ for Fedora and Debian packages.
+    val sdl3Lib = Sdl3.libDir(project)
     val sdl3Bin = Sdl3.prefix(project) + "/bin"
     targets.withType<KotlinNativeTarget>().configureEach {
         binaries.configureEach {
@@ -64,29 +79,10 @@ kotlin {
     }
 }
 
-val checkNoInteropImports = tasks.register("checkNoInteropImports") {
-    description = "Fails if a source file outside klyph-platform imports native interop packages."
-    group = "verification"
-    val sources = fileTree("src") { include("**/*.kt") }
-    inputs.files(sources)
-    // Generated sources (compileShaders) land in src, so scan after they are written.
-    dependsOn(tasks.matching { it.name == "compileShaders" })
-    // Plain values only: the configuration cache cannot serialize references to the script itself.
-    val root = projectDir
-    val interopImport = Regex("""^\s*import\s+(kotlinx\.cinterop|sdl3|cnames|platform|stb|vorbis)\.""")
-    doLast {
-        val offenders = sources.files.filter { file ->
-            file.useLines { lines -> lines.any { interopImport.containsMatchIn(it) } }
-        }
-        if (offenders.isNotEmpty()) {
-            throw GradleException(
-                "Native interop imports are only allowed in klyph-platform:\n" +
-                    offenders.joinToString("\n") { "  " + it.relativeTo(root) },
-            )
-        }
-    }
-}
-
 tasks.named("check") {
-    dependsOn(checkNoInteropImports)
+    // With several targets, nativeMain is a shared source set compiled against the commonized
+    // interop; checking it here catches a declaration the commonizer leaves out.
+    if (selectedTargets.size > 1) {
+        dependsOn(tasks.matching { it.name.startsWith("compile") && it.name.endsWith("KotlinMetadata") })
+    }
 }

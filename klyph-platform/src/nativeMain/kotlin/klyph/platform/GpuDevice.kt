@@ -3,7 +3,6 @@ package klyph.platform
 import cnames.structs.SDL_GPUCommandBuffer
 import cnames.structs.SDL_GPUDevice
 import cnames.structs.SDL_GPUFence
-import kotlin.jvm.JvmInline
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.toKString
 import sdl3.SDL_AcquireGPUCommandBuffer
@@ -67,7 +66,6 @@ public enum class PresentMode(internal val raw: SDL_GPUPresentMode) {
 /**
  * Pixel format of a GPU texture, as chosen by SDL for a swapchain or requested for a created texture.
  */
-@JvmInline
 public value class TextureFormat internal constructor(internal val raw: SDL_GPUTextureFormat) {
     override fun toString(): String = "TextureFormat(${raw.name})"
 
@@ -164,7 +162,6 @@ public fun GpuDevice(shaderFormats: Set<ShaderFormat>, validation: GpuValidation
 /**
  * One frame's recorded GPU work. Acquire with [GpuDevice.acquireCommandBuffer] and finish with [submit].
  */
-@JvmInline
 public value class CommandBuffer internal constructor(internal val handle: CPointer<SDL_GPUCommandBuffer>) {
     /**
      * Sends the recorded work to the GPU. The buffer must not be used afterwards.
@@ -190,7 +187,6 @@ public value class CommandBuffer internal constructor(internal val handle: CPoin
 /**
  * Signals when submitted GPU work completes. Obtain from [CommandBuffer.submitAndAcquireFence].
  */
-@JvmInline
 public value class GpuFence internal constructor(internal val handle: CPointer<SDL_GPUFence>) {
     override fun toString(): String = "GpuFence"
 }

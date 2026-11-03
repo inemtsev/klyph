@@ -9,9 +9,12 @@ or changing public API, and run its review checklist before finishing a change.
 
 ## Build and run
 
-Kotlin/Native only, no JVM target. The build configures one target per run: the host's own
-(macosArm64, linuxX64, linuxArm64, mingwX64) or `-Pklyph.target=<name>`. SDL3 is located
-automatically (Homebrew, /usr/local, /usr); override with `-Psdl3.prefix=<path>`.
+Kotlin/Native only, no JVM target. By default the build configures the host's own target
+(macosArm64, linuxX64, linuxArm64, mingwX64); `-Pklyph.targets` picks others (see Publishing
+below). SDL3 is located automatically (Homebrew, /usr/local, /usr); override with
+`-Psdl3.prefix=<path>`. The library is taken from the prefix's `lib/` or, on Linux, the first of
+`lib/`, `lib64/` (Fedora), `lib/x86_64-linux-gnu/` and `lib/aarch64-linux-gnu/` (Debian, Ubuntu)
+that holds it, in both `buildSrc` (`Sdl3.libDir`) and the plugin (`Sdl3Locator.libraryDir`).
 
 Modules: `klyph-platform` (SDL3 cinterop and the thin Kotlin API over it; the only module allowed
 to import `kotlinx.cinterop`, `sdl3`, `stb`, `vorbis`, `cnames` or `platform.*`), `klyph` (the engine, no interop;
@@ -34,18 +37,38 @@ chosen when it loads, picks linear or nearest sampling),
 and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `squish` (executable; a bug-squishing game for young children, same layout and variables as the shooter), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
-`assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`). `./gradlew check`
+`assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`), and
+`klyph-gradle-plugin` (the `com.eventslooped.klyph` Gradle plugin games apply, with its own
+reference in `klyph-gradle-plugin/README.md`; an included build through `pluginManagement` in
+`settings.gradle.kts`, so `sandbox`, `shooter`, `squish` and `benchmarks` apply it by id and take
+their targets, SDL3 link flags, asset sync, `run`, `runRelease` and `distribute` from it; it is a
+separate Gradle build, so its unit and TestKit tests run with `./gradlew -p klyph-gradle-plugin
+check`, not with the root `check`). `./gradlew check`
 runs every module's tests and samples plus the interop-import rule; a single module's tests run
 with `:<module>:macosArm64Test`. GPU, window, event and audio device functions, `runApp`, `App` and
 `Assets` have no samples because they need a display or a device; `Audio` has samples because it
-also mixes without a device. Shared target config and SDL link flags live in
-`buildSrc/src/main/kotlin/klyph.native.gradle.kts`.
+also mixes without a device. `buildSrc` serves the engine modules (`klyph-platform`, `klyph`,
+`samples`): `klyph.native` configures their targets and the SDL3 link flags their test binaries
+need, `klyph.publish` their Maven publications, `CompileShadersTask` the shaders, and
+`klyph.lint` registers the interop-import rule (`checkNoInteropImports`, part of `check`), which
+`klyph.native` applies and the executables apply next to the plugin.
+
+`tools/consumer-test.sh local|central [version]` builds the shooter as a game outside the
+repository would: a fresh project under `$TMPDIR` holding `shooter/src`, `shooter/assets`, the
+wrapper and the three-line build file from the plugin README, resolved from `mavenLocal()` and
+Maven Central (`local`) or Maven Central alone (`central`). It runs the autopilot for five
+seconds, runs `distribute` and checks that the zip holds the executable, `assets/ship.png` and
+the SDL3 library. `local` needs `./gradlew publishToMavenLocal -Pklyph.targets=all` and
+`./gradlew -p klyph-gradle-plugin publishToMavenLocal` first. `SDL3_PREFIX` in the environment
+becomes `sdl3.prefix`, and `KLYPH_CONSUMER_RUN=0` links instead of running, which is how every
+CI job (no display, no GPU) uses it; the Windows job runs it in bash like its other steps.
 
 ```
 ./gradlew :sandbox:run -Pklyph.frames=120
 ./gradlew :shooter:run                                          # WASD/arrows/stick, mouse aim, Space/click/south
 ./gradlew :shooter:run -Pklyph.autopilot=1 -Pklyph.seconds=10   # plays itself, fails if no kill
 ./gradlew :squish:run                                           # click or arrows/stick + Space/south; autopilot fails if no squish
+./gradlew :shooter:distribute                                   # zip in shooter/build/distributions/, runs without SDL3 installed
 ./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ./gradlew :benchmarks:benchmarkSprites -Pklyph.sprites=50000     # in a window
 ./gradlew :benchmarks:benchmarkHierarchy -Pklyph.sprites=5000 -Pklyph.children=8
@@ -95,7 +118,36 @@ next to its `.exe`, so tests and executables run without `PATH` changes. MSYS2's
 The `windows` CI job builds this target and runs the tests; it never opens a window, so the D3D12
 rendering path is only checked by running the sandbox on a real machine. The same build
 cross-compiles from macOS or Linux with `-Pklyph.target=mingwX64 -Psdl3.prefix=<that folder>`
-(compile and link only; the tests need Windows to run).
+(compile, and link the executables; the tests need Windows to run).
+
+Publishing. `-Pklyph.targets` takes `host` (the default), `all` (the four targets above) or a
+comma-separated list such as `macosArm64,mingwX64`; `-Pklyph.target=<name>` is a one-element
+list. Every configured target gets the cinterops, all from the one SDL3 prefix's headers, and
+`kotlin.mpp.enableCInteropCommonization` lets the shared `nativeMain` see them. Tests and `run`
+tasks exist for the host target only; `check` compiles the other targets without linking them.
+The same holds for the executables, which apply the klyph plugin: when the host's target is
+configured, only its binaries link, and the other targets' link tasks are skipped (so
+`./gradlew build -Pklyph.targets=all` passes) and get no `distribute<Target>`. A build whose
+targets leave the host out, such as `-Pklyph.target=mingwX64 -Psdl3.prefix=<MinGW folder>`, is a
+cross build and links every executable. `all` counts only as the whole value; an unknown name or
+both properties at once stops the build, and targets are configured in the order above whatever
+the order given (`buildSrc/src/main/kotlin/KlyphTargets.kt` and the plugin's `KlyphTargets.kt`
+share these rules and error texts).
+Value classes in `nativeMain` carry no `@JvmInline`: the shared native metadata compilation
+rejects it. `klyph` and `klyph-platform` publish as `com.eventslooped.klyph:<module>:0.1.0`
+(`-Pklyph.version=<v>` overrides) through `com.vanniktech.maven.publish`, configured in
+`buildSrc/src/main/kotlin/klyph.publish.gradle.kts`. The plugin publishes as
+`com.eventslooped.klyph:klyph-gradle-plugin` with the same version and override; the root
+`publishToMavenLocal` leaves it out, so publish it with `./gradlew -p klyph-gradle-plugin
+publishToMavenLocal` or `./gradlew :klyph-gradle-plugin:publishToMavenLocal` (command-line `-P`
+properties, `-Pklyph.version` included, reach the included build). `./gradlew publishToMavenLocal
+-Pklyph.targets=all` writes them to `~/.m2`; `publishToMavenCentral -Pklyph.targets=all` uploads
+to the Central Portal and needs a macOS host, the only one that builds every target (Linux and
+Windows leave macosArm64 out). Any publish task fails fast without all targets. Credentials are
+the Gradle properties `mavenCentralUsername`, `mavenCentralPassword`, `signingInMemoryKey` and
+`signingInMemoryKeyPassword`, in `~/.gradle/gradle.properties` or as `ORG_GRADLE_PROJECT_*`
+environment variables; without `signingInMemoryKey` nothing is signed, which is how CI publishes
+to `mavenLocal`.
 
 ## Frame order
 

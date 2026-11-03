@@ -3,7 +3,18 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 
 plugins {
-    id("klyph.native")
+    id("com.eventslooped.klyph")
+    id("klyph.lint")
+}
+
+klyph {
+    entryPoint = "klyph.benchmarks.main"
+}
+
+kotlin {
+    sourceSets.nativeMain.dependencies {
+        implementation(project(":klyph"))
+    }
 }
 
 // Names registered in klyph.benchmarks.Main; each gets a `benchmark<Name>` task. Windowed
@@ -11,71 +22,46 @@ plugins {
 val benchmarkNames = listOf("sprites", "hierarchy", "collisions", "particles")
 val headlessBenchmarkNames = listOf("mixer")
 
-kotlin {
-    targets.withType<KotlinNativeTarget>().configureEach {
-        binaries {
-            executable {
-                entryPoint = "klyph.benchmarks.main"
-            }
+// Benchmarks always run the host's release executable, which the klyph plugin creates once this
+// script has run. The environment is the plugin's KLYPH_* passthrough (-Pklyph.sprites and the
+// rest); `benchmark` picks the benchmark with -Pklyph.benchmark=<name>.
+kotlin.targets.withType<KotlinNativeTarget>().matching { it.name == KlyphTargets.host }.configureEach {
+    binaries.withType<Executable>().matching { it.buildType == NativeBuildType.RELEASE }.configureEach {
+        val binary = this
+        val environment = klyph.runEnvironment()
+        val selected = providers.gradleProperty("klyph.benchmark").getOrElse(benchmarkNames.first())
+        fun Exec.runs(vararg arguments: String, environment: Map<String, String>) {
+            group = "benchmarks"
+            dependsOn(binary.linkTaskProvider)
+            executable(binary.outputFile)
+            args(*arguments)
+            environment(environment)
         }
 
-        // Benchmarks always run from the release build. Environment comes from the shell or from
-        // Gradle properties: klyph.sprites, klyph.children, klyph.textures, klyph.frames, klyph.offscreen, klyph.vsync,
-        // klyph.validation, klyph.music, klyph.cell. `benchmark` picks the benchmark with -Pklyph.benchmark=<name>.
-        binaries.withType<Executable>().matching { it.buildType == NativeBuildType.RELEASE }.configureEach {
-            val environment = RunEnvironment.of(project)
-            val selected = providers.gradleProperty("klyph.benchmark").getOrElse(benchmarkNames.first())
-
-            tasks.register<Exec>("benchmark") {
-                group = "benchmarks"
-                description = "Runs the benchmark named by -Pklyph.benchmark (default ${benchmarkNames.first()}); release build."
-                dependsOn(linkTaskProvider)
-                executable(outputFile)
-                args(selected)
-                environment(environment)
+        tasks.register<Exec>("benchmark") {
+            description = "Runs the benchmark named by -Pklyph.benchmark (default ${benchmarkNames.first()}); release build."
+            runs(selected, environment = environment)
+        }
+        tasks.register<Exec>("benchmarkList") {
+            description = "Lists the available benchmarks."
+            runs(environment = emptyMap())
+        }
+        for (name in benchmarkNames) {
+            val taskName = "benchmark" + name.replaceFirstChar { it.uppercase() }
+            tasks.register<Exec>(taskName) {
+                description = "Runs the '$name' benchmark in a window; release build."
+                runs(name, environment = environment)
             }
-            tasks.register<Exec>("benchmarkList") {
-                group = "benchmarks"
-                description = "Lists the available benchmarks."
-                dependsOn(linkTaskProvider)
-                executable(outputFile)
-            }
-            for (name in benchmarkNames) {
-                val taskName = "benchmark" + name.replaceFirstChar { it.uppercase() }
-                tasks.register<Exec>(taskName) {
-                    group = "benchmarks"
-                    description = "Runs the '$name' benchmark in a window; release build."
-                    dependsOn(linkTaskProvider)
-                    executable(outputFile)
-                    args(name)
-                    environment(environment)
-                }
-                tasks.register<Exec>("${taskName}Offscreen") {
-                    group = "benchmarks"
-                    description = "Runs the '$name' benchmark offscreen with a GPU wait each frame, 2000 frames unless klyph.frames is set."
-                    dependsOn(linkTaskProvider)
-                    executable(outputFile)
-                    args(name)
-                    environment(RunEnvironment.of(project, mapOf("KLYPH_FRAMES" to "2000")) + mapOf("KLYPH_OFFSCREEN" to "1"))
-                }
-            }
-            for (name in headlessBenchmarkNames) {
-                tasks.register<Exec>("benchmark" + name.replaceFirstChar { it.uppercase() }) {
-                    group = "benchmarks"
-                    description = "Runs the '$name' benchmark headless, without a window or a device; release build."
-                    dependsOn(linkTaskProvider)
-                    executable(outputFile)
-                    args(name)
-                    environment(environment)
-                }
+            tasks.register<Exec>("${taskName}Offscreen") {
+                description = "Runs the '$name' benchmark offscreen with a GPU wait each frame, 2000 frames unless klyph.frames is set."
+                runs(name, environment = klyph.runEnvironment(mapOf("KLYPH_FRAMES" to "2000")) + ("KLYPH_OFFSCREEN" to "1"))
             }
         }
-    }
-
-    sourceSets {
-        nativeMain.dependencies {
-            implementation(project(":klyph"))
-            implementation(project(":klyph-platform"))
+        for (name in headlessBenchmarkNames) {
+            tasks.register<Exec>("benchmark" + name.replaceFirstChar { it.uppercase() }) {
+                description = "Runs the '$name' benchmark headless, without a window or a device; release build."
+                runs(name, environment = environment)
+            }
         }
     }
 }

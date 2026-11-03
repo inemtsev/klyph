@@ -1,13 +1,10 @@
 package klyph.platform
 
-import kotlin.jvm.JvmInline
-
 /**
  * An RGBA color with 8 bits per channel, packed as `0xRRGGBBAA`.
  *
  * @sample samples.platform.Colors.color
  */
-@JvmInline
 public value class Color(public val rgba: UInt) {
     /** Red channel in `0.0..1.0`. */
     public val red: Float get() = channel(24)

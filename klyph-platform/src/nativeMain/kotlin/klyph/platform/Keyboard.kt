@@ -1,6 +1,5 @@
 package klyph.platform
 
-import kotlin.jvm.JvmInline
 import sdl3.SDLK_0
 import sdl3.SDLK_1
 import sdl3.SDLK_2
@@ -130,7 +129,6 @@ import sdl3.SDL_SCANCODE_Z
  * Key codes are sparse (printable keys use their Unicode value, the rest have a high bit set), so
  * do not size arrays by them; index by [Scancode] instead.
  */
-@JvmInline
 public value class KeyCode(public val code: UInt) {
     override fun toString(): String = "KeyCode($code)"
 
@@ -254,7 +252,6 @@ public value class KeyCode(public val code: UInt) {
  * Every scancode SDL reports is below [COUNT], so keyboard state can live in a flat array indexed
  * by [code]. [UNKNOWN] stands for a key SDL cannot identify.
  */
-@JvmInline
 public value class Scancode(public val code: UInt) {
     override fun toString(): String = "Scancode($code)"
 

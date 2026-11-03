@@ -1,7 +1,5 @@
 package klyph.audio
 
-import kotlin.jvm.JvmInline
-
 /**
  * Identifies one playback of a [Sound], as returned by [Audio.play]. Pass it to [Audio.stop],
  * [Audio.setVolume], [Audio.setPitch], [Audio.setPan] and [Audio.isPlaying].
@@ -12,7 +10,6 @@ import kotlin.jvm.JvmInline
  *
  * [toString] gives the slot and generation, for example `Voice(3:7)`, or `Voice.NONE`.
  */
-@JvmInline
 public value class Voice internal constructor(internal val packed: Int) {
     internal val slot: Int get() = packed and SLOT_MASK
 

@@ -1,14 +1,11 @@
 package klyph.platform
 
-import kotlin.jvm.JvmInline
-
 /**
  * A mouse button, numbered from zero: [LEFT] is 0 and [X2] is 4.
  *
  * Every button [EventPump] reports has an [index] below [COUNT], so button state can live in a flat
  * array indexed by [index].
  */
-@JvmInline
 public value class MouseButton(public val index: Int) {
     override fun toString(): String = "MouseButton($index)"
 

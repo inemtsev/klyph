@@ -6,7 +6,6 @@ import cnames.structs.SDL_GPUSampler
 import cnames.structs.SDL_GPUShader
 import cnames.structs.SDL_GPUTexture
 import cnames.structs.SDL_GPUTransferBuffer
-import kotlin.jvm.JvmInline
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.FloatVar
 import kotlinx.cinterop.addressOf
@@ -63,7 +62,6 @@ import sdl3.SDL_UnmapGPUTransferBuffer
  * A texture owned by the GPU. Swapchain textures are valid only for the frame they were acquired
  * in; created textures live until [GpuDevice.release].
  */
-@JvmInline
 public value class GpuTexture internal constructor(internal val handle: CPointer<SDL_GPUTexture>) {
     override fun toString(): String = "GpuTexture"
 }
@@ -82,7 +80,6 @@ public enum class BufferUsage(internal val bits: UInt) {
 /**
  * A buffer in GPU memory. Fill it through a [TransferBuffer] and a [CopyPass].
  */
-@JvmInline
 public value class GpuBuffer internal constructor(internal val handle: CPointer<SDL_GPUBuffer>) {
     override fun toString(): String = "GpuBuffer"
 }
@@ -90,7 +87,6 @@ public value class GpuBuffer internal constructor(internal val handle: CPointer<
 /**
  * CPU-visible staging memory used to move data to the GPU. Map it, write, unmap, then upload in a [CopyPass].
  */
-@JvmInline
 public value class TransferBuffer internal constructor(internal val handle: CPointer<SDL_GPUTransferBuffer>) {
     override fun toString(): String = "TransferBuffer"
 }
@@ -99,7 +95,6 @@ public value class TransferBuffer internal constructor(internal val handle: CPoi
  * Mapped transfer-buffer memory, addressed as 32-bit floats. Valid until [GpuDevice.unmap].
  * The setters inline to plain stores, so filling a buffer allocates nothing.
  */
-@JvmInline
 public value class MappedFloats @PublishedApi internal constructor(
     @PublishedApi internal val address: CPointer<FloatVar>,
 ) {
@@ -126,7 +121,6 @@ public enum class SamplerFilter(internal val raw: SDL_GPUFilter) {
 /**
  * Sampling state for textures: filtering and clamped addressing.
  */
-@JvmInline
 public value class Sampler internal constructor(internal val handle: CPointer<SDL_GPUSampler>) {
     override fun toString(): String = "Sampler"
 }
@@ -142,7 +136,6 @@ public enum class ShaderStage(internal val raw: SDL_GPUShaderStage) {
 /**
  * A compiled shader stage.
  */
-@JvmInline
 public value class GpuShader internal constructor(internal val handle: CPointer<SDL_GPUShader>) {
     override fun toString(): String = "GpuShader"
 }
@@ -168,7 +161,6 @@ public enum class BlendMode {
  * A graphics pipeline: shaders plus fixed-function state, for triangle lists without vertex
  * buffers. Vertex data is pulled from storage buffers by vertex index.
  */
-@JvmInline
 public value class GraphicsPipeline internal constructor(internal val handle: CPointer<SDL_GPUGraphicsPipeline>) {
     override fun toString(): String = "GraphicsPipeline"
 }

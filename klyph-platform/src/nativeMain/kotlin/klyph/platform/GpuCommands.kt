@@ -4,7 +4,6 @@ import cnames.structs.SDL_GPUBuffer
 import cnames.structs.SDL_GPUCopyPass
 import cnames.structs.SDL_GPURenderPass
 import cnames.structs.SDL_GPUTexture
-import kotlin.jvm.JvmInline
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.alloc
@@ -38,7 +37,6 @@ import sdl3.SDL_WaitAndAcquireGPUSwapchainTexture
 /**
  * A copy pass that is being recorded. Uploads go here, before any render pass of the frame.
  */
-@JvmInline
 public value class CopyPass internal constructor(internal val handle: CPointer<SDL_GPUCopyPass>) {
     /** Finishes the pass. */
     public fun end() {
@@ -51,7 +49,6 @@ public value class CopyPass internal constructor(internal val handle: CPointer<S
 /**
  * A render pass that is being recorded. Call [end] before recording anything else.
  */
-@JvmInline
 public value class RenderPass internal constructor(internal val handle: CPointer<SDL_GPURenderPass>) {
     /** Finishes the pass. */
     public fun end() {

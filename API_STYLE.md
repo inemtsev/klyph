@@ -113,7 +113,9 @@ public fun <N> buildGraph(directed: Boolean = false, builder: GraphBuilder<N>.()
   `Sequence` MUST stay lazy and MUST NOT consume the receiver before the result
   is iterated.
 - Identifiers, units and other non-arithmetic scalars MUST be wrapped in a
-  `@JvmInline value class`, not passed as `Int`, `Long` or `String`.
+  `value class`, not passed as `Int`, `Long` or `String`. klyph has no JVM
+  target, so value classes carry no `@JvmInline`; the shared native source set
+  rejects that annotation when several targets are built.
 - Closed sets of variants are `sealed interface` or `sealed class` so users get
   exhaustive `when` and cannot add cases the library does not handle.
 - `data class` MUST NOT be public. It freezes constructor and `copy` shape and

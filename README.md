@@ -9,7 +9,7 @@ of time to Metal, Vulkan and Direct3D 12.
 
 ## Status
 
-Pre-alpha. There are no releases and the API changes without notice.
+Pre-alpha. 0.1.0 is the first release, and the API changes without notice until 1.0.
 
 What works today:
 
@@ -102,6 +102,55 @@ extracting them. Per-frame averages after a warm-up.
 
 Full table, method and caveats in [BENCHMARKS.md](BENCHMARKS.md).
 
+## Use klyph
+
+klyph is on Maven Central from 0.1.0: the engine as `com.eventslooped.klyph:klyph` and the
+Gradle plugin as `com.eventslooped.klyph`. A game's whole build file is three lines:
+
+```kotlin
+plugins { id("com.eventslooped.klyph") version "0.1.0" }
+klyph { entryPoint = "my.game.main" }
+kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:0.1.0") } }
+```
+
+and `settings.gradle.kts` names the repositories:
+
+```kotlin
+pluginManagement { repositories { mavenCentral(); gradlePluginPortal() } }
+dependencyResolutionManagement { repositories { mavenCentral() } }
+```
+
+The plugin applies Kotlin Multiplatform 2.4.20 itself, so the build does not declare Kotlin.
+Sources go in `src/nativeMain/kotlin` and art and sounds in `assets/`. The `klyph { }` block
+takes more settings when the defaults do not fit:
+
+```kotlin
+klyph {
+    entryPoint = "my.game.main"                         // required
+    assetsDir = layout.projectDirectory.dir("assets")   // the default
+    sdl3Prefix = "/opt/sdl3"                            // an SDL3 install the lookup does not find
+    targets = listOf("host")                            // or listOf("all"), or target names
+}
+```
+
+`./gradlew run` builds the debug executable, copies `assets/` next to it and starts the game;
+`-Pklyph.frames=600` and the other `-Pklyph.*` properties reach it as `KLYPH_*` variables.
+`./gradlew distribute` zips the release executable, `assets/` and the SDL3 library into
+`build/distributions/`; the unzipped folder runs on a machine without SDL3 installed.
+
+The plugin finds SDL3 3.4 or newer on its own, or `-Psdl3.prefix=<path>` points at one:
+
+- **macOS**: `brew install sdl3`. Without Homebrew's SDL3 the plugin downloads SDL's official
+  release once, checks its SHA-256 and caches it under `~/.gradle/caches/klyph/sdl3/`.
+- **Windows**: nothing to install. The plugin downloads SDL's MinGW package the same way, and
+  every link copies `SDL3.dll` next to the executable.
+- **Linux**: install the development package, `libsdl3-dev` on Debian 13 and Ubuntu 25.04 or
+  newer, `sdl3` on Arch, `SDL3-devel` on Fedora. Older distributions have no package; build SDL
+  from source into `/usr/local`. SDL publishes no Linux binary, so there is no download.
+
+The plugin's own reference, with every task and property, is
+[klyph-gradle-plugin/README.md](klyph-gradle-plugin/README.md).
+
 ## Building
 
 Requirements:
@@ -139,8 +188,12 @@ Run the tests and samples:
 ```
 
 The build configures the host's own target: `macosArm64`, `linuxX64`,
-`linuxArm64` or `mingwX64`. Linux and Windows builds are set up but not yet
-tested; `-Pklyph.target=<name>` picks a target explicitly.
+`linuxArm64` or `mingwX64`. `-Pklyph.targets=all` configures all four, which a
+macOS host can compile; tests and `run` stay on the host target.
+
+The repository's own games build with the plugin too, through an included build,
+and `tools/consumer-test.sh local` builds the shooter in a fresh folder from the
+artifacts in `~/.m2` the way a game outside the repository would.
 
 ## Layout
 
@@ -149,18 +202,21 @@ tested; `-Pklyph.target=<name>` picks a target explicitly.
 | `klyph-platform` | SDL3 bindings and the thin Kotlin API over them. The only module that touches C interop. |
 | `klyph` | The engine: entities, components, scenes, rendering, text, particles, collisions, shaders, audio. |
 | `samples` | The `@sample` functions referenced from KDoc, run as tests. |
+| `klyph-gradle-plugin` | The Gradle plugin games apply: targets, SDL3 lookup and download, `run`, `distribute`. |
 | `sandbox` | Executable smoke test: opens a window and clears it each frame. |
 | `shooter` | The reference game: a top-down shooter that exercises the engine end to end. |
+| `squish` | A bug-squishing game for young children. |
 | `benchmarks` | Executable that runs a benchmark by name, such as `sprites`. |
 
 ## Roadmap
 
-Next: a Gradle plugin and published artifacts.
+Next: 1.0.
 
 Done: entity hierarchy, system phases and events; image loading, sprite sheets,
 animation, multiple textures and a camera; keyboard, mouse and gamepad state;
 sound effects and music; macOS, Linux and Windows CI; scenes, collision tests,
-particles, bitmap text and a debug overlay.
+particles, bitmap text and a debug overlay; a Gradle plugin and artifacts on
+Maven Central.
 
 ## Contributing
 

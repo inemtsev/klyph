@@ -2,7 +2,10 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
     id("klyph.native")
+    id("klyph.publish")
 }
+
+description = "The SDL3, stb_image and stb_vorbis bindings and the thin Kotlin API over them that the klyph engine is built on."
 
 val sdl3Prefix: String = Sdl3.prefix(project)
 

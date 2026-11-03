@@ -1,6 +1,5 @@
 package klyph.platform
 
-import kotlin.jvm.JvmInline
 import sdl3.SDL_GAMEPAD_AXIS_COUNT
 import sdl3.SDL_GAMEPAD_AXIS_LEFTX
 import sdl3.SDL_GAMEPAD_AXIS_LEFTY
@@ -30,7 +29,6 @@ import sdl3.SDL_JOYSTICK_AXIS_MAX
  * Identifies a connected gamepad for as long as it stays connected. SDL never reuses an id, so a
  * gamepad that is unplugged and plugged back in gets a new one.
  */
-@JvmInline
 public value class GamepadId(public val id: UInt) {
     override fun toString(): String = "GamepadId($id)"
 }
@@ -43,7 +41,6 @@ public value class GamepadId(public val id: UInt) {
  * array indexed by [index]. Indices without a constant here are extra buttons some pads have, such
  * as paddles, a touchpad press or a share button.
  */
-@JvmInline
 public value class GamepadButton(public val index: Int) {
     override fun toString(): String = "GamepadButton($index)"
 
@@ -91,7 +88,6 @@ public value class GamepadButton(public val index: Int) {
  * X axis and up on a Y axis, and trigger values from 0 (released) to 1 (fully pressed). Every axis
  * [EventPump] reports has an [index] below [COUNT].
  */
-@JvmInline
 public value class GamepadAxis(public val index: Int) {
     override fun toString(): String = "GamepadAxis($index)"
 
