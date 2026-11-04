@@ -76,9 +76,9 @@ public class DebugOverlay internal constructor() {
         counts.setLength(0)
         counts.appendCount("entities", stats.entityCount)
         counts.appendCount("sprites", stats.spriteCount)
-        counts.appendCount("draws", stats.drawCalls)
+        counts.appendCount("draws", stats.drawCallCount)
         counts.appendCount("voices", voices)
-        counts.appendCount("steps", stats.fixedSteps)
+        counts.appendCount("steps", stats.fixedStepCount)
         counts.setLength(counts.length - 1)
     }
 
@@ -88,7 +88,7 @@ public class DebugOverlay internal constructor() {
      * [fixedDelta] across the graph. Returns the number of quads queued.
      */
     internal fun draw(canvas: Canvas, font: Font, stats: FrameStats, fixedDelta: Duration, voices: Int): Int {
-        val before = canvas.count
+        val before = canvas.quadCount
         writeText(stats, voices)
         val lineHeight = font.lineHeight * TEXT_SCALE
         val left = MARGIN + PADDING
@@ -120,7 +120,7 @@ public class DebugOverlay internal constructor() {
         }
         val lineY = graphBottom - barHeight(fixedNanos)
         canvas.drawRect(x = left, y = lineY, width = graphWidth, height = 1f, color = LINE_COLOR, layer = LAYER, space = DrawSpace.SCREEN)
-        return canvas.count - before
+        return canvas.quadCount - before
     }
 
     /** Returns `DebugOverlay(isVisible=false)`. The format may change. */

@@ -39,7 +39,7 @@ internal inline fun forEachLine(text: CharSequence, action: (start: Int, end: In
 
 /**
  * Returns the width in font units of the characters of [text] from [start] until [end], one line
- * with no `'\n'`: the advances of their glyphs plus the kerning between neighbours.
+ * with no `'\n'`: the advances of their glyphs plus the kerning between neighbors.
  */
 internal fun Font.lineWidth(text: CharSequence, start: Int, end: Int): Float {
     var width = 0f

@@ -5,7 +5,7 @@ import klyph.collision.CollisionLayers
 import klyph.collision.Collisions
 import klyph.collision.Overlap
 import klyph.collision.Shape
-import klyph.collision.overlaps
+import klyph.collision.overlapping
 import klyph.entity.Entity
 import klyph.entity.Transform
 import klyph.entity.World
@@ -36,7 +36,7 @@ class CollisionQueries {
     }
 
     @Sample
-    fun overlaps() {
+    fun overlapping() {
         val enemy = CollisionLayers.of(1)
         val world = World()
         val near = world.create()
@@ -48,12 +48,12 @@ class CollisionQueries {
         val collisions = Collisions()
         collisions.detect(world, Events())
 
-        assertPrints(collisions.overlaps(Shape.Circle(50f), x = 0f, y = 0f, mask = enemy), "[Entity(0:0)]")
-        assertPrints(collisions.overlaps(Shape.Box(width = 2000f, height = 10f), x = 0f, y = 0f), "[Entity(0:0), Entity(1:0)]")
+        assertPrints(collisions.overlapping(Shape.Circle(50f), x = 0f, y = 0f, mask = enemy), "[Entity(0:0)]")
+        assertPrints(collisions.overlapping(Shape.Box(width = 2000f, height = 10f), x = 0f, y = 0f), "[Entity(0:0), Entity(1:0)]")
     }
 
     @Sample
-    fun overlapsTo() {
+    fun overlappingTo() {
         val world = World()
         repeat(3) { i ->
             val crate = world.create()
@@ -65,15 +65,15 @@ class CollisionQueries {
 
         // Reuse one list across queries to avoid allocating per query.
         val hits = ArrayList<Entity>()
-        collisions.overlapsTo(hits, Shape.Circle(6f), x = 10f, y = 0f)
+        collisions.overlappingTo(hits, Shape.Circle(6f), x = 10f, y = 0f)
         assertPrints(hits, "[Entity(0:0), Entity(1:0)]")
         hits.clear()
-        collisions.overlapsTo(hits, Shape.Circle(2f), x = 40f, y = 0f)
+        collisions.overlappingTo(hits, Shape.Circle(2f), x = 40f, y = 0f)
         assertPrints(hits, "[Entity(2:0)]")
     }
 
     @Sample
-    fun firstOverlapOrNull() {
+    fun firstOverlappingOrNull() {
         val world = World()
         val wall = world.create()
         world.add(wall, Transform, Transform(x = 100f, y = 0f))
@@ -81,7 +81,7 @@ class CollisionQueries {
         val collisions = Collisions()
         collisions.detect(world, Events())
 
-        assertPrints(collisions.firstOverlapOrNull(Shape.Circle(4f), x = 98f, y = 50f), "Entity(0:0)")
-        assertPrints(collisions.firstOverlapOrNull(Shape.Circle(4f), x = 50f, y = 50f), "null")
+        assertPrints(collisions.firstOverlappingOrNull(Shape.Circle(4f), x = 98f, y = 50f), "Entity(0:0)")
+        assertPrints(collisions.firstOverlappingOrNull(Shape.Circle(4f), x = 50f, y = 50f), "null")
     }
 }

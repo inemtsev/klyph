@@ -28,7 +28,7 @@ public class WorldTransform internal constructor(
     /** Vertical scale factor. */
     public var scaleY: Float = 1f,
 ) {
-    override fun toString(): String = "WorldTransform(x=$x, y=$y, rotation=$rotation, scale=$scaleX x $scaleY)"
+    override fun toString(): String = "WorldTransform(x=$x, y=$y, rotation=$rotation, scale=${scaleX}x$scaleY)"
 
     /** Component key for [WorldTransform]. */
     public companion object : ComponentType<WorldTransform>("WorldTransform")

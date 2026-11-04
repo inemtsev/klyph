@@ -141,3 +141,46 @@ public class Gamepad internal constructor(
         return if (previous.x == sx && previous.y == sy) previous else Vec2(sx, sy)
     }
 }
+
+/**
+ * Returns `true` while [button] is held on any connected gamepad of the list, such as
+ * `App.input.gamepads`, for a game that lets whichever pad is at hand play. An empty list gives
+ * `false`.
+ *
+ * Samples live in the sandbox because they need a display.
+ */
+public fun List<Gamepad>.isDown(button: GamepadButton): Boolean {
+    for (i in indices) {
+        val gamepad = this[i]
+        if (gamepad.isConnected && gamepad.isDown(button)) return true
+    }
+    return false
+}
+
+/**
+ * Returns `true` if [button] went down this frame on any connected gamepad of the list. An empty
+ * list gives `false`.
+ *
+ * Samples live in the sandbox because they need a display.
+ */
+public fun List<Gamepad>.isJustPressed(button: GamepadButton): Boolean {
+    for (i in indices) {
+        val gamepad = this[i]
+        if (gamepad.isConnected && gamepad.isJustPressed(button)) return true
+    }
+    return false
+}
+
+/**
+ * Returns `true` if [button] went up this frame on any connected gamepad of the list. An empty
+ * list gives `false`.
+ *
+ * Samples live in the sandbox because they need a display.
+ */
+public fun List<Gamepad>.isJustReleased(button: GamepadButton): Boolean {
+    for (i in indices) {
+        val gamepad = this[i]
+        if (gamepad.isConnected && gamepad.isJustReleased(button)) return true
+    }
+    return false
+}

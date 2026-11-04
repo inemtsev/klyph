@@ -13,4 +13,8 @@ kotlin {
     sourceSets.nativeMain.dependencies {
         implementation(project(":klyph"))
     }
+    // Drives the platform plumbing directly, as the engine does; games never opt in.
+    sourceSets.all {
+        languageSettings.optIn("klyph.platform.KlyphPlatformApi")
+    }
 }

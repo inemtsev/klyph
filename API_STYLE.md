@@ -9,6 +9,9 @@ written reason in the PR when broken.
 
 Scope: public and `@PublishedApi internal` declarations. Private and internal
 code is free to differ, but should not contradict the naming vocabulary.
+Declarations marked `@KlyphPlatformApi`, the engine's platform plumbing, follow
+this spec too, but they are outside the compatibility promise and may change in
+any release. A declaration a game needs MUST NOT carry the marker.
 
 ## 1. Members and extensions
 
@@ -48,7 +51,11 @@ in the same PR rather than inventing a one-off.
 | `emptyX()` | Shared immutable empty instance. | `emptyGraph()` |
 | `X.of(...)` | Companion factory for a value class whose constructor takes the raw representation, building it from the value users think in. | `CollisionLayers.of(3)` |
 | `onX { }` | Builder function that registers an action run when `X` happens. | `buildScene("title") { onEnter { } }` |
-| `xOrNull()` | Same as `x()` but returns `null` instead of throwing. May stand alone when absence is normal rather than an error. | `firstOrNull()`, `nodeOrNull(id)`, `parentOrNull(child)` |
+| `xOrNull()` | Function or property: same as `x()` but returns `null` instead of throwing. May stand alone when absence is normal rather than an error. | `firstOrNull()`, `nodeOrNull(id)`, `parentOrNull(child)`, `scenes.currentOrNull` |
+| `x(path)` on `Assets` | Returns the asset at `path`, loading it on the first call and returning the cached instance after. Named after the type it returns. | `assets.texture("ship.png")`, `assets.musicTrack("music.ogg")` |
+| `createX(...)` | Makes a new `X` on every call, never cached; the caller owns it. | `assets.createTexture(image)` |
+| `xCount` | Property holding how many of `x` there are. Containers use `size` instead. | `spriteCount`, `drawCallCount`, `Time.frameCount` |
+| `SubjectVerbed` event | An event that reports a change is a past participle. An event that reports a state every frame, such as an overlap, is a noun. | `KeyPressed`, `MouseWheelScrolled`, `WindowResized`; `Overlap` |
 | `xOf(argument)` | Member or extension that returns the `x` associated with [argument]. Not a factory. | `neighborsOf(node)`, `childrenOf(parent)`, `durationOf(phase)` |
 | `xOrElse { }` | Same as `x()` but calls the lambda instead of throwing. | `getOrElse { default }` |
 | `xOrDefault(value)` | Same as `x()` but returns the value instead of throwing. | `getOrDefault(key, 0)` |
@@ -59,6 +66,8 @@ in the same PR rather than inventing a one-off.
 | `MutableX` | Mutable counterpart of a read-only interface `X`. | `MutableGraph` |
 | `AbstractX` | Skeletal implementation for users who extend `X`. | `AbstractGraph` |
 | `isX` / `hasX` | Boolean property or function. No `getIsX`, no bare adjectives. | `isEmpty`, `hasCycle` |
+| `withX(value)` | Returns a copy of an immutable value with property `x` replaced and the rest kept. | `color.withAlpha(0f)` |
+| `XEnd` enum | Names what happens to an entity once a component has run its course; `HOLD` or `KEEP` leaves it, `DESTROY` destroys it. | `FadeEnd`, `AnimationEnd`, `EmitterEnd` |
 | `setX(handle, value)` | Changes property `x` of the thing a value-class handle refers to, on the service that owns it. Only for handles, which cannot hold mutable properties; everything else uses `var x`. | `audio.setVolume(voice, 0.5f)`, `audio.setPan(voice, -1f)` |
 | `XImpl` | Private or internal implementation of `X`. Never public. | `GraphImpl` |
 
@@ -84,10 +93,17 @@ General rules:
   function (`map` / `mapNotNull`) or take an enum.
 - Parameters sharing a primitive type, or any `Boolean` parameter, are called
   with named arguments inside the library and documented so users do the same.
+  Conventional ordered pairs and tuples are exempt, because nobody gets their
+  order wrong: (x, y), (width, height), (columns, rows) and (red, green, blue,
+  alpha) may be passed by position, as in `Transform(x, y)`.
 - A function taking one lambda MUST take it as the last parameter so the
   trailing-lambda form works.
 - Prefer composing small operations over adding configuration parameters to
-  one big function. Add a new operator before you add a fifth parameter.
+  one big function. Add a new operator before you add a fifth parameter. A
+  function may take five or more when every parameter after the first few has a
+  default and the KDoc asks for named arguments, as the `Canvas` draw calls and
+  the collision queries do, where splitting them into operators would allocate or
+  add a builder on every call.
 - Builders take a lambda with receiver as the last parameter. Values the builder
   cannot work without MUST be normal parameters, not builder properties, because
   a builder cannot enforce required fields at compile time.
@@ -108,7 +124,18 @@ public fun <N> buildGraph(directed: Boolean = false, builder: GraphBuilder<N>.()
   it on the way in and on the way out. One exception: audio types in
   `klyph.audio` and `klyph.platform` may take a `FloatArray` sample buffer
   without copying, such as `AudioRenderer.render` and `PcmStream.read`, because
-  the mix path runs on the audio thread and must not allocate.
+  the mix path runs on the audio thread and must not allocate. A second
+  exception: a `ByteArray` of encoded file contents, or a buffer uploaded to the
+  GPU, may cross a public signature when the callee does not keep it or returns
+  a new array the caller owns, such as `Files.readBytes` and `Image.decode`.
+  Their KDoc says the array is not kept.
+- Time is a `Duration`: frame durations, fades, lifetimes, delays and limits.
+  `Time.deltaSeconds` is the one `Float` in seconds, a convenience for the
+  arithmetic of a frame. Rates stay `Float` per second.
+- Mutable component fields and parameters of calls made every frame take
+  separate `Float`s, such as `Camera.lookAt(x, y)`, so they allocate nothing.
+  Computed results and read-only state return a `Vec2`, such as
+  `Mouse.position` and `Camera.worldToScreen`.
 - Return `List` for eager operations and `Sequence` for lazy ones. A function on
   `Sequence` MUST stay lazy and MUST NOT consume the receiver before the result
   is iterated.
@@ -176,9 +203,12 @@ throw IndexOutOfBoundsException("Index $index is out of bounds for size $size.")
 
 Every public declaration MUST have KDoc, except an override that adds nothing.
 
-- The first sentence is third-person indicative and starts with a verb:
-  "Returns ...", "Creates ...", "Adds ...", "Throws ...". It MUST say what the
-  function does for the caller, not restate the signature.
+- The first sentence of a function's KDoc is third-person indicative and starts
+  with a verb: "Returns ...", "Creates ...", "Adds ...", "Throws ...". It MUST
+  say what the function does for the caller, not restate the signature.
+- A type may open with a noun phrase ("A 2D view onto the world"). Events open
+  with "Published when", exceptions with "Thrown when". A property opens with
+  the noun phrase it holds ("Width of the viewport in points") or with "Returns".
 - Refer to parameters inline with `[name]`. Use `@param` and `@return` only when
   the explanation is too long for the prose.
 - State valid input ranges and what happens on invalid input in the description.

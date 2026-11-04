@@ -16,9 +16,9 @@ class CollisionLayerSets {
 
         val enemyMask = player + bullet
         assertPrints(enemyMask, "CollisionLayers(0, 2)")
-        assertTrue(enemyMask.contains(bullet))
-        assertFalse(enemyMask.contains(enemy))
-        assertTrue(CollisionLayers.ALL.contains(enemy))
+        assertTrue(enemyMask.intersects(bullet))
+        assertFalse(enemyMask.intersects(enemy))
+        assertTrue(CollisionLayers.ALL.intersects(enemy))
         assertPrints(CollisionLayers.NONE, "CollisionLayers()")
         assertFailsWith<IllegalArgumentException> { CollisionLayers.of(32) }
     }

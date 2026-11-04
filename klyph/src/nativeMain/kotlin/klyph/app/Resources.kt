@@ -15,8 +15,7 @@ import kotlin.reflect.KClass
  * Not thread-safe.
  */
 public class Resources {
-    @PublishedApi
-    internal val values: HashMap<KClass<*>, Any> = HashMap()
+    private val values = HashMap<KClass<*>, Any>()
 
     /** Number of resources held. */
     public val size: Int get() = values.size
@@ -46,21 +45,35 @@ public class Resources {
      *
      * @sample samples.app.GameResources.getOrNull
      */
-    public inline fun <reified T : Any> getOrNull(): T? = values[T::class] as T?
+    public inline fun <reified T : Any> getOrNull(): T? = valueOrNull(T::class) as T?
 
     /**
      * Removes the resource of class [T] and returns it, or returns `null` if none was held.
      *
      * @sample samples.app.GameResources.getOrNull
      */
-    public inline fun <reified T : Any> remove(): T? = values.remove(T::class) as T?
+    public inline fun <reified T : Any> remove(): T? = removeValue(T::class) as T?
 
     /**
      * Returns `true` if a resource of class [T] is held.
      *
      * @sample samples.app.GameResources.getOrNull
      */
-    public inline fun <reified T : Any> has(): Boolean = values.containsKey(T::class)
+    public inline fun <reified T : Any> has(): Boolean = hasValue(T::class)
+
+    // The inline functions above go through these, so the map stays out of the published ABI.
+
+    /** Returns the resource stored under exactly [type], or `null`. */
+    @PublishedApi
+    internal fun valueOrNull(type: KClass<*>): Any? = values[type]
+
+    /** Removes the resource stored under exactly [type] and returns it, or returns `null`. */
+    @PublishedApi
+    internal fun removeValue(type: KClass<*>): Any? = values.remove(type)
+
+    /** Returns `true` if a resource is stored under exactly [type]. */
+    @PublishedApi
+    internal fun hasValue(type: KClass<*>): Boolean = values.containsKey(type)
 
     override fun toString(): String = "Resources(size=$size)"
 }

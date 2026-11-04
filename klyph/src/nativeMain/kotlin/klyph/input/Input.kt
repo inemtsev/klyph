@@ -2,7 +2,6 @@ package klyph.input
 
 import klyph.platform.GamepadId
 import klyph.platform.PlatformEvent
-import klyph.platform.Scancode
 import klyph.render.Camera
 
 /**
@@ -80,7 +79,7 @@ public class Input internal constructor() {
                 mouse.moveTo(event.x, event.y)
                 mouse.release(event.button)
             }
-            is PlatformEvent.MouseWheel -> mouse.scroll(event.dx, event.dy)
+            is PlatformEvent.MouseWheelScrolled -> mouse.scroll(event.dx, event.dy)
             is PlatformEvent.GamepadConnected ->
                 if (gamepadOrNull(event.id) == null) connected.add(Gamepad(event.id, event.name, deadZone))
             is PlatformEvent.GamepadDisconnected -> {
@@ -105,10 +104,10 @@ public class Input internal constructor() {
 
     /**
      * Finishes the frame's update: publishes the mouse's vectors and computes its world position
-     * through [camera], whose screen coordinates are pixels, [pixelDensity] pixels per point.
+     * through [camera], whose screen coordinates are points.
      */
-    internal fun endFrame(camera: Camera, pixelDensity: Float) {
-        mouse.endFrame(camera, pixelDensity)
+    internal fun endFrame(camera: Camera) {
+        mouse.endFrame(camera)
     }
 
     override fun toString(): String =
@@ -117,15 +116,4 @@ public class Input internal constructor() {
     private companion object {
         const val DEFAULT_DEAD_ZONE = 0.15f
     }
-}
-
-/**
- * Returns -1 while only the key at [negative] is down, 1 while only the key at [positive] is
- * down, and 0 while both or neither are, for movement on a pair of keys such as A and D.
- */
-public fun Input.axis(negative: Scancode, positive: Scancode): Float {
-    var value = 0f
-    if (keyboard.isDown(negative)) value -= 1f
-    if (keyboard.isDown(positive)) value += 1f
-    return value
 }

@@ -17,7 +17,7 @@ package klyph.audio
  *
  * @sample samples.audio.MusicTracks.musicTrack
  */
-public interface PcmStream {
+public interface PcmStream : AutoCloseable {
     /** Returns the number of interleaved channels in each frame, 1 or 2. It never changes. */
     public val channels: Int
 
@@ -41,5 +41,5 @@ public interface PcmStream {
     public fun rewind()
 
     /** Frees the stream's resources. Called once, on the main thread, after the last [read]. */
-    public fun close()
+    override fun close()
 }

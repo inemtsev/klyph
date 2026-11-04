@@ -3,6 +3,7 @@ package klyph.app
 import klyph.entity.World
 import klyph.platform.Color
 import klyph.platform.CommandBuffer
+import klyph.platform.FrameCapture
 import klyph.platform.GpuDevice
 import klyph.platform.GpuTexture
 import klyph.platform.TextureFormat
@@ -11,6 +12,7 @@ import klyph.platform.Window
 import klyph.platform.acquireSwapchainTexture
 import klyph.platform.beginRenderPass
 import klyph.platform.createTexture
+import klyph.platform.recordCaptureOrNull
 import klyph.platform.release
 import klyph.platform.waitFor
 import klyph.render.Camera
@@ -59,7 +61,7 @@ internal class SpritePass(
         private set
 
     /** Number of draw calls the last [render] issued. */
-    var drawCalls: Int = 0
+    var drawCallCount: Int = 0
         private set
 
     /** Notes that the window's drawable area is now [width] by [height] pixels. */
@@ -112,6 +114,7 @@ internal class SpritePass(
         mark = now
 
         var calls = 0
+        var capture: FrameCapture? = null
         if (targetTexture != null) {
             if (count > 0) renderer.upload(commands)
             val pass = commands.beginRenderPass(targetTexture, clearColor)
@@ -122,20 +125,34 @@ internal class SpritePass(
                 calls = renderer.draw(commands, pass, camera, screenWidth, screenHeight)
             }
             pass.end()
+            capture = recordCapture(commands, targetTexture)
         }
-        drawCalls = calls
-        if (gpuSync == GpuSync.WAIT_EACH_FRAME) {
+        drawCallCount = calls
+        if (gpuSync == GpuSync.WAIT_EACH_FRAME || capture != null) {
             val fence = commands.submitAndAcquireFence()
             now = clock.markNow()
             stats.add(FrameStats.RECORDING, (now - mark).inWholeNanoseconds)
             mark = now
             device.waitFor(fence)
             device.release(fence)
+            // The read-back is mapped and written to disk here, so a capture's cost counts as GPU wait.
+            capture?.save()
             stats.add(FrameStats.GPU_WAIT, mark.elapsedNow().inWholeNanoseconds)
         } else {
             commands.submit()
             stats.add(FrameStats.RECORDING, mark.elapsedNow().inWholeNanoseconds)
         }
+    }
+
+    /**
+     * Records a read-back of [texture] into [commands] when `Window.capture` has queued one, and
+     * returns it, or returns `null`. With nothing queued this is one check of the window's queue.
+     */
+    private fun recordCapture(commands: CommandBuffer, texture: GpuTexture): FrameCapture? {
+        // For the swapchain texture the platform reads back the size SDL acquired it with instead.
+        val width = if (target == RenderTarget.OFFSCREEN) offscreenWidth else pixelWidth
+        val height = if (target == RenderTarget.OFFSCREEN) offscreenHeight else pixelHeight
+        return commands.recordCaptureOrNull(device, window, texture, width, height, colorFormat)
     }
 
     /**

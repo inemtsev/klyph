@@ -5,7 +5,7 @@ plugins {
     id("klyph.publish")
 }
 
-description = "The SDL3, stb_image and stb_vorbis bindings and the thin Kotlin API over them that the klyph engine is built on."
+description = "The SDL3, stb_image, stb_image_write and stb_vorbis bindings and the thin Kotlin API over them that the klyph engine is built on."
 
 val sdl3Prefix: String = Sdl3.prefix(project)
 
@@ -19,7 +19,7 @@ kotlin {
                 packageName("sdl3")
                 includeDirs("$sdl3Prefix/include")
             }
-            // stb_image, vendored; its implementation is compiled into the interop stubs.
+            // stb_image and stb_image_write, vendored; their implementations are compiled into the interop stubs.
             cinterops.create("stb") {
                 definitionFile.set(file("src/nativeInterop/cinterop/stb.def"))
                 packageName("stb")
@@ -37,6 +37,8 @@ kotlin {
     sourceSets {
         all {
             languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
+            // The module defines the platform plumbing and calls it everywhere.
+            languageSettings.optIn("klyph.platform.KlyphPlatformApi")
         }
         nativeTest.dependencies {
             implementation(kotlin("test"))

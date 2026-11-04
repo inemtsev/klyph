@@ -15,10 +15,11 @@ package klyph.audio
  */
 public class AudioConfig(
     /**
-     * Whether the engine opens an audio device. With `false`, `Audio.isEnabled` is `false` and
-     * every audio call does nothing, which suits tests and headless runs.
+     * Where the mix goes. [AudioOutput.DEVICE], the default, opens the default playback device.
+     * With [AudioOutput.NONE] the engine opens no device, `Audio.isEnabled` is `false` and every
+     * audio call does nothing, which suits tests and headless runs.
      */
-    public val enabled: Boolean = true,
+    public val output: AudioOutput = AudioOutput.DEVICE,
     /**
      * The most sound effects that play at once. When all are busy, a new sound replaces the one
      * that started earliest.
@@ -44,13 +45,13 @@ public class AudioConfig(
 
     override fun equals(other: Any?): Boolean =
         other is AudioConfig &&
-            enabled == other.enabled &&
+            output == other.output &&
             maxVoices == other.maxVoices &&
             sampleRate == other.sampleRate &&
             bufferFrames == other.bufferFrames
 
     override fun hashCode(): Int {
-        var result = enabled.hashCode()
+        var result = output.hashCode()
         result = 31 * result + maxVoices
         result = 31 * result + sampleRate
         result = 31 * result + bufferFrames
@@ -58,11 +59,11 @@ public class AudioConfig(
     }
 
     /**
-     * Returns every setting as `AudioConfig(enabled=true, maxVoices=32, ...)`, in constructor
+     * Returns every setting as `AudioConfig(output=DEVICE, maxVoices=32, ...)`, in constructor
      * order. The format may change.
      */
     override fun toString(): String =
-        "AudioConfig(enabled=$enabled, maxVoices=$maxVoices, sampleRate=$sampleRate, bufferFrames=$bufferFrames)"
+        "AudioConfig(output=$output, maxVoices=$maxVoices, sampleRate=$sampleRate, bufferFrames=$bufferFrames)"
 
     private companion object {
         const val MIN_SAMPLE_RATE: Int = 8_000
@@ -70,4 +71,13 @@ public class AudioConfig(
         const val MIN_BUFFER_FRAMES: Int = 64
         const val MAX_BUFFER_FRAMES: Int = 16_384
     }
+}
+
+/** Names where [AudioConfig] sends the mix. */
+public enum class AudioOutput {
+    /** Opens the default playback device and plays the mix on it. */
+    DEVICE,
+
+    /** Opens no device: `Audio.isEnabled` is `false` and every audio call does nothing. */
+    NONE,
 }

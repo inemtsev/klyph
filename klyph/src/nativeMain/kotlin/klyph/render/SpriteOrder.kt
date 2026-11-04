@@ -23,7 +23,7 @@ package klyph.render
  *
  * After [finish], [isSorted] tells whether every sprite already is at its sorted position, and the
  * runs ([runCount], [runTexture], [runFirst], [runSize]) list the consecutive stretches of sorted
- * sprites that share a texture and a space; each is one draw call. Neighbouring groups with the
+ * sprites that share a texture and a space; each is one draw call. Neighboring groups with the
  * same texture in adjacent layers of one space merge into one run. Runs before [firstScreenRun]
  * are [DrawSpace.WORLD] runs, the rest [DrawSpace.SCREEN] runs. Group sizes are summed per
  * unbroken stretch of one group, not per sprite.

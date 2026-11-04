@@ -23,6 +23,16 @@ class Armor(var points: Int) {
 
 class WorldTest {
     @Test
+    fun initialCapacityMustBePositive() {
+        assertFailsWith<IllegalArgumentException> { World(initialCapacity = 0) }
+        assertFailsWith<IllegalArgumentException> { World(initialCapacity = -1) }
+        // A capacity of one grows like any other.
+        val world = World(initialCapacity = 1)
+        val entities = List(3) { world.create() }
+        assertTrue(entities.all { world.isAlive(it) })
+    }
+
+    @Test
     fun createReturnsDistinctAliveEntities() {
         val world = World()
         val a = world.create()

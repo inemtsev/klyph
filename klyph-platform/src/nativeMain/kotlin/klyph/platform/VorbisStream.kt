@@ -97,6 +97,7 @@ public class VorbisStream private constructor(
     /** Returns the format as `VorbisStream(<channels> ch, <rate> Hz, <frames> frames)`. */
     override fun toString(): String = "VorbisStream($channels ch, $sampleRate Hz, $frameCount frames)"
 
+    /** Holds the factory that opens an Ogg Vorbis file for streaming. */
     public companion object {
         /**
          * Opens the Ogg Vorbis file held in [bytes] for streaming. The stream copies [bytes], so the

@@ -1,6 +1,5 @@
 package klyph.render
 
-import klyph.entity.ComponentType
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.nanoseconds
 
@@ -20,8 +19,11 @@ import kotlin.time.Duration.Companion.nanoseconds
  * @sample samples.render.Animations.advance
  */
 public class Animation(
+    /** Number of frames the playhead steps through, at least one. */
     public val frameCount: Int,
+    /** How long each frame is shown, positive and finite. */
     public val frameDuration: Duration,
+    /** The order the frames play in and what happens after the last one. */
     public val mode: AnimationMode = AnimationMode.LOOP,
 ) {
     private val frameNanos: Long
@@ -60,6 +62,10 @@ public class Animation(
     public var isFinished: Boolean = false
         private set
 
+    /** The number of times [advance] has finished this animation, so a reader can tell each finish apart, a restart included. */
+    internal var finishCount: Int = 0
+        private set
+
     /** Stops [advance] from moving the playhead while `true`. Set it to pause and resume the animation. */
     public var isPaused: Boolean = false
 
@@ -69,7 +75,7 @@ public class Animation(
      * A finished [AnimationMode.ONCE] animation reports exactly [frameDuration], because its last
      * frame was shown for the full time.
      */
-    public val elapsed: Duration
+    public val frameElapsed: Duration
         get() = elapsedNanos.nanoseconds
 
     /**
@@ -77,7 +83,7 @@ public class Animation(
      *
      * A delta longer than one frame skips over the frames it covers, and a delta longer than the
      * whole animation wraps around or, for [AnimationMode.ONCE], finishes it. Time that does not
-     * fill a frame carries over in [elapsed]. Does nothing while [isPaused] or [isFinished].
+     * fill a frame carries over in [frameElapsed]. Does nothing while [isPaused] or [isFinished].
      *
      * @throws IllegalArgumentException if [delta] is negative.
      *
@@ -103,6 +109,7 @@ public class Animation(
                 position = frameCount - 1L
                 elapsedNanos = frameNanos
                 isFinished = true
+                finishCount++
             } else {
                 position += frames
             }
@@ -130,6 +137,8 @@ public class Animation(
      * forward from the new frame.
      *
      * @throws IndexOutOfBoundsException if [frameIndex] is outside 0 until [frameCount].
+     *
+     * @sample samples.render.Animations.seek
      */
     public fun seek(frameIndex: Int) {
         if (frameIndex !in 0..<frameCount) {
@@ -141,9 +150,6 @@ public class Animation(
     }
 
     override fun toString(): String = "Animation(frame=$frameIndex/$frameCount, mode=$mode)"
-
-    /** Component key for [Animation]. */
-    public companion object : ComponentType<Animation>("Animation")
 }
 
 /**
@@ -153,6 +159,8 @@ public class Animation(
  * [Animation.frameDuration]. For [AnimationMode.PING_PONG] it is the round trip back to the first
  * frame, `2 * (frameCount - 1)` frames, because only then does the sequence repeat. A ping-pong
  * of a single frame lasts one frame.
+ *
+ * @sample samples.render.Animations.duration
  */
 public val Animation.duration: Duration
     get() = when (mode) {

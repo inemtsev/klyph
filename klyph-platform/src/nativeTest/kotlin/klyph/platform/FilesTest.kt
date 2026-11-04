@@ -42,6 +42,11 @@ class FilesTest {
     }
 
     @Test
+    fun readTextOrNullReturnsNullForMissingFile() {
+        assertNull(Files.readTextOrNull("does-not-exist.txt"))
+    }
+
+    @Test
     fun readTextThrowsForMissingFile() {
         assertFailsWith<FileException> { Files.readText("does-not-exist.txt") }
     }
@@ -52,12 +57,45 @@ class FilesTest {
         assertContentEquals(content, Files.readBytes(fileName))
         assertContentEquals(content, Files.readBytesOrNull(fileName))
         assertEquals("héllo, klyph\n", Files.readText(fileName))
+        assertEquals("héllo, klyph\n", Files.readTextOrNull(fileName))
     }
 
     @Test
     fun readsFileByAbsolutePath() {
         writeTestFile()
         assertContentEquals(content, Files.readBytes(Files.basePath + fileName))
+    }
+
+    @Test
+    fun writeBytesCreatesAndReplacesFile() {
+        Files.writeBytes(fileName, "old contents that are longer".encodeToByteArray())
+        Files.writeBytes(fileName, content)
+        assertContentEquals(content, Files.readBytes(fileName))
+        Files.writeBytes(Files.basePath + fileName, byteArrayOf())
+        assertContentEquals(byteArrayOf(), Files.readBytes(fileName))
+    }
+
+    @Test
+    fun writeBytesCreatesMissingDirectories() {
+        val outer = Files.basePath + "klyph-files-test-dir"
+        val inner = "$outer/nested"
+        try {
+            Files.writeBytes("klyph-files-test-dir/nested/file.bin", content)
+            assertContentEquals(content, Files.readBytes("klyph-files-test-dir/nested/file.bin"))
+        } finally {
+            SDL_RemovePath("$inner/file.bin")
+            SDL_RemovePath(inner)
+            SDL_RemovePath(outer)
+        }
+    }
+
+    @Test
+    fun writeBytesThrowsWhenParentIsAFile() {
+        writeTestFile()
+        val e = assertFailsWith<FileException> { Files.writeBytes("$fileName/file.bin", content) }
+        val message = e.message.orEmpty()
+        assertTrue(message.startsWith("File '" + Files.basePath + fileName + "/file.bin' could not be written: "), message)
+        assertTrue(message.endsWith("."), message)
     }
 
     /** Writes [content] next to the test executable through SDL, so the test stays portable. */

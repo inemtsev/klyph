@@ -1,9 +1,12 @@
+@file:OptIn(KlyphPlatformApi::class) // The samples mix offline through Audio.renderer, which a game never calls.
+
 package samples.audio
 
 import klyph.audio.Audio
 import klyph.audio.AudioConfig
 import klyph.audio.Sound
 import klyph.platform.AudioSamples
+import klyph.platform.KlyphPlatformApi
 import samples.Sample
 import samples.assertPrints
 import kotlin.test.assertFalse
@@ -86,6 +89,22 @@ class Audios {
         audio.renderer.render(FloatArray(20), 10)
         assertFalse(audio.isPlaying(first))
         assertFalse(audio.isPlaying(second))
+        audio.close()
+    }
+
+    @Sample
+    fun endFrame() {
+        val audio = Audio(AudioConfig(sampleRate = 8000))
+        val beep = Sound(AudioSamples(FloatArray(8), channels = 1, sampleRate = 8000))
+        audio.play(beep)
+        audio.renderer.render(FloatArray(4), 2)
+        // The stats change only when endFrame refreshes them.
+        assertPrints(audio.stats.activeVoiceCount, "0")
+        audio.endFrame()
+        assertPrints(audio.stats.activeVoiceCount, "1")
+        audio.renderer.render(FloatArray(32), 16)
+        audio.endFrame()
+        assertPrints(audio.stats.activeVoiceCount, "0")
         audio.close()
     }
 

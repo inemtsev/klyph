@@ -18,7 +18,7 @@ class AnimationTest {
     fun startsOnFrameZero() {
         val animation = Animation(frameCount = 4, frameDuration = 100.milliseconds)
         assertEquals(0, animation.frameIndex)
-        assertEquals(Duration.ZERO, animation.elapsed)
+        assertEquals(Duration.ZERO, animation.frameElapsed)
         assertFalse(animation.isFinished)
         assertFalse(animation.isPaused)
         assertEquals(AnimationMode.LOOP, animation.mode)
@@ -30,10 +30,10 @@ class AnimationTest {
         assertEquals(listOf(1, 2, 0, 1), animation.framesOver(4, 100.milliseconds))
         animation.advance(250.milliseconds)
         assertEquals(0, animation.frameIndex)
-        assertEquals(50.milliseconds, animation.elapsed)
+        assertEquals(50.milliseconds, animation.frameElapsed)
         animation.advance(50.milliseconds)
         assertEquals(1, animation.frameIndex)
-        assertEquals(Duration.ZERO, animation.elapsed)
+        assertEquals(Duration.ZERO, animation.frameElapsed)
         assertFalse(animation.isFinished)
     }
 
@@ -43,7 +43,7 @@ class AnimationTest {
         animation.advance(1.seconds + 230.milliseconds)
         // 12 whole frames is three loops; 30 ms carry over.
         assertEquals(0, animation.frameIndex)
-        assertEquals(30.milliseconds, animation.elapsed)
+        assertEquals(30.milliseconds, animation.frameElapsed)
     }
 
     @Test
@@ -57,10 +57,10 @@ class AnimationTest {
         animation.advance(1.milliseconds)
         assertTrue(animation.isFinished)
         assertEquals(2, animation.frameIndex)
-        assertEquals(100.milliseconds, animation.elapsed)
+        assertEquals(100.milliseconds, animation.frameElapsed)
         animation.advance(10.seconds)
         assertEquals(2, animation.frameIndex)
-        assertEquals(100.milliseconds, animation.elapsed)
+        assertEquals(100.milliseconds, animation.frameElapsed)
         assertTrue(animation.isFinished)
     }
 
@@ -101,7 +101,7 @@ class AnimationTest {
         val animation = Animation(frameCount = 8, frameDuration = 100.milliseconds)
         animation.advance(250.milliseconds)
         assertEquals(2, animation.frameIndex)
-        assertEquals(50.milliseconds, animation.elapsed)
+        assertEquals(50.milliseconds, animation.frameElapsed)
         animation.advance(50.milliseconds)
         assertEquals(3, animation.frameIndex)
     }
@@ -112,7 +112,7 @@ class AnimationTest {
         animation.isPaused = true
         animation.advance(350.milliseconds)
         assertEquals(0, animation.frameIndex)
-        assertEquals(Duration.ZERO, animation.elapsed)
+        assertEquals(Duration.ZERO, animation.frameElapsed)
         animation.isPaused = false
         animation.advance(150.milliseconds)
         assertEquals(1, animation.frameIndex)
@@ -125,7 +125,7 @@ class AnimationTest {
         animation.isPaused = true
         animation.restart()
         assertEquals(0, animation.frameIndex)
-        assertEquals(Duration.ZERO, animation.elapsed)
+        assertEquals(Duration.ZERO, animation.frameElapsed)
         assertFalse(animation.isFinished)
         assertFalse(animation.isPaused)
         animation.advance(100.milliseconds)
@@ -140,7 +140,7 @@ class AnimationTest {
         animation.isPaused = true
         animation.seek(1)
         assertEquals(1, animation.frameIndex)
-        assertEquals(Duration.ZERO, animation.elapsed)
+        assertEquals(Duration.ZERO, animation.frameElapsed)
         assertFalse(animation.isFinished)
         assertTrue(animation.isPaused)
     }
@@ -187,7 +187,7 @@ class AnimationTest {
             assertEquals(((i + 1) / 6 % frameCount).toInt(), animation.frameIndex, "Step ${i + 1}.")
         }
         assertEquals((600 / 6) % frameCount, animation.frameIndex)
-        assertEquals(Duration.ZERO, animation.elapsed)
+        assertEquals(Duration.ZERO, animation.frameElapsed)
     }
 
     @Test
@@ -204,6 +204,5 @@ class AnimationTest {
         val animation = Animation(frameCount = 8, frameDuration = 100.milliseconds)
         animation.advance(200.milliseconds)
         assertEquals("Animation(frame=2/8, mode=LOOP)", animation.toString())
-        assertEquals("ComponentType(Animation)", Animation.toString())
     }
 }

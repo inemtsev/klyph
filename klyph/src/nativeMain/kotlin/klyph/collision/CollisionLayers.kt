@@ -29,7 +29,7 @@ public value class CollisionLayers(
      *
      * @sample samples.collision.CollisionLayerSets.collisionLayers
      */
-    public fun contains(other: CollisionLayers): Boolean = bits and other.bits != 0
+    public fun intersects(other: CollisionLayers): Boolean = bits and other.bits != 0
 
     override fun toString(): String {
         val builder = StringBuilder("CollisionLayers(")

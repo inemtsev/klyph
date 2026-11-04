@@ -63,8 +63,8 @@ public class Time internal constructor(fixedRate: Int) {
             field = value
         }
 
-    /** Returns the number of frames completed so far. It is 0 during the first frame. */
-    public var frame: Long = 0
+    /** Number of frames completed so far. It is 0 during the first frame. */
+    public var frameCount: Long = 0
         private set
 
     /** Starts a frame that lasted [frameDelta], clamped to between zero and [MAX_FRAME_DELTA]. */
@@ -87,15 +87,15 @@ public class Time internal constructor(fixedRate: Int) {
         inFixedStep = false
     }
 
-    /** Ends the current frame and counts it in [frame]. */
+    /** Ends the current frame and counts it in [frameCount]. */
     internal fun endFrame() {
         check(!inFixedStep) { "Cannot end a frame inside a fixed step." }
-        frame++
+        frameCount++
     }
 
-    /** Returns the state as `Time(frame=12, elapsed=0.2s, delta=16.6ms)`. The format may change. */
+    /** Returns the state as `Time(frameCount=12, elapsed=0.2s, delta=16.6ms)`. The format may change. */
     override fun toString(): String =
-        "Time(frame=$frame, elapsed=${elapsed.toString(DurationUnit.SECONDS, 1)}, " +
+        "Time(frameCount=$frameCount, elapsed=${elapsed.toString(DurationUnit.SECONDS, 1)}, " +
             "delta=${delta.toString(DurationUnit.MILLISECONDS, 1)})"
 
     internal companion object {

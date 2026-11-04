@@ -26,4 +26,12 @@ class Images {
     fun decodeOrNull() {
         assertPrints(Image.decodeOrNull(byteArrayOf(1, 2, 3)), "null")
     }
+
+    @Sample
+    fun fillCircle() {
+        val image = Image(16, 16)
+        image.fillCircle(centerX = 8f, centerY = 8f, radius = 6f, color = Color.WHITE)
+        assertPrints(image[8, 8], "Color(#ffffffff)")
+        assertPrints(image[0, 0], "Color(#00000000)")
+    }
 }

@@ -1,9 +1,12 @@
 package klyph.text
 
+import klyph.entity.Interpolated
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.entity.WorldTransform
+import klyph.entity.recordPreviousTransforms
 import klyph.platform.Color
+import klyph.platform.withAlpha
 import klyph.render.DrawSpace
 import klyph.render.QuadBuffer
 import klyph.render.SPRITE_RECORD_FLOATS
@@ -22,6 +25,54 @@ class TextExtractionTest {
     private fun assertNear(expected: List<Float>, actual: List<Float>) {
         assertEquals(expected.size, actual.size)
         for (i in expected.indices) assertTrue(abs(expected[i] - actual[i]) < 1e-4f, "Expected $expected, got $actual.")
+    }
+
+    @Test
+    fun interpolatedTextIsDrawnAtItsCurrentTransformAfterItsFirstStep() {
+        val font = testFont()
+        val world = World()
+        val entity = world.create()
+        val transform = Transform(x = 0f, y = 0f)
+        world.add(entity, Transform, transform)
+        world.add(entity, Interpolated, Interpolated)
+        world.add(entity, Text, Text(font, "A"))
+
+        world.recordPreviousTransforms()
+        transform.x = 100f
+        val first = QuadBuffer()
+        world.extractTexts(0.5f, first)
+        // Glyph A at scale 1: left 1, top 2, 8 x 10 texels, centre (+5, +7).
+        assertEquals(listOf(105f, 7f), first.floats(0, 0, 2), "No sweep from the spawn point at x = 0.")
+
+        world.recordPreviousTransforms()
+        transform.x = 110f
+        val second = QuadBuffer()
+        world.extractTexts(0.5f, second)
+        assertEquals(listOf(110f, 7f), second.floats(0, 0, 2), "From the second step on, it blends halfway from 100 to 110.")
+    }
+
+    @Test
+    fun shadowGlyphsComeFirstInTheSameLayerOffsetAlongTheBlock() {
+        val font = testFont()
+        val world = World()
+        val entity = world.create()
+        world.add(entity, Transform, Transform(x = 100f, y = 50f, scaleX = 2f, scaleY = 2f))
+        val text = Text(font, StringBuilder("A"), color = Color(red = 1f, green = 1f, blue = 1f, alpha = 0.5f), layer = 3)
+        text.shadow = TextShadow(offsetX = 1f, offsetY = 3f, color = Color(red = 0f, green = 0f, blue = 0f, alpha = 0.8f))
+        world.add(entity, Text, text)
+        val quads = QuadBuffer()
+
+        assertEquals(2, world.extractTexts(1f, quads))
+        // The glyph centre is (+5, +7) times the entity's scale of 2; the shadow is 1 by 3 further, also times 2.
+        assertEquals(listOf(112f, 70f), quads.floats(0, 0, 2))
+        assertEquals(listOf(110f, 64f), quads.floats(1, 0, 2))
+        // The shadow's alpha is its own times the text's, rounded to a byte.
+        val shadowAlpha = text.shadow!!.color.withAlpha(text.shadow!!.color.alpha * text.color.alpha).alpha
+        assertTrue(shadowAlpha in 0.39f..0.41f)
+        assertNear(listOf(0f, 0f, 0f, shadowAlpha), quads.floats(0, 12, 16))
+        assertNear(listOf(1f, 1f, 1f, text.color.alpha), quads.floats(1, 12, 16))
+        assertEquals(3, quads.layers[0])
+        assertEquals(3, quads.layers[1])
     }
 
     @Test

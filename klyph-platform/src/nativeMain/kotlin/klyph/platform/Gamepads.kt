@@ -29,8 +29,11 @@ import sdl3.SDL_JOYSTICK_AXIS_MAX
  * Identifies a connected gamepad for as long as it stays connected. SDL never reuses an id, so a
  * gamepad that is unplugged and plugged back in gets a new one.
  */
-public value class GamepadId(public val id: UInt) {
-    override fun toString(): String = "GamepadId($id)"
+public value class GamepadId(
+    /** SDL's joystick instance id. */
+    public val value: UInt,
+) {
+    override fun toString(): String = "GamepadId($value)"
 }
 
 /**
@@ -44,6 +47,7 @@ public value class GamepadId(public val id: UInt) {
 public value class GamepadButton(public val index: Int) {
     override fun toString(): String = "GamepadButton($index)"
 
+    /** Holds the buttons a gamepad reports. */
     public companion object {
         /** The bottom face button: A on Xbox, cross on PlayStation, B on Nintendo. */
         public val SOUTH: GamepadButton = GamepadButton(SDL_GAMEPAD_BUTTON_SOUTH)
@@ -91,6 +95,7 @@ public value class GamepadButton(public val index: Int) {
 public value class GamepadAxis(public val index: Int) {
     override fun toString(): String = "GamepadAxis($index)"
 
+    /** Holds the axes a gamepad reports. */
     public companion object {
         /** The left stick's horizontal axis; negative is left. */
         public val LEFT_X: GamepadAxis = GamepadAxis(SDL_GAMEPAD_AXIS_LEFTX)

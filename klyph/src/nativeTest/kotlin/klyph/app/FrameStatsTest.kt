@@ -18,10 +18,10 @@ class FrameStatsTest {
         assertEquals(Duration.ZERO, stats.spriteRecording)
         assertEquals(Duration.ZERO, stats.gpuWait)
         assertEquals(Duration.ZERO, stats.collisionDetection)
-        assertEquals(0, stats.fixedSteps)
+        assertEquals(0, stats.fixedStepCount)
         assertEquals(0, stats.spriteCount)
-        assertEquals(0, stats.drawCalls)
-        assertEquals(0, stats.collisionPairs)
+        assertEquals(0, stats.drawCallCount)
+        assertEquals(0, stats.collisionPairCount)
         assertEquals(0, stats.entityCount)
         assertEquals(Duration.ZERO, stats.particleAdvance)
         assertEquals(0, stats.particleCount)
@@ -32,8 +32,8 @@ class FrameStatsTest {
         assertEquals(
             "FrameStats(total=0.000ms, input=0.000ms, fixedUpdate=0.000ms, collisionDetection=0.000ms, update=0.000ms, " +
                 "lateUpdate=0.000ms, transformPropagation=0.000ms, render=0.000ms, targetAcquisition=0.000ms, " +
-                "spriteExtraction=0.000ms, spriteRecording=0.000ms, gpuWait=0.000ms, fixedSteps=0, spriteCount=0, drawCalls=0, " +
-                "collisionPairs=0, entityCount=0, particleAdvance=0.000ms, particleCount=0)",
+                "spriteExtraction=0.000ms, spriteRecording=0.000ms, gpuWait=0.000ms, fixedStepCount=0, spriteCount=0, drawCallCount=0, " +
+                "collisionPairCount=0, entityCount=0, particleAdvance=0.000ms, particleCount=0)",
             FrameStats().toString(),
         )
     }
@@ -47,15 +47,15 @@ class FrameStatsTest {
         stats.add(FrameStats.PARTICLES, 800)
         assertEquals(Duration.ZERO, stats.durationOf(Phase.UPDATE))
 
-        stats.publish(totalNanos = 3_000_000, fixedSteps = 2, spriteCount = 10, drawCalls = 3, collisionPairs = 4, particleCount = 5)
+        stats.publish(totalNanos = 3_000_000, fixedStepCount = 2, spriteCount = 10, drawCallCount = 3, collisionPairCount = 4, particleCount = 5)
         assertEquals(2.milliseconds, stats.durationOf(Phase.UPDATE))
         assertEquals(500.nanoseconds, stats.gpuWait)
         assertEquals(700.nanoseconds, stats.collisionDetection)
         assertEquals(3.milliseconds, stats.total)
-        assertEquals(2, stats.fixedSteps)
+        assertEquals(2, stats.fixedStepCount)
         assertEquals(10, stats.spriteCount)
-        assertEquals(3, stats.drawCalls)
-        assertEquals(4, stats.collisionPairs)
+        assertEquals(3, stats.drawCallCount)
+        assertEquals(4, stats.collisionPairCount)
         assertEquals(800.nanoseconds, stats.particleAdvance)
         assertEquals(5, stats.particleCount)
     }
@@ -65,9 +65,9 @@ class FrameStatsTest {
         val stats = FrameStats()
         stats.add(Phase.UPDATE.ordinal, 1_000)
         stats.add(Phase.UPDATE.ordinal, 1_000)
-        stats.publish(totalNanos = 0, fixedSteps = 0, spriteCount = 0, drawCalls = 0, collisionPairs = 0, particleCount = 0)
+        stats.publish(totalNanos = 0, fixedStepCount = 0, spriteCount = 0, drawCallCount = 0, collisionPairCount = 0, particleCount = 0)
         assertEquals(2_000.nanoseconds, stats.durationOf(Phase.UPDATE))
-        stats.publish(totalNanos = 0, fixedSteps = 0, spriteCount = 0, drawCalls = 0, collisionPairs = 0, particleCount = 0)
+        stats.publish(totalNanos = 0, fixedStepCount = 0, spriteCount = 0, drawCallCount = 0, collisionPairCount = 0, particleCount = 0)
         assertEquals(Duration.ZERO, stats.durationOf(Phase.UPDATE))
     }
 
@@ -75,7 +75,7 @@ class FrameStatsTest {
     fun startupDurationOutlivesFrames() {
         val stats = FrameStats()
         stats.recordStartup(7_000_000)
-        stats.publish(totalNanos = 0, fixedSteps = 0, spriteCount = 0, drawCalls = 0, collisionPairs = 0, particleCount = 0)
+        stats.publish(totalNanos = 0, fixedStepCount = 0, spriteCount = 0, drawCallCount = 0, collisionPairCount = 0, particleCount = 0)
         assertEquals(7.milliseconds, stats.durationOf(Phase.STARTUP))
         assertEquals(Duration.ZERO, stats.durationOf(Phase.SHUTDOWN))
     }

@@ -1,5 +1,6 @@
 package klyph.particle
 
+import klyph.entity.Commands
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.entity.WorldTransform
@@ -12,34 +13,37 @@ import klyph.scene.SceneStack
  * Advances every [ParticleEmitter] whose entity has a [Transform] by [delta] seconds, emitting at
  * the entity's [WorldTransform] if it has one and at its [Transform] otherwise, and returns the
  * number of live particles across them. When [scenes] is given, an emitter owned by a scene frozen
- * below its top neither advances nor emits, but its particles still count. The engine calls it
- * once per frame after [klyph.app.Phase.UPDATE] with `App.scenes`. Allocates nothing.
+ * below its top neither advances nor emits, but its particles still count. When [commands] is
+ * given, an [EmitterEnd.DESTROY] emitter left empty by its advance queues destroying its entity
+ * there. The engine calls it once per frame after [klyph.app.Phase.UPDATE] with `App.scenes` and
+ * `App.commands`, then applies the commands. Allocates nothing.
  *
  * @throws IllegalArgumentException if [delta] is negative or not finite.
  */
-internal fun World.advanceParticles(delta: Float, scenes: SceneStack? = null): Int {
+internal fun World.advanceParticles(delta: Float, scenes: SceneStack? = null, commands: Commands? = null): Int {
     require(delta >= 0f && delta.isFinite()) { "Delta $delta is not a finite number of at least zero." }
     if (count(ParticleEmitter) == 0) return 0
     val frozen = if (scenes != null && scenes.hasFrozen) scenes else null
     var total = 0
     forEach(ParticleEmitter, Transform) { entity, emitter, local ->
         if (frozen != null && frozen.isFrozen(ownerAt(entity.index))) {
-            total += emitter.count
+            total += emitter.particleCount
             return@forEach
         }
         val hierarchy = getOrNull(entity, WorldTransform)
         total += if (hierarchy != null) {
-            emitter.advance(delta, hierarchy.x, hierarchy.y)
+            emitter.advance(delta, hierarchy.x, hierarchy.y, hierarchy.rotation)
         } else {
-            emitter.advance(delta, local.x, local.y)
+            emitter.advance(delta, local.x, local.y, local.rotation)
         }
+        if (commands != null && emitter.whenEmpty == EmitterEnd.DESTROY && emitter.isSpent) commands.destroy(entity)
     }
     return total
 }
 
 /**
  * Appends one [DrawSpace.WORLD] quad per live particle of every visible [ParticleEmitter] whose
- * entity has a [Transform] to [destination], and returns how many were added. Each quad is centred
+ * entity has a [Transform] to [destination], and returns how many were added. Each quad is centered
  * on its particle, turned by its rotation, in the emitter's layer, with the color and size blended
  * at the particle's age as [ParticleEmitter] describes.
  */
@@ -54,7 +58,7 @@ internal fun World.extractParticles(destination: QuadBuffer): Int {
 
 /** Appends one quad per live particle of [emitter], writing the records straight into the buffer. */
 private fun QuadBuffer.addParticles(emitter: ParticleEmitter) {
-    val count = emitter.count
+    val count = emitter.particleCount
     if (count == 0) return
     val region = emitter.region
     val first = reserve(count, region.texture, emitter.layer, DrawSpace.WORLD)
@@ -66,15 +70,16 @@ private fun QuadBuffer.addParticles(emitter: ParticleEmitter) {
     val u1 = region.u1
     val v1 = region.v1
     val start = emitter.startColor
-    val end = emitter.endColor
     val red = start.red
     val green = start.green
     val blue = start.blue
     val alpha = start.alpha
-    val redChange = end.red - red
-    val greenChange = end.green - green
-    val blueChange = end.blue - blue
-    val alphaChange = end.alpha - alpha
+    // A null end color is the start color at zero alpha.
+    val end = emitter.endColor
+    val redChange = if (end == null) 0f else end.red - red
+    val greenChange = if (end == null) 0f else end.green - green
+    val blueChange = if (end == null) 0f else end.blue - blue
+    val alphaChange = if (end == null) -alpha else end.alpha - alpha
     val scale = emitter.startScale
     val scaleChange = emitter.endScale - scale
     val xs = emitter.xs

@@ -34,7 +34,8 @@ public class App internal constructor(
     public val config: AppConfig,
     /**
      * The window frames are presented to. Its size is `window.width` by `window.height` points and
-     * its drawable size `window.pixelWidth` by `window.pixelHeight` pixels.
+     * its drawable size `window.pixelWidth` by `window.pixelHeight` pixels. The engine closes it;
+     * do not call `close`.
      */
     public val window: Window,
     /**
@@ -49,15 +50,14 @@ public class App internal constructor(
      */
     public val assets: Assets,
     /**
-     * The camera sprites are drawn through. It starts with a zoom equal to the window's
-     * [Window.pixelDensity], so one world unit is one logical point (the unit the window size is
-     * given in, two pixels across on a Retina display), and centered on the middle of the window, so
-     * world (0, 0) is the window's top-left corner. Its zoom is therefore the density times the
-     * game's own zoom: to show the world twice as large, set it to `2 * window.pixelDensity`. When
-     * the density changes, the engine scales the zoom by the same ratio.
+     * The camera sprites are drawn through. It starts at zoom 1, so one world unit is one point
+     * (the unit the window size is given in, two pixels across on a display of
+     * [Window.pixelDensity] 2), on every display, and centered on the middle of the window, so
+     * world (0, 0) is the window's top-left corner. To show the world twice as large, set its zoom
+     * to 2. The renderer turns points into pixels, so a change of density leaves the zoom alone.
      *
-     * The engine keeps its viewport equal to the window's pixel size and never moves it; move, zoom
-     * or rotate it from a system, such as a [Phase.LATE_UPDATE] system that follows the player.
+     * The engine keeps its viewport equal to the window's size in points and never moves it; move,
+     * zoom or rotate it from a system, such as a [Phase.LATE_UPDATE] system that follows the player.
      */
     public val camera: Camera,
     /**
@@ -84,8 +84,10 @@ public class App internal constructor(
      * queues are in the world when the next system runs, even within the same phase. It applies it
      * once more after the transform propagation that follows [Phase.LATE_UPDATE], and once after
      * the `setup` block of [runApp], so entities queued there exist when [Phase.STARTUP] runs. It
-     * also applies it after every `onEnter` and `onExit` action of a scene in [scenes]. An
-     * exception thrown by a system skips the application after it.
+     * also applies it after every `onEnter` and `onExit` action of a scene in [scenes], and after
+     * each engine step that destroys entities: the `Lifetime` and `Fade` step after
+     * [Phase.UPDATE], the particle step and the sprite animation step. An exception thrown by a
+     * system skips the application after it.
      */
     public val commands: Commands = Commands(world)
 
@@ -121,7 +123,7 @@ public class App internal constructor(
     /**
      * The stack of scenes, such as a title screen, a level and a pause menu over it. Only the scene
      * on top runs its systems, after the App-level systems of each phase; the scenes below it are
-     * frozen, and their particle emitters, sprite animations and colliders stand still. The
+     * frozen, and their particle emitters, sprite animations, lifetimes, fades and colliders stand still. The
      * entities a scene spawns are destroyed when it leaves the stack. Changes queue and apply at the end of the
      * frame. It starts empty, and the app runs only its App-level systems while it is.
      */
@@ -152,10 +154,11 @@ public class App internal constructor(
 
     /**
      * The debug overlay: frame rate, frame and phase times, counts and a frame-time graph in the
-     * window's top-left corner. It starts hidden; [AppConfig.overlayKey], F3 by default, shows and
-     * hides it, and setting `overlay.isVisible` does the same from a system.
+     * window's top-left corner. It starts as [AppConfig.overlay] says, hidden by default;
+     * [AppConfig.overlayKey], F3 by default, shows and hides it, and setting `overlay.isVisible`
+     * does the same from a system.
      */
-    public val overlay: DebugOverlay = DebugOverlay()
+    public val overlay: DebugOverlay = DebugOverlay().apply { isVisible = config.overlay == OverlayStart.VISIBLE }
 
     /** The color the next frames are cleared to. Starts as [AppConfig.clearColor]. */
     public var clearColor: Color = config.clearColor
@@ -183,8 +186,9 @@ public class App internal constructor(
      * runs, then every [Phase.SHUTDOWN] system runs and [runApp] returns. Called from
      * [Phase.STARTUP], it ends the app before the first frame. Calling it again has no effect.
      *
-     * The engine calls it when the platform reports `QuitRequested`, such as the window's close
-     * button.
+     * The engine calls it when the platform reports `PlatformEvent.Quit` and publishes the `QuitRequested` event, such as the window's close
+     * button, and once [AppConfig.frameLimit] frames have run or [Time.elapsed] has reached
+     * [AppConfig.timeLimit].
      */
     public fun quit() {
         isQuitRequested = true
@@ -207,5 +211,5 @@ public class App internal constructor(
     }
 
     /** Returns `App(title=klyph, frame=12, entities=100)`. The format may change. */
-    override fun toString(): String = "App(title=${config.title}, frame=${time.frame}, entities=${world.entityCount})"
+    override fun toString(): String = "App(title=${config.title}, frame=${time.frameCount}, entities=${world.entityCount})"
 }

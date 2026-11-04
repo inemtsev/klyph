@@ -5,9 +5,18 @@ package klyph.entity
  * stored per [ComponentType] in dense arrays, so iterating one component type touches contiguous
  * memory and a two-type query costs one array lookup per entity.
  *
+ * The world starts with room for [initialCapacity] entities, which must be positive, and grows
+ * as needed.
+ *
  * Not thread-safe.
+ *
+ * @throws IllegalArgumentException if [initialCapacity] is not positive.
  */
 public class World(initialCapacity: Int = 1024) {
+    init {
+        require(initialCapacity > 0) { "Initial capacity $initialCapacity is not positive." }
+    }
+
     private var generations = IntArray(initialCapacity)
     private var alive = BooleanArray(initialCapacity)
 
@@ -120,7 +129,12 @@ public class World(initialCapacity: Int = 1024) {
         }
     }
 
-    /** Returns `true` while [entity] exists in this world. */
+    /**
+     * Returns `true` while [entity] exists in this world: from [create] until [destroy], which
+     * also makes every older handle to its slot dead.
+     *
+     * @sample samples.entity.Worlds.destroy
+     */
     public fun isAlive(entity: Entity): Boolean {
         val index = entity.index
         return index < alive.size && alive[index] && generations[index] == entity.generation

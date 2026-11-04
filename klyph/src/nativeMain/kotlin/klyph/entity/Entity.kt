@@ -1,12 +1,13 @@
 package klyph.entity
 
 /**
- * Identifies an entity in a [World]. The low 32 bits are a slot index, the high 32 bits a
- * generation that changes when the slot is reused, so a stale handle never aliases a new entity.
+ * Identifies an entity in a [World] by a slot [index] and a [generation] that changes when the
+ * slot is reused, so a stale handle never aliases a new entity. How the two are packed is not
+ * part of the API.
  *
  * @sample samples.entity.Components.entity
  */
-public value class Entity @PublishedApi internal constructor(public val raw: Long) {
+public value class Entity @PublishedApi internal constructor(@PublishedApi internal val raw: Long) {
     /** Slot index inside the world. Stable while the entity is alive. */
     public val index: Int get() = raw.toInt()
 

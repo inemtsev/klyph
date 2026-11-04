@@ -1,0 +1,83 @@
+name: Build
+
+# Links the game on the three desktops. CI runners have no display or GPU, so the game is linked,
+# not run.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-26
+            task: linkDebugExecutableMacosArm64
+          - os: ubuntu-24.04
+            task: linkDebugExecutableLinuxX64
+          - os: windows-2025
+            task: linkDebugExecutableMingwX64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      SDL3_VERSION: "3.4.18"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Windows runners check out with CRLF line endings, which breaks ./gradlew in bash.
+      - name: Keep LF line endings
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # macOS and Windows: the klyph plugin downloads SDL3 and checks its SHA-256.
+      # Linux: Ubuntu 24.04 has no SDL3 package, so SDL is built from its release tag and cached.
+      - name: Cache SDL3
+        if: runner.os == 'Linux'
+        id: sdl3-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/sdl3
+          key: sdl3-${{ env.SDL3_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build SDL3
+        if: runner.os == 'Linux' && steps.sdl3-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev \
+            libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
+            libdrm-dev libgbm-dev libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev \
+            libasound2-dev libpulse-dev libpipewire-0.3-dev libdbus-1-dev libudev-dev
+          git clone --depth 1 --branch "release-$SDL3_VERSION" https://github.com/libsdl-org/SDL.git "$RUNNER_TEMP/sdl-src"
+          cmake -S "$RUNNER_TEMP/sdl-src" -B "$RUNNER_TEMP/sdl-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/sdl3" -DCMAKE_INSTALL_LIBDIR=lib \
+            -DSDL_SHARED=ON -DSDL_STATIC=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+          cmake --build "$RUNNER_TEMP/sdl-build"
+          cmake --install "$RUNNER_TEMP/sdl-build"
+
+      # The Kotlin/Native compiler and its toolchains download into ~/.konan on first use.
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build.gradle.kts') }}
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: Link
+        # On Linux the SDL3 built above; elsewhere the plugin finds or downloads it.
+        run: ./gradlew --no-daemon ${{ matrix.task }} ${{ runner.os == 'Linux' && '-Psdl3.prefix=$HOME/sdl3' || '' }}

@@ -59,7 +59,7 @@ class Hierarchies {
         world.setParent(gun, ship)
 
         world.propagateTransforms()
-        assertPrints(world.get(gun, WorldTransform), "WorldTransform(x=120.0, y=50.0, rotation=0.0, scale=2.0 x 2.0)")
+        assertPrints(world.get(gun, WorldTransform), "WorldTransform(x=120.0, y=50.0, rotation=0.0, scale=2.0x2.0)")
 
         world.get(ship, Transform).x = 0f
         world.propagateTransforms()

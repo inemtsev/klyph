@@ -53,7 +53,7 @@ class SceneStackTest {
         val seen = mutableListOf<Scene?>()
         h.addSystem(Phase.UPDATE) {
             seen += h.stack.currentOrNull
-            if (h.stack.isEmpty) h.stack.push(play)
+            if (h.stack.isEmpty()) h.stack.push(play)
         }
         h.addSystem(Phase.RENDER) { seen += h.stack.currentOrNull }
         h.frame()
@@ -203,14 +203,14 @@ class SceneStackTest {
         }
         h.stack.push(play)
         h.applyTransitions()
-        assertTrue(h.commands.isEmpty)
+        assertTrue(h.commands.isEmpty())
         assertEquals(7, h.world.get(spawned, Health).points)
         h.frame()
         assertEquals(7, firstSystemSaw)
 
         h.stack.pop()
         h.applyTransitions()
-        assertTrue(h.commands.isEmpty)
+        assertTrue(h.commands.isEmpty())
         assertEquals(3, h.world.get(exitSpawned, Health).points)
         assertEquals(World.NO_OWNER, h.world.ownerOf(exitSpawned))
     }
@@ -318,7 +318,7 @@ class SceneStackTest {
         h.shutdown()
         assertEquals(listOf("enter a", "enter b", "exit b", "exit a", "shutdown with 0 scenes"), h.log)
         assertFalse(h.world.isAlive(owned))
-        assertTrue(h.stack.isEmpty)
+        assertTrue(h.stack.isEmpty())
     }
 
     @Test
@@ -391,8 +391,8 @@ class SceneStackTest {
         val play = h.scene("play", enter = { owned = h.world.create() })
         h.addSystem(Phase.UPDATE) {
             if (!h.world.isAlive(child)) {
-                child = h.commands.spawn { parent(owned) }
-                grandchild = h.commands.spawn { parent(child) }
+                child = h.commands.spawn { setParent(owned) }
+                grandchild = h.commands.spawn { setParent(child) }
             }
         }
         h.stack.push(play)
@@ -450,7 +450,7 @@ class SceneStackTest {
         assertFalse(h.world.isAlive(spawned))
         assertTrue(h.world.isAlive(kept))
         assertTrue(h.world.isAlive(unowned), "The commands the failing action queued are dropped.")
-        assertTrue(h.commands.isEmpty)
+        assertTrue(h.commands.isEmpty())
         assertEquals(2, h.world.entityCount)
         assertEquals(listOf("enter play", "enter broken"), h.log)
 
@@ -481,7 +481,7 @@ class SceneStackTest {
 
         h.stack.replace(title)
         assertFailsWith<IllegalStateException> { h.applyTransitions() }
-        assertTrue(h.stack.isEmpty)
+        assertTrue(h.stack.isEmpty())
         assertEquals("SceneStack(scenes=[], queued=0)", h.stack.toString())
         assertFalse(h.world.isAlive(bottomOwned))
         assertFalse(h.world.isAlive(middleOwned))
@@ -530,7 +530,7 @@ class SceneStackTest {
         h.frame()
         assertEquals(1, runs)
         assertNull(h.stack.currentOrNull)
-        assertTrue(h.stack.isEmpty)
+        assertTrue(h.stack.isEmpty())
         assertEquals(0, h.stack.size)
         assertEquals(World.NO_OWNER, h.stack.currentOwner)
     }

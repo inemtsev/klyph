@@ -37,14 +37,14 @@ class CollisionLayersTest {
     }
 
     @Test
-    fun containsMeansAnyLayerInCommon() {
+    fun intersectsMeansAnyLayerInCommon() {
         val set = CollisionLayers.of(1) + CollisionLayers.of(3)
-        assertTrue(set.contains(CollisionLayers.of(1)))
-        assertFalse(set.contains(CollisionLayers.of(2)))
-        assertTrue(set.contains(CollisionLayers.of(2) + CollisionLayers.of(3)))
-        assertTrue(CollisionLayers.ALL.contains(CollisionLayers.of(31)))
-        assertFalse(CollisionLayers.ALL.contains(CollisionLayers.NONE))
-        assertFalse(CollisionLayers.NONE.contains(CollisionLayers.ALL))
+        assertTrue(set.intersects(CollisionLayers.of(1)))
+        assertFalse(set.intersects(CollisionLayers.of(2)))
+        assertTrue(set.intersects(CollisionLayers.of(2) + CollisionLayers.of(3)))
+        assertTrue(CollisionLayers.ALL.intersects(CollisionLayers.of(31)))
+        assertFalse(CollisionLayers.ALL.intersects(CollisionLayers.NONE))
+        assertFalse(CollisionLayers.NONE.intersects(CollisionLayers.ALL))
     }
 
     @Test

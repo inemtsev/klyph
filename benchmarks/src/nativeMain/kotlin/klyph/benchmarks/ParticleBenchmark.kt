@@ -3,12 +3,14 @@ package klyph.benchmarks
 import klyph.app.Phase
 import klyph.app.runApp
 import klyph.entity.Transform
+import klyph.math.degrees
 import klyph.particle.ParticleEmitter
 import klyph.platform.Color
 import klyph.render.asRegion
 import kotlin.math.ceil
 import kotlin.math.sqrt
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
 
 /** Particles each emitter of the particles benchmark holds. */
 private const val PARTICLES_PER_EMITTER = 1000
@@ -35,10 +37,10 @@ internal val particleBenchmark: Benchmark = Benchmark(
     val report = StatsReport(settings.frameLimit, extraStages = listOf("particles" to { stats -> stats.particleAdvance })) {
         "emitters=$emitterCount particles=$particles"
     }
-    runApp(settings.appConfig("klyph particles benchmark")) {
+    runApp(settings.config) {
         addBenchmarkSystems(settings, report)
         addSystem(Phase.STARTUP) { app ->
-            val region = app.assets.texture(circleImage(16)).asRegion()
+            val region = app.assets.createTexture(circleImage(16)).asRegion()
             val width = app.window.width.toFloat()
             val height = app.window.height.toFloat()
             // A grid with about as many columns per unit of width as rows per unit of height.
@@ -47,11 +49,11 @@ internal val particleBenchmark: Benchmark = Benchmark(
             val scale = PARTICLE_PIXELS / region.width / app.window.pixelDensity
             val random = Random(42)
             for (i in 0 until emitterCount) {
-                val emitter = ParticleEmitter(region, maxParticles = PARTICLES_PER_EMITTER).apply {
+                val emitter = ParticleEmitter(region, capacity = PARTICLES_PER_EMITTER).apply {
                     rate = PARTICLES_PER_EMITTER / MIN_LIFETIME * 1.25f
                     speed = 20f..80f
-                    lifetime = MIN_LIFETIME..1.2f
-                    angularVelocity = -90f..90f
+                    lifetime = MIN_LIFETIME.toDouble().seconds..1.2.seconds
+                    angularVelocity = (-90f).degrees..90f.degrees
                     gravityY = 40f
                     startColor = Color(red = 0.5f + random.nextFloat() * 0.5f, green = 0.5f + random.nextFloat() * 0.5f, blue = 0.5f + random.nextFloat() * 0.5f)
                     startScale = scale

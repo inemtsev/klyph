@@ -4,8 +4,8 @@ package klyph.render
  * A rectangle of [width] by [height] texels inside [texture] whose top-left corner is [x] texels
  * from the texture's left edge and [y] texels from its top edge. A [Sprite] shows one region.
  *
- * [u0], [v0], [u1] and [v1] are the rectangle's edges as texture coordinates in `0.0..1.0`, the
- * form the GPU samples with.
+ * All four values are whole texels; the renderer turns them into the texture coordinates the GPU
+ * samples with.
  *
  * Two regions are equal when they cover the same rectangle of the same [Texture] instance.
  *
@@ -18,10 +18,15 @@ package klyph.render
  * @see Texture.asRegion
  */
 public class TextureRegion(
+    /** The texture the region lies in. */
     public val texture: Texture,
+    /** Distance of the left edge from the texture's left edge, in texels. */
     public val x: Int,
+    /** Distance of the top edge from the texture's top edge, in texels. */
     public val y: Int,
+    /** Width in texels. */
     public val width: Int,
+    /** Height in texels. */
     public val height: Int,
 ) {
     init {
@@ -33,16 +38,16 @@ public class TextureRegion(
     }
 
     /** Left edge as a texture coordinate: [x] divided by the texture width. */
-    public val u0: Float = x.toFloat() / texture.width
+    internal val u0: Float = x.toFloat() / texture.width
 
     /** Top edge as a texture coordinate: [y] divided by the texture height. */
-    public val v0: Float = y.toFloat() / texture.height
+    internal val v0: Float = y.toFloat() / texture.height
 
     /** Right edge as a texture coordinate: `x + width` divided by the texture width. */
-    public val u1: Float = (x + width).toFloat() / texture.width
+    internal val u1: Float = (x + width).toFloat() / texture.width
 
     /** Bottom edge as a texture coordinate: `y + height` divided by the texture height. */
-    public val v1: Float = (y + height).toFloat() / texture.height
+    internal val v1: Float = (y + height).toFloat() / texture.height
 
     override fun equals(other: Any?): Boolean =
         other is TextureRegion && texture === other.texture &&

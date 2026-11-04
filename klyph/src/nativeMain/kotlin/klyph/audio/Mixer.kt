@@ -21,8 +21,8 @@ import kotlin.math.sin
  *
  * Effects are resampled from their own rate to [sampleRate] by linear interpolation, at a step of
  * `sound rate / device rate * pitch` frames per output frame. A mono effect is panned with the
- * constant-power law, so its centre gain is 1/sqrt(2) on each side; a stereo effect gets a
- * balance from the same pan value, unity at the centre and the far channel fading to silence at
+ * constant-power law, so its center gain is 1/sqrt(2) on each side; a stereo effect gets a
+ * balance from the same pan value, unity at the center and the far channel fading to silence at
  * either end. Music is resampled the same way, has no pan, and fades with a linear ramp per
  * frame. Volume changes ramp across one [render] call so they do not click. The sum is clamped to
  * -1..1.

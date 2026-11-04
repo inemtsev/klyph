@@ -3,6 +3,7 @@ package klyph.app
 import klyph.audio.MusicTrack
 import klyph.audio.Sound
 import klyph.platform.AudioException
+import klyph.platform.Color
 import klyph.platform.AudioSamples
 import klyph.platform.FileException
 import klyph.platform.Files
@@ -55,10 +56,10 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
     private var isClosed = false
 
     /**
-     * The built-in font and white pixel, rasterised and uploaded as one texture when the assets
+     * The built-in font and white pixel, rasterized and uploaded as one texture when the assets
      * open. It is sampled [SamplerFilter.NEAREST], so text drawn at scale 2 keeps sharp edges.
      */
-    private val builtIn: BuiltInFont = BuiltInFont.over(texture(BuiltInFont.rasterize(), SamplerFilter.NEAREST))
+    private val builtIn: BuiltInFont = BuiltInFont.over(createTexture(BuiltInFont.rasterize(), SamplerFilter.NEAREST))
 
     /**
      * The engine's built-in font: 8 by 8 monospace glyphs for printable ASCII, from the space to
@@ -70,8 +71,32 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
      */
     public val defaultFont: Font get() = builtIn.font
 
-    /** One white texel of the built-in font's atlas, which `Canvas.drawRect` stretches into rectangles. */
-    internal val whitePixel: TextureRegion get() = builtIn.whitePixel
+    /**
+     * One opaque white texel of the built-in font's atlas, which `Canvas.drawRect` stretches into
+     * rectangles. A `Sprite` or particle emitter that shows it at any size, tinted by its color,
+     * draws a solid rectangle, and shares a draw call with built-in text and rectangles in the
+     * same layer. It is sampled [SamplerFilter.NEAREST], so its edges stay sharp.
+     */
+    public val whitePixel: TextureRegion get() = builtIn.whitePixel
+
+    private val discs = DiscCache { image -> createTexture(image, SamplerFilter.LINEAR) }
+
+    /**
+     * Returns a white disc [diameter] texels across with a soft edge, for particles, shadows,
+     * bullets and other round shapes tinted by a sprite's or emitter's color. The first call for
+     * a diameter draws it with [Image.fillCircle] into an image with one transparent texel of
+     * padding around it and uploads it, sampled [SamplerFilter.LINEAR]; every later call with that
+     * diameter returns the same region. The region covers the disc without the padding, so its
+     * size is [diameter] by [diameter] while the linear filter fades its edge into the padding.
+     *
+     * @throws IllegalArgumentException if [diameter] is not between 1 and 4096.
+     * @throws klyph.platform.SdlException if the GPU texture cannot be created.
+     * @throws IllegalStateException if these assets are closed.
+     */
+    public fun disc(diameter: Int): TextureRegion {
+        checkOpen()
+        return discs.get(diameter)
+    }
 
     /**
      * Reads and decodes the PNG or JPEG file at [path] into a new [Image].
@@ -123,16 +148,22 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
     }
 
     /**
-     * Uploads [image] into a new texture sampled with [filter], such as one drawn in code. Each
-     * call creates a new texture, which these assets own and close at shutdown. Later changes to [image] do not
-     * reach the texture.
+     * Uploads [image], such as one drawn in code, into a new texture sampled with [filter], and
+     * returns it.
+     *
+     * Every call uploads a new texture; nothing is cached, so call it once per image, at startup,
+     * not every frame. The caller owns the texture: it may close it whenever it is done with it,
+     * and [close] closes every texture made here that the caller did not. Textures the caller
+     * closed are forgotten on the next call, so making and closing textures does not grow these
+     * assets. Later changes to [image] do not reach the texture.
      *
      * @throws klyph.platform.SdlException if the GPU texture cannot be created.
      * @throws IllegalStateException if these assets are closed.
      */
-    public fun texture(image: Image, filter: SamplerFilter = SamplerFilter.LINEAR): Texture {
+    public fun createTexture(image: Image, filter: SamplerFilter = SamplerFilter.LINEAR): Texture {
         checkOpen()
         val texture = upload(image, filter)
+        uploaded.removeAll { it.isClosed }
         uploaded.add(texture)
         return texture
     }
@@ -174,6 +205,21 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
      */
     public fun spriteSheet(path: String, columns: Int, rows: Int, filter: SamplerFilter = SamplerFilter.LINEAR): SpriteSheet =
         SpriteSheet.fromGrid(texture(path, filter), columns, rows)
+
+    /**
+     * Returns a sprite sheet cut from the file at [path] as [spriteSheet] does, or `null` if the
+     * file does not exist, cannot be read, or is not a decodable image. A grid that does not fit
+     * the texture is still an error.
+     *
+     * @throws IllegalArgumentException if [columns] or [rows] is not positive, or the texture is
+     *   smaller than the grid.
+     * @throws klyph.platform.SdlException if the GPU texture cannot be created.
+     * @throws IllegalStateException if these assets are closed.
+     */
+    public fun spriteSheetOrNull(path: String, columns: Int, rows: Int, filter: SamplerFilter = SamplerFilter.LINEAR): SpriteSheet? {
+        val texture = textureOrNull(path, filter) ?: return null
+        return SpriteSheet.fromGrid(texture, columns, rows)
+    }
 
     /**
      * Returns the font in the BMFont text file at [path] (usually a `.fnt` file), with its pages
@@ -301,7 +347,7 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
      *   two channels.
      * @throws IllegalStateException if these assets are closed.
      */
-    public fun music(path: String): MusicTrack {
+    public fun musicTrack(path: String): MusicTrack {
         checkOpen()
         val resolved = resolve(path)
         cachedMusic[resolved]?.let { return it }
@@ -316,13 +362,13 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
     }
 
     /**
-     * Returns the music track in the file at [path] as [music] does, or `null` if the file does
+     * Returns the music track in the file at [path] as [musicTrack] does, or `null` if the file does
      * not exist, cannot be read, or is not a mono or stereo Ogg Vorbis file. A failed load is not
      * cached, so a later call tries the file again.
      *
      * @throws IllegalStateException if these assets are closed.
      */
-    public fun musicOrNull(path: String): MusicTrack? {
+    public fun musicTrackOrNull(path: String): MusicTrack? {
         checkOpen()
         val resolved = resolve(path)
         cachedMusic[resolved]?.let { return it }
@@ -348,6 +394,7 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
         cachedFonts.clear()
         cachedSounds.clear()
         cachedMusic.clear()
+        discs.clear()
     }
 
     /** Returns `Assets(root=/games/shooter/assets/, textures=3, fonts=1, sounds=4, music=1)`. The format may change. */
@@ -387,6 +434,50 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
         path.startsWith('/') ||
             path.startsWith('\\') ||
             (path.length >= 2 && path[1] == ':' && path[0].isLetter())
+}
+
+/**
+ * The white discs of [Assets.disc], one per diameter, each drawn into an image with one
+ * transparent texel of padding and handed to [upload] on first use.
+ */
+internal class DiscCache(private val upload: (Image) -> Texture) {
+    private val regions = HashMap<Int, TextureRegion>()
+
+    /** Number of diameters held. */
+    val size: Int get() = regions.size
+
+    /**
+     * Returns the disc region of [diameter], drawing and uploading it on the first call.
+     *
+     * @throws IllegalArgumentException if [diameter] is not between 1 and [MAX_DIAMETER].
+     */
+    fun get(diameter: Int): TextureRegion {
+        require(diameter in 1..MAX_DIAMETER) { "Disc diameter $diameter is not between 1 and $MAX_DIAMETER." }
+        regions[diameter]?.let { return it }
+        val region = TextureRegion(upload(discImage(diameter)), x = 1, y = 1, width = diameter, height = diameter)
+        regions[diameter] = region
+        return region
+    }
+
+    /** Forgets every region held; the textures belong to whoever [upload] gave them to. */
+    fun clear() {
+        regions.clear()
+    }
+
+    override fun toString(): String = "DiscCache(size=$size)"
+
+    companion object {
+        /** The largest diameter [get] accepts. */
+        const val MAX_DIAMETER: Int = 4096
+
+        /** Returns a white disc [diameter] texels across, centered in an image with one transparent texel on every side. */
+        fun discImage(diameter: Int): Image {
+            val size = diameter + 2
+            val image = Image(size, size)
+            image.fillCircle(centerX = size * 0.5f, centerY = size * 0.5f, radius = diameter * 0.5f, color = Color.WHITE)
+            return image
+        }
+    }
 }
 
 /**

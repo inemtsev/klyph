@@ -14,6 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 class ParticleExtractionTest {
     private val texture = Texture(32, 32)
@@ -33,8 +34,8 @@ class ParticleExtractionTest {
         val world = World()
         val emitter = ParticleEmitter(region).apply {
             speed = 0f..0f
-            lifetime = 10f..10f
-            startRotation = 90f..90f
+            lifetime = 10.seconds..10.seconds
+            startRotation = (PI / 2).toFloat()..(PI / 2).toFloat()
             layer = 4
         }
         val entity = world.create()
@@ -59,7 +60,7 @@ class ParticleExtractionTest {
         val world = World()
         val emitter = ParticleEmitter(region).apply {
             speed = 0f..0f
-            lifetime = 1f..1f
+            lifetime = 1.seconds..1.seconds
             startColor = Color(red = 1f, green = 0f, blue = 0.2f, alpha = 1f)
             endColor = Color(red = 0f, green = 1f, blue = 0.6f, alpha = 0f)
             startScale = 1f
@@ -76,7 +77,7 @@ class ParticleExtractionTest {
         world.extractParticles(quads)
         assertNear(listOf(16f, 8f), quads.floats(0, 4, 6))
         val start = emitter.startColor
-        val end = emitter.endColor
+        val end = emitter.endColor!!
         assertNear(
             listOf((start.red + end.red) / 2, (start.green + end.green) / 2, (start.blue + end.blue) / 2, 0.5f),
             quads.floats(0, 12, 16),
@@ -84,9 +85,30 @@ class ParticleExtractionTest {
     }
 
     @Test
+    fun nullEndColorFadesTheStartColorOut() {
+        val world = World()
+        val emitter = ParticleEmitter(region).apply {
+            speed = 0f..0f
+            lifetime = 1.seconds..1.seconds
+            startColor = Color(red = 1f, green = 0.4f, blue = 0f, alpha = 0.8f)
+        }
+        val entity = world.create()
+        world.add(entity, Transform, Transform())
+        world.add(entity, ParticleEmitter, emitter)
+        emitter.emit(1)
+        world.advanceParticles(0f)
+        world.advanceParticles(0.5f)
+        val quads = QuadBuffer()
+
+        world.extractParticles(quads)
+        val start = emitter.startColor
+        assertNear(listOf(start.red, start.green, start.blue, start.alpha / 2), quads.floats(0, 12, 16))
+    }
+
+    @Test
     fun manyParticlesGrowTheBufferAfterQuadsAlreadyInIt() {
         val world = World()
-        val emitter = ParticleEmitter(region, maxParticles = 100).apply { lifetime = 10f..10f }
+        val emitter = ParticleEmitter(region, capacity = 100).apply { lifetime = 10.seconds..10.seconds }
         val entity = world.create()
         world.add(entity, Transform, Transform(x = 7f, y = 9f))
         world.add(entity, ParticleEmitter, emitter)
@@ -113,7 +135,7 @@ class ParticleExtractionTest {
         world.add(shown, ParticleEmitter, hidden)
         hidden.emit(5)
         world.advanceParticles(0f)
-        assertEquals(5, hidden.count, "A hidden emitter still emits.")
+        assertEquals(5, hidden.particleCount, "A hidden emitter still emits.")
 
         val loose = ParticleEmitter(region)
         loose.emit(5)

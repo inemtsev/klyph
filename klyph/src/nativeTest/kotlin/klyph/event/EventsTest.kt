@@ -125,8 +125,8 @@ class EventsTest {
             MouseButtonPressed(MouseButton.LEFT, 1f, 2f, 2).toString(),
         )
         assertEquals("MouseButtonReleased(button=MouseButton(2), x=1.0, y=2.0)", MouseButtonReleased(MouseButton.RIGHT, 1f, 2f).toString())
-        assertEquals(MouseWheel(0f, 1f), MouseWheel(0f, 1f))
-        assertEquals("MouseWheel(dx=0.0, dy=1.0)", MouseWheel(0f, 1f).toString())
+        assertEquals(MouseWheelScrolled(0f, 1f), MouseWheelScrolled(0f, 1f))
+        assertEquals("MouseWheelScrolled(dx=0.0, dy=1.0)", MouseWheelScrolled(0f, 1f).toString())
         val pad = GamepadId(7u)
         assertEquals(GamepadConnected(pad, "Pad"), GamepadConnected(pad, "Pad"))
         assertEquals("GamepadConnected(id=GamepadId(7), name=Pad)", GamepadConnected(pad, "Pad").toString())

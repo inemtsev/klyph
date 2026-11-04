@@ -1,0 +1,125 @@
+name: Release
+
+# Publishes klyph and the Gradle plugin to Maven Central for a v* tag (v1.0.0 publishes 1.0.0),
+# waits until Central serves both, then builds the shooter against them with the consumer test.
+#
+# Repository secrets to add (Settings, Secrets and variables, Actions):
+#   MAVEN_CENTRAL_USERNAME           Central Portal user token name
+#   MAVEN_CENTRAL_PASSWORD           Central Portal user token password
+#   SIGNING_IN_MEMORY_KEY            ASCII-armored GPG private key that signs the artifacts
+#   SIGNING_IN_MEMORY_KEY_PASSWORD   passphrase of that key
+# They reach Gradle as ORG_GRADLE_PROJECT_mavenCentralUsername, ..._mavenCentralPassword,
+# ..._signingInMemoryKey and ..._signingInMemoryKeyPassword.
+on:
+  push:
+    tags:
+      - "v*"
+
+# A release is never cancelled halfway; a second tag waits for the first to finish.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    # Only a macOS host builds every target, and buildSrc/src/main/kotlin/klyph.publish.gradle.kts
+    # refuses to upload from anywhere else.
+    runs-on: macos-26
+    timeout-minutes: 120
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Lands in /opt/homebrew/opt/sdl3, which buildSrc/src/main/kotlin/Sdl3.kt and the klyph
+      # plugin's Sdl3Locator check first, so nothing is downloaded.
+      - name: Install SDL3
+        run: brew install sdl3
+
+      - name: Read Kotlin version
+        id: kotlin
+        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+
+      # The Kotlin/Native compiler and its LLVM toolchain download into ~/.konan on first use.
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
+
+      # "basic" is the open-source cache; the default "enhanced" one is under separate terms of use.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: Read version from the tag
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Tag $TAG does not name a version such as v1.0.0." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Every target's klibs, sources and Dokka javadoc jars, signed, uploaded and released.
+      - name: Publish klyph and klyph-platform to Maven Central
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: ./gradlew --no-daemon publishAndReleaseToMavenCentral -Pklyph.targets=all -Pklyph.version="$VERSION"
+
+      # The plugin jar and its marker, com.eventslooped.klyph:com.eventslooped.klyph.gradle.plugin,
+      # which resolves plugins { id("com.eventslooped.klyph") } from Maven Central.
+      - name: Publish the Gradle plugin to Maven Central
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: ./gradlew --no-daemon :klyph-gradle-plugin:publishAndReleaseToMavenCentral -Pklyph.version="$VERSION"
+
+      # A released deployment takes a few minutes to reach repo1.maven.org. Polls every 30 seconds
+      # for up to 30 minutes until the engine POM and the plugin marker POM both answer 200.
+      - name: Wait for Maven Central
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          base=https://repo1.maven.org/maven2/com/eventslooped/klyph
+          engine="$base/klyph/$VERSION/klyph-$VERSION.pom"
+          marker="$base/com.eventslooped.klyph.gradle.plugin/$VERSION/com.eventslooped.klyph.gradle.plugin-$VERSION.pom"
+          for attempt in $(seq 1 60); do
+            engine_status="$(curl -s -o /dev/null -w '%{http_code}' "$engine")"
+            marker_status="$(curl -s -o /dev/null -w '%{http_code}' "$marker")"
+            echo "Attempt $attempt: engine POM $engine_status, plugin marker POM $marker_status"
+            if [[ "$engine_status" == 200 && "$marker_status" == 200 ]]; then
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "Maven Central did not serve klyph $VERSION within 30 minutes." >&2
+          exit 1
+
+      # A fresh project outside the repository builds the shooter from Maven Central alone with
+      # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.
+      # The runner has no display or GPU, so the game is linked, not run.
+      - name: Consumer test against Maven Central
+        env:
+          KLYPH_CONSUMER_RUN: "0"
+          VERSION: ${{ steps.version.outputs.version }}
+        run: tools/consumer-test.sh central "$VERSION"

@@ -4,10 +4,10 @@ package klyph.render
  * Creates a sprite sheet that cuts [texture] into [columns] by [rows] cells of [cellWidth] by
  * [cellHeight] texels, indexed row by row from the top-left cell: index `row * columns + column`.
  *
- * The first cell starts [margin] texels from the texture's left and top edges, and neighbouring
+ * The first cell starts [margin] texels from the texture's left and top edges, and neighboring
  * cells are [spacing] texels apart. The cell size defaults to the largest that fits with the same
  * [margin] on all four edges. A grid with explicit sizes only needs to fit from the left and top
- * margin to the right and bottom edges.
+ * margin to the right and bottom edges. Pass [margin] and [spacing] by name.
  *
  * Has no sample because creating a [Texture] needs a GPU device, which samples cannot open.
  *

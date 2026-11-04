@@ -10,8 +10,7 @@ package klyph.collision
 public sealed interface Shape {
     /**
      * Creates an axis-aligned rectangle [width] by [height] world units, centered on its position.
-     * Both sizes must be positive. The entity's rotation does not turn it. Both sizes are `Float`,
-     * so pass them by name: `Shape.Box(width = 32f, height = 16f)`.
+     * Both sizes must be positive. The entity's rotation does not turn it.
      *
      * Two boxes are equal when their sizes are. [toString] gives `Box(width=16.0, height=8.0)`.
      *

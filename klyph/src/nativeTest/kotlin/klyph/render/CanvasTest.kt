@@ -31,11 +31,11 @@ class CanvasTest {
         assertFailsWith<IllegalStateException> { canvas.drawSprite(region, x = 0f, y = 0f) }
         assertFailsWith<IllegalStateException> { canvas.drawRect(x = 0f, y = 0f, width = 1f, height = 1f, color = Color.WHITE) }
         assertFailsWith<IllegalStateException> { canvas.drawText(builtIn.font, "hi", x = 0f, y = 0f) }
-        assertEquals(0, canvas.count)
+        assertEquals(0, canvas.quadCount)
 
         canvas.open()
         canvas.drawSprite(region, x = 0f, y = 0f)
-        assertEquals(1, canvas.count)
+        assertEquals(1, canvas.quadCount)
         canvas.finish()
         assertFailsWith<IllegalStateException> { canvas.drawSprite(region, x = 0f, y = 0f) }
     }
@@ -47,12 +47,12 @@ class CanvasTest {
         canvas.drawRect(x = 0f, y = 0f, width = 1f, height = 1f, color = Color.WHITE)
         canvas.drawText(builtIn.font, "ab c", x = 0f, y = 0f)
         // The space draws nothing.
-        assertEquals(4, canvas.count)
-        assertEquals("Canvas(count=4)", canvas.toString())
+        assertEquals(4, canvas.quadCount)
+        assertEquals("Canvas(quadCount=4)", canvas.toString())
         canvas.finish()
-        assertEquals(0, canvas.count)
+        assertEquals(0, canvas.quadCount)
         canvas.open()
-        assertEquals(0, canvas.count)
+        assertEquals(0, canvas.quadCount)
     }
 
     @Test
@@ -75,7 +75,7 @@ class CanvasTest {
         val canvas = newCanvas()
         canvas.open()
         val region = Texture(32, 32).region(0, 0, 20, 10)
-        canvas.drawSprite(region, x = 5f, y = 5f)
+        canvas.drawSprite(region, x = 5f, y = 5f, space = DrawSpace.WORLD)
         canvas.drawSprite(region, x = 10f, y = 10f, originX = 0f, originY = 0f)
         canvas.drawSprite(region, x = 10f, y = 10f, rotation = (PI / 2).toFloat(), originX = 0f, originY = 0f)
         // Centre origin: the quad is centred on the point, at the region's size.
@@ -88,16 +88,43 @@ class CanvasTest {
     }
 
     @Test
-    fun textDefaultsToScreenSpaceAndAlignsOnTheAnchor() {
+    fun everyDrawCallDefaultsToScreenSpace() {
+        val canvas = newCanvas()
+        canvas.open()
+        val region = Texture(4, 4).asRegion()
+        canvas.drawSprite(region, x = 0f, y = 0f)
+        canvas.drawRect(x = 0f, y = 0f, width = 1f, height = 1f, color = Color.WHITE)
+        canvas.drawText(builtIn.font, "A", x = 0f, y = 0f)
+        for (quad in 0 until 3) assertSame(DrawSpace.SCREEN, canvas.quads.spaceAt(quad))
+    }
+
+    @Test
+    fun textAlignsOnTheAnchor() {
         val canvas = newCanvas()
         canvas.open()
         canvas.drawText(builtIn.font, "AB", x = 100f, y = 10f, scale = 2f, align = klyph.text.TextAlign.RIGHT)
-        assertEquals(2, canvas.count)
+        assertEquals(2, canvas.quadCount)
         assertSame(DrawSpace.SCREEN, canvas.quads.spaceAt(0))
         // The line is 32 wide at scale 2 and ends at x = 100: A covers 68..84, B 84..100.
         assertEquals(listOf(76f, 18f), canvas.floats(0, 0, 2))
         assertEquals(listOf(92f, 18f), canvas.floats(1, 0, 2))
         assertEquals(listOf(16f, 16f), canvas.floats(1, 4, 6))
+    }
+
+    @Test
+    fun textShadowIsQueuedBeforeTheTextInTheSameLayer() {
+        val canvas = newCanvas()
+        canvas.open()
+        val shadow = klyph.text.TextShadow(offsetX = 3f, offsetY = 4f, color = Color(0x000000FFu))
+        canvas.drawText(builtIn.font, "AB", x = 100f, y = 10f, scale = 2f, layer = 5, shadow = shadow)
+        assertEquals(4, canvas.quadCount, "Every glyph twice: the shadow pass, then the text.")
+        // The text's A covers 100..116 and 10..26, centred on (108, 18); the shadow is 3 right and 4 down.
+        assertEquals(listOf(111f, 22f), canvas.floats(0, 0, 2))
+        assertEquals(listOf(127f, 22f), canvas.floats(1, 0, 2))
+        assertEquals(listOf(108f, 18f), canvas.floats(2, 0, 2))
+        assertEquals(listOf(0f, 0f, 0f, 1f), canvas.floats(0, 12, 16))
+        assertEquals(listOf(1f, 1f, 1f, 1f), canvas.floats(2, 12, 16))
+        for (quad in 0 until 4) assertEquals(5, canvas.quads.layers[quad])
     }
 
     @Test
@@ -107,9 +134,9 @@ class CanvasTest {
         val canvas = newCanvas()
         canvas.open()
         canvas.drawSprite(a.asRegion(), x = 0f, y = 0f, space = DrawSpace.SCREEN)
-        canvas.drawSprite(b.asRegion(), x = 0f, y = 0f)
+        canvas.drawSprite(b.asRegion(), x = 0f, y = 0f, space = DrawSpace.WORLD)
         canvas.drawSprite(b.asRegion(), x = 0f, y = 0f, layer = -1, space = DrawSpace.SCREEN)
-        canvas.drawSprite(b.asRegion(), x = 0f, y = 0f, layer = 1)
+        canvas.drawSprite(b.asRegion(), x = 0f, y = 0f, layer = 1, space = DrawSpace.WORLD)
 
         // Two world sprites first, as the renderer adds entity sprites before the canvas.
         val order = SpriteOrder()

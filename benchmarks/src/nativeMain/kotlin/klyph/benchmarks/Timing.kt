@@ -53,12 +53,12 @@ internal class StatsReport(
      */
     fun record(stats: FrameStats) {
         add(oneSecond, stats)
-        oneSecondSteps += stats.fixedSteps
-        oneSecondPairs += stats.collisionPairs
+        oneSecondSteps += stats.fixedStepCount
+        oneSecondPairs += stats.collisionPairCount
         if (warmedUp) {
             add(total, stats)
-            totalSteps += stats.fixedSteps
-            totalPairs += stats.collisionPairs
+            totalSteps += stats.fixedStepCount
+            totalPairs += stats.collisionPairCount
         } else {
             warmUpFrames++
             val start = warmUpStart ?: clock.markNow().also { warmUpStart = it }

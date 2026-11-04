@@ -28,10 +28,18 @@ internal fun sdlErrorText(): String = SDL_GetError()?.toKString().orEmpty().trim
 /**
  * Parts of SDL that [Sdl.init] can start.
  */
+@KlyphPlatformApi
 public enum class Subsystem(internal val flag: UInt) {
+    /** Windows and the display; also starts events. */
     VIDEO(SDL_INIT_VIDEO),
+
+    /** Audio playback devices. */
     AUDIO(SDL_INIT_AUDIO),
+
+    /** The event queue. */
     EVENTS(SDL_INIT_EVENTS),
+
+    /** Gamepad and joystick input. */
     GAMEPAD(SDL_INIT_GAMEPAD),
 }
 
@@ -47,6 +55,7 @@ public object Sdl {
      *
      * @throws SdlException if SDL cannot start one of them.
      */
+    @KlyphPlatformApi
     public fun init(subsystems: Set<Subsystem>) {
         var flags = 0u
         for (subsystem in subsystems) flags = flags or subsystem.flag
@@ -54,6 +63,7 @@ public object Sdl {
     }
 
     /** Shuts down every running subsystem, however many times [init] started it. Nothing from this package may be used afterwards. */
+    @KlyphPlatformApi
     public fun quit() {
         SDL_Quit()
     }

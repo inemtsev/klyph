@@ -12,7 +12,7 @@ import klyph.platform.release
  * Drawing a sprite whose texture is closed is an error that the renderer does not detect.
  *
  * [filter] is fixed at creation and decides how the renderer samples the texture when a sprite
- * draws it larger or smaller than its texels: [SamplerFilter.LINEAR] blends neighbouring texels,
+ * draws it larger or smaller than its texels: [SamplerFilter.LINEAR] blends neighboring texels,
  * [SamplerFilter.NEAREST] keeps pixel art and bitmap fonts crisp.
  *
  * Has no sample because creating a texture needs a GPU device, which samples cannot open.
@@ -23,7 +23,10 @@ import klyph.platform.release
 public class Texture : AutoCloseable {
     private val device: GpuDevice?
     private val gpuTexture: GpuTexture?
-    private var isClosed = false
+
+    /** Whether [close] has run; [klyph.app.Assets] drops closed textures it no longer has to close. */
+    internal var isClosed: Boolean = false
+        private set
 
     /** Width in texels. */
     public val width: Int
@@ -41,7 +44,7 @@ public class Texture : AutoCloseable {
      *
      * @throws IllegalArgumentException if [width] or [height] is not positive.
      */
-    public constructor(
+    internal constructor(
         device: GpuDevice,
         handle: GpuTexture,
         width: Int,

@@ -27,8 +27,8 @@ internal class QuadBuffer(initialCapacity: Int = 64) {
         private set
 
     /**
-     * Appends a quad of [width] by [height] centred on ([x], [y]), turned by [rotation] radians
-     * about its centre, showing [region] tinted by [color].
+     * Appends a quad of [width] by [height] centered on ([x], [y]), turned by [rotation] radians
+     * about its center, showing [region] tinted by [color].
      */
     fun add(
         region: TextureRegion,
@@ -85,7 +85,7 @@ internal class QuadBuffer(initialCapacity: Int = 64) {
         layer: Int,
         space: DrawSpace,
     ) {
-        // Offset from the origin to the centre, turned the way the vertex shader turns corners.
+        // Offset from the origin to the center, turned the way the vertex shader turns corners.
         val dx = (0.5f - originX) * width
         val dy = (0.5f - originY) * height
         if (rotation == 0f) {

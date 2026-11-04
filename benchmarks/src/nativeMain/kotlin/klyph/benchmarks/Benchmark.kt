@@ -2,13 +2,9 @@ package klyph.benchmarks
 
 import klyph.app.App
 import klyph.app.AppConfig
-import klyph.app.GpuSync
 import klyph.app.Phase
-import klyph.app.RenderTarget
 import klyph.event.KeyPressed
-import klyph.platform.GpuValidation
 import klyph.platform.KeyCode
-import klyph.platform.PresentMode
 import kotlin.time.Duration
 
 /** A named benchmark that [Main][main] can run from the command line. */
@@ -34,71 +30,56 @@ internal class BenchmarkSettings(
      * them `Interpolated` instead of moving them in `UPDATE`.
      */
     val interpolate: Boolean,
-    /** `KLYPH_FRAMES`; `null` runs until the window closes or escape is pressed. */
-    val frameLimit: Int?,
-    /**
-     * `KLYPH_SECONDS`: the app quits once `Time.elapsed` reaches it; `null` sets no limit. Either
-     * limit ends the run.
-     */
-    val timeLimit: Duration?,
-    /**
-     * `KLYPH_OFFSCREEN=1`: draw into a texture and wait for the GPU each frame instead of
-     * presenting, so the display is not in the loop.
-     */
-    val offscreen: Boolean,
-    /** `KLYPH_VSYNC=1` presents at the display rate; otherwise frames present immediately. */
-    val presentMode: PresentMode,
-    /** `KLYPH_VALIDATION=1` turns on the GPU validation layer. */
-    val validation: GpuValidation,
     /**
      * `KLYPH_MUSIC`: an Ogg Vorbis file the mixer benchmark streams in place of its synthetic
      * music, to measure the decoding cost; `null` keeps the synthetic stream.
      */
     val musicPath: String?,
-    /** `KLYPH_CELL`, default 64: the collision grid's cell size in world units. */
-    val cellSize: Float,
+    /**
+     * The app configuration every benchmark runs with: a window titled after the benchmark,
+     * immediate presentation and the `KLYPH_CELL` grid cell size (default 64) as the base, with
+     * every setting `AppConfig.fromEnvironment` reads (`KLYPH_FRAMES`, `KLYPH_SECONDS`,
+     * `KLYPH_VSYNC`, `KLYPH_OFFSCREEN`, `KLYPH_VALIDATION`, `KLYPH_OVERLAY`, `KLYPH_FULLSCREEN`,
+     * `KLYPH_SCREENSHOT`) applied on top.
+     */
+    val config: AppConfig,
 ) {
-    /** Returns the app configuration for a benchmark whose window is titled [title]. */
-    fun appConfig(title: String): AppConfig =
-        AppConfig(
-            title = title,
-            presentMode = presentMode,
-            target = if (offscreen) RenderTarget.OFFSCREEN else RenderTarget.WINDOW,
-            gpuSync = if (offscreen) GpuSync.WAIT_EACH_FRAME else GpuSync.NONE,
-            validation = validation,
-            collisionCellSize = cellSize,
-        )
+    /** `KLYPH_FRAMES`, which the engine quits after; `null` runs until the window closes or escape is pressed. */
+    val frameLimit: Int? get() = config.frameLimit
+
+    /**
+     * `KLYPH_SECONDS`: the engine quits once `Time.elapsed` reaches it; `null` sets no limit.
+     * Either limit ends the run.
+     */
+    val timeLimit: Duration? get() = config.timeLimit
+
+    /** `KLYPH_CELL`, default 64: the collision grid's cell size in world units. */
+    val cellSize: Float get() = config.collisionCellSize
 
     override fun toString(): String =
-        "BenchmarkSettings(spriteCount=$spriteCount, childCount=$childCount, textureCount=$textureCount, interpolate=$interpolate, frameLimit=$frameLimit, timeLimit=$timeLimit, " +
-            "offscreen=$offscreen, presentMode=$presentMode, validation=$validation, musicPath=$musicPath, cellSize=$cellSize)"
+        "BenchmarkSettings(spriteCount=$spriteCount, childCount=$childCount, textureCount=$textureCount, interpolate=$interpolate, " +
+            "musicPath=$musicPath, config=$config)"
 }
 
 /**
  * Adds what every benchmark app shares: a startup line naming the present mode and render target,
- * quitting on escape, after [BenchmarkSettings.frameLimit] frames or after
- * [BenchmarkSettings.timeLimit], and [report] fed with each
- * frame's stats and printed at shutdown.
+ * quitting on escape, and [report] fed with each frame's stats and printed at shutdown. The engine
+ * itself quits after [BenchmarkSettings.frameLimit] frames or [BenchmarkSettings.timeLimit].
  */
 internal fun App.addBenchmarkSystems(settings: BenchmarkSettings, report: StatsReport) {
     addSystem(Phase.STARTUP) { app ->
         println(
             "Present mode: ${app.presentMode} (requested: ${app.config.presentMode}), " +
-                "validation: ${settings.validation}, target: ${app.config.target}",
+                "validation: ${app.config.validation}, target: ${app.config.target}",
         )
     }
     addSystem(Phase.INPUT) { app ->
         // app.stats describes the previous frame, which does not exist yet during frame 0.
-        if (app.time.frame > 0) report.record(app.stats)
+        if (app.time.frameCount > 0) report.record(app.stats)
         app.events.forEach<KeyPressed> { if (it.key == KeyCode.ESCAPE) app.quit() }
-        // time.frame counts completed frames, so this frame is number frame + 1.
-        val limit = settings.frameLimit
-        if (limit != null && app.time.frame + 1 >= limit) app.quit()
-        val timeLimit = settings.timeLimit
-        if (timeLimit != null && app.time.elapsed >= timeLimit) app.quit()
     }
     addSystem(Phase.SHUTDOWN) { app ->
-        if (app.time.frame > 0) report.record(app.stats)
+        if (app.time.frameCount > 0) report.record(app.stats)
         report.printSummary()
     }
 }

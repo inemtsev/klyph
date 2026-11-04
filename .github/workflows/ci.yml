@@ -54,8 +54,25 @@ jobs:
           ./gradlew --no-daemon
           check
           :sandbox:linkDebugExecutableMacosArm64
-          :shooter:linkDebugExecutableMacosArm64
+          :games:shooter:linkDebugExecutableMacosArm64
           :benchmarks:linkReleaseExecutableMacosArm64
+
+      # Runs the sandbox offscreen for 30 frames and saves frame 20 as a PNG, so every push
+      # has a picture. A relative screenshot path resolves against the repository root, and
+      # the capture creates its folder.
+      # The runner has a GPU, so the step fails if no picture was written.
+      - name: Screenshot
+        run: |
+          ./gradlew --no-daemon :sandbox:run -Pklyph.offscreen=1 -Pklyph.frames=30 -Pklyph.screenshot=20:build/screenshots/sandbox.png
+          test -f build/screenshots/sandbox.png
+
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshot-macos
+          path: build/screenshots/
+          if-no-files-found: error
 
       # Builds the klibs of every target and the cinterop klibs, and publishes them to ~/.m2 as a
       # release would. Unsigned: signing runs only when signingInMemoryKey is set, and CI has none.
@@ -154,8 +171,26 @@ jobs:
           -Psdl3.prefix="$SDL3_PREFIX"
           check
           :sandbox:linkDebugExecutableLinuxX64
-          :shooter:linkDebugExecutableLinuxX64
+          :games:shooter:linkDebugExecutableLinuxX64
           :benchmarks:linkReleaseExecutableLinuxX64
+
+      # Runs the sandbox offscreen for 30 frames and saves frame 20 as a PNG, so every push
+      # has a picture. A relative screenshot path resolves against the repository root, and
+      # the capture creates its folder.
+      # Informational only: the runner has no GPU, and SDL_GPU needs a device even offscreen,
+      # so the run is expected to fail here. It must pass on macOS.
+      - name: Screenshot
+        continue-on-error: true
+        run: |
+          ./gradlew --no-daemon -Psdl3.prefix="$SDL3_PREFIX" :sandbox:run -Pklyph.offscreen=1 -Pklyph.frames=30 -Pklyph.screenshot=20:build/screenshots/sandbox.png
+
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshot-linux
+          path: build/screenshots/
+          if-no-files-found: ignore
 
       # Every target except macosArm64, which Kotlin/Native builds only on macOS. Unsigned:
       # signing runs only when signingInMemoryKey is set, and CI has none.
@@ -241,8 +276,26 @@ jobs:
           -Psdl3.prefix="$SDL3_PREFIX"
           check
           :sandbox:linkDebugExecutableMingwX64
-          :shooter:linkDebugExecutableMingwX64
+          :games:shooter:linkDebugExecutableMingwX64
           :benchmarks:linkReleaseExecutableMingwX64
+
+      # Runs the sandbox offscreen for 30 frames and saves frame 20 as a PNG, so every push
+      # has a picture. A relative screenshot path resolves against the repository root, and
+      # the capture creates its folder.
+      # Informational only: the runner has no GPU, and SDL_GPU needs a device even offscreen,
+      # so the run is expected to fail here. It must pass on macOS.
+      - name: Screenshot
+        continue-on-error: true
+        run: |
+          ./gradlew --no-daemon -Psdl3.prefix="$SDL3_PREFIX" :sandbox:run -Pklyph.offscreen=1 -Pklyph.frames=30 -Pklyph.screenshot=20:build/screenshots/sandbox.png
+
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshot-windows
+          path: build/screenshots/
+          if-no-files-found: ignore
 
       # Every target except macosArm64, which Kotlin/Native builds only on macOS. Unsigned:
       # signing runs only when signingInMemoryKey is set, and CI has none.

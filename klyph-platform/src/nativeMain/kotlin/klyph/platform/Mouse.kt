@@ -9,6 +9,7 @@ package klyph.platform
 public value class MouseButton(public val index: Int) {
     override fun toString(): String = "MouseButton($index)"
 
+    /** Holds the mouse buttons. */
     public companion object {
         /** The primary button, usually the left one. */
         public val LEFT: MouseButton = MouseButton(0)

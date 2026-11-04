@@ -14,8 +14,8 @@ import kotlin.test.assertTrue
 class AudioTest {
     private val centre = (1.0 / sqrt(2.0)).toFloat()
 
-    private fun audio(maxVoices: Int = 32, enabled: Boolean = true, commandCapacity: Int = 256): Audio =
-        Audio(AudioConfig(enabled = enabled, maxVoices = maxVoices, sampleRate = RATE), commandCapacity)
+    private fun audio(maxVoices: Int = 32, output: AudioOutput = AudioOutput.DEVICE, commandCapacity: Int = 256): Audio =
+        Audio(AudioConfig(output = output, maxVoices = maxVoices, sampleRate = RATE), commandCapacity)
 
     private fun constant(frames: Int, value: Float = 1f, channels: Int = 1, rate: Int = RATE): Sound =
         Sound(FloatArray(frames * channels) { value }, channels, rate)
@@ -119,8 +119,8 @@ class AudioTest {
         assertEquals(voices[1].slot, thirtyFourth.slot)
 
         audio.endFrame()
-        assertEquals(2L, audio.stats.stolenVoices)
-        assertEquals(32, audio.stats.activeVoices)
+        assertEquals(2L, audio.stats.stolenVoiceCount)
+        assertEquals(32, audio.stats.activeVoiceCount)
     }
 
     @Test
@@ -133,7 +133,7 @@ class AudioTest {
         assertEquals(first.slot, second.slot)
         assertNotEquals(first, second)
         audio.endFrame()
-        assertEquals(0L, audio.stats.stolenVoices)
+        assertEquals(0L, audio.stats.stolenVoiceCount)
     }
 
     @Test
@@ -253,11 +253,11 @@ class AudioTest {
         repeat(4) { assertNotEquals(Voice.NONE, audio.play(sound)) }
         assertEquals(Voice.NONE, audio.play(sound))
         audio.endFrame()
-        assertEquals(1L, audio.stats.droppedCommands)
+        assertEquals(1L, audio.stats.droppedCommandCount)
         // The dropped play claimed no slot: after a render, four voices are active.
         audio.render(1)
         audio.endFrame()
-        assertEquals(4, audio.stats.activeVoices)
+        assertEquals(4, audio.stats.activeVoiceCount)
     }
 
     @Test
@@ -270,7 +270,7 @@ class AudioTest {
 
     @Test
     fun disabledAudioDoesNothing() {
-        val audio = audio(enabled = false)
+        val audio = audio(output = AudioOutput.NONE)
         val voice = audio.play(constant(100))
         assertEquals(Voice.NONE, voice)
         assertFalse(audio.isPlaying(voice))
@@ -284,7 +284,7 @@ class AudioTest {
         assertEquals("Voice.NONE", Voice.NONE.toString())
         assertEquals("Voice(3:7)", Voice.of(3, 7).toString())
         assertEquals(
-            "AudioStats(activeVoices=0, stolenVoices=0, droppedCommands=0, closedStreams=0)",
+            "AudioStats(activeVoiceCount=0, stolenVoiceCount=0, droppedCommandCount=0, closedStreamCount=0)",
             audio().stats.toString(),
         )
         assertEquals("Sound(frames=24000, channels=1, sampleRate=48000, duration=500ms)", constant(24_000).toString())

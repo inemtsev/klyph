@@ -19,7 +19,7 @@ import klyph.entity.ComponentType
  * is reported even when only one side asked for it.
  *
  * [toString] gives
- * `Collider(shape=Circle(radius=8.0), offset=0.0 x 0.0, layers=CollisionLayers(0), mask=CollisionLayers(1))`.
+ * `Collider(shape=Circle(radius=8.0), offset=0.0x0.0, layers=CollisionLayers(0), mask=CollisionLayers(1))`.
  *
  * @sample samples.collision.Colliders.collider
  */
@@ -36,7 +36,7 @@ public class Collider(
     public var mask: CollisionLayers = CollisionLayers.ALL,
 ) {
     override fun toString(): String =
-        "Collider(shape=$shape, offset=$offsetX x $offsetY, layers=$layers, mask=$mask)"
+        "Collider(shape=$shape, offset=${offsetX}x$offsetY, layers=$layers, mask=$mask)"
 
     /** Component key for [Collider]. */
     public companion object : ComponentType<Collider>("Collider")

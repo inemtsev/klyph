@@ -26,3 +26,26 @@ public class Overlap(
 
     override fun toString(): String = "Overlap(a=$a, b=$b)"
 }
+
+/**
+ * Returns `true` if [entity] is one of the pair, [Overlap.a] or [Overlap.b], so a handler can ask
+ * `player in overlap`.
+ *
+ * @sample samples.collision.Overlaps.otherThan
+ */
+public operator fun Overlap.contains(entity: Entity): Boolean = entity == a || entity == b
+
+/**
+ * Returns the entity of the pair that is not [entity]: [Overlap.b] when [entity] is [Overlap.a]
+ * and [Overlap.a] when it is [Overlap.b], so a handler that found its bullet in the pair gets the
+ * thing it hit without checking which slot is which.
+ *
+ * @throws IllegalArgumentException if [entity] is in neither slot.
+ *
+ * @sample samples.collision.Overlaps.otherThan
+ */
+public fun Overlap.otherThan(entity: Entity): Entity = when (entity) {
+    a -> b
+    b -> a
+    else -> throw IllegalArgumentException("Entity $entity is in neither slot of $this.")
+}

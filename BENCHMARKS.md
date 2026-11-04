@@ -94,7 +94,7 @@ renders 60 s of 48 kHz stereo in 1024-frame blocks, the device's default block. 
 music is a synthetic stereo stream that copies from a precomputed table, so it measures the
 mixer alone; `KLYPH_MUSIC=<file.ogg>` streams a real Ogg Vorbis file instead, decoded by
 stb_vorbis as it plays. Reproduce with `./gradlew :benchmarks:benchmarkMixer` and
-`./gradlew :benchmarks:benchmarkMixer -Pklyph.music=shooter/assets/music.ogg` (the shooter's
+`./gradlew :benchmarks:benchmarkMixer -Pklyph.music=games/shooter/assets/music.ogg` (the shooter's
 46.8 s mono 44.1 kHz track, which loops once during the run). Same machine as below, release
 build. Three runs of each, alternated; the lines are the second pair, and the other runs agree
 within 3 us on the mean.

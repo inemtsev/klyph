@@ -1,9 +1,13 @@
 package klyph.render
 
+import klyph.entity.Commands
 import klyph.entity.World
+import klyph.event.Events
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertSame
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -14,9 +18,9 @@ class SpriteAnimationTest {
         val source = listOf(texture.region(0, 0, 16, 16), texture.region(16, 0, 16, 16))
         val animation = SpriteAnimation(source, 100.milliseconds)
         assertSame(source, animation.frames)
-        assertEquals(2, animation.animation.frameCount)
-        assertEquals(100.milliseconds, animation.animation.frameDuration)
-        assertEquals(AnimationMode.LOOP, animation.animation.mode)
+        assertEquals(2, animation.playhead.frameCount)
+        assertEquals(100.milliseconds, animation.playhead.frameDuration)
+        assertEquals(AnimationMode.LOOP, animation.playhead.mode)
     }
 
     @Test
@@ -25,9 +29,9 @@ class SpriteAnimationTest {
         val animation = SpriteAnimation(sheet, 100.milliseconds, AnimationMode.ONCE)
         assertSame(sheet.regions, animation.frames)
         assertSame(sheet[0], animation.currentFrame)
-        animation.animation.advance(150.milliseconds)
+        animation.playhead.advance(150.milliseconds)
         assertSame(sheet[1], animation.currentFrame)
-        animation.animation.advance(1000.milliseconds)
+        animation.playhead.advance(1000.milliseconds)
         assertSame(sheet[2], animation.currentFrame)
     }
 
@@ -53,7 +57,7 @@ class SpriteAnimationTest {
 
         world.advanceSpriteAnimations(100.milliseconds)
         assertSame(sheet[1], sprite.region)
-        assertEquals(0, unanimated.animation.frameIndex)
+        assertEquals(0, unanimated.playhead.frameIndex)
         world.advanceSpriteAnimations(100.milliseconds)
         assertSame(sheet[0], sprite.region)
     }
@@ -62,7 +66,82 @@ class SpriteAnimationTest {
     fun toStringShowsFrameAndMode() {
         val sheet = SpriteSheet.fromGrid(Texture(96, 16), columns = 6, rows = 1)
         val animation = SpriteAnimation(sheet, 100.milliseconds, AnimationMode.PING_PONG)
-        animation.animation.advance(200.milliseconds)
-        assertEquals("SpriteAnimation(frame=2/6, mode=PING_PONG)", animation.toString())
+        animation.playhead.advance(200.milliseconds)
+        assertEquals("SpriteAnimation(frame=2/6, mode=PING_PONG, end=HOLD)", animation.toString())
+    }
+
+    /** Returns the [AnimationFinished] events published so far this frame. */
+    private fun Events.finished(): List<AnimationFinished> {
+        val list = ArrayList<AnimationFinished>()
+        forEach<AnimationFinished> { list += it }
+        return list
+    }
+
+    @Test
+    fun onceAnimationPublishesFinishedExactlyOnce() {
+        val sheet = SpriteSheet.fromGrid(Texture(32, 16), columns = 2, rows = 1)
+        val world = World()
+        val events = Events()
+        val commands = Commands(world)
+        val entity = world.create()
+        world.add(entity, Sprite, Sprite(sheet[0]))
+        val animation = SpriteAnimation(sheet, 100.milliseconds, AnimationMode.ONCE)
+        world.add(entity, SpriteAnimation, animation)
+
+        world.advanceSpriteAnimations(150.milliseconds, null, events, commands)
+        assertEquals(emptyList(), events.finished())
+        world.advanceSpriteAnimations(50.milliseconds, null, events, commands)
+        assertEquals(listOf(AnimationFinished(entity)), events.finished(), "The last frame's time is up at 200 ms.")
+        events.endFrame()
+        world.advanceSpriteAnimations(100.milliseconds, null, events, commands)
+        assertEquals(emptyList(), events.finished(), "A finished animation publishes once.")
+        assertTrue(commands.isEmpty(), "HOLD keeps the entity.")
+        assertTrue(world.isAlive(entity))
+
+        animation.playhead.restart()
+        world.advanceSpriteAnimations(200.milliseconds, null, events, commands)
+        assertEquals(listOf(AnimationFinished(entity)), events.finished(), "A restarted animation publishes again when it finishes.")
+    }
+
+    @Test
+    fun destroyEndQueuesTheEntityWhenTheAnimationFinishes() {
+        val sheet = SpriteSheet.fromGrid(Texture(32, 16), columns = 2, rows = 1)
+        val world = World()
+        val events = Events()
+        val commands = Commands(world)
+        val entity = world.create()
+        world.add(entity, Sprite, Sprite(sheet[0]))
+        world.add(entity, SpriteAnimation, SpriteAnimation(sheet, 100.milliseconds, AnimationMode.ONCE, AnimationEnd.DESTROY))
+
+        world.advanceSpriteAnimations(199.milliseconds, null, events, commands)
+        assertTrue(commands.isEmpty())
+        world.advanceSpriteAnimations(1.milliseconds, null, events, commands)
+        assertEquals(1, commands.size)
+        commands.apply()
+        assertFalse(world.isAlive(entity))
+        assertEquals(listOf(AnimationFinished(entity)), events.finished(), "The event names the entity even though it is gone.")
+    }
+
+    @Test
+    fun loopingAnimationsNeverFinish() {
+        val sheet = SpriteSheet.fromGrid(Texture(32, 16), columns = 2, rows = 1)
+        val world = World()
+        val events = Events()
+        val commands = Commands(world)
+        val entity = world.create()
+        world.add(entity, Sprite, Sprite(sheet[0]))
+        world.add(entity, SpriteAnimation, SpriteAnimation(sheet, 100.milliseconds, end = AnimationEnd.DESTROY))
+        repeat(10) { world.advanceSpriteAnimations(100.milliseconds, null, events, commands) }
+        assertEquals(emptyList(), events.finished())
+        assertTrue(commands.isEmpty(), "DESTROY has no effect on a LOOP animation.")
+    }
+
+    @Test
+    fun animationFinishedEqualityAndToString() {
+        val world = World()
+        val entity = world.create()
+        assertEquals(AnimationFinished(entity), AnimationFinished(entity))
+        assertEquals(AnimationFinished(entity).hashCode(), AnimationFinished(entity).hashCode())
+        assertEquals("AnimationFinished(entity=$entity)", AnimationFinished(entity).toString())
     }
 }

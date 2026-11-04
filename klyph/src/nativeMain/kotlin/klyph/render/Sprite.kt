@@ -4,11 +4,12 @@ import klyph.entity.ComponentType
 import klyph.platform.Color
 
 /**
- * A quad of [width] by [height] world units centred on its entity's transform, showing [region]
+ * A quad of [width] by [height] world units centered on its entity's transform, showing [region]
  * tinted by [color].
  *
- * The size starts as the region's size in texels, so with a view measured in pixels and a scale
- * of 1 each texel covers one pixel. [isFlippedX] mirrors the region left to right and
+ * The size starts as the region's size in texels, so through `App.camera` at zoom 1 and a scale
+ * of 1 each texel covers one point, which is two pixels on a display of pixel density 2.
+ * [isFlippedX] mirrors the region left to right and
  * [isFlippedY] mirrors it top to bottom; neither changes the quad's position. A sprite whose
  * [isVisible] is `false` is not drawn and costs no draw work.
  *
@@ -39,11 +40,11 @@ public class Sprite(
     public var isVisible: Boolean = true,
 ) {
     /**
-     * Returns `Sprite(size=16.0 x 32.0, color=Color(#ffffffff), layer=0, flippedX=false,
+     * Returns `Sprite(size=16.0x32.0, color=Color(#ffffffff), layer=0, flippedX=false,
      * flippedY=false, visible=true, region=TextureRegion(...))`. The format may change.
      */
     override fun toString(): String =
-        "Sprite(size=$width x $height, color=$color, layer=$layer, flippedX=$isFlippedX, flippedY=$isFlippedY, " +
+        "Sprite(size=${width}x$height, color=$color, layer=$layer, flippedX=$isFlippedX, flippedY=$isFlippedY, " +
             "visible=$isVisible, region=$region)"
 
     /** Component key for [Sprite]. */

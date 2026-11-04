@@ -23,13 +23,13 @@ import kotlin.test.assertTrue
 
 class InputTest {
     private val input = Input()
-    private val camera = Camera(zoom = 1f, viewportWidth = 800, viewportHeight = 600).apply { lookAt(400f, 300f) }
+    private val camera = Camera(zoom = 1f, viewportWidth = 800f, viewportHeight = 600f).apply { lookAt(400f, 300f) }
 
     /** Runs one frame of the engine's input update with [events]. */
     private fun frame(vararg events: PlatformEvent) {
         input.beginFrame()
         for (event in events) input.handle(event)
-        input.endFrame(camera, pixelDensity = 1f)
+        input.endFrame(camera)
     }
 
     private fun keyDown(scancode: Scancode, isRepeat: Boolean = false) =
@@ -101,15 +101,15 @@ class InputTest {
 
     @Test
     fun axisCombinesTwoKeys() {
-        assertEquals(0f, input.axis(Scancode.A, Scancode.D))
+        assertEquals(0f, input.keyboard.axis(Scancode.A, Scancode.D))
         frame(keyDown(Scancode.A))
-        assertEquals(-1f, input.axis(Scancode.A, Scancode.D))
+        assertEquals(-1f, input.keyboard.axis(Scancode.A, Scancode.D))
         frame(keyDown(Scancode.D))
-        assertEquals(0f, input.axis(Scancode.A, Scancode.D))
+        assertEquals(0f, input.keyboard.axis(Scancode.A, Scancode.D))
         frame(keyUp(Scancode.A))
-        assertEquals(1f, input.axis(Scancode.A, Scancode.D))
+        assertEquals(1f, input.keyboard.axis(Scancode.A, Scancode.D))
         frame(keyUp(Scancode.D))
-        assertEquals(0f, input.axis(Scancode.A, Scancode.D))
+        assertEquals(0f, input.keyboard.axis(Scancode.A, Scancode.D))
     }
 
     @Test
@@ -127,7 +127,7 @@ class InputTest {
 
     @Test
     fun wheelResetsEveryFrame() {
-        frame(PlatformEvent.MouseWheel(0f, 1f), PlatformEvent.MouseWheel(0.5f, 2f))
+        frame(PlatformEvent.MouseWheelScrolled(0f, 1f), PlatformEvent.MouseWheelScrolled(0.5f, 2f))
         assertEquals(Vec2(0.5f, 3f), input.mouse.wheel)
         frame()
         assertEquals(Vec2.ZERO, input.mouse.wheel)
@@ -147,14 +147,14 @@ class InputTest {
     }
 
     @Test
-    fun worldPositionGoesThroughTheCameraInPixels() {
-        // The camera shows world (0, 0) at the top-left corner, two pixels per point and zoom 2.
+    fun worldPositionGoesThroughTheCameraInPoints() {
+        // An 800 x 600 point view at zoom 2 centered on (200, 150) shows world (0, 0) at its top-left corner.
         camera.zoom = 2f
         camera.lookAt(200f, 150f)
         input.beginFrame()
         input.handle(PlatformEvent.MouseMoved(100f, 50f, 0f, 0f))
-        input.endFrame(camera, pixelDensity = 2f)
-        assertEquals(Vec2(100f, 50f), input.mouse.worldPosition)
+        input.endFrame(camera)
+        assertEquals(Vec2(50f, 25f), input.mouse.worldPosition)
     }
 
     @Test
@@ -261,5 +261,41 @@ class InputTest {
         assertFalse(input.keyboard.isDown(KeyCode.B))
         frame(PlatformEvent.KeyUp(KeyCode.A, scancode))
         assertTrue(input.keyboard.isJustReleased(KeyCode.A))
+    }
+
+    @Test
+    fun keyCodeAxisCombinesTwoKeysByLabel() {
+        assertEquals(0f, input.keyboard.axis(KeyCode.Q, KeyCode.E))
+        frame(keyDown(KeyCode.Q.toScancode()))
+        assertEquals(-1f, input.keyboard.axis(KeyCode.Q, KeyCode.E))
+        frame(keyDown(KeyCode.E.toScancode()))
+        assertEquals(0f, input.keyboard.axis(KeyCode.Q, KeyCode.E))
+        frame(keyUp(KeyCode.Q.toScancode()))
+        assertEquals(1f, input.keyboard.axis(KeyCode.Q, KeyCode.E))
+    }
+
+    @Test
+    fun gamepadListMatchesWhenAnyConnectedPadDoes() {
+        assertFalse(input.gamepads.isDown(GamepadButton.SOUTH), "No pad, no press.")
+        val first = GamepadId(1u)
+        val second = GamepadId(2u)
+        frame(PlatformEvent.GamepadConnected(first, "One"), PlatformEvent.GamepadConnected(second, "Two"))
+        frame(PlatformEvent.GamepadButtonDown(second, GamepadButton.SOUTH))
+        assertTrue(input.gamepads.isDown(GamepadButton.SOUTH))
+        assertTrue(input.gamepads.isJustPressed(GamepadButton.SOUTH))
+        assertFalse(input.gamepads.isJustReleased(GamepadButton.SOUTH))
+        assertFalse(input.gamepads.isDown(GamepadButton.EAST))
+
+        frame()
+        assertTrue(input.gamepads.isDown(GamepadButton.SOUTH))
+        assertFalse(input.gamepads.isJustPressed(GamepadButton.SOUTH))
+        frame(PlatformEvent.GamepadButtonUp(second, GamepadButton.SOUTH))
+        assertFalse(input.gamepads.isDown(GamepadButton.SOUTH))
+        assertTrue(input.gamepads.isJustReleased(GamepadButton.SOUTH))
+
+        val kept = input.gamepads.toList()
+        frame(PlatformEvent.GamepadButtonDown(first, GamepadButton.NORTH))
+        frame(PlatformEvent.GamepadDisconnected(first))
+        assertFalse(kept.isDown(GamepadButton.NORTH), "A disconnected pad matches nothing, even in a list kept from before.")
     }
 }

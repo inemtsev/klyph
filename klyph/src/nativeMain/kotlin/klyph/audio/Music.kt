@@ -37,7 +37,7 @@ public class Music internal constructor(private val audio: Audio) {
      * [MusicTrack.fromOgg] reads the file's headers.
      *
      * @throws IllegalArgumentException if [fadeIn] is negative or infinite.
-     * @throws IllegalStateException if the stream the track opens has other channels or another
+     * @throws IllegalArgumentException if the stream the track opens has other channels or another
      *   sample rate than the track.
      *
      * @sample samples.audio.Musics.play
@@ -91,11 +91,19 @@ public class Music internal constructor(private val audio: Audio) {
     /**
      * `true` from [play] until the track ends: a [PlaybackMode.ONCE] track reaching its end, or a
      * [stop] whose fade has finished. Playing another track makes this describe the new one.
+     *
+     * The value can change between two reads in one frame without a main-thread call, because the
+     * audio thread ends the track.
      */
     public val isPlaying: Boolean
         get() = audio.isEnabled && current != null && audio.mixer.musicEnded.load() != currentId
 
-    /** The track that is playing, or `null` when [isPlaying] is `false`. */
+    /**
+     * The track that is playing, or `null` when [isPlaying] is `false`.
+     *
+     * The value can change between two reads in one frame without a main-thread call, because the
+     * audio thread ends the track.
+     */
     public val currentOrNull: MusicTrack?
         get() = if (isPlaying) current else null
 

@@ -10,11 +10,12 @@ import kotlin.time.Duration.Companion.nanoseconds
  *
  * The track opens a new [PcmStream] through [open] each time it starts playing, so it can be played
  * again after it stops, and a long track costs little memory. Load an Ogg Vorbis file with
- * [MusicTrack.fromOgg] or `Assets.music`; for procedural music or another decoder, pass a function
+ * [MusicTrack.fromOgg] or `Assets.musicTrack`; for procedural music or another decoder, pass a function
  * that opens your own [PcmStream]. Every stream [open] returns must have [channels] channels at
  * [sampleRate].
  *
- * [channels] must be 1 or 2, [sampleRate] positive and [duration] not negative.
+ * [channels] must be 1 or 2, [sampleRate] positive and [duration] not negative. Pass [channels]
+ * and [sampleRate] by name.
  *
  * [toString] gives the duration, channels and rate, for example
  * `MusicTrack(duration=1m 32s, channels=2, sampleRate=44100)`.
@@ -45,21 +46,21 @@ public class MusicTrack(
     /**
      * Opens a new stream at the start of the track. Main thread only; the caller closes it.
      *
-     * @throws IllegalStateException if the stream's channels or sample rate differ from the track's.
+     * @throws IllegalArgumentException if the stream's channels or sample rate differ from the track's.
      */
     internal fun openStream(): PcmStream {
         val stream = open()
-        if (stream.channels != channels || stream.sampleRate != sampleRate) {
-            stream.close()
-            throw IllegalStateException(
-                "Stream of $this has ${stream.channels} channels at ${stream.sampleRate} Hz, not $channels at $sampleRate Hz.",
-            )
+        val matches = stream.channels == channels && stream.sampleRate == sampleRate
+        if (!matches) stream.close()
+        require(matches) {
+            "Stream of $this has ${stream.channels} channels at ${stream.sampleRate} Hz, not $channels at $sampleRate Hz."
         }
         return stream
     }
 
     override fun toString(): String = "MusicTrack(duration=$duration, channels=$channels, sampleRate=$sampleRate)"
 
+    /** Holds the factories that build a track from a file. */
     public companion object {
         /**
          * Returns a track that streams the Ogg Vorbis file held in [bytes], mono or stereo.

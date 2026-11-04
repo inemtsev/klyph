@@ -63,7 +63,7 @@ import klyph.render.generated.SpriteVertexShader
  *
  * @throws IllegalArgumentException if [initialCapacity] is not positive or above [MAX_CAPACITY].
  */
-public class SpriteRenderer(
+internal class SpriteRenderer(
     private val device: GpuDevice,
     colorFormat: TextureFormat,
     initialCapacity: Int = 1024,
@@ -147,7 +147,7 @@ public class SpriteRenderer(
      * and from its [Transform] otherwise. Run [klyph.entity.propagateTransforms] first so the
      * world transforms are current; the engine does that before rendering.
      *
-     * An [Interpolated] entity without a parent that has been through a fixed step since it was
+     * An [Interpolated] entity without a parent that has been through two fixed steps since it was
      * marked is drawn [fixedStepAlpha] of the way from its transform at the start of the last
      * fixed step to its current [Transform]: position and scale linearly, rotation the shorter
      * way round the circle. [fixedStepAlpha] is normally `Time.fixedStepAlpha`; the default of 1
@@ -398,7 +398,7 @@ public class SpriteRenderer(
             rotation = hierarchy.rotation
             scaleX = hierarchy.scaleX
             scaleY = hierarchy.scaleY
-        } else if (previous != null) {
+        } else if (previous != null && !previous.isFirstStep) {
             x = previous.x + alpha * (local.x - previous.x)
             y = previous.y + alpha * (local.y - previous.y)
             rotation = blendRotation(previous.rotation, local.rotation, alpha)
@@ -450,21 +450,13 @@ public class SpriteRenderer(
     }
 
     /**
-     * Draws the uploaded sprites into the current [pass] as seen through [camera]: one draw call
-     * per run of sprites that share a texture, each with that texture bound with the sampler for
-     * its [Texture.filter]. The camera's viewport
-     * should match the pass's target size in pixels. Draws nothing if the last [extract] found no
-     * sprites.
-     */
-    public fun draw(commands: CommandBuffer, pass: RenderPass, camera: Camera) {
-        draw(commands, pass, camera, camera.viewportWidth.toFloat(), camera.viewportHeight.toFloat())
-    }
-
-    /**
-     * Draws the uploaded records as the public [draw] does: the [DrawSpace.WORLD] runs through
-     * [camera], then the [DrawSpace.SCREEN] runs through a projection that maps
-     * [screenWidth] by [screenHeight] points onto the target, origin top-left. Returns the number
-     * of draw calls issued, one per run.
+     * Draws the uploaded records into the current [pass]: one draw call per run of sprites that
+     * share a texture, each with that texture bound with the sampler for its [Texture.filter].
+     * The [DrawSpace.WORLD] runs go through [camera], then the [DrawSpace.SCREEN] runs through a
+     * projection that maps [screenWidth] by [screenHeight] points onto the target, origin
+     * top-left. Both projections end in clip space, so the pass's viewport, the whole target in
+     * pixels, turns points into pixels. Returns the number of draw calls issued, one per run, and
+     * draws nothing if the last [extract] found no sprites.
      */
     internal fun draw(commands: CommandBuffer, pass: RenderPass, camera: Camera, screenWidth: Float, screenHeight: Float): Int {
         if (spriteCount == 0) return 0

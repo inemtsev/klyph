@@ -3,6 +3,7 @@
 package klyph.audio
 
 import klyph.platform.AudioRenderer
+import klyph.platform.KlyphPlatformApi
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.math.roundToLong
 import kotlin.time.Duration
@@ -20,7 +21,7 @@ import kotlin.time.Duration
  * changes at that point too. If the queue is full, the command is dropped and counted in
  * [stats]. Operations on a voice that has ended, was replaced, or is [Voice.NONE] do nothing.
  *
- * When there is no audio device, or `AudioConfig.enabled` is `false`, [isEnabled] is `false`:
+ * When there is no audio device, or `AudioConfig.output` is [AudioOutput.NONE], [isEnabled] is `false`:
  * every call does nothing, [play] returns [Voice.NONE] and [isPlaying] returns `false`, so a game
  * runs the same without sound.
  *
@@ -42,7 +43,8 @@ public class Audio internal constructor(
 ) : AutoCloseable {
     /**
      * Creates a mixer with the voices, rate and block size of [config], attached to no device.
-     * [isEnabled] starts as [AudioConfig.enabled]. Mix it by calling [renderer], call [endFrame]
+     * [isEnabled] starts `true` unless [AudioConfig.output] is [AudioOutput.NONE]. Mix it by
+     * calling [renderer], call [endFrame]
      * from time to time to refresh [stats] and close finished music streams, and [close] it when
      * done.
      *
@@ -64,9 +66,9 @@ public class Audio internal constructor(
     private val generation = IntArray(maxVoices)
     private val startedAt = LongArray(maxVoices)
     private var playCount = 0L
-    private var stolenVoices = 0L
-    private var droppedCommands = 0L
-    private var closedStreams = 0L
+    private var stolenVoiceCount = 0L
+    private var droppedCommandCount = 0L
+    private var closedStreamCount = 0L
 
     /** Music decoders opened and not yet closed, wherever they are: in the queue, the mixer or the retired ring. */
     internal var openStreams: Int = 0
@@ -77,7 +79,7 @@ public class Audio internal constructor(
      * engine could not open an audio device for `App.audio` or its mixer failed, and after
      * [close]; then every call does nothing.
      */
-    public var isEnabled: Boolean = config.enabled
+    public var isEnabled: Boolean = config.output != AudioOutput.NONE
         internal set
 
     /**
@@ -127,10 +129,13 @@ public class Audio internal constructor(
      *
      * The engine hands it to the audio device, which calls it on its own thread; do not call it on
      * `App.audio`. On an instance from the public constructor, call it yourself to mix offline, in
-     * a test, or into a file, from one thread at a time. It never allocates.
+     * a test, or into a file, from one thread at a time. It never allocates. Like [AudioRenderer],
+     * it is engine plumbing behind [KlyphPlatformApi]: a game that plays through `App.audio` never
+     * calls it.
      *
      * @sample samples.audio.Audios.renderer
      */
+    @KlyphPlatformApi
     public val renderer: AudioRenderer = AudioRenderer { output, frames -> mixer.render(output, frames) }
 
     /**
@@ -143,14 +148,15 @@ public class Audio internal constructor(
     /**
      * Starts [sound] on a voice and returns the handle that controls it.
      *
-     * [volume] is from 0 to 1 and [pan] from -1 (left) through 0 (centre) to 1 (right); values
+     * [volume] is from 0 to 1 and [pan] from -1 (left) through 0 (center) to 1 (right); values
      * outside are clamped. A mono sound is panned so its loudness stays even across the field; a
      * stereo sound is balanced, so pan 0 plays both channels as recorded. [pitch] scales the
      * playback speed and so the pitch: 2 plays an octave up in half the time. It must be between
      * 0.25 and 4. With [PlaybackMode.LOOP] the sound repeats until [stop] or [stopAll].
      *
      * When every voice is busy, the sound replaces the one that started earliest. Returns
-     * [Voice.NONE] when audio is disabled or the command queue is full.
+     * [Voice.NONE] when audio is disabled or the command queue is full. Pass the `Float` parameters
+     * by name.
      *
      * @throws IllegalArgumentException if [pitch] is outside 0.25..4, or [volume] or [pan] is NaN.
      *
@@ -171,7 +177,7 @@ public class Audio internal constructor(
         val slot = if (free >= 0) free else oldestSlot()
         val next = Voice.nextGeneration(generation[slot])
         if (!send(Mixer.PLAY, slot, next, mode.ordinal, clampedVolume, pitch, clampedPan, sound)) return Voice.NONE
-        if (free < 0) stolenVoices++
+        if (free < 0) stolenVoiceCount++
         generation[slot] = next
         startedAt[slot] = ++playCount
         return Voice.of(slot, next)
@@ -253,17 +259,19 @@ public class Audio internal constructor(
      * The engine calls it on `App.audio` once a frame, before `Phase.INPUT`. On an instance from
      * the public constructor, call it yourself between calls to [renderer], such as after each
      * block.
+     *
+     * @sample samples.audio.Audios.endFrame
      */
     public fun endFrame() {
         closeRetired()
         val active = activeVoiceCount()
         val previous = stats
-        if (previous.activeVoices != active ||
-            previous.stolenVoices != stolenVoices ||
-            previous.droppedCommands != droppedCommands ||
-            previous.closedStreams != closedStreams
+        if (previous.activeVoiceCount != active ||
+            previous.stolenVoiceCount != stolenVoiceCount ||
+            previous.droppedCommandCount != droppedCommandCount ||
+            previous.closedStreamCount != closedStreamCount
         ) {
-            stats = AudioStats(active, stolenVoices, droppedCommands, closedStreams)
+            stats = AudioStats(active, stolenVoiceCount, droppedCommandCount, closedStreamCount)
         }
     }
 
@@ -285,7 +293,7 @@ public class Audio internal constructor(
         while (true) {
             val stream = mixer.retired.pollOrNull() ?: return
             openStreams--
-            closedStreams++
+            closedStreamCount++
             stream.close()
         }
     }
@@ -309,12 +317,12 @@ public class Audio internal constructor(
         reference: Any? = null,
     ): Boolean {
         if (commands.push(kind, int0, int1, int2, float0, float1, float2, reference)) return true
-        droppedCommands++
+        droppedCommandCount++
         return false
     }
 
     internal fun countDropped() {
-        droppedCommands++
+        droppedCommandCount++
     }
 
     /**

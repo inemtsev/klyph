@@ -16,8 +16,9 @@ import kotlin.math.sin
  * children. A child gets a [WorldTransform] the first time it is seen with a parent and a
  * [Transform], and loses it once it has no [Transform]; [World.removeParent] removes it at once.
  *
- * The engine calls this once per frame after the late update stage and before rendering, so
- * users normally never call it. The cost grows with the number of entities in hierarchies, not
+ * The engine calls this twice per frame, after the fixed update stage and before collision
+ * detection, and again after the late update stage and before rendering, so users normally
+ * never call it. The cost grows with the number of entities in hierarchies, not
  * with the number of entities, so a world without parents costs next to nothing. Allocates
  * nothing once every child has its [WorldTransform].
  *

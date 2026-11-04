@@ -17,6 +17,7 @@ public value class Voice internal constructor(internal val packed: Int) {
 
     override fun toString(): String = if (this == NONE) "Voice.NONE" else "Voice($slot:$generation)"
 
+    /** Holds the handle that refers to no playback. */
     public companion object {
         /**
          * The handle that refers to no playback. [Audio.play] returns it when audio is disabled or

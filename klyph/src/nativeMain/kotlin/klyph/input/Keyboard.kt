@@ -64,3 +64,34 @@ public class Keyboard internal constructor() {
     /** Returns the array index of [scancode], or -1 for [Scancode.UNKNOWN], which is never tracked. */
     private fun indexOf(scancode: Scancode): Int = if (scancode == Scancode.UNKNOWN) -1 else scancode.code.toInt()
 }
+
+/**
+ * Returns -1 while only the key at [negative] is down, 1 while only the key at [positive] is
+ * down, and 0 while both or neither are, for movement on a pair of keys such as A and D.
+ *
+ * @sample samples.guide.InputGuide.steer
+ */
+public fun Keyboard.axis(negative: Scancode, positive: Scancode): Float {
+    var value = 0f
+    if (isDown(negative)) value -= 1f
+    if (isDown(positive)) value += 1f
+    return value
+}
+
+/**
+ * Returns -1 while only the key that types [negative] under the current layout is down, 1 while
+ * only the key that types [positive] is down, and 0 while both or neither are, for a pair of keys
+ * the player finds by their labels, such as Q and E.
+ *
+ * Each key is found through [KeyCode.toScancode] on every call, as [Keyboard.isDown] does, so the
+ * answer follows a layout switch at once. A key code that no key on the layout produces is never
+ * down.
+ *
+ * @sample samples.guide.InputGuide.steer
+ */
+public fun Keyboard.axis(negative: KeyCode, positive: KeyCode): Float {
+    var value = 0f
+    if (isDown(negative)) value -= 1f
+    if (isDown(positive)) value += 1f
+    return value
+}

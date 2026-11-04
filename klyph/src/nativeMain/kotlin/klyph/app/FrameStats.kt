@@ -33,7 +33,7 @@ public class FrameStats internal constructor() {
         private set
 
     /** Returns how many [Phase.FIXED_UPDATE] steps ran in the last frame. */
-    public var fixedSteps: Int = 0
+    public var fixedStepCount: Int = 0
         private set
 
     /**
@@ -55,11 +55,11 @@ public class FrameStats internal constructor() {
      * draw order that share a texture and a `DrawSpace`, so it grows with the number of distinct
      * layer and texture pairs, not with the number of sprites.
      */
-    public var drawCalls: Int = 0
+    public var drawCallCount: Int = 0
         private set
 
     /** Returns how many overlapping pairs `App.collisions` found in the last frame. */
-    public var collisionPairs: Int = 0
+    public var collisionPairCount: Int = 0
         private set
 
     /**
@@ -127,23 +127,23 @@ public class FrameStats internal constructor() {
     }
 
     /** Ends the frame in progress: makes its numbers the published ones and clears them for the next frame. */
-    internal fun publish(totalNanos: Long, fixedSteps: Int, spriteCount: Int, drawCalls: Int, collisionPairs: Int, particleCount: Int) {
+    internal fun publish(totalNanos: Long, fixedStepCount: Int, spriteCount: Int, drawCallCount: Int, collisionPairCount: Int, particleCount: Int) {
         val startup = published[Phase.STARTUP.ordinal]
         pending.copyInto(published)
         published[Phase.STARTUP.ordinal] = startup
         pending.fill(0L)
         total = totalNanos.nanoseconds
-        this.fixedSteps = fixedSteps
+        this.fixedStepCount = fixedStepCount
         this.spriteCount = spriteCount
-        this.drawCalls = drawCalls
-        this.collisionPairs = collisionPairs
+        this.drawCallCount = drawCallCount
+        this.collisionPairCount = collisionPairCount
         this.particleCount = particleCount
     }
 
     /**
      * Returns the last frame in one line, as
-     * `FrameStats(total=2.512ms, input=0.004ms, ..., fixedSteps=1, spriteCount=100000, drawCalls=1,
-     * collisionPairs=12, entityCount=100000, particleAdvance=0.000ms, particleCount=0)`, with durations
+     * `FrameStats(total=2.512ms, input=0.004ms, ..., fixedStepCount=1, spriteCount=100000, drawCallCount=1,
+     * collisionPairCount=12, entityCount=100000, particleAdvance=0.000ms, particleCount=0)`, with durations
      * in milliseconds. The format may change.
      */
     override fun toString(): String =
@@ -153,8 +153,8 @@ public class FrameStats internal constructor() {
             "transformPropagation=${ms(transformPropagation)}, " +
             "render=${ms(durationOf(Phase.RENDER))}, targetAcquisition=${ms(targetAcquisition)}, " +
             "spriteExtraction=${ms(spriteExtraction)}, spriteRecording=${ms(spriteRecording)}, " +
-            "gpuWait=${ms(gpuWait)}, fixedSteps=$fixedSteps, spriteCount=$spriteCount, drawCalls=$drawCalls, " +
-            "collisionPairs=$collisionPairs, entityCount=$entityCount, " +
+            "gpuWait=${ms(gpuWait)}, fixedStepCount=$fixedStepCount, spriteCount=$spriteCount, drawCallCount=$drawCallCount, " +
+            "collisionPairCount=$collisionPairCount, entityCount=$entityCount, " +
             "particleAdvance=${ms(particleAdvance)}, particleCount=$particleCount)"
 
     private fun ms(duration: Duration): String = duration.toString(DurationUnit.MILLISECONDS, 3)

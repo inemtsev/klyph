@@ -49,6 +49,7 @@ import sdl3.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
 import sdl3.SDL_GPU_TEXTUREUSAGE_SAMPLER
 import sdl3.SDL_MapGPUTransferBuffer
 import sdl3.SDL_ReleaseGPUBuffer
+import sdl3.SDL_ReleaseGPUFence
 import sdl3.SDL_ReleaseGPUGraphicsPipeline
 import sdl3.SDL_ReleaseGPUSampler
 import sdl3.SDL_ReleaseGPUShader
@@ -62,6 +63,7 @@ import sdl3.SDL_UnmapGPUTransferBuffer
  * A texture owned by the GPU. Swapchain textures are valid only for the frame they were acquired
  * in; created textures live until [GpuDevice.release].
  */
+@KlyphPlatformApi
 public value class GpuTexture internal constructor(internal val handle: CPointer<SDL_GPUTexture>) {
     override fun toString(): String = "GpuTexture"
 }
@@ -69,8 +71,12 @@ public value class GpuTexture internal constructor(internal val handle: CPointer
 /**
  * What a [GpuBuffer] is bound as.
  */
+@KlyphPlatformApi
 public enum class BufferUsage(internal val bits: UInt) {
+    /** Holds vertex data. */
     VERTEX(SDL_GPU_BUFFERUSAGE_VERTEX),
+
+    /** Holds index data. */
     INDEX(SDL_GPU_BUFFERUSAGE_INDEX),
 
     /** Read by shaders as a storage buffer; the vertex-pulling path uses this. */
@@ -80,6 +86,7 @@ public enum class BufferUsage(internal val bits: UInt) {
 /**
  * A buffer in GPU memory. Fill it through a [TransferBuffer] and a [CopyPass].
  */
+@KlyphPlatformApi
 public value class GpuBuffer internal constructor(internal val handle: CPointer<SDL_GPUBuffer>) {
     override fun toString(): String = "GpuBuffer"
 }
@@ -87,6 +94,7 @@ public value class GpuBuffer internal constructor(internal val handle: CPointer<
 /**
  * CPU-visible staging memory used to move data to the GPU. Map it, write, unmap, then upload in a [CopyPass].
  */
+@KlyphPlatformApi
 public value class TransferBuffer internal constructor(internal val handle: CPointer<SDL_GPUTransferBuffer>) {
     override fun toString(): String = "TransferBuffer"
 }
@@ -95,12 +103,13 @@ public value class TransferBuffer internal constructor(internal val handle: CPoi
  * Mapped transfer-buffer memory, addressed as 32-bit floats. Valid until [GpuDevice.unmap].
  * The setters inline to plain stores, so filling a buffer allocates nothing.
  */
+@KlyphPlatformApi
 public value class MappedFloats @PublishedApi internal constructor(
     @PublishedApi internal val address: CPointer<FloatVar>,
 ) {
     /** Writes [value] at float [index]. No bounds check: the caller owns the buffer size. */
     @Suppress("NOTHING_TO_INLINE")
-    public inline fun set(index: Int, value: Float) {
+    public inline operator fun set(index: Int, value: Float) {
         address[index] = value
     }
 
@@ -121,6 +130,7 @@ public enum class SamplerFilter(internal val raw: SDL_GPUFilter) {
 /**
  * Sampling state for textures: filtering and clamped addressing.
  */
+@KlyphPlatformApi
 public value class Sampler internal constructor(internal val handle: CPointer<SDL_GPUSampler>) {
     override fun toString(): String = "Sampler"
 }
@@ -128,14 +138,19 @@ public value class Sampler internal constructor(internal val handle: CPointer<SD
 /**
  * Pipeline stage a [GpuShader] runs in.
  */
+@KlyphPlatformApi
 public enum class ShaderStage(internal val raw: SDL_GPUShaderStage) {
+    /** Runs once per vertex. */
     VERTEX(SDL_GPUShaderStage.SDL_GPU_SHADERSTAGE_VERTEX),
+
+    /** Runs once per covered pixel. */
     FRAGMENT(SDL_GPUShaderStage.SDL_GPU_SHADERSTAGE_FRAGMENT),
 }
 
 /**
  * A compiled shader stage.
  */
+@KlyphPlatformApi
 public value class GpuShader internal constructor(internal val handle: CPointer<SDL_GPUShader>) {
     override fun toString(): String = "GpuShader"
 }
@@ -143,6 +158,7 @@ public value class GpuShader internal constructor(internal val handle: CPointer<
 /**
  * How a pipeline combines its output with what is already in the color target.
  */
+@KlyphPlatformApi
 public enum class BlendMode {
     /** Output replaces the target. */
     NONE,
@@ -161,6 +177,7 @@ public enum class BlendMode {
  * A graphics pipeline: shaders plus fixed-function state, for triangle lists without vertex
  * buffers. Vertex data is pulled from storage buffers by vertex index.
  */
+@KlyphPlatformApi
 public value class GraphicsPipeline internal constructor(internal val handle: CPointer<SDL_GPUGraphicsPipeline>) {
     override fun toString(): String = "GraphicsPipeline"
 }
@@ -171,6 +188,7 @@ public value class GraphicsPipeline internal constructor(internal val handle: CP
  * @throws IllegalArgumentException if [sizeInBytes] is not positive.
  * @throws SdlException if the GPU cannot allocate it.
  */
+@KlyphPlatformApi
 public fun GpuDevice.createBuffer(usage: BufferUsage, sizeInBytes: Int): GpuBuffer = memScoped {
     require(sizeInBytes > 0) { "Buffer size $sizeInBytes is not positive." }
     val info = alloc<SDL_GPUBufferCreateInfo>().zeroed()
@@ -180,6 +198,7 @@ public fun GpuDevice.createBuffer(usage: BufferUsage, sizeInBytes: Int): GpuBuff
 }
 
 /** Frees [buffer]. Work already submitted may still read it; SDL defers the actual release. */
+@KlyphPlatformApi
 public fun GpuDevice.release(buffer: GpuBuffer) {
     SDL_ReleaseGPUBuffer(handle, buffer.handle)
 }
@@ -190,6 +209,7 @@ public fun GpuDevice.release(buffer: GpuBuffer) {
  * @throws IllegalArgumentException if [sizeInBytes] is not positive.
  * @throws SdlException if it cannot be allocated.
  */
+@KlyphPlatformApi
 public fun GpuDevice.createTransferBuffer(sizeInBytes: Int): TransferBuffer = memScoped {
     require(sizeInBytes > 0) { "Transfer buffer size $sizeInBytes is not positive." }
     val info = alloc<SDL_GPUTransferBufferCreateInfo>().zeroed()
@@ -199,6 +219,7 @@ public fun GpuDevice.createTransferBuffer(sizeInBytes: Int): TransferBuffer = me
 }
 
 /** Frees [buffer]. */
+@KlyphPlatformApi
 public fun GpuDevice.release(buffer: TransferBuffer) {
     SDL_ReleaseGPUTransferBuffer(handle, buffer.handle)
 }
@@ -207,6 +228,7 @@ public fun GpuDevice.release(buffer: TransferBuffer) {
  * Whether a map or upload may hand out fresh memory when the previous contents are still in use
  * by the GPU. Cycling avoids a stall but discards the old contents.
  */
+@KlyphPlatformApi
 public enum class Cycle {
     /** Reuse the same memory. Correct only when the GPU is done with it. */
     KEEP,
@@ -220,6 +242,7 @@ public enum class Cycle {
  *
  * @throws SdlException if mapping fails.
  */
+@KlyphPlatformApi
 public fun GpuDevice.map(buffer: TransferBuffer, cycle: Cycle): MappedFloats {
     val address = SDL_MapGPUTransferBuffer(handle, buffer.handle, cycle == Cycle.CYCLE)
         ?: sdlFailure("SDL_MapGPUTransferBuffer")
@@ -227,6 +250,7 @@ public fun GpuDevice.map(buffer: TransferBuffer, cycle: Cycle): MappedFloats {
 }
 
 /** Ends a mapping started with [map]. The [MappedFloats] handed out is invalid afterwards. */
+@KlyphPlatformApi
 public fun GpuDevice.unmap(buffer: TransferBuffer) {
     SDL_UnmapGPUTransferBuffer(handle, buffer.handle)
 }
@@ -237,6 +261,7 @@ public fun GpuDevice.unmap(buffer: TransferBuffer) {
  *
  * @throws SdlException if mapping fails.
  */
+@KlyphPlatformApi
 public fun GpuDevice.write(buffer: TransferBuffer, bytes: ByteArray, offset: Int = 0) {
     val address = SDL_MapGPUTransferBuffer(handle, buffer.handle, false)
         ?: sdlFailure("SDL_MapGPUTransferBuffer")
@@ -253,6 +278,7 @@ public fun GpuDevice.write(buffer: TransferBuffer, bytes: ByteArray, offset: Int
 /**
  * What a created texture is used for.
  */
+@KlyphPlatformApi
 public enum class TextureUsage(internal val bits: UInt) {
     /** Read by shaders through a sampler. */
     SAMPLED(SDL_GPU_TEXTUREUSAGE_SAMPLER),
@@ -267,6 +293,7 @@ public enum class TextureUsage(internal val bits: UInt) {
  * @throws IllegalArgumentException if a dimension is not positive.
  * @throws SdlException if the texture cannot be created.
  */
+@KlyphPlatformApi
 public fun GpuDevice.createTexture(
     width: Int,
     height: Int,
@@ -297,6 +324,7 @@ public fun GpuDevice.createTexture(
  * @throws SdlException if the texture or its staging memory cannot be created, or the upload
  *   cannot be submitted.
  */
+@KlyphPlatformApi
 public fun GpuDevice.createTexture(image: Image): GpuTexture {
     val texture = createTexture(image.width, image.height)
     try {
@@ -320,6 +348,7 @@ public fun GpuDevice.createTexture(image: Image): GpuTexture {
 }
 
 /** Frees [texture]. Never call this on a swapchain texture. */
+@KlyphPlatformApi
 public fun GpuDevice.release(texture: GpuTexture) {
     SDL_ReleaseGPUTexture(handle, texture.handle)
 }
@@ -330,6 +359,7 @@ public fun GpuDevice.release(texture: GpuTexture) {
  *
  * @throws SdlException if the sampler cannot be created.
  */
+@KlyphPlatformApi
 public fun GpuDevice.createSampler(filter: SamplerFilter): Sampler = memScoped {
     val info = alloc<SDL_GPUSamplerCreateInfo>().zeroed()
     info.min_filter = filter.raw
@@ -342,17 +372,19 @@ public fun GpuDevice.createSampler(filter: SamplerFilter): Sampler = memScoped {
 }
 
 /** Frees [sampler]. */
+@KlyphPlatformApi
 public fun GpuDevice.release(sampler: Sampler) {
     SDL_ReleaseGPUSampler(handle, sampler.handle)
 }
 
 /**
  * Creates a shader for [stage] from [code] in [format]. The resource counts must match what the
- * shader declares, or binding at draw time fails.
+ * shader declares, or binding at draw time fails. Pass the `Int` counts by name.
  *
  * @throws IllegalArgumentException if [code] is empty or a count is negative.
  * @throws SdlException if the backend rejects the shader.
  */
+@KlyphPlatformApi
 public fun GpuDevice.createShader(
     code: ByteArray,
     format: ShaderFormat,
@@ -365,7 +397,7 @@ public fun GpuDevice.createShader(
 ): GpuShader = memScoped {
     require(code.isNotEmpty()) { "Shader code is empty." }
     require(samplers >= 0 && storageTextures >= 0 && storageBuffers >= 0 && uniformBuffers >= 0) {
-        "Shader resource counts must not be negative."
+        "Shader resource counts $samplers, $storageTextures, $storageBuffers, $uniformBuffers include a negative value."
     }
     val info = alloc<SDL_GPUShaderCreateInfo>().zeroed()
     info.entrypoint = entryPoint.cstr.ptr
@@ -383,6 +415,7 @@ public fun GpuDevice.createShader(
 }
 
 /** Frees [shader]. Pipelines built from it keep working. */
+@KlyphPlatformApi
 public fun GpuDevice.release(shader: GpuShader) {
     SDL_ReleaseGPUShader(handle, shader.handle)
 }
@@ -394,6 +427,7 @@ public fun GpuDevice.release(shader: GpuShader) {
  *
  * @throws SdlException if the backend rejects the pipeline.
  */
+@KlyphPlatformApi
 public fun GpuDevice.createGraphicsPipeline(
     vertex: GpuShader,
     fragment: GpuShader,
@@ -427,8 +461,15 @@ public fun GpuDevice.createGraphicsPipeline(
 }
 
 /** Frees [pipeline]. */
+@KlyphPlatformApi
 public fun GpuDevice.release(pipeline: GraphicsPipeline) {
     SDL_ReleaseGPUGraphicsPipeline(handle, pipeline.handle)
+}
+
+/** Frees [fence]. */
+@KlyphPlatformApi
+public fun GpuDevice.release(fence: GpuFence) {
+    SDL_ReleaseGPUFence(handle, fence.handle)
 }
 
 /** Zero-fills a freshly allocated struct, since native allocations start with garbage. */
@@ -442,14 +483,20 @@ internal inline fun <reified T : kotlinx.cinterop.CStructVar> T.zeroed(): T {
  * Direct3D 12, with the resource counts SDL needs. Produced by the `compileShaders` build task
  * from HLSL; create the backend's shader with [GpuDevice.createShader].
  */
+@KlyphPlatformApi
 public class CompiledShader(
+    /** The pipeline stage the shader runs in. */
     public val stage: ShaderStage,
     private val msl: String,
     private val spirvBase64: String,
     private val dxilBase64: String,
+    /** Number of texture samplers the shader reads. */
     public val samplers: Int,
+    /** Number of read-only storage textures the shader reads. */
     public val storageTextures: Int,
+    /** Number of read-only storage buffers the shader reads. */
     public val storageBuffers: Int,
+    /** Number of uniform buffers the shader reads. */
     public val uniformBuffers: Int,
 ) {
     /** Returns the code for [format], and the entry point name that code uses. */
@@ -470,6 +517,7 @@ public class CompiledShader(
  *
  * @throws SdlException if the backend rejects the shader.
  */
+@KlyphPlatformApi
 public fun GpuDevice.createShader(shader: CompiledShader): GpuShader {
     val format = shaderFormats.first()
     val (code, entryPoint) = shader.code(format)

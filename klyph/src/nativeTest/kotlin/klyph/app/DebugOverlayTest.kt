@@ -30,7 +30,7 @@ class DebugOverlayTest {
         stats.add(FrameStats.EXTRACTION, 400_000)
         stats.add(FrameStats.RECORDING, 123_456)
         stats.entityCount = 1234
-        stats.publish(totalNanos = 16_000_000, fixedSteps = 2, spriteCount = 100_000, drawCalls = 3, collisionPairs = 0, particleCount = 0)
+        stats.publish(totalNanos = 16_000_000, fixedStepCount = 2, spriteCount = 100_000, drawCallCount = 3, collisionPairCount = 0, particleCount = 0)
         return stats
     }
 
@@ -86,8 +86,8 @@ class DebugOverlayTest {
         // The space glyph draws nothing, so every other character of both columns is one quad.
         val glyphs = (overlay.timings.toString() + overlay.counts).count { it != ' ' && it != '\n' }
         assertEquals(1 + glyphs + DebugOverlay.FRAME_COUNT + 1, queued)
-        assertEquals(queued, canvas.count)
-        for (i in 0 until canvas.count) {
+        assertEquals(queued, canvas.quadCount)
+        for (i in 0 until canvas.quadCount) {
             assertEquals(DebugOverlay.LAYER, canvas.quads.layers[i])
             assertEquals(DrawSpace.SCREEN, canvas.quads.spaces[i])
         }
@@ -106,7 +106,7 @@ class DebugOverlayTest {
         assertEquals(DebugOverlay.barHeight(20_000_000), recordOf(canvas, lastBar, 5))
         assertEquals(3f, recordOf(canvas, lastBar, 4))
         // The line at the fixed step spans the graph, one point high.
-        val line = canvas.count - 1
+        val line = canvas.quadCount - 1
         assertEquals(channelsOf(DebugOverlay.LINE_COLOR), colorOf(canvas, line))
         assertEquals(180f, recordOf(canvas, line, 4))
         assertEquals(1f, recordOf(canvas, line, 5))

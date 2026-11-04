@@ -69,7 +69,7 @@ class EventsTest {
             "MouseButtonDown(button=MouseButton(0), x=1.0, y=2.0, clicks=2)",
             PlatformEvent.MouseButtonDown(MouseButton.LEFT, x = 1f, y = 2f, clicks = 2).toString(),
         )
-        assertEquals("MouseWheel(dx=0.0, dy=1.0)", PlatformEvent.MouseWheel(dx = 0f, dy = 1f).toString())
+        assertEquals("MouseWheelScrolled(dx=0.0, dy=1.0)", PlatformEvent.MouseWheelScrolled(dx = 0f, dy = 1f).toString())
         assertEquals(
             "GamepadConnected(id=GamepadId(7), name=Pad)",
             PlatformEvent.GamepadConnected(GamepadId(7u), "Pad").toString(),

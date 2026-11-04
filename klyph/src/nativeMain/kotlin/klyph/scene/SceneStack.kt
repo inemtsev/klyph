@@ -77,8 +77,8 @@ public class SceneStack internal constructor() {
     /** Number of scenes on the stack. */
     public val size: Int get() = scenes.size
 
-    /** `true` if no scene is on the stack. */
-    public val isEmpty: Boolean get() = scenes.isEmpty()
+    /** Returns `true` if no scene is on the stack. */
+    public fun isEmpty(): Boolean = scenes.isEmpty()
 
     /** Returns `true` if [scene] is on the stack, on top or below. */
     public operator fun contains(scene: Scene): Boolean = scene in scenes
@@ -271,7 +271,7 @@ public class SceneStack internal constructor() {
     }
 
     private fun flush(commands: Commands) {
-        if (!commands.isEmpty) commands.apply()
+        if (!commands.isEmpty()) commands.apply()
     }
 
     override fun toString(): String =

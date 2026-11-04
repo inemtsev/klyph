@@ -1,5 +1,6 @@
 package klyph.platform
 
+import sdl3.SDL_RemovePath
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -87,6 +88,57 @@ class ImageTest {
         assertFailsWith<ImageException> { Image.decode(byteArrayOf()) }
     }
 
+    @Test
+    fun saveWritesPngThatDecodesToTheSameImage() {
+        val image = Image(5, 3)
+        image.fill(Color(0x10203040u))
+        image[0, 0] = Color(0xFF0000FFu)
+        image[4, 2] = Color(0x00000000u)
+        image[2, 1] = Color(0x12345678u)
+        val path = Files.basePath + "klyph-image-test.png"
+        try {
+            image.save(path)
+            val decoded = Image.decode(Files.readBytes(path))
+            assertEquals(image.width, decoded.width)
+            assertEquals(image.height, decoded.height)
+            assertEquals(image.pixels.toList(), decoded.pixels.toList())
+        } finally {
+            SDL_RemovePath(path)
+        }
+    }
+
+    @Test
+    fun encodePngStartsWithSignature() {
+        val png = Image(2, 2).encodePng()
+        assertEquals(listOf<Byte>(-119, 80, 78, 71, 13, 10, 26, 10), png.take(8))
+    }
+
+    @Test
+    fun saveCreatesMissingDirectory() {
+        val directory = Files.basePath + "klyph-image-test-dir"
+        val path = "$directory/image.png"
+        SDL_RemovePath(path)
+        SDL_RemovePath(directory)
+        try {
+            Image(1, 1).save(path)
+            assertEquals(1, Image.decode(Files.readBytes(path)).width)
+        } finally {
+            SDL_RemovePath(path)
+            SDL_RemovePath(directory)
+        }
+    }
+
+    @Test
+    fun saveThrowsWhenParentIsAFile() {
+        val file = Files.basePath + "klyph-image-test-file"
+        try {
+            Files.writeBytes(file, byteArrayOf(1))
+            assertFailsWith<FileException> { Image(1, 1).save("$file/image.png") }
+        } finally {
+            SDL_RemovePath(file)
+        }
+    }
+
     private companion object {
         /** A 2x2 RGBA PNG: red, green on the top row; blue, half-transparent white below. */
         val TWO_BY_TWO_PNG = byteArrayOf(
@@ -95,5 +147,51 @@ class ImageTest {
             -64, -16, 31, 12, -127, 52, 8, 52, 0, 0, 73, 73, 9, 120, -100, 81, 23, -110, 0, 0, 0,
             0, 73, 69, 78, 68, -82, 66, 96, -126,
         )
+    }
+
+    @Test
+    fun fillCircleIsSymmetricAndSoftAtTheEdge() {
+        val image = Image(16, 16)
+        image.fillCircle(centerX = 8f, centerY = 8f, radius = 6.5f, color = Color.WHITE)
+        for (y in 0 until 16) {
+            for (x in 0 until 16) {
+                val pixel = image[x, y]
+                assertEquals(pixel, image[15 - x, y], "Mirrored left to right at ($x, $y).")
+                assertEquals(pixel, image[x, 15 - y], "Mirrored top to bottom at ($x, $y).")
+                assertEquals(pixel, image[y, x], "Mirrored across the diagonal at ($x, $y).")
+            }
+        }
+        assertEquals(Color.WHITE, image[8, 8], "The middle is fully covered.")
+        assertEquals(Color(0x00000000u), image[0, 0], "The corner is outside.")
+        val edge = image[13, 8]
+        // Pixel 13's centre is 5.5 from the middle, a pixel inside the edge: fully covered.
+        assertEquals(Color.WHITE, edge)
+        val rim = image[14, 8]
+        // Pixel 14's centre lies on the edge, so it is half covered, and on a transparent image keeps white.
+        assertEquals(0xFFFFFF00u, rim.rgba and 0xFFFFFF00u)
+        assertTrue(rim.alpha in 0.45f..0.55f, "Rim alpha ${rim.alpha} is not about half.")
+    }
+
+    @Test
+    fun fillCircleBlendsItsEdgeOverWhatIsThere() {
+        val image = Image(8, 8)
+        image.fill(Color(0x000000FFu))
+        image.fillCircle(centerX = 4f, centerY = 4f, radius = 3.5f, color = Color(0xFF0000FFu))
+        assertEquals(Color(0xFF0000FFu), image[4, 4])
+        val rim = image[7, 4]
+        // Half covered: half red over opaque black, still opaque.
+        assertEquals(0xFFu, rim.rgba and 0xFFu)
+        assertTrue(rim.red in 0.45f..0.55f, "Rim red ${rim.red} is not about half.")
+        assertEquals(Color(0x000000FFu), image[0, 0])
+    }
+
+    @Test
+    fun fillCircleClipsToTheImageAndRejectsBadRadii() {
+        val image = Image(4, 4)
+        image.fillCircle(centerX = 0f, centerY = 0f, radius = 10f, color = Color.WHITE)
+        assertEquals(Color.WHITE, image[3, 3])
+        image.fillCircle(centerX = 100f, centerY = 100f, radius = 0f, color = Color.WHITE)
+        assertFailsWith<IllegalArgumentException> { image.fillCircle(centerX = 0f, centerY = 0f, radius = -1f, color = Color.WHITE) }
+        assertFailsWith<IllegalArgumentException> { image.fillCircle(centerX = Float.NaN, centerY = 0f, radius = 1f, color = Color.WHITE) }
     }
 }

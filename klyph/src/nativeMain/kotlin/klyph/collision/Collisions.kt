@@ -13,7 +13,7 @@ import kotlin.math.max
 
 /**
  * Finds overlapping [Collider]s: [detect] publishes an [Overlap] event for every overlapping pair,
- * and [overlapsTo], [overlaps] and [firstOverlapOrNull] find the colliders a shape overlaps.
+ * and [overlappingTo], [overlapping] and [firstOverlappingOrNull] find the colliders a shape overlaps.
  *
  * `App.collisions` is the engine's instance: the engine calls [detect] on it once per frame,
  * after the last fixed update step and a transform propagation, so parented colliders are where
@@ -170,17 +170,16 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
      * Adds to [destination] every entity whose collider overlaps [shape] centered on ([x], [y])
      * and is on a layer in [mask], in ascending order of [Entity.index], and returns
      * [destination]. The shape is in world units and is not scaled. Overlap is tested as in
-     * [detect], so a collider that only touches the shape is not found. Pass [x] and [y] by name,
-     * since both are `Float`.
+     * [detect], so a collider that only touches the shape is not found.
      *
      * The query reads the snapshot of the last [detect], as the class description explains.
      * It allocates nothing beyond what [destination] needs to grow.
      *
      * @throws IllegalArgumentException if [x] or [y] is not finite.
      *
-     * @sample samples.collision.CollisionQueries.overlapsTo
+     * @sample samples.collision.CollisionQueries.overlappingTo
      */
-    public fun <C : MutableCollection<in Entity>> overlapsTo(
+    public fun <C : MutableCollection<in Entity>> overlappingTo(
         destination: C,
         shape: Shape,
         x: Float,
@@ -196,16 +195,15 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
     /**
      * Returns the entity with the smallest [Entity.index] whose collider overlaps [shape]
      * centered on ([x], [y]) and is on a layer in [mask], or `null` if there is none. It finds
-     * the first entity [overlaps] would return, without building a list. Pass [x] and [y] by
-     * name, since both are `Float`.
+     * the first entity [overlapping] would return, without building a list.
      *
      * The query reads the snapshot of the last [detect], as the class description explains.
      *
      * @throws IllegalArgumentException if [x] or [y] is not finite.
      *
-     * @sample samples.collision.CollisionQueries.firstOverlapOrNull
+     * @sample samples.collision.CollisionQueries.firstOverlappingOrNull
      */
-    public fun firstOverlapOrNull(
+    public fun firstOverlappingOrNull(
         shape: Shape,
         x: Float,
         y: Float,
@@ -647,19 +645,19 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
 /**
  * Returns every entity whose collider overlaps [shape] centered on ([x], [y]) and is on a layer
  * in [mask], in ascending order of [Entity.index]. It reads the snapshot of the last
- * [Collisions.detect]; see [Collisions.overlapsTo] for the details, and use it with a reused list
- * to avoid allocating one per call. Pass [x] and [y] by name, since both are `Float`.
+ * [Collisions.detect]; see [Collisions.overlappingTo] for the details, and use it with a reused list
+ * to avoid allocating one per call.
  *
  * @throws IllegalArgumentException if [x] or [y] is not finite.
  *
- * @sample samples.collision.CollisionQueries.overlaps
+ * @sample samples.collision.CollisionQueries.overlapping
  */
-public fun Collisions.overlaps(
+public fun Collisions.overlapping(
     shape: Shape,
     x: Float,
     y: Float,
     mask: CollisionLayers = CollisionLayers.ALL,
-): List<Entity> = overlapsTo(ArrayList(), shape, x, y, mask)
+): List<Entity> = overlappingTo(ArrayList(), shape, x, y, mask)
 
 /** Returns the grid cell coordinate of [value], given the inverse of the cell size. */
 @Suppress("NOTHING_TO_INLINE")

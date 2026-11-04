@@ -4,6 +4,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -21,7 +22,7 @@ class InterpolationTest {
 
         world.recordPreviousTransforms()
 
-        assertEquals("PreviousTransform(x=1.0, y=2.0, rotation=0.5, scale=2.0 x 3.0)", world.get(marked, PreviousTransform).toString())
+        assertEquals("PreviousTransform(x=1.0, y=2.0, rotation=0.5, scale=2.0x3.0, firstStep=true)", world.get(marked, PreviousTransform).toString())
         assertNull(world.getOrNull(plain, PreviousTransform))
         assertNull(world.getOrNull(markerOnly, PreviousTransform))
     }
@@ -58,6 +59,27 @@ class InterpolationTest {
         assertNull(world.getOrNull(entity, PreviousTransform))
         world.recordPreviousTransforms()
         assertEquals(3f, world.get(entity, PreviousTransform).x)
+    }
+
+    @Test
+    fun onlyTheFirstRecordIsMarkedAsTheFirstStep() {
+        val world = World()
+        val entity = world.create()
+        val transform = Transform(x = 0f)
+        world.add(entity, Transform, transform)
+        world.add(entity, Interpolated, Interpolated)
+
+        // Step 1 records the spawn point, then a system places the entity on its path.
+        world.recordPreviousTransforms()
+        transform.x = 100f
+        assertTrue(world.get(entity, PreviousTransform).isFirstStep, "The spawn point is no step to blend from.")
+
+        // Step 2 records where step 1 left the entity: from now on it blends.
+        world.recordPreviousTransforms()
+        transform.x = 110f
+        val previous = world.get(entity, PreviousTransform)
+        assertFalse(previous.isFirstStep)
+        assertEquals(100f, previous.x)
     }
 
     @Test

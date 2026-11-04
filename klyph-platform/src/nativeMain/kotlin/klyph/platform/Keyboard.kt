@@ -132,6 +132,7 @@ import sdl3.SDL_SCANCODE_Z
 public value class KeyCode(public val code: UInt) {
     override fun toString(): String = "KeyCode($code)"
 
+    /** Holds the key codes, which follow the keyboard layout. */
     public companion object {
         /** The A key. */
         public val A: KeyCode = KeyCode(SDLK_A)
@@ -255,6 +256,7 @@ public value class KeyCode(public val code: UInt) {
 public value class Scancode(public val code: UInt) {
     override fun toString(): String = "Scancode($code)"
 
+    /** Holds the scancodes, which name physical key positions. */
     public companion object {
         /**
          * The number of scancodes. Every scancode SDL reports has a [code] below it, so it sizes

@@ -12,8 +12,8 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class MusicTest {
-    private fun audio(enabled: Boolean = true): Audio =
-        Audio(AudioConfig(enabled = enabled, sampleRate = RATE, bufferFrames = 256))
+    private fun audio(output: AudioOutput = AudioOutput.DEVICE): Audio =
+        Audio(AudioConfig(output = output, sampleRate = RATE, bufferFrames = 256))
 
     /** A track whose every [MusicTrack.openStream] makes a new [CountingStream] and records it in [opened]. */
     private class Track(frames: Int = Int.MAX_VALUE, value: Float = 1f, channels: Int = 2, rate: Int = RATE) {
@@ -73,7 +73,7 @@ class MusicTest {
 
         audio.endFrame()
         assertEquals(1, track.opened[0].closes)
-        assertEquals(1L, audio.stats.closedStreams)
+        assertEquals(1L, audio.stats.closedStreamCount)
         assertEquals(0, audio.openStreams)
         assertTrue(audio.render(16).all { it == 0f })
     }
@@ -194,7 +194,7 @@ class MusicTest {
 
     @Test
     fun disabledMusicOpensNothing() {
-        val audio = audio(enabled = false)
+        val audio = audio(output = AudioOutput.NONE)
         val track = Track()
         audio.music.play(track.track)
         assertTrue(track.opened.isEmpty())
@@ -212,7 +212,7 @@ class MusicTest {
         val opened = track.opened.size
         assertTrue(opened <= audio.mixer.retired.capacity)
         assertEquals(opened - 1, track.opened.count { it.closes == 1 })
-        assertTrue(audio.stats.droppedCommands > 0)
+        assertTrue(audio.stats.droppedCommandCount > 0)
     }
 
     @Test

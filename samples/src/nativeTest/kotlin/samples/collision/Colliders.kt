@@ -20,7 +20,7 @@ class Colliders {
 
         assertPrints(
             world.get(shot, Collider),
-            "Collider(shape=Circle(radius=4.0), offset=0.0 x 0.0, layers=CollisionLayers(2), mask=CollisionLayers(1))",
+            "Collider(shape=Circle(radius=4.0), offset=0.0x0.0, layers=CollisionLayers(2), mask=CollisionLayers(1))",
         )
     }
 }

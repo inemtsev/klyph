@@ -9,6 +9,10 @@ kotlin {
     explicitApi()
 
     sourceSets {
+        // The engine is the one caller of the platform plumbing; games never opt in.
+        all {
+            languageSettings.optIn("klyph.platform.KlyphPlatformApi")
+        }
         nativeMain.dependencies {
             api(project(":klyph-platform"))
         }

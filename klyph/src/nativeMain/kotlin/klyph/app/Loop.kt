@@ -2,6 +2,8 @@ package klyph.app
 
 import klyph.audio.Audio
 import klyph.audio.AudioConfig
+import klyph.audio.AudioOutput
+import klyph.entity.advanceLifetimes
 import klyph.entity.propagateTransforms
 import klyph.entity.recordPreviousTransforms
 import klyph.particle.advanceParticles
@@ -14,7 +16,7 @@ import klyph.event.KeyReleased
 import klyph.event.MouseButtonPressed
 import klyph.event.MouseButtonReleased
 import klyph.event.MouseMoved
-import klyph.event.MouseWheel
+import klyph.event.MouseWheelScrolled
 import klyph.event.QuitRequested
 import klyph.event.WindowFocusGained
 import klyph.event.WindowFocusLost
@@ -33,8 +35,11 @@ import klyph.platform.printError
 import klyph.platform.Subsystem
 import klyph.platform.Window
 import klyph.platform.WindowFlag
+import klyph.platform.WindowMode
 import klyph.render.Camera
+import klyph.render.advanceFades
 import klyph.render.advanceSpriteAnimations
+import klyph.render.clampToBounds
 import klyph.render.lookAt
 import kotlin.time.Duration
 import kotlin.time.TimeSource
@@ -48,12 +53,16 @@ import kotlin.time.TimeSource
  * overlap detection through [App.collisions], [Phase.UPDATE], [Phase.LATE_UPDATE], another
  * transform propagation and [Phase.RENDER] once per frame until a frame ends with a quit
  * request, and finally [Phase.SHUTDOWN] runs once. STARTUP and SHUTDOWN run even when no frame
- * does. At the start of INPUT the engine updates [App.input] from the platform events and
- * translates them into `klyph.event` events. Between UPDATE and LATE_UPDATE it advances every
- * `ParticleEmitter` by the frame's delta, emitting at the entity's current world position. It advances every `SpriteAnimation` and shows its
- * current frame in the entity's `Sprite` at the start of LATE_UPDATE, and draws every entity with a `Transform` and a `Sprite` or `Text` through
- * [App.camera] at the end of RENDER, together with what RENDER systems queued on [App.canvas], which
- * it then empties. Before each FIXED_UPDATE step it records the transform of
+ * does. The loop also quits by itself once [AppConfig.frameLimit] frames have run or
+ * [Time.elapsed] has reached [AppConfig.timeLimit]. At the start of INPUT the engine updates
+ * [App.input] from the platform events and translates them into `klyph.event` events. Right after
+ * UPDATE it counts down every `Lifetime` and advances every `Fade`, destroying the entities whose
+ * time is up. Between UPDATE and LATE_UPDATE it advances every `ParticleEmitter` by the frame's
+ * delta, emitting at the entity's current world position. It advances every `SpriteAnimation` and
+ * shows its current frame in the entity's `Sprite` at the start of LATE_UPDATE, publishing
+ * `AnimationFinished` when a one-shot animation ends, and draws every entity with a `Transform`
+ * and a `Sprite` or `Text` through [App.camera], clamped to its bounds, at the end of RENDER,
+ * together with what RENDER systems queued on [App.canvas], which it then empties. Before each FIXED_UPDATE step it records the transform of
  * every entity marked `Interpolated`, and the drawing blends those entities between that record
  * and their current transform by [Time.fixedStepAlpha]. A `QuitRequested` event also calls
  * [App.quit], so closing the window ends the app. [App.commands] is applied after `setup`, after
@@ -65,7 +74,7 @@ import kotlin.time.TimeSource
  *
  * In every phase but STARTUP and SHUTDOWN, the systems of the scene on top of [App.scenes] run
  * after the App-level systems. A pushed scene freezes the one below: its systems do not run, its
- * particle emitters, sprite animations and colliders stand still, its entities keep rendering. The
+ * particle emitters, sprite animations, lifetimes, fades and colliders stand still, its entities keep rendering. The
  * engine skips the emitters and animations of entities a frozen scene owns when it advances them,
  * and leaves their colliders out of overlap detection, so they are in no `Overlap` event and no
  * [App.collisions] query finds them. Entities of no scene are never frozen. The scene transitions queued during a frame apply at its end, after
@@ -73,12 +82,16 @@ import kotlin.time.TimeSource
  * After the last frame every scene leaves the stack, top first, running its `onExit` action and
  * losing its entities, and then SHUTDOWN runs.
  *
- * The camera starts with the window's pixel size as its viewport, a zoom equal to the window's
- * pixel density so that one world unit is one point, and centered on the middle of the window, so
- * world (0, 0) is the top-left corner. When the window is resized the engine updates the viewport
- * and leaves the camera where it is. When the window's pixel density changes, for example because
- * it moved to another display, the engine multiplies the zoom by the ratio of the new density to
- * the old one, so the view keeps its framing, and publishes `WindowDensityChanged`.
+ * The camera starts with the window's size in points as its viewport, zoom 1 so that one world
+ * unit is one point, and centered on the middle of the window, so world (0, 0) is the top-left
+ * corner. When the window is resized the engine updates the viewport and leaves the camera where
+ * it is. When the window's pixel density changes, for example because it moved to another display,
+ * the view keeps its framing without any change to the zoom, because the renderer turns points
+ * into pixels, and the engine publishes `WindowDensityChanged`.
+ *
+ * The window opens in [AppConfig.windowMode] with [AppConfig.cursor] applied. When
+ * [AppConfig.screenshot] names a frame, the engine calls `App.window.capture` during that frame,
+ * before [Phase.RENDER], so the file is written once the frame is drawn.
  *
  * Audio starts before the window when [AppConfig.audio] enables it: the engine starts SDL's audio
  * subsystem and opens the default playback device, which calls [App.audio]'s mixer on its own
@@ -105,7 +118,7 @@ public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
         try {
             // The device closes first, so the mixer is no longer called when audio closes.
             openAudioDeviceOrNull(audio, config.audio).use { audioDevice ->
-                Window(config.title, config.width, config.height, setOf(WindowFlag.RESIZABLE, WindowFlag.HIGH_PIXEL_DENSITY)).use { window ->
+                openWindow(config).use { window ->
                     GpuDevice(setOf(ShaderFormat.MSL, ShaderFormat.SPIRV, ShaderFormat.DXIL), config.validation).use { device ->
                         device.claim(window)
                         try {
@@ -121,13 +134,13 @@ public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
                                     SpritePass(device, window, config.target, config.gpuSync).use { pass ->
                                         val app = App(config, window, presentMode, assets, startCamera(window), audio)
                                         app.setup()
-                                        if (!app.commands.isEmpty) app.commands.apply()
+                                        if (!app.commands.isEmpty()) app.commands.apply()
                                         FrameLoop(app, pump, pass, audioDevice).run()
                                     }
                                 }
                             }
                         } finally {
-                            device.release(window)
+                            device.unclaim(window)
                         }
                     }
                 }
@@ -149,7 +162,7 @@ public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
  * the rest of the app running.
  */
 private fun openAudioDeviceOrNull(audio: Audio, config: AudioConfig): AudioDevice? {
-    if (!config.enabled) {
+    if (config.output == AudioOutput.NONE) {
         audio.isEnabled = false
         return null
     }
@@ -164,17 +177,35 @@ private fun openAudioDeviceOrNull(audio: Audio, config: AudioConfig): AudioDevic
 }
 
 /**
- * Returns a camera whose viewport is [window]'s drawable size in pixels and whose zoom is its pixel
- * density, so one world unit is one point, positioned so that world (0, 0) is the window's
- * top-left corner.
+ * Opens the app's resizable, high-density window in [AppConfig.windowMode] and applies
+ * [AppConfig.cursor] to it.
+ */
+private fun openWindow(config: AppConfig): Window {
+    val flags = mutableSetOf(WindowFlag.RESIZABLE, WindowFlag.HIGH_PIXEL_DENSITY)
+    if (config.windowMode == WindowMode.FULLSCREEN) flags += WindowFlag.FULLSCREEN
+    val window = Window(config.title, config.width, config.height, flags)
+    window.cursor = config.cursor
+    return window
+}
+
+/**
+ * Returns a camera at zoom 1, so one world unit is one point, whose viewport is [window]'s drawable
+ * size in points, positioned so that world (0, 0) is the window's top-left corner.
  */
 private fun startCamera(window: Window): Camera {
-    val width = window.pixelWidth.coerceAtLeast(1)
-    val height = window.pixelHeight.coerceAtLeast(1)
-    return Camera(zoom = window.pixelDensity, viewportWidth = width, viewportHeight = height).apply {
-        lookAt(window.width / 2f, window.height / 2f)
+    val density = window.pixelDensity
+    val width = pointsOf(window.pixelWidth, density)
+    val height = pointsOf(window.pixelHeight, density)
+    return Camera(viewportWidth = width, viewportHeight = height).apply {
+        lookAt(width / 2f, height / 2f)
     }
 }
+
+/**
+ * Returns [pixels] in points at [density] pixels per point, at least 1, the size the sprite pass
+ * gives `DrawSpace.SCREEN`, so the camera's viewport and the screen projection agree.
+ */
+private fun pointsOf(pixels: Int, density: Float): Float = (pixels / density).coerceAtLeast(1f)
 
 /** Runs [app]'s phases: startup, frames until a quit request, shutdown. */
 private class FrameLoop(
@@ -186,8 +217,14 @@ private class FrameLoop(
     private val clock = TimeSource.Monotonic
     private val stepper = FixedStepper(app.time.fixedDelta, app.config.maxFixedStepsPerFrame)
 
-    /** The window's pixel density the camera's zoom was last scaled for. */
+    /** The window's pixel density the camera's viewport was last computed with. */
     private var pixelDensity = app.window.pixelDensity
+
+    /** The window's drawable width in pixels, as the last resize reported it. */
+    private var pixelWidth = app.window.pixelWidth
+
+    /** The window's drawable height in pixels, as the last resize reported it. */
+    private var pixelHeight = app.window.pixelHeight
 
     fun run() {
         val startup = clock.markNow()
@@ -196,6 +233,9 @@ private class FrameLoop(
         app.stats.recordStartup(startup.elapsedNow().inWholeNanoseconds)
 
         var frameStart = clock.markNow()
+        // A frame limit of zero runs no frame; a time limit needs a frame to count time.
+        val frameLimit = app.config.frameLimit
+        if (frameLimit != null && frameLimit <= 0) app.quit()
         while (!app.isQuitRequested) {
             val now = clock.markNow()
             val delta = now - frameStart
@@ -215,7 +255,7 @@ private class FrameLoop(
 
         app.input.beginFrame()
         translatePlatformEvents()
-        app.input.endFrame(app.camera, pixelDensity)
+        app.input.endFrame(app.camera)
         toggleOverlay()
         app.run(Phase.INPUT)
         var mark = clock.markNow()
@@ -238,38 +278,61 @@ private class FrameLoop(
         mark = lap(FrameStats.COLLISION, mark)
 
         app.run(Phase.UPDATE)
+        // Lifetimes and fades count down with UPDATE; what they destroy is gone before particles advance.
+        app.world.advanceLifetimes(time.delta, app.commands, app.scenes)
+        app.world.advanceFades(time.delta, app.commands, app.scenes)
+        if (!app.commands.isEmpty()) app.commands.apply()
         mark = lap(Phase.UPDATE.ordinal, mark)
 
-        val particleCount = app.world.advanceParticles(time.deltaSeconds, app.scenes)
+        val particleCount = app.world.advanceParticles(time.deltaSeconds, app.scenes, app.commands)
+        if (!app.commands.isEmpty()) app.commands.apply()
         mark = lap(FrameStats.PARTICLES, mark)
 
-        app.world.advanceSpriteAnimations(time.delta, app.scenes)
+        app.world.advanceSpriteAnimations(time.delta, app.scenes, app.events, app.commands)
+        if (!app.commands.isEmpty()) app.commands.apply()
         app.run(Phase.LATE_UPDATE)
         mark = lap(Phase.LATE_UPDATE.ordinal, mark)
 
         app.world.propagateTransforms()
-        if (!app.commands.isEmpty) app.commands.apply()
+        if (!app.commands.isEmpty()) app.commands.apply()
         mark = lap(FrameStats.PROPAGATION, mark)
 
+        queueScreenshot()
         // The canvas accepts calls from the first RENDER system until the pass has read it.
         app.canvas.open()
         app.run(Phase.RENDER)
-        if (app.overlay.isVisible) app.overlay.draw(app.canvas, app.assets.defaultFont, stats, time.fixedDelta, app.audio.stats.activeVoices)
+        if (app.overlay.isVisible) app.overlay.draw(app.canvas, app.assets.defaultFont, stats, time.fixedDelta, app.audio.stats.activeVoiceCount)
+        app.camera.clampToBounds()
         pass.render(app.world, app.camera, app.canvas, app.clearColor, time.fixedStepAlpha, stats)
         lap(Phase.RENDER.ordinal, mark)
 
         app.applySceneTransitions()
         time.endFrame()
+        if (isLimitReached()) app.quit()
         stats.entityCount = app.world.entityCount
         stats.publish(
             totalNanos = start.elapsedNow().inWholeNanoseconds,
-            fixedSteps = steps,
+            fixedStepCount = steps,
             spriteCount = pass.spriteCount,
-            drawCalls = pass.drawCalls,
-            collisionPairs = app.collisions.pairCount,
+            drawCallCount = pass.drawCallCount,
+            collisionPairCount = app.collisions.pairCount,
             particleCount = particleCount,
         )
         app.overlay.record(stats.total)
+    }
+
+    /** Returns `true` once [AppConfig.frameLimit] frames have run or [Time.elapsed] has reached [AppConfig.timeLimit]. */
+    private fun isLimitReached(): Boolean {
+        val frames = app.config.frameLimit
+        val seconds = app.config.timeLimit
+        return (frames != null && app.time.frameCount >= frames) || (seconds != null && app.time.elapsed >= seconds)
+    }
+
+    /** Queues a capture of this frame when it is the one [AppConfig.screenshot] names. */
+    private fun queueScreenshot() {
+        val screenshot = app.config.screenshot ?: return
+        // time.frameCount counts completed frames, so this frame is number frame + 1.
+        if (app.time.frameCount + 1 == screenshot.frame.toLong()) app.window.capture(screenshot.path)
     }
 
     /** Shows or hides [App.overlay] when [AppConfig.overlayKey] went down this frame. */
@@ -322,7 +385,7 @@ private class FrameLoop(
                 is PlatformEvent.MouseButtonDown ->
                     events.publish(MouseButtonPressed(event.button, x = event.x, y = event.y, clicks = event.clicks))
                 is PlatformEvent.MouseButtonUp -> events.publish(MouseButtonReleased(event.button, x = event.x, y = event.y))
-                is PlatformEvent.MouseWheel -> events.publish(MouseWheel(dx = event.dx, dy = event.dy))
+                is PlatformEvent.MouseWheelScrolled -> events.publish(MouseWheelScrolled(dx = event.dx, dy = event.dy))
                 is PlatformEvent.GamepadConnected -> events.publish(GamepadConnected(event.id, event.name))
                 is PlatformEvent.GamepadDisconnected -> events.publish(GamepadDisconnected(event.id))
                 is PlatformEvent.GamepadButtonDown -> events.publish(GamepadButtonPressed(event.id, event.button))
@@ -333,23 +396,31 @@ private class FrameLoop(
                 PlatformEvent.WindowFocusLost -> events.publish(WindowFocusLost)
                 is PlatformEvent.WindowResized -> {
                     pass.resize(event.pixelWidth, event.pixelHeight)
-                    // A minimized window can report a zero size; the camera keeps its last viewport.
-                    if (event.pixelWidth > 0 && event.pixelHeight > 0) {
-                        app.camera.viewportWidth = event.pixelWidth
-                        app.camera.viewportHeight = event.pixelHeight
-                    }
+                    pixelWidth = event.pixelWidth
+                    pixelHeight = event.pixelHeight
+                    updateViewport()
                     events.publish(WindowResized(pixelWidth = event.pixelWidth, pixelHeight = event.pixelHeight))
                 }
                 is PlatformEvent.WindowDensityChanged -> {
                     // The platform also reports content scale changes that leave the density as it was.
                     if (event.pixelDensity != pixelDensity) {
-                        app.camera.zoom *= event.pixelDensity / pixelDensity
                         pixelDensity = event.pixelDensity
+                        updateViewport()
                         events.publish(WindowDensityChanged(event.pixelDensity))
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Sets the camera's viewport to the window's drawable size in points. A minimized window can
+     * report a zero size; the camera then keeps its last viewport.
+     */
+    private fun updateViewport() {
+        if (pixelWidth <= 0 || pixelHeight <= 0) return
+        app.camera.viewportWidth = pointsOf(pixelWidth, pixelDensity)
+        app.camera.viewportHeight = pointsOf(pixelHeight, pixelDensity)
     }
 
     override fun toString(): String = "FrameLoop(app=$app)"

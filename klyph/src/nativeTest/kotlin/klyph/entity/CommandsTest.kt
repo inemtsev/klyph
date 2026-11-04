@@ -25,7 +25,7 @@ class CommandsTest {
         commands.apply()
         assertEquals(5, world.get(e, Health).points)
         assertEquals(2, world.get(e, Mana).points)
-        assertTrue(commands.isEmpty)
+        assertTrue(commands.isEmpty())
     }
 
     @Test
@@ -135,7 +135,7 @@ class CommandsTest {
         commands.setParent(a, b)
         commands.add(a, Health, Health(1))
         assertFailsWith<IllegalArgumentException> { commands.apply() }
-        assertTrue(commands.isEmpty)
+        assertTrue(commands.isEmpty())
         assertFalse(world.has(a, Health))
         commands.add(a, Health, Health(2))
         commands.apply()
@@ -163,17 +163,17 @@ class CommandsTest {
     fun sizeIsEmptyAndToString() {
         val world = World()
         val commands = Commands(world)
-        assertTrue(commands.isEmpty)
+        assertTrue(commands.isEmpty())
         assertEquals("Commands(queued=0)", commands.toString())
         val e = world.create()
         commands.add(e, Health, Health(1))
         commands.remove(e, Mana)
         commands.destroy(e)
-        assertFalse(commands.isEmpty)
+        assertFalse(commands.isEmpty())
         assertEquals(3, commands.size)
         assertEquals("Commands(queued=3)", commands.toString())
         commands.apply()
-        assertTrue(commands.isEmpty)
+        assertTrue(commands.isEmpty())
         assertEquals("Commands(queued=0)", commands.toString())
     }
 
@@ -205,7 +205,7 @@ class CommandsTest {
         val world = World()
         val commands = Commands(world)
         val parent = world.create()
-        val child = commands.spawn { parent(parent) }
+        val child = commands.spawn { setParent(parent) }
         assertNull(world.parentOrNull(child))
         commands.apply()
         assertEquals(parent, world.parentOrNull(child))

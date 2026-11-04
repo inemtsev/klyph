@@ -38,6 +38,6 @@ class Components {
         val entity = world.create()
         world.add(entity, Transform, Transform(x = 1f, y = 2f))
         world.get(entity, Transform).x += 4f
-        assertPrints(world.get(entity, Transform), "Transform(x=5.0, y=2.0, rotation=0.0, scale=1.0 x 1.0)")
+        assertPrints(world.get(entity, Transform), "Transform(x=5.0, y=2.0, rotation=0.0, scale=1.0x1.0)")
     }
 }

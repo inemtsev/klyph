@@ -6,7 +6,7 @@ import klyph.render.Texture
 import klyph.render.TextureRegion
 
 // The engine's built-in font: an 8 by 8 monospace bitmap font for printable ASCII, U+0020 to
-// U+007E, rasterised at startup into one atlas together with the white pixel that
+// U+007E, rasterized at startup into one atlas together with the white pixel that
 // `Canvas.drawRect` draws with.
 //
 // Glyph data: `font8x8_basic.h` from https://github.com/dhepper/font8x8 by Daniel Hepper,
@@ -21,7 +21,7 @@ import klyph.render.TextureRegion
 // Encoding: each glyph is eight bytes, the top row first. Within a byte, the least significant
 // bit is the leftmost pixel.
 
-/** Rows of the glyphs from [FIRST_CHAR] on, as 16 hex digits: eight bytes, top row first. */
+/** Rows of the glyphs from `FIRST_CHAR` on, as 16 hex digits: eight bytes, top row first. */
 private val GLYPH_ROWS: Array<String> = arrayOf(
     "0000000000000000", // U+0020 space
     "183C3C1818001800", // U+0021 !
@@ -124,7 +124,7 @@ private val GLYPH_ROWS: Array<String> = arrayOf(
 internal class BuiltInFont(
     /** The 8 by 8 font: 95 glyphs, line height 8, baseline 7, advance 8, no kerning. */
     val font: Font,
-    /** A one-texel region of opaque white whose neighbours are white too, so filtering keeps it white. */
+    /** A one-texel region of opaque white whose neighbors are white too, so filtering keeps it white. */
     val whitePixel: TextureRegion,
 ) {
     override fun toString(): String = "BuiltInFont(font=$font)"

@@ -47,12 +47,12 @@ class AudioRendererTest {
         val audio = Audio(AudioConfig(sampleRate = 8000))
         audio.play(Sound(FloatArray(100) { 0.5f }, channels = 1, sampleRate = 8000))
         audio.renderer.render(FloatArray(20), 10)
-        assertEquals(0, audio.stats.activeVoices)
+        assertEquals(0, audio.stats.activeVoiceCount)
         audio.endFrame()
-        assertEquals(1, audio.stats.activeVoices)
+        assertEquals(1, audio.stats.activeVoiceCount)
         audio.renderer.render(FloatArray(400), 200)
         audio.endFrame()
-        assertEquals(0, audio.stats.activeVoices)
+        assertEquals(0, audio.stats.activeVoiceCount)
     }
 
     @Test

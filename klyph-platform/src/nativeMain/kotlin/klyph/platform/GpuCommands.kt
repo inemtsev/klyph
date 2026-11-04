@@ -5,6 +5,7 @@ import cnames.structs.SDL_GPUCopyPass
 import cnames.structs.SDL_GPURenderPass
 import cnames.structs.SDL_GPUTexture
 import kotlinx.cinterop.CPointer
+import kotlinx.cinterop.UIntVar
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.allocPointerTo
@@ -37,6 +38,7 @@ import sdl3.SDL_WaitAndAcquireGPUSwapchainTexture
 /**
  * A copy pass that is being recorded. Uploads go here, before any render pass of the frame.
  */
+@KlyphPlatformApi
 public value class CopyPass internal constructor(internal val handle: CPointer<SDL_GPUCopyPass>) {
     /** Finishes the pass. */
     public fun end() {
@@ -49,6 +51,7 @@ public value class CopyPass internal constructor(internal val handle: CPointer<S
 /**
  * A render pass that is being recorded. Call [end] before recording anything else.
  */
+@KlyphPlatformApi
 public value class RenderPass internal constructor(internal val handle: CPointer<SDL_GPURenderPass>) {
     /** Finishes the pass. */
     public fun end() {
@@ -65,11 +68,18 @@ public value class RenderPass internal constructor(internal val handle: CPointer
  *
  * @throws SdlException if the swapchain cannot be acquired.
  */
+@KlyphPlatformApi
 public fun CommandBuffer.acquireSwapchainTexture(window: Window): GpuTexture? = memScoped {
     val texture = allocPointerTo<SDL_GPUTexture>()
-    if (!SDL_WaitAndAcquireGPUSwapchainTexture(handle, window.handle, texture.ptr, null, null)) {
+    val width = alloc<UIntVar>()
+    val height = alloc<UIntVar>()
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(handle, window.handle, texture.ptr, width.ptr, height.ptr)) {
         sdlFailure("SDL_WaitAndAcquireGPUSwapchainTexture")
     }
+    // Frame capture reads back no more than this, whatever size the caller believes the window has.
+    window.swapchainTexture = texture.value
+    window.swapchainWidth = width.value.toInt()
+    window.swapchainHeight = height.value.toInt()
     texture.value?.let { GpuTexture(it) }
 }
 
@@ -78,12 +88,15 @@ public fun CommandBuffer.acquireSwapchainTexture(window: Window): GpuTexture? = 
  *
  * @throws SdlException if the pass cannot be started.
  */
+@KlyphPlatformApi
 public fun CommandBuffer.beginCopyPass(): CopyPass =
     CopyPass(SDL_BeginGPUCopyPass(handle) ?: sdlFailure("SDL_BeginGPUCopyPass"))
 
 /**
  * Copies [sizeInBytes] bytes from [source] at [sourceOffset] into [destination] at [destinationOffset].
+ * Pass the `Int` parameters by name.
  */
+@KlyphPlatformApi
 public fun CopyPass.uploadToBuffer(
     source: TransferBuffer,
     destination: GpuBuffer,
@@ -106,6 +119,7 @@ public fun CopyPass.uploadToBuffer(
  * Copies tightly packed texels for a whole [width] by [height] texture from [source] at
  * [sourceOffset] into [destination].
  */
+@KlyphPlatformApi
 public fun CopyPass.uploadToTexture(
     source: TransferBuffer,
     destination: GpuTexture,
@@ -131,6 +145,7 @@ public fun CopyPass.uploadToTexture(
  *
  * @throws SdlException if the pass cannot be started.
  */
+@KlyphPlatformApi
 public fun CommandBuffer.beginRenderPass(target: GpuTexture, clearColor: Color): RenderPass = memScoped {
     val info = alloc<SDL_GPUColorTargetInfo>().zeroed()
     info.texture = target.handle
@@ -147,6 +162,7 @@ public fun CommandBuffer.beginRenderPass(target: GpuTexture, clearColor: Color):
  * Copies [floats] into vertex uniform [slot] for the draws that follow. Sizes are limited by the
  * backend; a 4x4 matrix is always fine.
  */
+@KlyphPlatformApi
 public fun CommandBuffer.pushVertexUniforms(slot: Int, floats: FloatArray) {
     floats.usePinned { pinned ->
         SDL_PushGPUVertexUniformData(handle, slot.toUInt(), pinned.addressOf(0), (floats.size * 4).convert())
@@ -154,11 +170,13 @@ public fun CommandBuffer.pushVertexUniforms(slot: Int, floats: FloatArray) {
 }
 
 /** Makes [pipeline] current for the draws that follow. */
+@KlyphPlatformApi
 public fun RenderPass.bind(pipeline: GraphicsPipeline) {
     SDL_BindGPUGraphicsPipeline(handle, pipeline.handle)
 }
 
 /** Binds [buffer] as vertex storage buffer [slot]. */
+@KlyphPlatformApi
 public fun RenderPass.bindVertexStorageBuffer(slot: Int, buffer: GpuBuffer): Unit = memScoped {
     val slotBuffer = allocPointerTo<SDL_GPUBuffer>()
     slotBuffer.value = buffer.handle
@@ -166,6 +184,7 @@ public fun RenderPass.bindVertexStorageBuffer(slot: Int, buffer: GpuBuffer): Uni
 }
 
 /** Binds [texture] with [sampler] as fragment sampler [slot]. */
+@KlyphPlatformApi
 public fun RenderPass.bindFragmentSampler(slot: Int, texture: GpuTexture, sampler: Sampler): Unit = memScoped {
     val binding = alloc<SDL_GPUTextureSamplerBinding>().zeroed()
     binding.texture = texture.handle
@@ -173,7 +192,8 @@ public fun RenderPass.bindFragmentSampler(slot: Int, texture: GpuTexture, sample
     SDL_BindGPUFragmentSamplers(handle, slot.toUInt(), binding.ptr, 1u)
 }
 
-/** Draws [vertexCount] vertices starting at [firstVertex] with the bound pipeline. */
+/** Draws [vertexCount] vertices starting at [firstVertex] with the bound pipeline. Pass the `Int` parameters by name. */
+@KlyphPlatformApi
 public fun RenderPass.draw(vertexCount: Int, firstVertex: Int = 0) {
     SDL_DrawGPUPrimitives(handle, vertexCount.toUInt(), 1u, firstVertex.toUInt(), 0u)
 }

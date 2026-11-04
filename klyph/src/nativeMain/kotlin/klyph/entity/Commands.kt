@@ -27,33 +27,33 @@ public class Commands(private val world: World) {
     private var types = arrayOfNulls<ComponentType<*>>(INITIAL_CAPACITY)
     private var components = arrayOfNulls<Any>(INITIAL_CAPACITY)
     private var isApplying = false
-    private val builder = EntityBuilder(this)
+    private val entityBuilder = EntityBuilder(this)
 
     /** Number of commands queued since the last [apply]. */
     public var size: Int = 0
         private set
 
-    /** `true` if no command is queued. */
-    public val isEmpty: Boolean get() = size == 0
+    /** Returns `true` if no command is queued. */
+    public fun isEmpty(): Boolean = size == 0
 
     /**
-     * Creates an entity right away and queues the components and parent that [build] gives it.
+     * Creates an entity right away and queues the components and parent that [builder] gives it.
      *
      * The returned handle is valid at once, so it can be passed to further commands or stored in
      * game state. Until [apply] runs, the entity is alive but has no components, so queries do not
-     * see it. Inside [build], [EntityBuilder.entity] is the new entity, so commands queued there
+     * see it. Inside [builder], [EntityBuilder.entity] is the new entity, so commands queued there
      * can refer to it.
      *
      * @sample samples.entity.CommandQueues.spawn
      */
-    public fun spawn(build: EntityBuilder.() -> Unit = {}): Entity {
+    public fun spawn(builder: EntityBuilder.() -> Unit = {}): Entity {
         val entity = world.create()
-        val previous = builder.current
-        builder.current = entity
+        val previous = entityBuilder.current
+        entityBuilder.current = entity
         try {
-            builder.build()
+            entityBuilder.builder()
         } finally {
-            builder.current = previous
+            entityBuilder.current = previous
         }
         return entity
     }
@@ -81,6 +81,8 @@ public class Commands(private val world: World) {
     /**
      * Queues detaching the [type] component from [entity], as [World.remove] does. Skipped if
      * [entity] is not alive at [apply] or has no such component then.
+     *
+     * @sample samples.entity.CommandQueues.remove
      */
     public fun remove(entity: Entity, type: ComponentType<*>) {
         push(REMOVE, entity.raw, 0L, type, null)

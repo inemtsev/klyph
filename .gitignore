@@ -13,3 +13,4 @@ CLAUDE.local.md
 PLAN.md
 PLAN-*.md
 .claude/worktrees/
+*.local.md

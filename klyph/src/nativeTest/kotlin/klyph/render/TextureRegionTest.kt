@@ -84,7 +84,7 @@ class TextureRegionTest {
         assertEquals(16f, sprite.width)
         assertEquals(32f, sprite.height)
         assertEquals(
-            "Sprite(size=16.0 x 32.0, color=Color(#ffffffff), layer=0, flippedX=false, flippedY=false, visible=true, " +
+            "Sprite(size=16.0x32.0, color=Color(#ffffffff), layer=0, flippedX=false, flippedY=false, visible=true, " +
                 "region=TextureRegion(x=0, y=0, size=16x32, texture=Texture(64x64)))",
             sprite.toString(),
         )

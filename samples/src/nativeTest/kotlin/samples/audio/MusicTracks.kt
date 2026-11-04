@@ -1,9 +1,12 @@
+@file:OptIn(KlyphPlatformApi::class) // The samples mix offline through Audio.renderer, which a game never calls.
+
 package samples.audio
 
 import klyph.audio.Audio
 import klyph.audio.AudioConfig
 import klyph.audio.MusicTrack
 import klyph.audio.PcmStream
+import klyph.platform.KlyphPlatformApi
 import samples.Sample
 import samples.assertPrints
 import kotlin.math.PI

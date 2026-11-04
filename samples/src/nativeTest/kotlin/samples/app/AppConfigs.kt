@@ -20,4 +20,11 @@ class AppConfigs {
         assertPrints(AppConfig(overlayKey = null).overlayKey, "null")
         assertFailsWith<IllegalArgumentException> { AppConfig(width = 0) }
     }
+
+    @Sample
+    fun fromEnvironment() {
+        // KLYPH_FRAMES=600 in the environment would quit after 600 frames; the title stays the game's.
+        val config = AppConfig.fromEnvironment(AppConfig(title = "Shooter"))
+        assertPrints(config.title, "Shooter")
+    }
 }

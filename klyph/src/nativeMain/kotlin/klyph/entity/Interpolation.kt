@@ -19,8 +19,10 @@ import kotlin.math.floor
  * entities only in `Phase.FIXED_UPDATE`: a change made in another phase is drawn partly blended
  * until the next step, and a jump such as a teleport is drawn as fast motion across one step.
  *
- * An entity that has not been through a fixed step since it gained the marker is drawn at its
- * current [Transform], as is every entity on the first frame before any step has run.
+ * An entity is blended only from its second fixed step since it gained the marker on: until then
+ * there is no earlier step to blend from, so it is drawn at its current [Transform], and an entity
+ * spawned at one place and moved to its start in its first step does not sweep across the screen.
+ * The same goes for every entity on the first frame before any step has run.
  *
  * Only entities without a parent are blended. An entity in a hierarchy is drawn at its current
  * [WorldTransform] even if it is marked, because world transforms are computed once per frame
@@ -30,24 +32,32 @@ import kotlin.math.floor
  */
 public object Interpolated : ComponentType<Interpolated>("Interpolated")
 
-/** The [Transform] of an [Interpolated] entity at the start of the last fixed step. */
+/**
+ * The [Transform] of an [Interpolated] entity at the start of the last fixed step. [isFirstStep]
+ * is `true` while that step is the first the entity has been through with the marker, when the
+ * copy is only where the entity was spawned and drawing blends from it would sweep the entity
+ * from there; the renderer then draws the current [Transform].
+ */
 internal class PreviousTransform(
     var x: Float,
     var y: Float,
     var rotation: Float,
     var scaleX: Float,
     var scaleY: Float,
+    var isFirstStep: Boolean = false,
 ) {
-    /** Sets every field to the matching one of [transform]. */
+    /** Sets every field to the matching one of [transform] and clears [isFirstStep]. */
     fun copyFrom(transform: Transform) {
         x = transform.x
         y = transform.y
         rotation = transform.rotation
         scaleX = transform.scaleX
         scaleY = transform.scaleY
+        isFirstStep = false
     }
 
-    override fun toString(): String = "PreviousTransform(x=$x, y=$y, rotation=$rotation, scale=$scaleX x $scaleY)"
+    override fun toString(): String =
+        "PreviousTransform(x=$x, y=$y, rotation=$rotation, scale=${scaleX}x$scaleY, firstStep=$isFirstStep)"
 
     /** Component key for [PreviousTransform]. */
     companion object : ComponentType<PreviousTransform>("PreviousTransform")
@@ -75,7 +85,7 @@ internal fun World.recordPreviousTransforms() {
         if (slot >= 0) {
             previous.items.itemAt<PreviousTransform>(slot).copyFrom(transform)
         } else {
-            previous.set(entity, PreviousTransform(transform.x, transform.y, transform.rotation, transform.scaleX, transform.scaleY))
+            previous.set(entity, PreviousTransform(transform.x, transform.y, transform.rotation, transform.scaleX, transform.scaleY, isFirstStep = true))
         }
         recorded++
     }

@@ -18,7 +18,7 @@ import sdl3.SDL_GPU_SHADERFORMAT_SPIRV
 import sdl3.SDL_GetGPUDeviceDriver
 import sdl3.SDL_GetGPUShaderFormats
 import sdl3.SDL_GetGPUSwapchainTextureFormat
-import sdl3.SDL_ReleaseGPUFence
+
 import sdl3.SDL_ReleaseWindowFromGPUDevice
 import sdl3.SDL_SubmitGPUCommandBufferAndAcquireFence
 import sdl3.SDL_WaitForGPUFences
@@ -34,9 +34,15 @@ import sdl3.SDL_WindowSupportsGPUPresentMode
  * Compiled shader formats a [GpuDevice] can consume. Which one is used depends on the backend
  * SDL picks: SPIR-V for Vulkan, DXIL for Direct3D 12, MSL for Metal.
  */
+@KlyphPlatformApi
 public enum class ShaderFormat(internal val bit: UInt) {
+    /** SPIR-V, for Vulkan. */
     SPIRV(SDL_GPU_SHADERFORMAT_SPIRV),
+
+    /** DXIL, for Direct3D 12. */
     DXIL(SDL_GPU_SHADERFORMAT_DXIL),
+
+    /** Metal Shading Language source, for Metal. */
     MSL(SDL_GPU_SHADERFORMAT_MSL),
 }
 
@@ -45,7 +51,10 @@ public enum class ShaderFormat(internal val bit: UInt) {
  * performance cost, so enable it in development builds only.
  */
 public enum class GpuValidation {
+    /** The backend checks every call and reports misuse. */
     ENABLED,
+
+    /** The backend runs without its validation layer. */
     DISABLED,
 }
 
@@ -66,9 +75,11 @@ public enum class PresentMode(internal val raw: SDL_GPUPresentMode) {
 /**
  * Pixel format of a GPU texture, as chosen by SDL for a swapchain or requested for a created texture.
  */
+@KlyphPlatformApi
 public value class TextureFormat internal constructor(internal val raw: SDL_GPUTextureFormat) {
     override fun toString(): String = "TextureFormat(${raw.name})"
 
+    /** Holds the supported texture formats. */
     public companion object {
         /** Four 8-bit channels, red first, not sRGB-encoded. */
         public val RGBA8: TextureFormat = TextureFormat(SDL_GPUTextureFormat.SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM)
@@ -81,17 +92,15 @@ public value class TextureFormat internal constructor(internal val raw: SDL_GPUT
  *
  * Samples live in the sandbox because they need a display.
  */
+@KlyphPlatformApi
 public class GpuDevice internal constructor(internal val handle: CPointer<SDL_GPUDevice>) : AutoCloseable {
     /** Name of the backend SDL chose, such as `metal`, `vulkan` or `direct3d12`. */
-    public val driverName: String
-        get() = SDL_GetGPUDeviceDriver(handle)?.toKString() ?: "unknown"
+    public val driverName: String = SDL_GetGPUDeviceDriver(handle)?.toKString() ?: "unknown"
 
     /** Shader formats the chosen backend accepts; on every current backend exactly one. */
-    public val shaderFormats: Set<ShaderFormat>
-        get() {
-            val bits = SDL_GetGPUShaderFormats(handle)
-            return ShaderFormat.entries.filterTo(LinkedHashSet()) { bits and it.bit != 0u }
-        }
+    public val shaderFormats: Set<ShaderFormat> = SDL_GetGPUShaderFormats(handle).let { bits ->
+        ShaderFormat.entries.filterTo(LinkedHashSet()) { bits and it.bit != 0u }
+    }
 
     /**
      * Creates a swapchain for [window] so this device can present into it.
@@ -102,8 +111,8 @@ public class GpuDevice internal constructor(internal val handle: CPointer<SDL_GP
         if (!SDL_ClaimWindowForGPUDevice(handle, window.handle)) sdlFailure("SDL_ClaimWindowForGPUDevice")
     }
 
-    /** Destroys the swapchain of a [window] claimed earlier. */
-    public fun release(window: Window) {
+    /** Undoes [claim]: destroys the swapchain of a [window] claimed earlier. */
+    public fun unclaim(window: Window) {
         SDL_ReleaseWindowFromGPUDevice(handle, window.handle)
     }
 
@@ -150,6 +159,7 @@ public class GpuDevice internal constructor(internal val handle: CPointer<SDL_GP
  * @throws IllegalArgumentException if [shaderFormats] is empty.
  * @throws SdlException if no backend supports the formats.
  */
+@KlyphPlatformApi
 public fun GpuDevice(shaderFormats: Set<ShaderFormat>, validation: GpuValidation = GpuValidation.DISABLED): GpuDevice {
     require(shaderFormats.isNotEmpty()) { "Shader format set is empty; at least one format is required." }
     var bits = 0u
@@ -162,6 +172,7 @@ public fun GpuDevice(shaderFormats: Set<ShaderFormat>, validation: GpuValidation
 /**
  * One frame's recorded GPU work. Acquire with [GpuDevice.acquireCommandBuffer] and finish with [submit].
  */
+@KlyphPlatformApi
 public value class CommandBuffer internal constructor(internal val handle: CPointer<SDL_GPUCommandBuffer>) {
     /**
      * Sends the recorded work to the GPU. The buffer must not be used afterwards.
@@ -174,7 +185,7 @@ public value class CommandBuffer internal constructor(internal val handle: CPoin
 
     /**
      * Sends the recorded work to the GPU and returns a fence that signals when it has finished.
-     * Release the fence with [GpuDevice.release] after waiting on it.
+     * Release the fence with `GpuDevice.release(fence)` after waiting on it.
      *
      * @throws SdlException if submission fails.
      */
@@ -187,6 +198,7 @@ public value class CommandBuffer internal constructor(internal val handle: CPoin
 /**
  * Signals when submitted GPU work completes. Obtain from [CommandBuffer.submitAndAcquireFence].
  */
+@KlyphPlatformApi
 public value class GpuFence internal constructor(internal val handle: CPointer<SDL_GPUFence>) {
     override fun toString(): String = "GpuFence"
 }
@@ -196,13 +208,10 @@ public value class GpuFence internal constructor(internal val handle: CPointer<S
  *
  * @throws SdlException if waiting fails.
  */
+@KlyphPlatformApi
 public fun GpuDevice.waitFor(fence: GpuFence): Unit = memScoped {
     val fences = allocPointerTo<SDL_GPUFence>()
     fences.value = fence.handle
     if (!SDL_WaitForGPUFences(handle, true, fences.ptr, 1u)) sdlFailure("SDL_WaitForGPUFences")
 }
 
-/** Frees [fence]. */
-public fun GpuDevice.release(fence: GpuFence) {
-    SDL_ReleaseGPUFence(handle, fence.handle)
-}

@@ -32,6 +32,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  * [render] runs on SDL's audio thread, not the thread that opened the device. It must not
  * allocate, block or wait on the main thread: a late buffer is heard as a click.
  */
+@KlyphPlatformApi
 public fun interface AudioRenderer {
     /**
      * Writes [frames] frames of stereo audio into the start of [output], interleaved left then
@@ -55,6 +56,7 @@ public fun interface AudioRenderer {
  *
  * Has no sample because it needs an audio device.
  */
+@KlyphPlatformApi
 @OptIn(ExperimentalAtomicApi::class)
 public class AudioDevice private constructor(
     private val stream: CPointer<SDL_AudioStream>,
@@ -153,6 +155,7 @@ public class AudioDevice private constructor(
         }
     }
 
+    /** Holds the factory that opens the playback device. */
     public companion object {
         private const val CHANNELS = 2
         private const val BYTES_PER_FRAME = CHANNELS * 4
@@ -163,7 +166,7 @@ public class AudioDevice private constructor(
         /**
          * Opens the default playback device for float stereo at [sampleRate] frames per second and
          * starts playing at once, calling [renderer] on SDL's audio thread for at most
-         * [bufferFrames] frames at a time.
+         * [bufferFrames] frames at a time. Pass the `Int` parameters by name.
          *
          * [bufferFrames] is also passed to SDL as the device buffer size it should use, which sets
          * the latency. SDL may pick a different size, and ignores the request when the hardware
@@ -228,7 +231,7 @@ public class AudioDevice private constructor(
         }
 
         /**
-         * Called by SDL on its audio thread whenever the stream needs [additionalAmount] more bytes.
+         * Called by SDL on its audio thread whenever the stream needs `additionalAmount` more bytes.
          * Nothing may escape into C, so every exception stops here.
          */
         private val audioCallback = staticCFunction {

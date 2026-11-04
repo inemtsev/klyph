@@ -72,8 +72,8 @@ gradle() {
 
 echo "Consumer test: klyph $version from $mode, host $target, in $dir"
 
-cp -R "$repo/shooter/src" "$dir/src"
-cp -R "$repo/shooter/assets" "$dir/assets"
+cp -R "$repo/games/shooter/src" "$dir/src"
+cp -R "$repo/games/shooter/assets" "$dir/assets"
 cp "$repo/gradlew" "$repo/gradlew.bat" "$dir/"
 cp -R "$repo/gradle/wrapper" "$dir/gradle/wrapper"
 

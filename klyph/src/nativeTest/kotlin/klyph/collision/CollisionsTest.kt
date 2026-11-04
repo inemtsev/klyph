@@ -200,7 +200,7 @@ class CollisionsTest {
         val collisions = Collisions(4f)
         val overlaps = detect(world, collisions).toSet()
         assertEquals(setOf(Overlap(zone, zone2), Overlap(zone, inside)), overlaps)
-        assertEquals(listOf(zone, inside), collisions.overlaps(Shape.Circle(1f), x = 300f, y = 300f))
+        assertEquals(listOf(zone, inside), collisions.overlapping(Shape.Circle(1f), x = 300f, y = 300f))
     }
 
     @Test
@@ -225,7 +225,7 @@ class CollisionsTest {
         val collisions = Collisions()
         assertEquals(0, detect(world, collisions).size)
         assertEquals(2, collisions.colliderCount)
-        assertEquals(listOf(left, right), collisions.overlaps(Shape.Circle(1000f), x = 0f, y = 0f))
+        assertEquals(listOf(left, right), collisions.overlapping(Shape.Circle(1000f), x = 0f, y = 0f))
     }
 
     @Test
@@ -233,21 +233,21 @@ class CollisionsTest {
         val world = World()
         val collisions = Collisions(16f)
         val a = world.spawn(Shape.Circle(5f), 0f, 0f)
-        assertEquals(emptyList(), collisions.overlaps(Shape.Circle(5f), x = 0f, y = 0f))
-        assertNull(collisions.firstOverlapOrNull(Shape.Circle(5f), x = 0f, y = 0f))
+        assertEquals(emptyList(), collisions.overlapping(Shape.Circle(5f), x = 0f, y = 0f))
+        assertNull(collisions.firstOverlappingOrNull(Shape.Circle(5f), x = 0f, y = 0f))
 
         detect(world, collisions)
-        assertEquals(listOf(a), collisions.overlaps(Shape.Circle(5f), x = 0f, y = 0f))
+        assertEquals(listOf(a), collisions.overlapping(Shape.Circle(5f), x = 0f, y = 0f))
 
         // Moving the entity does not move it in the snapshot until the next detection.
         world.get(a, Transform).x = 100f
         val b = world.spawn(Shape.Circle(5f), 0f, 0f)
-        assertEquals(listOf(a), collisions.overlaps(Shape.Box(width = 2f, height = 2f), x = 0f, y = 0f))
-        assertEquals(emptyList(), collisions.overlaps(Shape.Box(width = 2f, height = 2f), x = 100f, y = 0f))
+        assertEquals(listOf(a), collisions.overlapping(Shape.Box(width = 2f, height = 2f), x = 0f, y = 0f))
+        assertEquals(emptyList(), collisions.overlapping(Shape.Box(width = 2f, height = 2f), x = 100f, y = 0f))
 
         detect(world, collisions)
-        assertEquals(listOf(b), collisions.overlaps(Shape.Box(width = 2f, height = 2f), x = 0f, y = 0f))
-        assertEquals(listOf(a), collisions.overlaps(Shape.Box(width = 2f, height = 2f), x = 100f, y = 0f))
+        assertEquals(listOf(b), collisions.overlapping(Shape.Box(width = 2f, height = 2f), x = 0f, y = 0f))
+        assertEquals(listOf(a), collisions.overlapping(Shape.Box(width = 2f, height = 2f), x = 100f, y = 0f))
     }
 
     @Test
@@ -261,20 +261,20 @@ class CollisionsTest {
 
         // Touching the box edge at x = 10 is not an overlap.
         // The box's edge at x = 10 and the circle's leftmost point at x = 20 only touch.
-        assertEquals(emptyList(), collisions.overlaps(Shape.Box(width = 10f, height = 10f), x = 15f, y = 0f))
-        assertEquals(listOf(box, circle), collisions.overlaps(Shape.Box(width = 12f, height = 2f), x = 15f, y = 0f))
-        assertEquals(listOf(box), collisions.overlaps(Shape.Box(width = 12f, height = 2f), x = 15f, y = 0f, mask = enemy))
-        assertEquals(listOf(circle), collisions.overlaps(Shape.Circle(1f), x = 30f, y = 9f))
-        assertEquals(emptyList(), collisions.overlaps(Shape.Circle(1f), x = 37.8f, y = 7.8f))
+        assertEquals(emptyList(), collisions.overlapping(Shape.Box(width = 10f, height = 10f), x = 15f, y = 0f))
+        assertEquals(listOf(box, circle), collisions.overlapping(Shape.Box(width = 12f, height = 2f), x = 15f, y = 0f))
+        assertEquals(listOf(box), collisions.overlapping(Shape.Box(width = 12f, height = 2f), x = 15f, y = 0f, mask = enemy))
+        assertEquals(listOf(circle), collisions.overlapping(Shape.Circle(1f), x = 30f, y = 9f))
+        assertEquals(emptyList(), collisions.overlapping(Shape.Circle(1f), x = 37.8f, y = 7.8f))
         // A query larger than the grid tests every collider.
-        assertEquals(listOf(box, circle), collisions.overlaps(Shape.Box(width = 10_000f, height = 10_000f), x = 0f, y = 0f))
+        assertEquals(listOf(box, circle), collisions.overlapping(Shape.Box(width = 10_000f, height = 10_000f), x = 0f, y = 0f))
 
         val destination = mutableListOf(circle)
-        assertEquals(listOf(circle, box), collisions.overlapsTo(destination, Shape.Circle(2f), x = 0f, y = 0f))
-        val set = collisions.overlapsTo(HashSet<Entity>(), Shape.Box(width = 100f, height = 100f), x = 15f, y = 0f)
+        assertEquals(listOf(circle, box), collisions.overlappingTo(destination, Shape.Circle(2f), x = 0f, y = 0f))
+        val set = collisions.overlappingTo(HashSet<Entity>(), Shape.Box(width = 100f, height = 100f), x = 15f, y = 0f)
         assertEquals(setOf(box, circle), set)
 
-        assertFailsWith<IllegalArgumentException> { collisions.overlaps(Shape.Circle(1f), x = Float.NaN, y = 0f) }
+        assertFailsWith<IllegalArgumentException> { collisions.overlapping(Shape.Circle(1f), x = Float.NaN, y = 0f) }
     }
 
     @Test
@@ -286,10 +286,10 @@ class CollisionsTest {
         world.remove(first, Collider)
         world.add(first, Collider, Collider(Shape.Circle(5f)))
         detect(world, collisions)
-        assertEquals(first, collisions.firstOverlapOrNull(Shape.Circle(1f), x = 1f, y = 0f))
-        assertEquals(second, collisions.firstOverlapOrNull(Shape.Circle(1f), x = 6f, y = 0f))
-        assertNull(collisions.firstOverlapOrNull(Shape.Circle(1f), x = 50f, y = 0f))
-        assertNull(collisions.firstOverlapOrNull(Shape.Circle(1f), x = 1f, y = 0f, mask = CollisionLayers.of(3)))
+        assertEquals(first, collisions.firstOverlappingOrNull(Shape.Circle(1f), x = 1f, y = 0f))
+        assertEquals(second, collisions.firstOverlappingOrNull(Shape.Circle(1f), x = 6f, y = 0f))
+        assertNull(collisions.firstOverlappingOrNull(Shape.Circle(1f), x = 50f, y = 0f))
+        assertNull(collisions.firstOverlappingOrNull(Shape.Circle(1f), x = 1f, y = 0f, mask = CollisionLayers.of(3)))
     }
 
     @Test
@@ -396,7 +396,7 @@ class CollisionsTest {
         }
 
         fun overlaps(other: TestShape): Boolean {
-            if (!mask.contains(other.layers) && !other.mask.contains(layers)) return false
+            if (!mask.intersects(other.layers) && !other.mask.intersects(layers)) return false
             if (!boxesOverlap(
                     x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight,
                     other.x - other.halfWidth, other.y - other.halfHeight, other.x + other.halfWidth, other.y + other.halfHeight,
@@ -444,9 +444,9 @@ class CollisionsTest {
                     CollisionLayers.NONE,
                     CollisionLayers.of(random.nextInt(4)) + CollisionLayers.of(random.nextInt(4)),
                 )
-                val bruteForce = shapes.filter { probe.mask.contains(it.layers) && probe.overlapsIgnoringLayers(it) }.map { it.entity }.sortedBy { it.index }
-                assertEquals(bruteForce, collisions.overlaps(probe.shape, x = probe.x, y = probe.y, mask = probe.mask), "$label, cell size $cellSize, query")
-                assertEquals(bruteForce.firstOrNull(), collisions.firstOverlapOrNull(probe.shape, x = probe.x, y = probe.y, mask = probe.mask))
+                val bruteForce = shapes.filter { probe.mask.intersects(it.layers) && probe.overlapsIgnoringLayers(it) }.map { it.entity }.sortedBy { it.index }
+                assertEquals(bruteForce, collisions.overlapping(probe.shape, x = probe.x, y = probe.y, mask = probe.mask), "$label, cell size $cellSize, query")
+                assertEquals(bruteForce.firstOrNull(), collisions.firstOverlappingOrNull(probe.shape, x = probe.x, y = probe.y, mask = probe.mask))
             }
         }
     }

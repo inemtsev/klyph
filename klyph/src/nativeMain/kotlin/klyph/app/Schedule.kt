@@ -63,7 +63,7 @@ internal class Schedule {
         world.currentOwner = owner
         try {
             invoke(system)
-            if (!commands.isEmpty) commands.apply()
+            if (!commands.isEmpty()) commands.apply()
         } finally {
             world.currentOwner = World.NO_OWNER
         }

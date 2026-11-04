@@ -3,6 +3,10 @@ package klyph.entity
 /**
  * Sparse-set storage for one component type. Components sit in a dense array that iterates
  * without gaps; `sparse` maps an entity index to its dense slot or -1.
+ *
+ * The inline `World.forEach` queries read the four published fields directly, so their names,
+ * types and meaning are frozen ABI for every library compiled against klyph: change them only
+ * in a major release. `Entity.raw`, which the entity arrays hold, is frozen for the same reason.
  */
 @PublishedApi
 internal class ComponentStore<T : Any>(capacity: Int) {

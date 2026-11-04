@@ -45,8 +45,7 @@ public class Events {
      * @sample samples.event.EventBus.publish
      */
     public inline fun <reified T : Any> forEach(action: (T) -> Unit) {
-        val channel = channelOrNull(T::class) ?: return
-        val current = channel.current
+        val current = eventsOf(T::class)
         val size = current.size
         for (i in 0 until size) action(current[i] as T)
     }
@@ -56,14 +55,15 @@ public class Events {
      *
      * @sample samples.event.EventBus.any
      */
-    public inline fun <reified T : Any> any(): Boolean {
-        val channel = channelOrNull(T::class) ?: return false
-        return channel.current.isNotEmpty()
-    }
+    public inline fun <reified T : Any> any(): Boolean = eventsOf(T::class).isNotEmpty()
 
-    /** Returns the events of class [type], or `null` if no event of that class was ever published. */
+    /**
+     * Returns the events of class [type] published this frame, in publish order: the channel's own
+     * list, or the shared empty list if no event of that class was ever published, so the inline
+     * readers allocate nothing. The channels stay out of the published ABI.
+     */
     @PublishedApi
-    internal fun channelOrNull(type: KClass<*>): Channel? = channels[type]
+    internal fun eventsOf(type: KClass<*>): List<Any> = channels[type]?.current ?: emptyList()
 
     /**
      * Returns the channel of events of class [type], creating it if needed, so an engine step
@@ -96,13 +96,11 @@ public class Events {
     }
 
     /** Holds the events of one class published during the current frame. */
-    @PublishedApi
     internal class Channel {
         private val events = ArrayList<Any>()
 
         /** Events published this frame, in publish order. */
-        @PublishedApi
-        internal val current: List<Any> get() = events
+        val current: List<Any> get() = events
 
         /** Appends [event] to this frame's events. */
         fun add(event: Any) {

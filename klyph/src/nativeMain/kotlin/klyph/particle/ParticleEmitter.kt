@@ -7,6 +7,10 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
 
 /**
  * A component that sends out small quads showing [region], each living for a while and moving in a
@@ -22,21 +26,23 @@ import kotlin.random.Random
  * propagation put it. New particles come from the bursts requested with [emit] since the last
  * advance and from [rate]. Once emitted, a particle moves in world space and no longer follows the
  * entity. The sprite pass draws every live particle of a visible emitter in world space, in
- * [layer], as one quad centred on the particle. An emitter on an entity without a `Transform` is
+ * draw [layer], as one quad centered on the particle. An emitter on an entity without a `Transform` is
  * neither advanced nor drawn. Destroying the entity removes its particles at once, so to let a
- * burst fade out after its source is gone, put the emitter on an entity of its own.
+ * burst fade out after its source is gone, put the emitter on an entity of its own and set
+ * [whenEmpty] to [EmitterEnd.DESTROY], which destroys that entity once the burst is over.
  *
  * Each particle draws its direction, speed, lifetime, start rotation and angular velocity at random
  * from [random] when it is emitted. Its direction is [direction] plus up to half of [spread] either
- * side. Angles in this class are in degrees, unlike `Transform.rotation`: 0 points along +x and
- * positive angles turn clockwise on screen, because y points down. Speeds are in world units per
- * second and gravity in world units per second squared. At a particle's age `t`, as a fraction of
- * its lifetime from 0 to 1, its color is the linear blend of [startColor] and [endColor] at `t`,
- * channel by channel, alpha included, and its size is the region's size in texels times the blend
- * of [startScale] and [endScale] at `t`.
+ * side, turned by the entity's world rotation too when [space] is [EmitterSpace.LOCAL]. Angles are
+ * in radians, as for `Transform.rotation`: 0 points along +x and positive angles turn clockwise on
+ * screen, because y points down; `klyph.math.degrees` converts from degrees, as in
+ * `spread = 30f.degrees`. Speeds are in world units per second and gravity in world units per
+ * second squared. At a particle's age `t`, as a fraction of its lifetime from 0 to 1, its color is
+ * the linear blend of [startColor] and [endColor] at `t`, channel by channel, alpha included, and
+ * its size is the region's size in texels times the blend of [startScale] and [endScale] at `t`.
  *
- * At most [capacity] particles are alive at once; emission beyond that is dropped. [capacity] is
- * [maxParticles], which must be positive. Setting a property outside its documented range throws
+ * At most [capacity] particles are alive at once; emission beyond that is dropped. [capacity]
+ * must be positive. Setting a property outside its documented range throws
  * [IllegalArgumentException].
  *
  * Advancing allocates nothing. Not thread-safe; use it from systems only.
@@ -44,28 +50,28 @@ import kotlin.random.Random
  * Has no sample because creating a [klyph.render.Texture] needs a GPU device, which samples cannot
  * open.
  *
- * @throws IllegalArgumentException if [maxParticles] is not positive.
+ * @throws IllegalArgumentException if [capacity] is not positive.
  */
 public class ParticleEmitter(
     /** The part of a texture every particle shows. Changing it changes live particles too. */
     public var region: TextureRegion,
-    maxParticles: Int = 256,
+    /** The most particles alive at once. */
+    public val capacity: Int = 256,
 ) {
     init {
-        require(maxParticles > 0) { "Max particles $maxParticles is not positive." }
+        require(capacity > 0) { "Capacity $capacity is not positive." }
     }
 
-    /** The most particles alive at once: the `maxParticles` the emitter was created with. */
-    public val capacity: Int = maxParticles
-
-    /** Returns how many particles are alive. Bursts requested with [emit] count once the engine has emitted them. */
-    public var count: Int = 0
+    /** Number of live particles. Bursts requested with [emit] count once the engine has emitted them. */
+    public var particleCount: Int = 0
         private set
 
     /**
      * Particles emitted per second, spread over frames with the fraction carried from one frame to
      * the next; 0, the default, emits only the bursts requested with [emit]. Must be finite and not
      * negative.
+     *
+     * @throws IllegalArgumentException if set to a negative or infinite value or `NaN`.
      */
     public var rate: Float = 0f
         set(value) {
@@ -73,7 +79,13 @@ public class ParticleEmitter(
             field = value
         }
 
-    /** Middle of the directions particles leave in, in degrees; 0 points along +x, 90 down the screen. Must be finite. */
+    /**
+     * Middle of the directions particles leave in, in radians; 0 points along +x and `PI / 2` down
+     * the screen. With [EmitterSpace.LOCAL] it is measured from the entity's world rotation. Must
+     * be finite.
+     *
+     * @throws IllegalArgumentException if set to an infinite value or `NaN`.
+     */
     public var direction: Float = 0f
         set(value) {
             require(value.isFinite()) { "Direction $value is not finite." }
@@ -81,16 +93,23 @@ public class ParticleEmitter(
         }
 
     /**
-     * Width of the fan of directions particles leave in, in degrees, centred on [direction]; 360,
-     * the default, sends them every way and 0 only along [direction]. Must be between 0 and 360.
+     * Width of the fan of directions particles leave in, in radians, centered on [direction]; a
+     * full turn, `2 * PI`, the default, sends them every way and 0 only along [direction]. Must be
+     * between 0 and `2 * PI`.
+     *
+     * @throws IllegalArgumentException if set to a value outside 0 to `2 * PI`.
      */
-    public var spread: Float = 360f
+    public var spread: Float = FULL_TURN
         set(value) {
-            require(value in 0f..360f) { "Spread $value is not between 0 and 360." }
+            require(value in 0f..FULL_TURN) { "Spread $value is not between 0 and $FULL_TURN radians." }
             field = value
         }
 
-    /** Range a particle's speed is drawn from, in world units per second. Must not be empty. */
+    /**
+     * Range a particle's speed is drawn from, in world units per second. Must not be empty.
+     *
+     * @throws IllegalArgumentException if set to an empty range or one with an end that is not finite.
+     */
     public var speed: ClosedFloatingPointRange<Float> = 50f..100f
         set(value) {
             requireRange(value, "Speed")
@@ -100,34 +119,47 @@ public class ParticleEmitter(
         }
 
     /**
-     * Range a particle's lifetime is drawn from, in seconds. Must not be empty or start below 0; a
-     * particle with a lifetime of 0 is drawn once and removed at the next advance.
+     * Range a particle's lifetime is drawn from, such as `0.5.seconds..1.seconds`, the default.
+     * Must not be empty, start below zero or end at an infinite duration; a particle with a
+     * lifetime of zero is drawn once and removed at the next advance.
+     *
+     * @throws IllegalArgumentException if set to an empty range, one that starts below zero, or one
+     *   whose end is infinite.
      */
-    public var lifetime: ClosedFloatingPointRange<Float> = 0.5f..1f
+    public var lifetime: ClosedRange<Duration> = 500.milliseconds..1.seconds
         set(value) {
-            requireRange(value, "Lifetime")
-            require(value.start >= 0f) { "Lifetime $value starts below zero." }
+            require(!value.isEmpty() && !value.start.isNegative() && value.endInclusive.isFinite()) {
+                "Lifetime range $value is empty, starts below zero or is not finite."
+            }
             field = value
-            lifetimeStart = value.start
-            lifetimeEnd = value.endInclusive
+            lifetimeStart = value.start.toDouble(DurationUnit.SECONDS).toFloat()
+            lifetimeEnd = value.endInclusive.toDouble(DurationUnit.SECONDS).toFloat()
         }
 
-    /** Range a particle's rotation at emission is drawn from, in degrees. Must not be empty. */
+    /**
+     * Range a particle's rotation at emission is drawn from, in radians. Must not be empty.
+     *
+     * @throws IllegalArgumentException if set to an empty range or one with an end that is not finite.
+     */
     public var startRotation: ClosedFloatingPointRange<Float> = 0f..0f
         set(value) {
             requireRange(value, "Start rotation")
             field = value
-            rotationStart = value.start * RADIANS_PER_DEGREE
-            rotationEnd = value.endInclusive * RADIANS_PER_DEGREE
+            rotationStart = value.start
+            rotationEnd = value.endInclusive
         }
 
-    /** Range a particle's turning speed is drawn from, in degrees per second. Must not be empty. */
+    /**
+     * Range a particle's turning speed is drawn from, in radians per second. Must not be empty.
+     *
+     * @throws IllegalArgumentException if set to an empty range or one with an end that is not finite.
+     */
     public var angularVelocity: ClosedFloatingPointRange<Float> = 0f..0f
         set(value) {
             requireRange(value, "Angular velocity")
             field = value
-            spinStart = value.start * RADIANS_PER_DEGREE
-            spinEnd = value.endInclusive * RADIANS_PER_DEGREE
+            spinStart = value.start
+            spinEnd = value.endInclusive
         }
 
     /** Horizontal acceleration of every live particle, in world units per second squared. */
@@ -140,10 +172,28 @@ public class ParticleEmitter(
     public var startColor: Color = Color.WHITE
 
     /**
-     * Tint of a particle at the end of its lifetime. The default is white at zero alpha, so
-     * particles fade out without darkening on the way.
+     * Tint of a particle at the end of its lifetime, or `null`, the default, for [startColor] at
+     * zero alpha, so particles keep their color and fade out whatever [startColor] is.
      */
-    public var endColor: Color = Color(0xFFFFFF00u)
+    public var endColor: Color? = null
+
+    /**
+     * What happens to the entity once the emitter has nothing left to do. [EmitterEnd.KEEP], the
+     * default, keeps it. [EmitterEnd.DESTROY] destroys it through `App.commands` at the end of an
+     * advance that leaves no live particle, no burst requested with [emit] and a [rate] of 0, so an
+     * entity that carries one burst goes away once the burst has faded. Request the burst before
+     * the frame's particle step, or the emitter is empty at its first advance and is destroyed
+     * then.
+     */
+    public var whenEmpty: EmitterEnd = EmitterEnd.KEEP
+
+    /**
+     * Whether [direction] is fixed in the world, [EmitterSpace.WORLD], the default, or turns with
+     * the entity's world rotation at the moment each particle is emitted, [EmitterSpace.LOCAL],
+     * such as a ship's exhaust that points out of its tail whichever way the ship faces. Emitted
+     * particles move in world space either way.
+     */
+    public var space: EmitterSpace = EmitterSpace.WORLD
 
     /** Size of a particle when it is emitted, as a factor of the region's size in texels. */
     public var startScale: Float = 1f
@@ -151,7 +201,7 @@ public class ParticleEmitter(
     /** Size of a particle at the end of its lifetime, as a factor of the region's size in texels. */
     public var endScale: Float = 1f
 
-    /** Draw-order group of every particle; higher layers draw on top. Any `Int`, negative included. */
+    /** Draw layer of every particle; higher layers draw on top. Any `Int`, negative included. */
     public var layer: Int = 0
 
     /** Whether the particles are drawn. Hidden particles still move, age and get emitted. */
@@ -160,7 +210,7 @@ public class ParticleEmitter(
     /** Source of every random draw at emission. Pass a seeded `Random(seed)` for runs that repeat exactly. */
     public var random: Random = Random.Default
 
-    // Range ends as primitives: reading a ClosedFloatingPointRange<Float> boxes its Float ends.
+    // Range ends as primitives: reading a range boxes its ends, and lifetimes are kept in seconds.
     private var speedStart = 50f
     private var speedEnd = 100f
     private var lifetimeStart = 0.5f
@@ -170,19 +220,23 @@ public class ParticleEmitter(
     private var spinStart = 0f
     private var spinEnd = 0f
 
-    // The pool: particle i lives in slot i of every array, for i below count.
-    internal val xs = FloatArray(maxParticles)
-    internal val ys = FloatArray(maxParticles)
-    internal val velocitiesX = FloatArray(maxParticles)
-    internal val velocitiesY = FloatArray(maxParticles)
-    internal val ages = FloatArray(maxParticles)
-    internal val lifetimes = FloatArray(maxParticles)
+    // The pool: particle i lives in slot i of every array, for i below particleCount.
+    internal val xs = FloatArray(capacity)
+    internal val ys = FloatArray(capacity)
+    internal val velocitiesX = FloatArray(capacity)
+    internal val velocitiesY = FloatArray(capacity)
+
+    /** Age in seconds. */
+    internal val ages = FloatArray(capacity)
+
+    /** Lifetime in seconds. */
+    internal val lifetimes = FloatArray(capacity)
 
     /** Rotation in radians. */
-    internal val rotations = FloatArray(maxParticles)
+    internal val rotations = FloatArray(capacity)
 
     /** Angular velocity in radians per second. */
-    internal val spins = FloatArray(maxParticles)
+    internal val spins = FloatArray(capacity)
 
     /** Particles requested by [emit] and not yet emitted, at most [capacity]. */
     internal var pendingBurst: Int = 0
@@ -206,27 +260,33 @@ public class ParticleEmitter(
 
     /** Removes every live particle and every burst not yet emitted. [rate] keeps emitting from the next advance. */
     public fun clear() {
-        count = 0
+        particleCount = 0
         pendingBurst = 0
         carry = 0f
     }
 
     /**
-     * Moves the emitter on by [delta] seconds with the entity at ([x], [y]): ages, moves and turns
-     * every live particle, removes those that have lived their lifetime, then emits the pending
-     * burst and what [rate] built up. Returns the number of live particles.
+     * Moves the emitter on by [delta] seconds with the entity at ([x], [y]) and turned by
+     * [rotation] radians: ages, moves and turns every live particle, removes those that have lived
+     * their lifetime, then emits the pending burst and what [rate] built up, turning [direction]
+     * by [rotation] when [space] is [EmitterSpace.LOCAL]. Returns the number of live particles.
      */
-    internal fun advance(delta: Float, x: Float, y: Float): Int {
+    internal fun advance(delta: Float, x: Float, y: Float, rotation: Float = 0f): Int {
         integrate(delta)
         carry += rate * delta
         val fromRate = carry.toInt()
         carry -= fromRate
         val wanted = pendingBurst.toLong() + fromRate
         pendingBurst = 0
-        val free = capacity - count
-        spawn(x, y, if (wanted < free) wanted.toInt() else free)
-        return count
+        val free = capacity - particleCount
+        val turn = if (space == EmitterSpace.LOCAL) rotation else 0f
+        spawn(x, y, turn, if (wanted < free) wanted.toInt() else free)
+        return particleCount
     }
+
+    /** Whether the emitter has no live particle, no pending burst and no [rate], so it stays empty. */
+    internal val isSpent: Boolean
+        get() = particleCount == 0 && pendingBurst == 0 && rate == 0f
 
     /** Ages, moves and turns every live particle by [delta] seconds and swap-removes the dead ones. */
     private fun integrate(delta: Float) {
@@ -240,7 +300,7 @@ public class ParticleEmitter(
         val spins = spins
         val ax = gravityX * delta
         val ay = gravityY * delta
-        var live = count
+        var live = particleCount
         var i = 0
         while (i < live) {
             val age = ages[i] + delta
@@ -267,17 +327,17 @@ public class ParticleEmitter(
             rotations[i] += spins[i] * delta
             i++
         }
-        count = live
+        particleCount = live
     }
 
-    /** Emits [amount] particles at ([x], [y]); the caller has checked that they fit. */
-    private fun spawn(x: Float, y: Float, amount: Int) {
+    /** Emits [amount] particles at ([x], [y]) with [direction] turned by [turn]; the caller has checked that they fit. */
+    private fun spawn(x: Float, y: Float, turn: Float, amount: Int) {
         if (amount <= 0) return
         val random = random
-        val centre = direction * RADIANS_PER_DEGREE
-        val fan = spread * RADIANS_PER_DEGREE
-        for (slot in count until count + amount) {
-            val angle = centre + (random.nextFloat() - 0.5f) * fan
+        val center = direction + turn
+        val fan = spread
+        for (slot in particleCount until particleCount + amount) {
+            val angle = center + (random.nextFloat() - 0.5f) * fan
             val speed = speedStart + (speedEnd - speedStart) * random.nextFloat()
             xs[slot] = x
             ys[slot] = y
@@ -288,7 +348,7 @@ public class ParticleEmitter(
             rotations[slot] = rotationStart + (rotationEnd - rotationStart) * random.nextFloat()
             spins[slot] = spinStart + (spinEnd - spinStart) * random.nextFloat()
         }
-        count += amount
+        particleCount += amount
     }
 
     private fun requireRange(range: ClosedFloatingPointRange<Float>, name: String) {
@@ -298,14 +358,37 @@ public class ParticleEmitter(
     }
 
     /**
-     * Returns `ParticleEmitter(count=12/256, rate=30.0, layer=0, visible=true, region=TextureRegion(...))`.
-     * The format may change.
+     * Returns `ParticleEmitter(particles=12/256, rate=30.0, layer=0, visible=true, startColor=Color(#ffffffff),
+     * endColor=null, whenEmpty=KEEP, space=WORLD, region=TextureRegion(...))`, where an `endColor` of
+     * `null` means [startColor] at zero alpha. The format may change.
      */
     override fun toString(): String =
-        "ParticleEmitter(count=$count/$capacity, rate=$rate, layer=$layer, visible=$isVisible, region=$region)"
+        "ParticleEmitter(particles=$particleCount/$capacity, rate=$rate, layer=$layer, visible=$isVisible, startColor=$startColor, " +
+            "endColor=$endColor, whenEmpty=$whenEmpty, space=$space, region=$region)"
 
     /** Component key for [ParticleEmitter]. */
     public companion object : ComponentType<ParticleEmitter>("ParticleEmitter") {
-        private const val RADIANS_PER_DEGREE: Float = (PI / 180.0).toFloat()
+        private const val FULL_TURN: Float = (2.0 * PI).toFloat()
     }
+}
+
+/** Names what happens to a [ParticleEmitter]'s entity once the emitter is empty. */
+public enum class EmitterEnd {
+    /** Keeps the entity, so the emitter can emit again later. */
+    KEEP,
+
+    /**
+     * Destroys the entity, with its descendants, once the emitter has no live particle, no pending
+     * burst and a rate of 0.
+     */
+    DESTROY,
+}
+
+/** Names the space a [ParticleEmitter]'s direction is measured in. */
+public enum class EmitterSpace {
+    /** The direction is fixed in the world, whatever the entity's rotation. */
+    WORLD,
+
+    /** The direction turns with the entity's world rotation at the moment each particle is emitted. */
+    LOCAL,
 }

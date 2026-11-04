@@ -15,6 +15,24 @@ linked.
 
 To update, download `stb_image.h` from a pinned commit and refresh the lines above.
 
+# stb_image_write
+
+Vendored single-header image encoder from the same repository, used to write PNG files
+(`Image.save` and `Window.capture`).
+
+- File: `stb_image_write.h`, unmodified.
+- Version: `stb_image_write - v1.16`.
+- Upstream commit: `003501f6d7a8668ce8b6d875e34dd97ad0d5d5b5`, the same as `stb_image.h`.
+- SHA-256: `cbd5f0ad7a9cf4468affb36354a1d2338034f2c12473cf1a8e32053cb6914a05`.
+- Licence: dual, at the user's choice: MIT, or public domain (Unlicense). The full text is at the
+  end of the header.
+
+The `stb` cinterop compiles its implementation into the same interop stubs as `stb_image.h`, with
+`STBI_WRITE_NO_STDIO`: klyph encodes into memory through `stbi_write_png_to_func` and writes the
+file itself.
+
+To update, download `stb_image_write.h` from a pinned commit and refresh the lines above.
+
 # stb_vorbis
 
 Vendored single-file Ogg Vorbis decoder from the same repository.

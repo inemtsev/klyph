@@ -51,13 +51,13 @@ public class Mouse internal constructor() {
         private set
 
     /**
-     * The world point under the mouse, through `App.camera` as the camera stood at the start of
-     * this frame's `Phase.INPUT`.
+     * The world point under the mouse, [position] seen through `App.camera` as the camera stood at
+     * the start of this frame's `Phase.INPUT`.
      *
      * A system that moves the camera later in the frame, such as a camera that follows the player
      * in `Phase.LATE_UPDATE`, makes this value one frame behind the picture. A game that needs the
-     * point under the camera as it is now calls `camera.screenToWorld` with [position] multiplied by
-     * the window's pixel density.
+     * point under the camera as it is now calls `camera.screenToWorld(mouse.position)`; both are in
+     * points, so no pixel density is involved.
      */
     public var worldPosition: Vec2 = Vec2.ZERO
         private set
@@ -106,13 +106,13 @@ public class Mouse internal constructor() {
     /**
      * Publishes this frame's position, delta and wheel as [Vec2] values, reusing the previous ones
      * when they did not change, and computes [worldPosition] through [camera], whose screen
-     * coordinates are pixels, [pixelDensity] pixels per point.
+     * coordinates are points like the mouse's.
      */
-    internal fun endFrame(camera: Camera, pixelDensity: Float) {
+    internal fun endFrame(camera: Camera) {
         if (position.x != x || position.y != y) position = Vec2(x, y)
         delta = vectorOf(delta, deltaX, deltaY)
         wheel = vectorOf(wheel, wheelX, wheelY)
-        worldPosition = camera.screenToWorld(Vec2(x * pixelDensity, y * pixelDensity))
+        worldPosition = camera.screenToWorld(position)
     }
 
     override fun toString(): String = "Mouse(position=$position, down=${buttons.downCount})"

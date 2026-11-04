@@ -1,10 +1,9 @@
 package klyph.benchmarks
 
-import klyph.platform.GpuValidation
+import klyph.app.AppConfig
 import klyph.platform.PresentMode
 import klyph.platform.Sdl
 import kotlin.system.exitProcess
-import kotlin.time.Duration.Companion.seconds
 
 /** Every benchmark this executable can run, in the order they are listed. */
 internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, collisionBenchmark, particleBenchmark, mixerBenchmark)
@@ -35,18 +34,20 @@ fun main(args: Array<String>) {
         exitProcess(if (name == null) 0 else 1)
     }
 
+    // The limits, target, present mode, validation, overlay, window mode and screenshot come from
+    // KLYPH_* through the engine's own reader, on top of the benchmark's own base.
+    val base = AppConfig(
+        title = "klyph ${benchmark.name} benchmark",
+        presentMode = PresentMode.IMMEDIATE,
+        collisionCellSize = Sdl.environmentVariable("KLYPH_CELL")?.toFloatOrNull() ?: 64f,
+    )
     val settings = BenchmarkSettings(
         spriteCount = Sdl.environmentVariable("KLYPH_SPRITES")?.toIntOrNull() ?: 10_000,
         childCount = Sdl.environmentVariable("KLYPH_CHILDREN")?.toIntOrNull() ?: 8,
         textureCount = Sdl.environmentVariable("KLYPH_TEXTURES")?.toIntOrNull() ?: 1,
         interpolate = Sdl.environmentVariable("KLYPH_INTERPOLATE") == "1",
-        frameLimit = Sdl.environmentVariable("KLYPH_FRAMES")?.toIntOrNull(),
-        timeLimit = Sdl.environmentVariable("KLYPH_SECONDS")?.toDoubleOrNull()?.seconds,
-        offscreen = Sdl.environmentVariable("KLYPH_OFFSCREEN") == "1",
-        presentMode = if (Sdl.environmentVariable("KLYPH_VSYNC") == "1") PresentMode.VSYNC else PresentMode.IMMEDIATE,
-        validation = if (Sdl.environmentVariable("KLYPH_VALIDATION") == "1") GpuValidation.ENABLED else GpuValidation.DISABLED,
         musicPath = Sdl.environmentVariable("KLYPH_MUSIC")?.ifEmpty { null },
-        cellSize = Sdl.environmentVariable("KLYPH_CELL")?.toFloatOrNull() ?: 64f,
+        config = AppConfig.fromEnvironment(base),
     )
     benchmark.run(settings)
 }

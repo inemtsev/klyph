@@ -25,7 +25,7 @@ class TimeTest {
         val time = Time(60)
         assertEquals(Duration.ZERO, time.delta)
         assertEquals(Duration.ZERO, time.elapsed)
-        assertEquals(0L, time.frame)
+        assertEquals(0L, time.frameCount)
         assertEquals(0f, time.deltaSeconds)
         assertEquals(0f, time.fixedStepAlpha)
     }
@@ -83,13 +83,13 @@ class TimeTest {
     fun frameIncrementsOnEndFrame() {
         val time = Time(60)
         time.beginFrame(16.milliseconds)
-        assertEquals(0L, time.frame)
+        assertEquals(0L, time.frameCount)
         time.endFrame()
-        assertEquals(1L, time.frame)
+        assertEquals(1L, time.frameCount)
         time.beginFrame(16.milliseconds)
-        assertEquals(1L, time.frame)
+        assertEquals(1L, time.frameCount)
         time.endFrame()
-        assertEquals(2L, time.frame)
+        assertEquals(2L, time.frameCount)
     }
 
     @Test
@@ -125,6 +125,6 @@ class TimeTest {
             time.endFrame()
         }
         time.beginFrame(16.6.milliseconds)
-        assertEquals("Time(frame=12, elapsed=0.2s, delta=16.6ms)", time.toString())
+        assertEquals("Time(frameCount=12, elapsed=0.2s, delta=16.6ms)", time.toString())
     }
 }

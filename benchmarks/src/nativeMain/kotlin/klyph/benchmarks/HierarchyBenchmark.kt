@@ -23,10 +23,10 @@ internal val hierarchyBenchmark: Benchmark = Benchmark(
 ) { settings ->
     var sprites = 0
     val report = StatsReport(settings.frameLimit) { "sprites=$sprites" }
-    runApp(settings.appConfig("klyph hierarchy benchmark")) {
+    runApp(settings.config) {
         addBenchmarkSystems(settings, report)
         addSystem(Phase.STARTUP) { app ->
-            val circle = app.assets.texture(circleImage(64))
+            val circle = app.assets.createTexture(circleImage(64))
             val shape = spawnTree(
                 app.world,
                 circle.asRegion(),

@@ -37,8 +37,8 @@ public class WindowResized(
  * with a different density. [pixelDensity] is the new number of pixels per point, as in
  * [klyph.platform.Window.pixelDensity].
  *
- * Before publishing it the engine multiplies `App.camera.zoom` by the ratio of the new density to
- * the old one, so the view keeps its framing in points.
+ * `App.camera` works in points, so the view keeps its framing without a change to its zoom; the
+ * renderer draws the same points with the new number of pixels.
  */
 public class WindowDensityChanged(
     /** The new number of pixels per point: 2 on a Retina display, 1 on a standard one. */
@@ -158,17 +158,17 @@ public class MouseButtonReleased(
  * right and positive [dy] scrolls up, the wheel rolled away from the user, on every system. One
  * notch of a wheel is usually 1; touchpads report fractions.
  */
-public class MouseWheel(
+public class MouseWheelScrolled(
     /** The horizontal scroll amount. */
     public val dx: Float,
     /** The vertical scroll amount. */
     public val dy: Float,
 ) {
-    override fun equals(other: Any?): Boolean = other is MouseWheel && dx.equals(other.dx) && dy.equals(other.dy)
+    override fun equals(other: Any?): Boolean = other is MouseWheelScrolled && dx.equals(other.dx) && dy.equals(other.dy)
 
     override fun hashCode(): Int = 31 * dx.hashCode() + dy.hashCode()
 
-    override fun toString(): String = "MouseWheel(dx=$dx, dy=$dy)"
+    override fun toString(): String = "MouseWheelScrolled(dx=$dx, dy=$dy)"
 }
 
 /**

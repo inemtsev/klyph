@@ -9,6 +9,7 @@
 
 plugins {
     id("klyph.native")
+    id("klyph.docs")
     id("com.vanniktech.maven.publish")
 }
 

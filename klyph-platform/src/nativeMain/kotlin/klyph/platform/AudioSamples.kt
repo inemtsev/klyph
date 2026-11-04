@@ -47,6 +47,15 @@ public class AudioSamples private constructor(
 ) {
     // The public constructor takes its parameters in a different order so it can copy the array;
     // decoders hand over a freshly built array through the private one without the copy.
+    /**
+     * Creates audio from a copy of [samples], interleaved by channel, that plays at [sampleRate]
+     * frames per second. Pass the `Int` parameters by name.
+     *
+     * @throws IllegalArgumentException if [channels] is not 1 or 2, [sampleRate] is not positive, or
+     *   the size of [samples] is not a multiple of [channels].
+     *
+     * @sample samples.platform.Audio.get
+     */
     public constructor(samples: FloatArray, channels: Int, sampleRate: Int) :
         this(channels, sampleRate, samples.copyOf())
 
@@ -96,6 +105,7 @@ public class AudioSamples private constructor(
     /** Returns the format as `AudioSamples(<channels> ch, <rate> Hz, <frames> frames)`. */
     override fun toString(): String = "AudioSamples($channels ch, $sampleRate Hz, $frameCount frames)"
 
+    /** Holds the factories that decode audio files. */
     public companion object {
         private const val BYTES_PER_FLOAT = 4
 
@@ -103,7 +113,7 @@ public class AudioSamples private constructor(
         private const val VORBIS_BLOCK_FRAMES = 4096
 
         /**
-         * Decodes a WAV or Ogg Vorbis file held in [bytes], recognised by its header, into float
+         * Decodes a WAV or Ogg Vorbis file held in [bytes], recognized by its header, into float
          * samples at the file's own sample rate.
          *
          * WAV files in any format SDL reads are converted to float. Files with more than two
@@ -123,7 +133,7 @@ public class AudioSamples private constructor(
         )
 
         /**
-         * Decodes a WAV or Ogg Vorbis file held in [bytes], recognised by its header, into float
+         * Decodes a WAV or Ogg Vorbis file held in [bytes], recognized by its header, into float
          * samples at the file's own sample rate, or returns `null` when [bytes] is empty, is neither
          * a WAV nor an Ogg Vorbis file, is corrupt, or is too long to hold in one array.
          *

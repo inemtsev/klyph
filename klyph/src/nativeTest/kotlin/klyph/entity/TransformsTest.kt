@@ -238,6 +238,6 @@ class TransformsTest {
         world.add(e, Transform, Transform(x = 1f, y = 2f))
         world.setParent(e, parent)
         world.propagateTransforms()
-        assertEquals("WorldTransform(x=1.0, y=2.0, rotation=0.0, scale=1.0 x 1.0)", world.get(e, WorldTransform).toString())
+        assertEquals("WorldTransform(x=1.0, y=2.0, rotation=0.0, scale=1.0x1.0)", world.get(e, WorldTransform).toString())
     }
 }

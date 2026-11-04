@@ -19,7 +19,7 @@ class CommandQueues {
             add(Health, 10)
         }
         val sword = commands.spawn {
-            parent(player)
+            setParent(player)
         }
         assertTrue(world.isAlive(player))
         assertPrints(world.getOrNull(player, Health), "null")
@@ -45,5 +45,21 @@ class CommandQueues {
 
         commands.apply()
         assertFalse(world.isAlive(enemy))
+    }
+
+    @Sample
+    fun remove() {
+        val Shield = object : ComponentType<Int>("Shield") {}
+
+        val world = World()
+        val commands = Commands(world)
+        val player = world.create()
+        world.add(player, Shield, 3)
+
+        commands.remove(player, Shield)
+        assertTrue(world.has(player, Shield))
+
+        commands.apply()
+        assertFalse(world.has(player, Shield))
     }
 }

@@ -1,12 +1,15 @@
-headers = stb_image.h
-headerFilter = stb_image.h
+headers = stb_image.h stb_image_write.h
+headerFilter = stb_image.h stb_image_write.h
 # Include path comes from build.gradle.kts (src/nativeInterop/c/stb). The C section below compiles
-# the implementation into the interop stubs, so nothing else needs to be built or linked.
+# both implementations into the interop stubs, so nothing else needs to be built or linked.
 # Failure strings stay on: Image.decode puts stbi_failure_reason() into its exception message.
-compilerOpts = -DSTBI_ONLY_PNG -DSTBI_ONLY_JPEG -DSTBI_NO_STDIO
+# The writer encodes PNGs into memory through stbi_write_png_to_func; files are written by Files.
+compilerOpts = -DSTBI_ONLY_PNG -DSTBI_ONLY_JPEG -DSTBI_NO_STDIO -DSTBI_WRITE_NO_STDIO
 package = stb
 
 ---
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"

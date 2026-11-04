@@ -46,6 +46,7 @@ import sdl3.SDL_WaitEventTimeout
  *
  * Samples live in the sandbox because they need a display.
  */
+@KlyphPlatformApi
 public sealed class PlatformEvent {
     /** Asks the application to quit, for example because the user closed the last window. */
     public object Quit : PlatformEvent() {
@@ -58,8 +59,11 @@ public sealed class PlatformEvent {
      * comes from key repeat rather than a new press.
      */
     public class KeyDown(
+        /** The key's label under the current layout. */
         public val key: KeyCode,
+        /** Whether the event comes from key repeat rather than a new press. */
         public val isRepeat: Boolean,
+        /** The key's physical position. */
         public val scancode: Scancode,
     ) : PlatformEvent() {
         override fun equals(other: Any?): Boolean =
@@ -89,9 +93,13 @@ public sealed class PlatformEvent {
      * Positive [dx] is to the right and positive [dy] is down, like the window's coordinates.
      */
     public class MouseMoved(
+        /** Horizontal position in window points. */
         public val x: Float,
+        /** Vertical position in window points. */
         public val y: Float,
+        /** Horizontal movement in points since the previous event. */
         public val dx: Float,
+        /** Vertical movement in points since the previous event. */
         public val dy: Float,
     ) : PlatformEvent() {
         override fun equals(other: Any?): Boolean =
@@ -109,9 +117,13 @@ public sealed class PlatformEvent {
      * so on. Buttons past [MouseButton.X2] are not reported.
      */
     public class MouseButtonDown(
+        /** The button that was pressed. */
         public val button: MouseButton,
+        /** Horizontal position in window points. */
         public val x: Float,
+        /** Vertical position in window points. */
         public val y: Float,
+        /** Number of presses in quick succession. */
         public val clicks: Int,
     ) : PlatformEvent() {
         override fun equals(other: Any?): Boolean =
@@ -144,12 +156,12 @@ public sealed class PlatformEvent {
      * them back, so the sign means the same on every system. One notch of a wheel is usually 1;
      * touchpads report fractions.
      */
-    public class MouseWheel(public val dx: Float, public val dy: Float) : PlatformEvent() {
-        override fun equals(other: Any?): Boolean = other is MouseWheel && dx.equals(other.dx) && dy.equals(other.dy)
+    public class MouseWheelScrolled(public val dx: Float, public val dy: Float) : PlatformEvent() {
+        override fun equals(other: Any?): Boolean = other is MouseWheelScrolled && dx.equals(other.dx) && dy.equals(other.dy)
 
         override fun hashCode(): Int = 31 * dx.hashCode() + dy.hashCode()
 
-        override fun toString(): String = "MouseWheel(dx=$dx, dy=$dy)"
+        override fun toString(): String = "MouseWheelScrolled(dx=$dx, dy=$dy)"
     }
 
     /**
@@ -202,8 +214,11 @@ public sealed class PlatformEvent {
      * (released) to 1 (fully pressed). Sticks rarely rest at exactly 0, so apply a dead zone.
      */
     public class GamepadAxisMoved(
+        /** The gamepad that reported the movement. */
         public val id: GamepadId,
+        /** The axis that moved. */
         public val axis: GamepadAxis,
+        /** The new axis value. */
         public val value: Float,
     ) : PlatformEvent() {
         override fun equals(other: Any?): Boolean =
@@ -265,6 +280,7 @@ public sealed class PlatformEvent {
  *
  * Samples live in the sandbox because they need a display.
  */
+@KlyphPlatformApi
 public class EventPump : AutoCloseable {
     private val event = nativeHeap.alloc<SDL_Event>()
     private val gamepads = HashMap<UInt, CPointer<SDL_Gamepad>>()
@@ -305,7 +321,7 @@ public class EventPump : AutoCloseable {
         }
     }
 
-    /** Returns the [PlatformEvent] for the native event record, or `null` when it is not modelled. */
+    /** Returns the [PlatformEvent] for the native event record, or `null` when it is not modeled. */
     private fun translateOrNull(): PlatformEvent? = when (event.type) {
         SDL_EVENT_QUIT -> PlatformEvent.Quit
         SDL_EVENT_KEY_DOWN ->
@@ -327,9 +343,9 @@ public class EventPump : AutoCloseable {
             val wheel = event.wheel
             if (wheel.direction == SDL_MouseWheelDirection.SDL_MOUSEWHEEL_FLIPPED) {
                 // Subtracting from zero flips the sign without turning 0 into -0.
-                PlatformEvent.MouseWheel(dx = 0f - wheel.x, dy = 0f - wheel.y)
+                PlatformEvent.MouseWheelScrolled(dx = 0f - wheel.x, dy = 0f - wheel.y)
             } else {
-                PlatformEvent.MouseWheel(dx = wheel.x, dy = wheel.y)
+                PlatformEvent.MouseWheelScrolled(dx = wheel.x, dy = wheel.y)
             }
         }
         SDL_EVENT_GAMEPAD_ADDED -> connectGamepadOrNull(event.gdevice.which)

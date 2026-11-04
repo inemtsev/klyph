@@ -33,7 +33,7 @@ public class EntityBuilder internal constructor(private val commands: Commands) 
      *
      * @sample samples.entity.CommandQueues.spawn
      */
-    public fun parent(parent: Entity) {
+    public fun setParent(parent: Entity) {
         commands.setParent(current, parent)
     }
 

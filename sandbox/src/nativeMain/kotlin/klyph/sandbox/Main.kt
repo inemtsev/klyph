@@ -2,7 +2,6 @@ package klyph.sandbox
 
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 import klyph.app.App
 import klyph.app.AppConfig
@@ -14,9 +13,10 @@ import klyph.event.GamepadDisconnected
 import klyph.event.KeyPressed
 import klyph.event.WindowFocusGained
 import klyph.event.WindowFocusLost
+import klyph.event.WindowResized
+import klyph.math.degrees
 import klyph.platform.GamepadButton
 import klyph.platform.EventPump
-import klyph.platform.GpuValidation
 import klyph.platform.KeyCode
 import klyph.platform.MouseButton
 import klyph.platform.PlatformEvent
@@ -25,12 +25,16 @@ import klyph.platform.Subsystem
 import klyph.platform.Window
 import klyph.platform.WindowFlag
 import klyph.platform.Color
+import klyph.platform.CursorMode
 import klyph.platform.Image
+import klyph.platform.Scancode
+import klyph.platform.WindowMode
 import klyph.particle.ParticleEmitter
 import klyph.render.DrawSpace
-import klyph.render.asRegion
 import klyph.text.Text
 import klyph.text.TextAlign
+import klyph.text.TextShadow
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Sandbox entry point: a smoke test that runs a klyph app, which clears the window every frame
@@ -43,25 +47,28 @@ import klyph.text.TextAlign
  * no GPU work that prints every platform event, the manual check for keyboard, mouse, gamepad and
  * focus input.
  *
- * Environment: `KLYPH_FRAMES` frames before exit, `KLYPH_SECONDS` seconds before exit,
- * `KLYPH_VALIDATION=1` for the GPU validation layer, `KLYPH_OVERLAY=1` to show the debug overlay
- * from the first frame (F3 toggles it either way),
- * `KLYPH_EVENTS=1` for the event printer.
+ * Environment, read by `AppConfig.fromEnvironment` and honoured by the engine: `KLYPH_FRAMES`
+ * frames before exit, `KLYPH_SECONDS` seconds before exit, `KLYPH_VALIDATION=1` for the GPU
+ * validation layer, `KLYPH_OFFSCREEN=1` to draw into a texture instead of the window,
+ * `KLYPH_OVERLAY=1` to show the debug overlay from the first frame (F3 toggles it either way),
+ * `KLYPH_SCREENSHOT=<frame>:<path>` to save that frame as a PNG, `KLYPH_FULLSCREEN=1` to open in
+ * fullscreen. `KLYPH_EVENTS=1` runs the event printer, which reads the two limits itself.
+ *
+ * Keys: escape quits, F3 toggles the debug overlay, F11 switches between a window and fullscreen,
+ * and C cycles the cursor through the system arrow, an image cursor and hidden, the manual check
+ * of the window features.
  */
 fun main() {
-    val frameLimit = Sdl.environmentVariable("KLYPH_FRAMES")?.toIntOrNull()
-    val timeLimit = Sdl.environmentVariable("KLYPH_SECONDS")?.toDoubleOrNull()?.seconds
+    val config = AppConfig.fromEnvironment(AppConfig(title = "klyph sandbox"))
     if (Sdl.environmentVariable("KLYPH_EVENTS") == "1") {
-        printPlatformEvents(frameLimit, timeLimit)
+        printPlatformEvents(config.frameLimit, config.timeLimit)
         return
     }
-    val validation = if (Sdl.environmentVariable("KLYPH_VALIDATION") == "1") GpuValidation.ENABLED else GpuValidation.DISABLED
-    val showOverlay = Sdl.environmentVariable("KLYPH_OVERLAY") == "1"
 
-    runApp(AppConfig(title = "klyph sandbox", validation = validation)) {
-        overlay.isVisible = showOverlay
+    runApp(config) {
+        addWindowControls(this)
         addSystem(Phase.STARTUP) { app ->
-            println("${app.assets}, ${app.camera}, validation: $validation")
+            println("${app.assets}, ${app.camera}, validation: ${config.validation}")
             // A world-space label, drawn through the camera by the sprite pass.
             val label = app.world.create()
             app.world.add(label, Transform, Transform(x = 40f, y = 120f))
@@ -72,16 +79,55 @@ fun main() {
         addSystem(Phase.INPUT) { app -> printInput(app) }
         addSystem(Phase.UPDATE) { app ->
             app.events.forEach<KeyPressed> { if (it.key == KeyCode.ESCAPE) app.quit() }
-            // time.frame counts completed frames, so this frame is number frame + 1.
-            if (frameLimit != null && app.time.frame + 1 >= frameLimit) app.quit()
-            if (timeLimit != null && app.time.elapsed >= timeLimit) app.quit()
         }
         addSystem(Phase.SHUTDOWN) { app ->
             println(
-                "Ran ${app.time.frame} frames, last ${app.stats.spriteCount} quads in ${app.stats.drawCalls} draw calls, " +
+                "Ran ${app.time.frameCount} frames, last ${app.stats.spriteCount} quads in ${app.stats.drawCallCount} draw calls, " +
                     "${app.stats.particleCount} particles.",
             )
         }
+    }
+}
+
+/**
+ * Adds the window feature checks: F11 switches between a window and fullscreen, and C cycles the
+ * cursor through the system arrow, an image cursor made from a small [Image] and hidden.
+ */
+private fun addWindowControls(app: App) {
+    // A 15x15 crosshair, yellow with a dark outline, its hotspot in the middle.
+    val outline = Color(red = 0f, green = 0f, blue = 0f)
+    val fill = Color(red = 1f, green = 0.9f, blue = 0.2f)
+    val crosshair = Image(15, 15)
+    for (i in 0 until 15) {
+        for (j in 6..8) {
+            crosshair[i, j] = outline
+            crosshair[j, i] = outline
+        }
+    }
+    for (i in 1 until 14) {
+        crosshair[i, 7] = fill
+        crosshair[7, i] = fill
+    }
+    val cursorNames = listOf("system arrow", "crosshair image", "hidden")
+    var cursorStep = 0
+    app.addSystem(Phase.INPUT) { app ->
+        val window = app.window
+        val keyboard = app.input.keyboard
+        if (keyboard.isJustPressed(Scancode.F11)) {
+            val wanted = if (window.mode == WindowMode.FULLSCREEN) WindowMode.WINDOWED else WindowMode.FULLSCREEN
+            window.mode = wanted
+            println("Window mode: asked for $wanted, now ${window.mode}.")
+        }
+        if (keyboard.isJustPressed(Scancode.C)) {
+            cursorStep = (cursorStep + 1) % cursorNames.size
+            when (cursorStep) {
+                0 -> window.resetCursor()
+                1 -> window.setCursor(crosshair, hotspotX = 7, hotspotY = 7)
+            }
+            window.cursor = if (cursorStep == 2) CursorMode.HIDDEN else CursorMode.VISIBLE
+            println("Cursor: ${cursorNames[cursorStep]}, ${window.cursor}.")
+        }
+        app.events.forEach<WindowResized> { println("Resized: $it, ${window.width}x${window.height} points, ${app.camera}.") }
     }
 }
 
@@ -93,26 +139,25 @@ fun main() {
 private fun drawOverlay(app: App) {
     val canvas = app.canvas
     val font = app.assets.defaultFont
-    canvas.drawRect(x = 40f, y = 200f, width = 64f, height = 64f, color = Color(red = 0.3f, green = 0.6f, blue = 1f))
+    canvas.drawRect(x = 40f, y = 200f, width = 64f, height = 64f, color = Color(red = 0.3f, green = 0.6f, blue = 1f), space = DrawSpace.WORLD)
     canvas.drawRect(x = 8f, y = 8f, width = 220f, height = 28f, color = Color(red = 0f, green = 0f, blue = 0f, alpha = 0.6f), space = DrawSpace.SCREEN)
-    canvas.drawText(font, "frame ${app.time.frame}", x = 14f, y = 14f, scale = 2f)
+    canvas.drawText(font, "frame ${app.time.frameCount}", x = 14f, y = 14f, scale = 2f, shadow = TextShadow())
     canvas.drawText(font, "klyph sandbox", x = app.window.width - 8f, y = 14f, scale = 2f, align = TextAlign.RIGHT)
 }
 
 /**
- * Adds a particle fountain: an emitter that sprays small squares upwards at a steady rate, pulled
+ * Adds a particle fountain: an emitter that sprays small discs upwards at a steady rate, pulled
  * back down by gravity and fading from orange to transparent, plus one burst at startup, so a run
  * covers the particle step and its drawing.
  */
 private fun addFountain(app: App) {
-    val dot = Image(4, 4).apply { fill(Color.WHITE) }
-    val emitter = ParticleEmitter(app.assets.texture(dot).asRegion(), maxParticles = 512).apply {
+    val emitter = ParticleEmitter(app.assets.disc(6), capacity = 512).apply {
         rate = 120f
-        direction = 270f
-        spread = 40f
+        direction = 270f.degrees
+        spread = 40f.degrees
         speed = 120f..220f
-        lifetime = 1f..1.6f
-        angularVelocity = -180f..180f
+        lifetime = 1.seconds..1.6.seconds
+        angularVelocity = (-180f).degrees..180f.degrees
         gravityY = 200f
         startColor = Color(red = 1f, green = 0.7f, blue = 0.2f)
         endColor = Color(red = 1f, green = 0.2f, blue = 0.1f, alpha = 0f)

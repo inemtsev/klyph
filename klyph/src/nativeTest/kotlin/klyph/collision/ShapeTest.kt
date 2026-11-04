@@ -38,7 +38,7 @@ class ShapeTest {
         assertEquals(CollisionLayers.ALL, collider.mask)
         assertEquals(0f, collider.offsetX)
         assertEquals(
-            "Collider(shape=Box(width=4.0, height=2.0), offset=1.0 x -2.0, layers=CollisionLayers(0), mask=CollisionLayers(1))",
+            "Collider(shape=Box(width=4.0, height=2.0), offset=1.0x-2.0, layers=CollisionLayers(0), mask=CollisionLayers(1))",
             Collider(Shape.Box(width = 4f, height = 2f), offsetX = 1f, offsetY = -2f, mask = CollisionLayers.of(1)).toString(),
         )
     }

@@ -91,7 +91,7 @@ class MusicTrackTest {
         assertTrue(peak > 0.3f, "The tone peaks at $peak.")
         assertFalse(audio.music.isPlaying)
         audio.endFrame()
-        assertEquals(1L, audio.stats.closedStreams)
+        assertEquals(1L, audio.stats.closedStreamCount)
         audio.close()
     }
 
@@ -113,7 +113,7 @@ class MusicTrackTest {
                 }
             }
         }
-        assertFailsWith<IllegalStateException> { audio.music.play(track) }
+        assertFailsWith<IllegalArgumentException> { audio.music.play(track) }
         assertTrue(closed)
         assertFalse(audio.music.isPlaying)
     }

@@ -30,10 +30,10 @@ internal val collisionBenchmark: Benchmark = Benchmark(
 ) { settings ->
     var colliders = 0
     val report = StatsReport(settings.frameLimit) { "colliders=$colliders cell=${settings.cellSize}" }
-    runApp(settings.appConfig("klyph collisions benchmark")) {
+    runApp(settings.config) {
         addBenchmarkSystems(settings, report)
         addSystem(Phase.STARTUP) { app ->
-            spawnCircles(app.world, app.assets.texture(circleImage(64)).asRegion(), settings.spriteCount)
+            spawnCircles(app.world, app.assets.createTexture(circleImage(64)).asRegion(), settings.spriteCount)
             val camera = app.camera
             camera.zoom = min(camera.viewportWidth, camera.viewportHeight) / AREA
             camera.lookAt(AREA / 2f, AREA / 2f)

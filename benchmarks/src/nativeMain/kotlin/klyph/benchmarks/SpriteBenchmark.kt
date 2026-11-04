@@ -24,18 +24,19 @@ import kotlin.random.Random
  */
 internal val spriteBenchmark: Benchmark = Benchmark(
     name = "sprites",
-    description = "Moves and spins KLYPH_SPRITES textured sprites over KLYPH_TEXTURES textures and draws them with SpriteRenderer; KLYPH_INTERPOLATE=1 moves them in fixed steps.",
+    description = "Moves and spins KLYPH_SPRITES textured sprites over KLYPH_TEXTURES textures and draws them through the sprite pass; KLYPH_INTERPOLATE=1 moves them in fixed steps.",
 ) { settings ->
     require(settings.textureCount > 0) { "KLYPH_TEXTURES ${settings.textureCount} is not positive." }
     var sprites = 0
     val report = StatsReport(settings.frameLimit) { "sprites=$sprites textures=${settings.textureCount}" }
-    runApp(settings.appConfig("klyph sprites benchmark")) {
+    runApp(settings.config) {
         addBenchmarkSystems(settings, report)
         addSystem(Phase.STARTUP) { app ->
             println("textures=${settings.textureCount} interpolate=${if (settings.interpolate) "on" else "off"}")
-            val regions = List(settings.textureCount) { app.assets.texture(circleImage(64, TINTS[it % TINTS.size])).asRegion() }
-            // World units are points; dividing by the density keeps each sprite SPRITE_PIXELS pixels
-            // across on every display, so the GPU fills as many pixels as on a density-1 window.
+            val regions = List(settings.textureCount) { app.assets.createTexture(circleImage(64, TINTS[it % TINTS.size])).asRegion() }
+            // At the camera's zoom of 1 a world unit is a point; sizing in points as the pixel size
+            // divided by the density keeps each sprite SPRITE_PIXELS pixels across on every
+            // display, so the GPU fills as many pixels as on a density-1 window.
             val size = SPRITE_PIXELS / app.window.pixelDensity
             spawnSprites(app.world, regions, settings.spriteCount, size, app.window.width.toFloat(), app.window.height.toFloat())
             if (settings.interpolate) app.world.forEach(Velocity) { entity, _ -> app.world.add(entity, Interpolated, Interpolated) }
