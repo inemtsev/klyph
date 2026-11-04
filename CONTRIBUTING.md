@@ -104,4 +104,8 @@ Publish first:
 tools/consumer-test.sh local
 ```
 
-Releases are published by `.github/workflows/release.yml` when a `v*` tag is pushed.
+Releases are published by `.github/workflows/release.yml` when a `v*` tag is pushed. A repository
+ruleset lets only administrators create, move or delete `v*` tags, so a contributor's push cannot
+start a publish; the secrets the workflow needs are never available to pull requests.
+`tools/set-release-secrets.sh` copies the maintainer's Central and signing credentials from
+`~/.gradle/gradle.properties` into those repository secrets.

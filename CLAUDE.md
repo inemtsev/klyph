@@ -176,7 +176,7 @@ both properties at once stops the build, and targets are configured in the order
 the order given (`buildSrc/src/main/kotlin/KlyphTargets.kt` and the plugin's `KlyphTargets.kt`
 share these rules and error texts).
 Value classes in `nativeMain` carry no `@JvmInline`: the shared native metadata compilation
-rejects it. `klyph` and `klyph-platform` publish as `com.eventslooped.klyph:<module>:0.1.0`
+rejects it. `klyph` and `klyph-platform` publish as `com.eventslooped.klyph:<module>:1.0.0`
 (`-Pklyph.version=<v>` overrides) through `com.vanniktech.maven.publish`, configured in
 `buildSrc/src/main/kotlin/klyph.publish.gradle.kts`. The plugin publishes as
 `com.eventslooped.klyph:klyph-gradle-plugin` with the same version and override; the root

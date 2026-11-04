@@ -6,6 +6,10 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.0.0] - 2026-11-04
+
 ### Added
 
 - API reference built with Dokka, with samples shown inline, published to GitHub Pages from
@@ -137,5 +141,6 @@ First release, on Maven Central as `com.eventslooped.klyph:klyph` and
 - Sample games: a top-down shooter and a bug-squishing game for young children.
 - Benchmarks: `sprites`, `hierarchy`, `collisions`, `particles` and `mixer`.
 
-[Unreleased]: https://github.com/inemtsev/klyph/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/inemtsev/klyph/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/inemtsev/klyph/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/inemtsev/klyph/releases/tag/v0.1.0

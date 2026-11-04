@@ -8,9 +8,9 @@ every binary, and adds tasks to run the game and zip it for players.
 ## Build file
 
 ```kotlin
-plugins { id("com.eventslooped.klyph") version "0.1.0" }
+plugins { id("com.eventslooped.klyph") version "1.0.0" }
 klyph { entryPoint = "my.game.main" }
-kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:0.1.0") } }
+kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:1.0.0") } }
 ```
 
 `settings.gradle.kts` resolves both from Maven Central:
@@ -140,7 +140,7 @@ not match is deleted and fails the build. Delete the folder to download again.
 ./gradlew -p klyph-gradle-plugin publishToMavenLocal -Pklyph.version=0.2.0-SNAPSHOT
 ```
 
-The plugin's version is `0.1.0` unless `-Pklyph.version` overrides it, like the engine's. The
+The plugin's version is `1.0.0` unless `-Pklyph.version` overrides it, like the engine's. The
 root `publishToMavenLocal` does not publish the plugin, which is a separate included build; run
 it with `-p klyph-gradle-plugin` as above, or as `:klyph-gradle-plugin:publishToMavenLocal` from
 the root. Command-line `-P` properties reach the included build, so `-Pklyph.version` sets the

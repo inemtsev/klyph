@@ -9,10 +9,9 @@ macOS, Linux and Windows.
 
 ## Status
 
-Pre-alpha. 0.1.0 is the first release, and the API changes without notice until 1.0. From 1.0
-on, the public API keeps working across minor releases, except declarations marked
-`@KlyphPlatformApi`: the SDL and GPU plumbing the engine runs on, which a game never needs and
-can only call after opting in.
+1.0.0 is the first stable release. The public API keeps working across minor releases, except
+declarations marked `@KlyphPlatformApi`: the SDL and GPU plumbing the engine runs on, which a game
+never needs and can only call after opting in. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 - **Framework**: `runApp` owns the loop and runs systems in phases with a fixed timestep, a typed
   event bus and an entity hierarchy whose transforms propagate each frame.
