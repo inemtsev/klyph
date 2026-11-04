@@ -14,3 +14,4 @@ PLAN.md
 PLAN-*.md
 .claude/worktrees/
 *.local.md
+.rtk/
