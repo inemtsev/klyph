@@ -37,6 +37,20 @@ and the games never do. A declaration a game needs must not carry the marker. If
 `games/` stops compiling because of it, remove the marker from that declaration instead of
 opting the game in.
 
+## Layout
+
+| Module | Contents |
+|---|---|
+| `klyph-platform` | SDL3 bindings and the thin Kotlin API over them; the only module that touches C interop. |
+| `klyph` | The engine: entities, scenes, rendering, text, particles, collisions, audio. |
+| `samples` | The `@sample` functions referenced from KDoc, run as tests. |
+| `klyph-gradle-plugin` | The Gradle plugin games apply, a separate Gradle build included through `pluginManagement`. |
+| `games/shooter`, `games/squish`, `games/roller` | The sample games. |
+| `sandbox` | Smoke test: opens a window and clears it each frame. |
+| `benchmarks` | Named benchmarks, such as `sprites` and `mixer`. |
+| `docs` | The guide pages, rendered into the Dokka site. |
+| `tools` | The consumer test, the release secrets script and the template that becomes `klyph-template`. |
+
 ## Requirements
 
 - JDK 17 or newer for Gradle.
