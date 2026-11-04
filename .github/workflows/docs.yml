@@ -2,7 +2,9 @@ name: Docs
 
 # Builds the API reference with Dokka and deploys it to GitHub Pages, at
 # https://inemtsev.github.io/klyph/. Pages must be set to deploy from GitHub Actions in the
-# repository settings (Settings, Pages, Source: GitHub Actions).
+# repository settings (Settings, Pages, Source: GitHub Actions), and the github-pages environment
+# must allow tags matching v* to deploy (Settings, Environments, github-pages, Deployment branches
+# and tags); with only the main branch allowed, the deploy job of a tag is rejected.
 on:
   push:
     tags:
