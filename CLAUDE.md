@@ -56,13 +56,13 @@ every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` 
 `Wave` resource and shown in the HUD, drifters and divers that swoop at the ship, and every fifth
 wave is a boss with 12 hit points, a health bar drawn in world space and bullets on the
 `ENEMY_BULLET` layer; `KLYPH_AUTOPILOT=1` plays itself, with 4 enemies a wave so a 90 second run
-reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `benchmarks`
+reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the hero's movement and landing on roofs are the game's own (`Physics.kt`), the level is Kotlin data (`Level.kt`), the buildings, clouds and skyline are painted into `Image`s at startup and the parallax backdrop is drawn in world space; the autopilot runs that physics ahead to time its jumps and fails at exit if it took no ring and stomped no enemy), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`), and
 `klyph-gradle-plugin` (the `com.eventslooped.klyph` Gradle plugin games apply, with its own
 reference in `klyph-gradle-plugin/README.md`; an included build through `pluginManagement` in
-`settings.gradle.kts`, so `sandbox`, `games:shooter`, `games:squish` and `benchmarks` apply it by id and take
+`settings.gradle.kts`, so `sandbox`, `games:shooter`, `games:squish`, `games:roller` and `benchmarks` apply it by id and take
 their targets, SDL3 link flags, asset sync, `run`, `runRelease` and `distribute` from it; it is a
 separate Gradle build, so its unit and TestKit tests run with `./gradlew -p klyph-gradle-plugin
 check`, not with the root `check`). `./gradlew check`
@@ -100,6 +100,7 @@ CI job (no display, no GPU) uses it; the Windows job runs it in bash like its ot
 ./gradlew :games:shooter:run                                    # WASD/arrows/stick, mouse aim, Space/click/south
 ./gradlew :games:shooter:run -Pklyph.autopilot=1 -Pklyph.seconds=10   # plays itself, fails if no kill
 ./gradlew :games:squish:run                                     # click or arrows/stick + Space/south; autopilot fails if no squish
+./gradlew :games:roller:run                                     # A/D/arrows/stick + Space/W/south; autopilot finishes the level in ~20 s
 ./gradlew :games:shooter:distribute                             # zip in games/shooter/build/distributions/, runs without SDL3 installed
 ./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ./gradlew :benchmarks:benchmarkSprites -Pklyph.sprites=50000     # in a window

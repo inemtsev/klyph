@@ -63,6 +63,8 @@ downloads it on macOS and Windows; see its [README](klyph-gradle-plugin/README.m
 - [games/shooter](games/shooter), the reference game: a top-down shooter with keyboard, mouse and
   gamepad controls, scenes, collisions, particles, sound and an autopilot.
 - [games/squish](games/squish), a bug-squishing game for young children.
+- [games/roller](games/roller), a side-scrolling platformer: a ninja on rollerblades across the
+  rooftops of one level.
 - [klyph-gradle-plugin/README.md](klyph-gradle-plugin/README.md), every plugin task and property.
 - [CONTRIBUTING.md](CONTRIBUTING.md), building the repository, tests, samples and benchmarks.
 - [CHANGELOG.md](CHANGELOG.md).
@@ -110,7 +112,7 @@ emitters kept at 1000 each; CPU is advancing and extracting them. Method and cav
 | `klyph` | The engine: entities, scenes, rendering, text, particles, collisions, audio. |
 | `samples` | The `@sample` functions referenced from KDoc, run as tests. |
 | `klyph-gradle-plugin` | The Gradle plugin games apply. |
-| `games/shooter`, `games/squish` | The sample games. |
+| `games/shooter`, `games/squish`, `games/roller` | The sample games. |
 | `sandbox` | Smoke test: opens a window and clears it each frame. |
 | `benchmarks` | Named benchmarks, such as `sprites` and `mixer`. |
 
