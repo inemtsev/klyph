@@ -66,6 +66,7 @@ private val MOVES = floatArrayOf(1f, 0f, -1f)
  */
 private fun Run.shouldJump(app: App, body: KinematicBody, transform: Transform): Boolean {
     val x = transform.x
+    val y = transform.y
     val feet = transform.feet
     val reach = Tuning.AUTOPILOT_EDGE_MARGIN + abs(body.dx) * Tuning.AUTOPILOT_EDGE_SECONDS
     // The roof under the feet that far ahead, or a gap; then his box rolled ahead as far: a wall.
@@ -74,16 +75,16 @@ private fun Run.shouldJump(app: App, body: KinematicBody, transform: Transform):
     var shouldStomp = false
     var nearest = Float.POSITIVE_INFINITY
     val arc = game.arc
-    app.world.forEach(Enemy, Transform) { _, enemy, transform ->
+    app.world.forEach(Enemy, Transform) { _, enemy, enemyTransform ->
         if (enemy.kind != EnemyKind.BLOB || enemy.isStomped || abs(enemy.patrol.y - feet) > 1f) return@forEach
-        val dx = transform.x - x
+        val dx = enemyTransform.x - x
         if (dx <= 0f || dx > AUTOPILOT_STOMP_REACH) return@forEach
         if (dx < nearest) nearest = dx
         // Where a jump now would come down to the blob's top, and where the blob will be by then.
         val top = enemy.patrol.y - Tuning.BLOB_HEIGHT * 0.8f
-        followArc(app, arc, x, transform.y, body.dx, -Tuning.JUMP_SPEED, move = 1f, stopFeet = top)
+        followArc(app, arc, x, y, body.dx, -Tuning.JUMP_SPEED, move = 1f, stopFeet = top)
         if (arc.isLanded || arc.feet < top) return@forEach
-        val blobX = (transform.x + enemy.direction * Tuning.BLOB_SPEED * arc.seconds).coerceIn(enemy.patrol.minX, enemy.patrol.maxX)
+        val blobX = (enemyTransform.x + enemy.direction * Tuning.BLOB_SPEED * arc.seconds).coerceIn(enemy.patrol.minX, enemy.patrol.maxX)
         if (abs(arc.x - blobX) < AUTOPILOT_STOMP_AIM) shouldStomp = true
     }
     return shouldStomp || nearest < AUTOPILOT_TOO_CLOSE
