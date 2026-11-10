@@ -7,115 +7,23 @@
     <ID>CyclomaticComplexMethod:Systems.kt:fun Run.resolveOverlaps</ID>
     <ID>LongMethod:Systems.kt:fun Run.movePlayer</ID>
     <ID>LoopWithTooManyJumpStatements:Autopilot.kt:while</ID>
-    <ID>MagicNumber:Autopilot.kt:110f</ID>
-    <ID>MagicNumber:Autopilot.kt:160f</ID>
-    <ID>MagicNumber:Autopilot.kt:40f</ID>
-    <ID>MagicNumber:Autopilot.kt:6f</ID>
-    <ID>MagicNumber:Entities.kt:0.3f</ID>
-    <ID>MagicNumber:Entities.kt:0x5BD13BFFu</ID>
-    <ID>MagicNumber:Entities.kt:0xF2EEF8D0u</ID>
-    <ID>MagicNumber:Entities.kt:0xFFF27AFFu</ID>
-    <ID>MagicNumber:Entities.kt:12f</ID>
-    <ID>MagicNumber:Entities.kt:16f</ID>
-    <ID>MagicNumber:Entities.kt:30f</ID>
-    <ID>MagicNumber:Entities.kt:6f</ID>
-    <ID>MagicNumber:Entities.kt:8f</ID>
-    <ID>MagicNumber:Game.kt:Art.Companion$16</ID>
-    <ID>MagicNumber:Game.kt:Art.Companion$3</ID>
-    <ID>MagicNumber:Game.kt:Art.Companion$64</ID>
-    <ID>MagicNumber:Game.kt:Art.Companion$8</ID>
-    <ID>MagicNumber:Painting.kt:0.5f</ID>
-    <ID>MagicNumber:Painting.kt:10</ID>
-    <ID>MagicNumber:Painting.kt:12</ID>
-    <ID>MagicNumber:Painting.kt:13</ID>
-    <ID>MagicNumber:Painting.kt:18</ID>
-    <ID>MagicNumber:Painting.kt:19</ID>
-    <ID>MagicNumber:Painting.kt:20</ID>
-    <ID>MagicNumber:Painting.kt:3</ID>
-    <ID>MagicNumber:Painting.kt:4</ID>
-    <ID>MagicNumber:Painting.kt:40</ID>
-    <ID>MagicNumber:Painting.kt:48</ID>
-    <ID>MagicNumber:Painting.kt:5</ID>
-    <ID>MagicNumber:Painting.kt:6</ID>
-    <ID>MagicNumber:Painting.kt:64</ID>
-    <ID>MagicNumber:Painting.kt:7</ID>
-    <ID>MagicNumber:Painting.kt:76</ID>
-    <ID>MagicNumber:Painting.kt:8</ID>
-    <ID>MagicNumber:Painting.kt:80</ID>
-    <ID>MagicNumber:Painting.kt:9</ID>
-    <ID>MagicNumber:Screens.kt:0.12f</ID>
-    <ID>MagicNumber:Screens.kt:0.2f</ID>
-    <ID>MagicNumber:Screens.kt:0.5f</ID>
-    <ID>MagicNumber:Screens.kt:0.6f</ID>
-    <ID>MagicNumber:Screens.kt:0.72f</ID>
-    <ID>MagicNumber:Screens.kt:0.8f</ID>
-    <ID>MagicNumber:Screens.kt:1.3f</ID>
-    <ID>MagicNumber:Screens.kt:1.4f</ID>
-    <ID>MagicNumber:Screens.kt:2.1f</ID>
-    <ID>MagicNumber:Screens.kt:2.5f</ID>
-    <ID>MagicNumber:Screens.kt:2.6f</ID>
-    <ID>MagicNumber:Screens.kt:3f</ID>
-    <ID>MagicNumber:Screens.kt:4f</ID>
-    <ID>MagicNumber:Screens.kt:5f</ID>
-    <ID>MagicNumber:Screens.kt:8f</ID>
-    <ID>MagicNumber:Systems.kt:0.15f</ID>
-    <ID>MagicNumber:Systems.kt:0.8f</ID>
-    <ID>MagicNumber:Systems.kt:1.5f</ID>
-    <ID>MagicNumber:Systems.kt:10</ID>
-    <ID>MagicNumber:Systems.kt:10f</ID>
-    <ID>MagicNumber:Systems.kt:18f</ID>
-    <ID>MagicNumber:Systems.kt:20f</ID>
-    <ID>MagicNumber:Systems.kt:3f</ID>
-    <ID>MagicNumber:Systems.kt:44f</ID>
-    <ID>MagicNumber:Systems.kt:8f</ID>
     <ID>MatchingDeclarationName:Input.kt:Controls</ID>
     <ID>MatchingDeclarationName:Scenes.kt:GameScenes</ID>
-    <ID>MaxLineLength:Autopilot.kt:Arc$/** Where an arc the autopilot followed ended. One is reused for every plan, so planning allocates only the probes' hits. */</ID>
-    <ID>MaxLineLength:Autopilot.kt:if (app.collisions.floorBelowOrNull(x = x + reach, y = feet, width = 2f, depth = FLOOR_PROBE, mask = Layers.LEVEL) == null) return true</ID>
-    <ID>MaxLineLength:Autopilot.kt:if (enemy.kind == EnemyKind.HELI &amp;&amp; !enemy.isStomped &amp;&amp; abs(transform.x - x) &lt; 110f &amp;&amp; transform.y &lt; feet) isAbove = true</ID>
     <ID>MaxLineLength:Autopilot.kt:private</ID>
-    <ID>MaxLineLength:Autopilot.kt:val blobX = (enemyTransform.x + enemy.direction * Tuning.BLOB_SPEED * arc.seconds).coerceIn(enemy.patrol.minX, enemy.patrol.maxX)</ID>
     <ID>MaxLineLength:Backdrop.kt:private</ID>
     <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Box(Tuning.BLOB_WIDTH - 8f, Tuning.BLOB_HEIGHT - 8f), offsetY = 4f, layers = Layers.ENEMY, mask = CollisionLayers.NONE))</ID>
     <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Box(Tuning.HELI_WIDTH - 12f, Tuning.HELI_HEIGHT - 16f), layers = Layers.ENEMY, mask = CollisionLayers.NONE))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Box(block.right - block.left, bottom - block.top), layers = Layers.LEVEL, mask = CollisionLayers.NONE))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Circle(Tuning.HEART_SIZE / 2), layers = Layers.HEART, mask = CollisionLayers.NONE))</ID>
     <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Circle(Tuning.RING_RADIUS), layers = Layers.RING, mask = CollisionLayers.NONE).apply { scalesWithTransform = false })</ID>
-    <ID>MaxLineLength:Entities.kt:add(Enemy, Enemy(EnemyKind.BLOB, patrol, direction = if (random.nextBoolean()) 1f else -1f, phase = random.nextFloat() * 6f))</ID>
     <ID>MaxLineLength:Entities.kt:add(Sprite, Sprite(art.heart, Tuning.HEART_SIZE, Tuning.HEART_SIZE * art.heart.height / art.heart.width, layer = Tuning.LAYER_PICKUPS))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Sprite, Sprite(art.heli, Tuning.HELI_WIDTH, Tuning.HELI_HEIGHT, layer = Tuning.LAYER_SQUASHED, isFlippedX = direction > 0f))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Sprite, Sprite(art.star, Tuning.STAR_SIZE, Tuning.STAR_SIZE, color = Color(0xFFF27AFFu), layer = Tuning.LAYER_EFFECTS))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Sprite, Sprite(art.whitePixel, posterWidth + 12f, posterHeight + 12f, color = FRAME_COLOR, layer = Tuning.LAYER_BILLBOARDS))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Sprite, Sprite(art.whitePixel, posterWidth + 30f, catwalk, color = CATWALK_COLOR, layer = Tuning.LAYER_BILLBOARDS))</ID>
     <ID>MaxLineLength:Entities.kt:add(Text, Text(font, text, Tuning.POPUP_COLOR, Tuning.POPUP_SCALE, TextAlign.CENTER, layer = Tuning.LAYER_EFFECTS, shadow = POPUP_SHADOW))</ID>
     <ID>MaxLineLength:Entities.kt:add(Transform, Transform(x, roof - height * Tuning.SQUASHED_SCALE_Y / 2, scaleX = Tuning.SQUASHED_SCALE_X, scaleY = Tuning.SQUASHED_SCALE_Y))</ID>
-    <ID>MaxLineLength:Entities.kt:spawnBlock(face, left = building.left, top = building.top, width = texelsWide * pixel, height = texelsHigh * pixel)</ID>
-    <ID>MaxLineLength:Entities.kt:spawnProp(art.sign, RooftopRun.SIGN_X, RooftopRun.signRoof, signHeight * art.sign.width / art.sign.height, signHeight)</ID>
-    <ID>MaxLineLength:Game.kt:Art$fun</ID>
-    <ID>MaxLineLength:Game.kt:Art.Companion$skate = listOf(assets.texture("ninja_skate1.png").asRegion(), assets.texture("ninja_skate2.png").asRegion())</ID>
-    <ID>MaxLineLength:Game.kt:Art.Companion$skyline = assets.createTexture(paintSkyline(Tuning.SKYLINE_TEXELS_WIDE, Tuning.SKYLINE_TEXELS_HIGH), pixel).asRegion()</ID>
-    <ID>MaxLineLength:Level.kt:/** Adds [count] rings along an arch from [fromX] to [toX] whose ends are at [baseY] and whose middle is [height] above them. */</ID>
-    <ID>MaxLineLength:Painting.kt:/** Fills the rectangle of [width] by [height] texels whose top-left corner is ([x], [y]) with [color], clipped to the image. */</ID>
-    <ID>MaxLineLength:Scenes.kt:GameScenes$override fun toString: String</ID>
-    <ID>MaxLineLength:Screens.kt:app.canvas.drawRect(x = 0f, y = 0f, width = app.window.width.toFloat(), height = app.window.height.toFloat(), color = color, layer = 0)</ID>
     <ID>MaxLineLength:Screens.kt:app.canvas.drawText(app.assets.defaultFont, text, x = x, y = y, color = color, scale = scale, align = align, layer = 2, shadow = TEXT_SHADOW)</ID>
-    <ID>MaxLineLength:Screens.kt:canvas.drawSprite(art.ring, x = ringX, y = bottom + 4f * Tuning.TEXT_SCALE, width = ringSize, height = ringSize, layer = 1)</ID>
     <ID>MaxLineLength:Screens.kt:drawCentred(app, "Esc or Start: keep rolling", middle + Tuning.LINE_SPACING / 2, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
-    <ID>MaxLineLength:Screens.kt:drawCentred(app, "LEVEL COMPLETE!", middle - 5f * spacing, scale = Tuning.BIG_TEXT_SCALE, color = Tuning.TITLE_COLOR)</ID>
     <ID>MaxLineLength:Screens.kt:drawCentred(app, "Space or A: roll again Esc: title", middle + 4f * spacing, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
     <ID>MaxLineLength:Screens.kt:drawCentred(app, "Space or A: try again Esc: title", middle + 2.5f * spacing, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
-    <ID>MaxLineLength:Screens.kt:drawCentred(app, game.text, height * 0.72f + Tuning.LINE_SPACING, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
     <ID>MaxLineLength:Screens.kt:drawShadowed(app, RooftopRun.NAME, x = windowWidth - margin, y = margin + 6f, scale = Tuning.SMALL_TEXT_SCALE, align = TextAlign.RIGHT, color = Tuning.HINT_COLOR)</ID>
-    <ID>MaxLineLength:Screens.kt:drawShadowed(app, text, x = ringX - ringSize / 2 - 8f, y = bottom, scale = Tuning.TEXT_SCALE, align = TextAlign.RIGHT)</ID>
     <ID>MaxLineLength:Screens.kt:drawShadowed(app, text, x = windowWidth / 2, y = bottom, scale = Tuning.TEXT_SCALE, align = TextAlign.CENTER, color = Tuning.SCORE_COLOR)</ID>
     <ID>MaxLineLength:Screens.kt:private</ID>
-    <ID>MaxLineLength:Screens.kt:text.append("Hearts ").append(run.hearts).append(" x ").append(Tuning.HEART_BONUS).append(" = ").append(run.heartBonus)</ID>
-    <ID>MaxLineLength:Systems.kt:/** Starts a run: spawns the hero, the pickups and the enemies, which belong to the play scene, and shares a new [Run]. */</ID>
-    <ID>MaxLineLength:Systems.kt:/** The hero ran into an enemy at [enemyX]: a heart is gone and he is knocked away from it, blinking, unless he is still blinking. */</ID>
-    <ID>MaxLineLength:Systems.kt:camera.follow(drawnX + lookAhead, Tuning.WORLD_HEIGHT / 2, smoothing = Tuning.CAMERA_SMOOTHING, delta = app.time.delta)</ID>
-    <ID>MaxLineLength:Systems.kt:if (isBraking || abs(dx) &lt; Tuning.MAX_SPEED) return (dx + move * acceleration * dt).coerceIn(-Tuning.MAX_SPEED, Tuning.MAX_SPEED)</ID>
-    <ID>MaxLineLength:Systems.kt:private</ID>
-    <ID>MaxLineLength:Systems.kt:val x = (hero.safeX - Tuning.RESPAWN_BACKSET).coerceIn(roof.left + Tuning.RESPAWN_EDGE_MARGIN, roof.right - Tuning.RESPAWN_EDGE_MARGIN)</ID>
     <ID>NestedBlockDepth:Painting.kt:fun paintSkyline: Image</ID>
     <ID>ReturnCount:Autopilot.kt:fun Run.steerAutopilot</ID>
     <ID>ReturnCount:Autopilot.kt:private fun Run.shouldJump: Boolean</ID>

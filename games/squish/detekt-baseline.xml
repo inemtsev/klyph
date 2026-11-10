@@ -4,49 +4,19 @@
   <CurrentIssues>
     <ID>CyclomaticComplexMethod:Input.kt:fun readControls</ID>
     <ID>LoopWithTooManyJumpStatements:Systems.kt:for</ID>
-    <ID>MagicNumber:Screens.kt:0.08f</ID>
-    <ID>MagicNumber:Screens.kt:0.5f</ID>
-    <ID>MagicNumber:Screens.kt:0.8f</ID>
-    <ID>MagicNumber:Screens.kt:2.2f</ID>
-    <ID>MagicNumber:Screens.kt:3</ID>
-    <ID>MagicNumber:Screens.kt:3.5f</ID>
-    <ID>MagicNumber:Screens.kt:4</ID>
-    <ID>MagicNumber:Screens.kt:5f</ID>
     <ID>MatchingDeclarationName:Input.kt:Controls</ID>
     <ID>MatchingDeclarationName:Scenes.kt:GameScenes</ID>
-    <ID>MaxLineLength:Components.kt:BugKind$CATERPILLAR : BugKind</ID>
-    <ID>MaxLineLength:Components.kt:BugKind$LADYBUG : BugKind</ID>
-    <ID>MaxLineLength:Components.kt:Orbit$class</ID>
-    <ID>MaxLineLength:Entities.kt:add(Sprite, Sprite(art.bug(kind), kind.size, kind.size, color = Tuning.SQUASHED_TINT, layer = Tuning.LAYER_SPLATS))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Text, Text(font, "+1", Tuning.POPUP_COLOR, Tuning.POPUP_SCALE, TextAlign.CENTER, layer = Tuning.LAYER_EFFECTS))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Transform, Transform(x, y, rotation, scaleX = Tuning.SQUASHED_WIDTH_SCALE, scaleY = Tuning.SQUASHED_LENGTH_SCALE))</ID>
     <ID>MaxLineLength:Entities.kt:fun</ID>
-    <ID>MaxLineLength:Entities.kt:private</ID>
-    <ID>MaxLineLength:Entities.kt:speed = Tuning.CRUMB_MIN_SPEED..Tuning.CRUMB_MAX_SPEED</ID>
-    <ID>MaxLineLength:Entities.kt:speed = Tuning.DROPLET_MIN_SPEED..Tuning.DROPLET_MAX_SPEED</ID>
-    <ID>MaxLineLength:Game.kt:private</ID>
-    <ID>MaxLineLength:Input.kt:Controls$/** Where the swatter is and whether it came down this frame, from the mouse, keyboard and gamepad or from the autopilot. */</ID>
-    <ID>MaxLineLength:Input.kt:var pressed = clicked || input.keyboard.isJustPressed(Scancode.SPACE) || input.keyboard.isJustPressed(Scancode.ENTER)</ID>
-    <ID>MaxLineLength:Main.kt:"Squish ran ${app.time.frameCount} frames: score $score, best ${game.bestScore}, ${game.totalSquished} bugs squished, "</ID>
-    <ID>MaxLineLength:Main.kt:if (isAutopilot) check(game.totalSquished > 0) { "Autopilot squished no bug in ${app.time.frameCount} frames." }</ID>
-    <ID>MaxLineLength:Scenes.kt:GameScenes$app.game.isAutopilot || app.game.controls.isSwatPressed || isStartPressed(app.input) -> app.scenes.replace(play)</ID>
-    <ID>MaxLineLength:Screens.kt:app.canvas.drawRect(x = 0f, y = 0f, width = app.window.width.toFloat(), height = app.window.height.toFloat(), color = color, layer = 0)</ID>
     <ID>MaxLineLength:Screens.kt:app.canvas.drawText(app.assets.defaultFont, text, x = x, y = y, color = color, scale = scale, align = align, layer = 2, shadow = TEXT_SHADOW)</ID>
     <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = barX, y = margin, width = Tuning.TIME_BAR_WIDTH * share, height = Tuning.TIME_BAR_HEIGHT, color = Tuning.TIME_BAR_FILL, layer = 1)</ID>
     <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = barX, y = margin, width = Tuning.TIME_BAR_WIDTH, height = Tuning.TIME_BAR_HEIGHT, color = Tuning.TIME_BAR_BACK, layer = 1)</ID>
     <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = x + column, y = y, width = check, height = height, color = Tuning.BLANKET_STRIPE_COLOR, layer = layer, space = DrawSpace.WORLD)</ID>
     <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = x + offset, y = y + offset, width = width, height = height, color = Tuning.BLANKET_SHADOW_COLOR, layer = layer, space = DrawSpace.WORLD)</ID>
     <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = x, y = y + row, width = width, height = check, color = Tuning.BLANKET_STRIPE_COLOR, layer = layer, space = DrawSpace.WORLD)</ID>
-    <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = x, y = y, width = width, height = height, color = Tuning.BLANKET_COLOR, layer = layer, space = DrawSpace.WORLD)</ID>
-    <ID>MaxLineLength:Screens.kt:drawCentred(app, "Click or press A to play again", middle + 3.5f * spacing, scale = Tuning.TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
     <ID>MaxLineLength:Screens.kt:drawCentred(app, "Click or press Esc to keep playing", middle + Tuning.LINE_SPACING / 2, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
-    <ID>MaxLineLength:Screens.kt:drawCentred(app, "Esc: title", middle + 5f * spacing, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
     <ID>MaxLineLength:Screens.kt:drawCentred(app, "Squish the bugs before they eat the picnic!", height * 0.08f + 2.2f * Tuning.LINE_SPACING, scale = Tuning.SMALL_TEXT_SCALE)</ID>
     <ID>MaxLineLength:Screens.kt:private</ID>
-    <ID>MaxLineLength:Systems.kt:/** Starts a round: lays out the picnic, which belongs to the play scene, shares a new [Round] and rings the start chime. */</ID>
     <ID>MaxLineLength:Systems.kt:app.commands.spawnBug(game.art, random, food, target.x, target.y, x, y, lerp(Tuning.SPEED_FACTOR_START, Tuning.SPEED_FACTOR_END, progress))</ID>
-    <ID>MaxLineLength:Systems.kt:app.commands.spawnSquish(game.art, app.assets.defaultFont, bug.kind, transform.x, transform.y, transform.rotation, game.random)</ID>
-    <ID>MaxLineLength:Systems.kt:val pitch = Tuning.SQUISH_MIN_PITCH + game.soundRandom.nextFloat() * (Tuning.SQUISH_MAX_PITCH - Tuning.SQUISH_MIN_PITCH)</ID>
     <ID>TooManyFunctions:Systems.kt:klyph.squish.Systems.kt</ID>
   </CurrentIssues>
 </SmellBaseline>

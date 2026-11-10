@@ -4,6 +4,7 @@
   "schedule": ["* 0-5 * * 1"],
   "dependencyDashboard": true,
   "enabledManagers": ["gradle", "gradle-wrapper", "github-actions"],
+  "ignorePaths": ["tools/template/**"],
   "packageRules": [
     {
       "description": "Kotlin, its Gradle plugins and the Kotlin Gradle plugin move together.",

@@ -107,8 +107,10 @@ configuration in [config/detekt/detekt.yml](config/detekt/detekt.yml). Each modu
 findings that predate detekt in `detekt-baseline.xml` next to its build file, so `check` fails
 only on new ones. Fix a new finding rather than adding it to the baseline; after fixing old
 ones, `./gradlew detektBaseline` (and `./gradlew -p klyph-gradle-plugin detektBaseline`) rewrites
-the baselines without them. detekt has no type resolution for Kotlin/Native, so the rules that
-need it skip the engine modules and the games; the plugin build is JVM and gets it.
+the baselines without them. detekt runs without type resolution everywhere (Kotlin/Native has
+none, and in the plugin build it would fight the sam-with-receiver compiler plugin), so the rules
+that need it never fire. `MagicNumber` is off, since an engine's tuning values and maths are
+numbers, and lines may run to 140 columns.
 
 ## Games and benchmarks
 

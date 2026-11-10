@@ -2,33 +2,12 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>MagicNumber:Entities.kt:0.85f</ID>
-    <ID>MagicNumber:Entities.kt:0.9f</ID>
-    <ID>MagicNumber:Screens.kt:3</ID>
     <ID>MatchingDeclarationName:Input.kt:Controls</ID>
     <ID>MatchingDeclarationName:Scenes.kt:GameScenes</ID>
-    <ID>MaxLineLength:Entities.kt:(ship.x + side * random.nextFloat(Tuning.DIVER_MIN_OFFSET, Tuning.DIVER_MAX_OFFSET)).coerceIn(half, Tuning.ARENA_WIDTH - half)</ID>
-    <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Circle(Tuning.SHIP_RADIUS), layers = Layers.PLAYER, mask = Layers.ENEMY + Layers.ENEMY_BULLET))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Dive, Dive(start.x, start.y, control.x, control.y, ship.x, ship.y, duration.coerceAtLeast(MIN_DIVE_SECONDS)))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Sprite, Sprite(animation.currentFrame, Tuning.EXPLOSION_SIZE, Tuning.EXPLOSION_SIZE, layer = Tuning.LAYER_EFFECTS))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Sprite, Sprite(art.bullet, Tuning.BULLET_WIDTH, Tuning.BULLET_HEIGHT, Tuning.ENEMY_BULLET_TINT, layer = Tuning.LAYER_BULLETS))</ID>
-    <ID>MaxLineLength:Entities.kt:add(Transform, Transform(random.nextFloat(0f, Tuning.ARENA_WIDTH), random.nextFloat(0f, Tuning.ARENA_HEIGHT)))</ID>
-    <ID>MaxLineLength:Entities.kt:speed = Tuning.BURST_MIN_SPEED..Tuning.BURST_MAX_SPEED</ID>
-    <ID>MaxLineLength:Game.kt:Art.Companion$particle = assets.createTexture(Image(Tuning.PARTICLE_SIZE, Tuning.PARTICLE_SIZE).apply { fill(Color.WHITE) }).asRegion()</ID>
-    <ID>MaxLineLength:Input.kt:gamepad != null &amp;&amp; (gamepad.isDown(GamepadButton.SOUTH) || gamepad.axis(GamepadAxis.RIGHT_TRIGGER) > Tuning.TRIGGER_THRESHOLD)</ID>
     <ID>MaxLineLength:Main.kt:"Shooter ran ${app.time.frameCount} frames: score $score, wave $wave, best ${game.bestScore}, ${game.kills} enemies destroyed, "</ID>
-    <ID>MaxLineLength:Main.kt:*</ID>
-    <ID>MaxLineLength:Scenes.kt:GameScenes$*</ID>
-    <ID>MaxLineLength:Scenes.kt:GameScenes$game.isAutopilot &amp;&amp; app.time.elapsed - game.gameOverAt >= Tuning.AUTOPILOT_RETRY_DELAY -> app.scenes.replace(play)</ID>
-    <ID>MaxLineLength:Screens.kt:app.canvas.drawText(app.assets.defaultFont, text, x = Tuning.HUD_MARGIN, y = Tuning.HUD_MARGIN, scale = Tuning.TEXT_SCALE, layer = 1)</ID>
     <ID>MaxLineLength:Screens.kt:app.canvas.drawText(app.assets.defaultFont, text, x = app.window.width / 2f, y = y, color = color, scale = scale, align = TextAlign.CENTER, layer = 1)</ID>
     <ID>MaxLineLength:Screens.kt:canvas.drawRect(x, y, Tuning.BOSS_BAR_WIDTH * share, Tuning.BOSS_BAR_HEIGHT, Tuning.BOSS_BAR_FILL, layer = Tuning.LAYER_EFFECTS, space = DrawSpace.WORLD)</ID>
     <ID>MaxLineLength:Screens.kt:canvas.drawRect(x, y, Tuning.BOSS_BAR_WIDTH, Tuning.BOSS_BAR_HEIGHT, Tuning.BOSS_BAR_BACK, layer = Tuning.LAYER_EFFECTS, space = DrawSpace.WORLD)</ID>
-    <ID>MaxLineLength:Screens.kt:private</ID>
-    <ID>MaxLineLength:Screens.kt:text.append("Score ").append(score).append('\n').append("Lives ").append(lives).append('\n').append("Wave ").append(wave.number)</ID>
-    <ID>MaxLineLength:Systems.kt:val pitch = Tuning.SHOT_MIN_PITCH + game.soundRandom.nextFloat() * (Tuning.SHOT_MAX_PITCH - Tuning.SHOT_MIN_PITCH)</ID>
-    <ID>MaxLineLength:Systems.kt:velocity.dx = 2f * ((1f - t) * (dive.controlX - dive.startX) + t * (dive.targetX - dive.controlX)) / dive.duration</ID>
-    <ID>MaxLineLength:Systems.kt:velocity.dy = 2f * ((1f - t) * (dive.controlY - dive.startY) + t * (dive.targetY - dive.controlY)) / dive.duration</ID>
     <ID>ReturnCount:Input.kt:private fun Round.aimHeading: Float</ID>
     <ID>ReturnCount:Systems.kt:private fun Round.shoot</ID>
     <ID>ReturnCount:Systems.kt:private fun Round.strike: Boolean</ID>
