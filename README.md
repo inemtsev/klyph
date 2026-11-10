@@ -31,9 +31,9 @@ fun main() {
 The whole build file is three lines:
 
 ```kotlin
-plugins { id("com.eventslooped.klyph") version "1.0.0" }
+plugins { id("com.eventslooped.klyph") version "1.1.0" }
 klyph { entryPoint = "mygame.main" }
-kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:1.0.0") } }
+kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:1.1.0") } }
 ```
 
 `./gradlew run` plays it. `./gradlew distribute` zips it with SDL3 for your players. The

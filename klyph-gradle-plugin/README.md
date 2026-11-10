@@ -9,9 +9,9 @@ every binary, and adds tasks to run the game and zip it for players.
 ## Build file
 
 ```kotlin
-plugins { id("com.eventslooped.klyph") version "1.0.0" }
+plugins { id("com.eventslooped.klyph") version "1.1.0" }
 klyph { entryPoint = "my.game.main" }
-kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:1.0.0") } }
+kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:1.1.0") } }
 ```
 
 `settings.gradle.kts` resolves both from Maven Central:
@@ -64,8 +64,8 @@ A game split into modules keeps its shared code in a library module that applies
 `com.eventslooped.klyph.library` instead:
 
 ```kotlin
-plugins { id("com.eventslooped.klyph.library") version "1.0.0" }
-kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:1.0.0") } }
+plugins { id("com.eventslooped.klyph.library") version "1.1.0" }
+kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:1.1.0") } }
 ```
 
 It configures the same targets, finds or downloads SDL3 the same way and links the module's test
@@ -164,7 +164,7 @@ not match is deleted and fails the build. Delete the folder to download again.
 ./gradlew -p klyph-gradle-plugin publishToMavenLocal -Pklyph.version=0.2.0-SNAPSHOT
 ```
 
-The plugin's version is `1.0.0` unless `-Pklyph.version` overrides it, like the engine's. The
+The plugin's version is `1.1.0` unless `-Pklyph.version` overrides it, like the engine's. The
 root `publishToMavenLocal` does not publish the plugin, which is a separate included build; run
 it with `-p klyph-gradle-plugin` as above, or as `:klyph-gradle-plugin:publishToMavenLocal` from
 the root. Command-line `-P` properties reach the included build, so `-Pklyph.version` sets the

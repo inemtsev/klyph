@@ -6,11 +6,46 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-10
+
 Movement, jumps and floors. The engine now moves your entities and stops them at walls and
 floors, so a platformer takes as little code as a shooter: Rooftop Roller lost its physics file.
 
 ### Added
 
+- `Solid`, a component that makes an entity's box `Collider` a wall, floor or ledge that kinematic
+  bodies stop at. `Solid(passable = Passable.FROM_BELOW)` is a one-way ledge, landed on from above
+  and passed through from below and from the sides. Solids live in a grid of their own inside
+  `Collisions`, rebuilt only when a solid changes, and still take part in overlap detection. A
+  solid must be a root entity without a `Velocity`; solids never carry bodies.
+- `KinematicBody(dx, dy)`, a component the engine moves in every fixed step, after the `Velocity`
+  step: across, then up or down, stopping `Collisions.CONTACT_GAP` short of every solid in its
+  collider's mask. It reports `isOnFloor`, `isOnWall` with `wallNormalX`, `isOnCeiling` and
+  `floorOrNull`, plus `hasLanded` and `landingSpeed` for the one move that came down onto a
+  floor. It keeps to a floor up to `Collisions.FLOOR_SNAP_DISTANCE` below it, and `dropThrough()`
+  falls through the one-way ledge it stands on. Gravity, coyote time and jump buffers stay game
+  code. `Collisions.moveBodies(world, delta)` runs the step without an app.
+- Sweeps against the solids as they are now: `Collisions.sweepBox(x, y, width, height, dx, dy)`
+  returns the first solid a moving box touches as a `SweepHit`, `sweepBoxTo(destination, ...)`
+  collects every solid along the move, `sweepCollider(entity, dx, dy)` sweeps an entity's own box
+  collider, and `floorBelowOrNull(x, y, width, depth)` finds the floor under a line such as a
+  walker's feet.
+- Planning moves: `Collisions.slideBox(x, y, width, height, dx, dy, result)` and
+  `slideCollider(entity, x, y, dx, dy, result)` make a body's move without a body, through the
+  body's own code, and write where the box ends and what it touched into a reusable `BoxSlide`,
+  so a planner follows a jump exactly as the body will. `Collisions.solidCount` counts the solids.
+- `Velocity(dx, dy)`, a component the engine applies to its entity's `Transform` in every fixed
+  step, after the FIXED_UPDATE systems and by the fixed step length. `Interpolated` entities are
+  recorded before the move, and entities of a frozen scene stand still.
+- `ParticleEmitter.burst(region, count, ...)`, which makes an emitter that sends out one burst of
+  `count` particles and then destroys its entity, and `Commands.spawnBurst(x, y, emitter)`, which
+  spawns the entity that carries it.
+- `Animation.speed` and `SpriteAnimation.speed`, a playback rate multiplier; 0 holds the current
+  frame. `Animation` and `SpriteAnimation` include it in `toString`.
+- `Collider.scalesWithTransform`, `true` by default. Set to `false`, the collider keeps its shape
+  and offset at scale 1 whatever the entity's scale, so a squash or a spin animated through
+  `Transform.scaleX` and `scaleY` leaves the hitbox as it is.
+- `Time.fixedStepCount`, the number of `FIXED_UPDATE` steps completed so far.
 - The Gradle plugin's library mode, `com.eventslooped.klyph.library`: the same targets, SDL3
   lookup and test-binary link settings as `com.eventslooped.klyph`, without an `entryPoint`, an
   executable or the run, asset and distribution tasks, for the shared module of a game split
@@ -20,43 +55,6 @@ floors, so a platformer takes as little code as a shooter: Rooftop Roller lost i
   SDL3 is downloaded, every cinterop task runs after `fetchSdl3`.
 - The Gradle property `klyph.sdl3.download=false`, which stops the build instead of downloading
   SDL3 when none is installed.
-- `Collider.scalesWithTransform`, `true` by default. Set to `false`, the collider keeps its shape
-  and offset at scale 1 whatever the entity's scale, so a squash or a spin animated through
-  `Transform.scaleX` and `scaleY` leaves the hitbox as it is.
-- `Time.fixedStepCount`, the number of `FIXED_UPDATE` steps completed so far.
-- `Velocity(dx, dy)`, a component the engine applies to its entity's `Transform` in every fixed
-  step, after the FIXED_UPDATE systems and by the fixed step length. `Interpolated` entities are
-  recorded before the move, and entities of a frozen scene stand still.
-- `ParticleEmitter.burst(region, count, ...)`, which makes an emitter that sends out one burst of
-  `count` particles and then destroys its entity, and `Commands.spawnBurst(x, y, emitter)`, which
-  spawns the entity that carries it.
-- `Animation.speed` and `SpriteAnimation.speed`, a playback rate multiplier; 0 holds the current
-  frame. `Animation` and `SpriteAnimation` include it in `toString`.
-- `Solid`, a component that makes an entity's box `Collider` a wall, floor or ledge that kinematic
-  bodies stop at. `Solid(passable = Passable.FROM_BELOW)` is a one-way ledge, landed on from above
-  and passed through from below and from the sides. Solids live in a grid of their own inside
-  `Collisions`, rebuilt only when a solid changes, and still take part in overlap detection.
-- `KinematicBody(dx, dy)`, a component the engine moves in every fixed step, after the `Velocity`
-  step: across, then up or down, stopping a contact gap (`Collisions.CONTACT_GAP`) short of every
-  solid in its collider's mask. It reports `isOnWall` with `wallNormalX`, `isOnCeiling`,
-  `isOnFloor`, which also turns `false` as soon as `dy` is set upward, so a jump leaves the floor
-  before the next move, and `floorOrNull`; `hasLanded` is `true` for the one move per landing that
-  came down onto a floor, and `landingSpeed` keeps the speed it came down with. It keeps to a
-  floor up to `Collisions.FLOOR_SNAP_DISTANCE` below it, and `dropThrough()` falls through the
-  one-way ledge it stands on. Gravity, coyote time and jump buffers stay game code.
-  `Collisions.moveBodies(world, delta)` runs the step without an app.
-- `Collisions.sweepBox(x, y, width, height, dx, dy, mask)`, which returns the first solid a moving
-  box touches as a `SweepHit` with the fraction of the move and the face's normal, and
-  `Collisions.sweepBoxTo(destination, ...)`, which collects every solid along the move. Sweeps
-  read the solids as they are now, so they work in `FIXED_UPDATE`, and a sweep with no move
-  returns the solid the box overlaps. `Collisions.sweepCollider(entity, dx, dy)` sweeps an
-  entity's own box collider with its offset, scale and mask, and
-  `Collisions.floorBelowOrNull(x, y, width, depth, mask)` finds the floor under a line such as a
-  walker's feet, landing on one-way ledges as a falling body does. `Collisions.slideBox(x, y,
-  width, height, dx, dy, mask, floorSnap, result)` and `Collisions.slideCollider(entity, x, y, dx,
-  dy, floorSnap, result)` make a body's move without a body, through the same code, and write
-  where the box ends and what it touched into a reusable `BoxSlide`, so a planner follows a jump
-  exactly as the body will. `Collisions.solidCount` counts the solids.
 
 ### Changed
 
@@ -212,6 +210,7 @@ First release, on Maven Central as `com.eventslooped.klyph:klyph` and
 - Sample games: a top-down shooter and a bug-squishing game for young children.
 - Benchmarks: `sprites`, `hierarchy`, `collisions`, `particles` and `mixer`.
 
-[Unreleased]: https://github.com/inemtsev/klyph/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/inemtsev/klyph/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/inemtsev/klyph/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/inemtsev/klyph/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/inemtsev/klyph/releases/tag/v0.1.0

@@ -9,7 +9,7 @@ plugins {
 // Maven coordinates of the published modules: com.eventslooped.klyph:<module>:<version>.
 // -Pklyph.version=<v> overrides the version; the release workflow passes the tag's version here.
 // The Gradle plugin, an included build, reads the same property in its own build file.
-val klyphVersion: String = providers.gradleProperty("klyph.version").getOrElse("1.0.0")
+val klyphVersion: String = providers.gradleProperty("klyph.version").getOrElse("1.1.0")
 
 // The group goes on the subprojects only: the root project is also named klyph, and with the same
 // group its coordinates would equal :klyph's, so dokka(project(":klyph")) would resolve to the root.

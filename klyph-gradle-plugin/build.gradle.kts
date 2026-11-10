@@ -10,7 +10,7 @@ plugins {
 
 group = "com.eventslooped.klyph"
 // -Pklyph.version=<v> overrides the version, as in the engine build's root build.gradle.kts.
-version = providers.gradleProperty("klyph.version").getOrElse("1.0.0")
+version = providers.gradleProperty("klyph.version").getOrElse("1.1.0")
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
