@@ -50,8 +50,10 @@ in the same PR rather than inventing a one-off.
 | `buildX { }` | Top-level factory through a builder DSL. | `buildGraph { edge(a, b) }` |
 | `emptyX()` | Shared immutable empty instance. | `emptyGraph()` |
 | `X.of(...)` | Companion factory for a value class whose constructor takes the raw representation, building it from the value users think in. | `CollisionLayers.of(3)` |
+| `X.<use>(...)` | Companion factory that returns a new `X` set up for one common use, named after that use. | `ParticleEmitter.burst(region, 12)` |
+| `spawnX(...)` on `Commands` | Queues spawning an entity set up as `X` and returns its handle, as `spawn { }` does. | `commands.spawnBurst(x, y, emitter)` |
 | `onX { }` | Builder function that registers an action run when `X` happens. | `buildScene("title") { onEnter { } }` |
-| `xOrNull()` | Function or property: same as `x()` but returns `null` instead of throwing. May stand alone when absence is normal rather than an error. | `firstOrNull()`, `nodeOrNull(id)`, `parentOrNull(child)`, `scenes.currentOrNull` |
+| `xOrNull()` | Function or property: same as `x()` but returns `null` instead of throwing. May stand alone when absence is normal rather than an error. | `firstOrNull()`, `nodeOrNull(id)`, `parentOrNull(child)`, `scenes.currentOrNull`, `collisions.floorBelowOrNull(x, y, width, depth)` |
 | `x(path)` on `Assets` | Returns the asset at `path`, loading it on the first call and returning the cached instance after. Named after the type it returns. | `assets.texture("ship.png")`, `assets.musicTrack("music.ogg")` |
 | `createX(...)` | Makes a new `X` on every call, never cached; the caller owns it. | `assets.createTexture(image)` |
 | `xCount` | Property holding how many of `x` there are. Containers use `size` instead. | `spriteCount`, `drawCallCount`, `Time.frameCount` |
@@ -67,6 +69,8 @@ in the same PR rather than inventing a one-off.
 | `AbstractX` | Skeletal implementation for users who extend `X`. | `AbstractGraph` |
 | `isX` / `hasX` | Boolean property or function. No `getIsX`, no bare adjectives. | `isEmpty`, `hasCycle` |
 | `withX(value)` | Returns a copy of an immutable value with property `x` replaced and the rest kept. | `color.withAlpha(0f)` |
+| `sweepX(...)` | Moves shape `X`, or an entity's own `Collider`, along a straight line against the solids and returns where it first touches one as a `SweepHit`, or `null`; `sweepXTo(destination, ...)` adds every solid along the line. | `collisions.sweepBox(x = 0f, y = 0f, width = 16f, height = 16f, dx = 0f, dy = 40f)`, `collisions.sweepCollider(hero, dx = 40f, dy = 0f)` |
+| `slideX(..., result)` | Moves shape `X`, or an entity's own `Collider`, as a `KinematicBody` moves in one step, across and then up or down, stopping at the solids, without moving anything, and writes where it ends and what it touched into the reusable `result` it returns. Not to be confused with `moveBodies`, which moves the bodies themselves. | `collisions.slideBox(x = 0f, y = 0f, width = 16f, height = 16f, dx = 4f, dy = 6f, result = slide)` |
 | `XEnd` enum | Names what happens to an entity once a component has run its course; `HOLD` or `KEEP` leaves it, `DESTROY` destroys it. | `FadeEnd`, `AnimationEnd`, `EmitterEnd` |
 | `setX(handle, value)` | Changes property `x` of the thing a value-class handle refers to, on the service that owns it. Only for handles, which cannot hold mutable properties; everything else uses `var x`. | `audio.setVolume(voice, 0.5f)`, `audio.setPan(voice, -1f)` |
 | `XImpl` | Private or internal implementation of `X`. Never public. | `GraphImpl` |
@@ -94,16 +98,17 @@ General rules:
 - Parameters sharing a primitive type, or any `Boolean` parameter, are called
   with named arguments inside the library and documented so users do the same.
   Conventional ordered pairs and tuples are exempt, because nobody gets their
-  order wrong: (x, y), (width, height), (columns, rows) and (red, green, blue,
-  alpha) may be passed by position, as in `Transform(x, y)`.
+  order wrong: (x, y), (width, height), (dx, dy), (columns, rows) and (red,
+  green, blue, alpha) may be passed by position, as in `Transform(x, y)`.
 - A function taking one lambda MUST take it as the last parameter so the
   trailing-lambda form works.
 - Prefer composing small operations over adding configuration parameters to
   one big function. Add a new operator before you add a fifth parameter. A
   function may take five or more when every parameter after the first few has a
-  default and the KDoc asks for named arguments, as the `Canvas` draw calls and
-  the collision queries do, where splitting them into operators would allocate or
-  add a builder on every call.
+  default, or every parameter without one belongs to a conventional pair, and the
+  KDoc asks for named arguments, as the `Canvas` draw calls, the collision queries
+  and the sweeps (`sweepBox(x, y, width, height, dx, dy)`) do, where splitting
+  them into operators would allocate or add a builder on every call.
 - Builders take a lambda with receiver as the last parameter. Values the builder
   cannot work without MUST be normal parameters, not builder properties, because
   a builder cannot enforce required fields at compile time.

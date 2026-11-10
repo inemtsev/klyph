@@ -29,7 +29,8 @@ val headlessBenchmarkNames = listOf("mixer")
 // Benchmarks always run the host's release executable, which the klyph plugin creates once this
 // script has run. The environment is the plugin's KLYPH_* passthrough (-Pklyph.sprites and the
 // rest); `benchmark` picks the benchmark with -Pklyph.benchmark=<name>.
-kotlin.targets.withType<KotlinNativeTarget>().matching { it.name == KlyphTargets.host }.configureEach {
+val hostTarget: String = klyph.hostTarget.get()
+kotlin.targets.withType<KotlinNativeTarget>().matching { it.name == hostTarget }.configureEach {
     binaries.withType<Executable>().matching { it.buildType == NativeBuildType.RELEASE }.configureEach {
         val binary = this
         val environment = klyph.runEnvironment()

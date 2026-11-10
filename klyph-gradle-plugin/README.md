@@ -1,6 +1,7 @@
 # klyph Gradle plugin
 
-`com.eventslooped.klyph` turns a Gradle project into a klyph game. It applies Kotlin
+`com.eventslooped.klyph` turns a Gradle project into a klyph game, and
+`com.eventslooped.klyph.library` into a library for one (see [Libraries](#libraries)). It applies Kotlin
 Multiplatform 2.4.20, so the game does not declare Kotlin itself, configures the Kotlin/Native
 target for your machine with one executable, finds or downloads SDL3, copies your assets next to
 every binary, and adds tasks to run the game and zip it for players.
@@ -48,7 +49,29 @@ klyph {
 | `targets` | `host` (default), `all`, or any of `macosArm64`, `linuxX64`, `linuxArm64`, `mingwX64`. See [Targets](#targets). |
 
 `klyph.runEnvironment(defaults)` returns the `KLYPH_*` environment the run tasks use, for `Exec`
-tasks of your own.
+tasks of your own. Four read-only members serve build logic of your own:
+
+| Member | Value |
+|---|---|
+| `hostTarget` | `Provider<String>`, the target of the machine running the build. |
+| `supportedTargets` | `List<String>`, every target in the order a build configures them. |
+| `configuredTargets` | `Provider<List<String>>`, the targets this project configures after `-Pklyph.targets` and `-Pklyph.target`. It follows `targets`, so read it in a task or a provider, not while the script runs. |
+| `sdl3IncludeDir` | `Provider<Directory>`, the `include` folder of the SDL3 the project builds against, for a cinterop of your own: `includeDirs(klyph.sdl3IncludeDir)`. It has a value once the script has run, and every cinterop task runs after `fetchSdl3` when there is one. |
+
+## Libraries
+
+A game split into modules keeps its shared code in a library module that applies
+`com.eventslooped.klyph.library` instead:
+
+```kotlin
+plugins { id("com.eventslooped.klyph.library") version "1.0.0" }
+kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:1.0.0") } }
+```
+
+It configures the same targets, finds or downloads SDL3 the same way and links the module's test
+binaries against it, but builds no executable: it needs no `entryPoint` and registers none of
+`run`, `runRelease`, `copyAssets` or `distribute`. The game module applies
+`com.eventslooped.klyph` and depends on the library with `implementation(project(":core"))`.
 
 ## Tasks
 
@@ -76,6 +99,7 @@ and signed again ad hoc. The plugin does no signing for distribution and builds 
 | `-Pklyph.<name>=<value>` | Passed to `run` and `runRelease` as `KLYPH_<NAME>`, for `sprites`, `children`, `textures`, `interpolate`, `frames`, `seconds`, `offscreen`, `vsync`, `validation`, `autopilot`, `music`, `cell` and `overlay`. A property wins over the shell variable; `klyph.music` resolves against the root project directory. |
 | `-Pklyph.sdl3.sha256=<hash>` | Expected SHA-256 when downloading an SDL version the plugin does not pin. |
 | `-Pklyph.sdl3.ignoreSystem=true` | For testing the download: skips the system locations below. |
+| `-Pklyph.sdl3.download=false` | Never downloads SDL3: without an installed one the build stops and names the folders it searched. Put it in `gradle.properties` for a build that must use the system's SDL3. |
 
 ## Targets
 

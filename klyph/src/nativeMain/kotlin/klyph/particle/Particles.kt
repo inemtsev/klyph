@@ -1,6 +1,7 @@
 package klyph.particle
 
 import klyph.entity.Commands
+import klyph.entity.Entity
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.entity.WorldTransform
@@ -8,6 +9,20 @@ import klyph.render.DrawSpace
 import klyph.render.QuadBuffer
 import klyph.render.SPRITE_RECORD_FLOATS
 import klyph.scene.SceneStack
+
+/**
+ * Queues spawning an entity at ([x], [y]) in world units that carries [emitter] and a [Transform]
+ * there, and returns the new entity, as [Commands.spawn] does. Made for a one-shot effect from
+ * [ParticleEmitter.burst], which destroys the entity once its particles are gone, but any emitter
+ * works; one that keeps emitting keeps the entity until it is destroyed.
+ *
+ * Has no sample because creating a [klyph.render.Texture] needs a GPU device, which samples cannot
+ * open.
+ */
+public fun Commands.spawnBurst(x: Float, y: Float, emitter: ParticleEmitter): Entity = spawn {
+    add(Transform, Transform(x, y))
+    add(ParticleEmitter, emitter)
+}
 
 /**
  * Advances every [ParticleEmitter] whose entity has a [Transform] by [delta] seconds, emitting at

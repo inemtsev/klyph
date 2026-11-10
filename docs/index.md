@@ -21,12 +21,14 @@ the same list.
    running without a device.
 6. <a href="guide/collisions-and-particles.html">Collisions and particles</a>: colliders, layers, `Overlap`
    events, shape queries and particle emitters.
-7. <a href="guide/text-canvas-and-overlay.html">Text, canvas and overlay</a>: fonts, the `Text` component,
+7. <a href="guide/platformers.html">Platformers</a>: solids, one-way ledges, kinematic bodies and sweep
+   queries, with gravity, coyote time and a jump buffer written as game code.
+8. <a href="guide/text-canvas-and-overlay.html">Text, canvas and overlay</a>: fonts, the `Text` component,
    drawing on `app.canvas` and the debug overlay.
-8. <a href="guide/shipping.html">Shipping</a>: the distribution zip, SDL3 at runtime, fullscreen, the cursor
+9. <a href="guide/shipping.html">Shipping</a>: the distribution zip, SDL3 at runtime, fullscreen, the cursor
    and screenshots on CI.
-9. <a href="guide/performance.html">Performance</a>: what each engine stage costs and how to keep a frame
-   cheap.
+10. <a href="guide/performance.html">Performance</a>: what each engine stage costs and how to keep a
+    frame cheap.
 
 ## API reference
 

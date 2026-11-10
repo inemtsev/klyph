@@ -15,6 +15,14 @@ internal class ComponentStore<T : Any>(capacity: Int) {
     @PublishedApi internal var items: Array<Any?> = arrayOfNulls(16)
     @PublishedApi internal var sparse: IntArray = IntArray(capacity) { -1 }
 
+    /**
+     * Counts the calls to [set] and the successful calls to [remove], so a cache built from this
+     * store can tell in one comparison that a component was added, replaced or removed since. It
+     * wraps around after `Int.MAX_VALUE` changes, which only matters if a cache skips that many.
+     */
+    var version: Int = 0
+        private set
+
     fun ensureEntityCapacity(capacity: Int) {
         if (sparse.size >= capacity) return
         val old = sparse.size
@@ -23,6 +31,7 @@ internal class ComponentStore<T : Any>(capacity: Int) {
     }
 
     fun set(entity: Entity, item: T) {
+        version++
         val slot = sparse[entity.index]
         if (slot >= 0) {
             items[slot] = item
@@ -49,6 +58,7 @@ internal class ComponentStore<T : Any>(capacity: Int) {
     fun remove(entity: Entity): Boolean {
         val slot = sparse[entity.index]
         if (slot < 0 || entities[slot] != entity.raw) return false
+        version++
         val last = size - 1
         if (slot != last) {
             entities[slot] = entities[last]

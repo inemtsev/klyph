@@ -14,7 +14,9 @@ Kotlin/Native only, no JVM target. By default the build configures the host's ow
 below). SDL3 is located automatically (Homebrew, /usr/local, /usr); override with
 `-Psdl3.prefix=<path>`. The library is taken from the prefix's `lib/` or, on Linux, the first of
 `lib/`, `lib64/` (Fedora), `lib/x86_64-linux-gnu/` and `lib/aarch64-linux-gnu/` (Debian, Ubuntu)
-that holds it, in both `buildSrc` (`Sdl3.libDir`) and the plugin (`Sdl3Locator.libraryDir`).
+that holds it (`Sdl3Locator.libraryDir` in the klyph plugin, which every module applies). The
+root `gradle.properties` sets `klyph.sdl3.download=false`, so the engine build never downloads
+SDL3: without an install it stops and names the folders it searched.
 
 Modules: `klyph-platform` (SDL3 cinterop and the thin Kotlin API over it; the only module allowed
 to import `kotlinx.cinterop`, `sdl3`, `stb`, `vorbis`, `cnames` or `platform.*`; its engine-only
@@ -30,7 +32,19 @@ queue applied after every system, `app.resources`, shared state keyed by class, 
 sound effects and music, with sounds and tracks loaded through `app.assets.sound` and
 `app.assets.musicTrack`, `app.scenes`, a scene stack whose top scene's systems run and whose scenes own
 the entities they spawn, `app.collisions`, overlap detection after FIXED_UPDATE that publishes
-`Overlap` events and answers shape queries, `app.canvas`, immediate quads and text in `WORLD` or
+`Overlap` events and answers shape queries (overlap only for ordinary colliders), plus solid
+response: a `Solid` next to a box `Collider` is a wall or floor (`Passable.FROM_BELOW` a one-way
+ledge) kept in a second grid inside `Collisions` (`SolidGrid`, rescanned at every body move and
+detection and rebuilt only when a solid changed, or before a sweep when the `Solid` or `Collider`
+store's version moved), a `KinematicBody(dx, dy)` on a root entity with a box collider is moved by
+the engine in every fixed step and stopped `Collisions.CONTACT_GAP` short of solids, reporting
+`isOnFloor` (contact from the last move and `dy >= 0`), `isOnWall`/`wallNormalX`, `isOnCeiling`,
+`floorOrNull`, `hasLanded` and `landingSpeed`, with a `FLOOR_SNAP_DISTANCE` floor snap and
+`dropThrough()`, `sweepBox`/`sweepBoxTo`/`sweepCollider` sweep a box against the solids as they
+are now (a thick-ray Amanatides and Woo walk shared with the body move), `floorBelowOrNull` probes
+for a floor under a line, and `slideBox`/`slideCollider` make the body's move into a reusable
+`BoxSlide` through the same internal `SolidGrid.slide` the body uses (gravity, coyote time and
+jump buffers stay game code), `app.canvas`, immediate quads and text in `WORLD` or
 `SCREEN` space queued during RENDER, and `app.overlay`, the debug overlay toggled with F3; the
 `Text` and `ParticleEmitter` components draw with the sprites, fonts load through
 `app.assets.font` or come built in as `app.assets.defaultFont`, a texture's `SamplerFilter`,
@@ -38,12 +52,17 @@ chosen when it loads, picks linear or nearest sampling, and `app.window` has `cu
 hidden only while over the window), `setCursor(image, hotspotX, hotspotY)`, `mode` (`WindowMode`,
 fullscreen is borderless desktop fullscreen; `AppConfig.windowMode` and `AppConfig.cursor` set
 both at startup) and `capture(path)`, which reads the next drawn frame back and writes it as a PNG
-through the vendored `stb_image_write.h`, offscreen too; the gameplay kit: `Lifetime` destroys its
+through the vendored `stb_image_write.h`, offscreen too; the gameplay kit: `Velocity(dx, dy)`
+moves its entity's `Transform` in units per second, applied by the engine in every fixed step
+after the FIXED_UPDATE systems; `Lifetime` destroys its
 entity when its time runs out and `Fade` blends the alpha of its `Sprite` and `Text` to a target
 (`FadeEnd.DESTROY` destroys after), both counted down by the engine after UPDATE; a ONCE
-`SpriteAnimation` publishes `AnimationFinished` and with `AnimationEnd.DESTROY` destroys its entity;
+`SpriteAnimation` publishes `AnimationFinished` and with `AnimationEnd.DESTROY` destroys its entity,
+and its `speed` (the playhead's `Animation.speed`) scales its playback rate;
 a `ParticleEmitter` with `whenEmpty = EmitterEnd.DESTROY` destroys its entity once it has nothing
-left, and `space = EmitterSpace.LOCAL` turns its direction with the entity; `Camera.follow` eases
+left, `ParticleEmitter.burst(region, count, …)` makes such a one-shot emitter and
+`Commands.spawnBurst(x, y, emitter)` spawns the entity carrying it, and
+`space = EmitterSpace.LOCAL` turns its direction with the entity; `Camera.follow` eases
 toward a point and `Camera.bounds` keeps the view inside a `Rect`; `TextShadow` draws under text
 through `Text.shadow` or `drawText(shadow = …)`; `app.assets.whitePixel` and `app.assets.disc(d)`
 are ready-made regions; `AppConfig.fromEnvironment()` reads the `KLYPH_*` limits and switches,
@@ -56,22 +75,27 @@ every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` 
 `Wave` resource and shown in the HUD, drifters and divers that swoop at the ship, and every fifth
 wave is a boss with 12 hit points, a health bar drawn in world space and bullets on the
 `ENEMY_BULLET` layer; `KLYPH_AUTOPILOT=1` plays itself, with 4 enemies a wave so a 90 second run
-reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the hero's movement and landing on roofs are the game's own (`Physics.kt`), the level is Kotlin data (`Level.kt`), the buildings, clouds and skyline are painted into `Image`s at startup and the parallax backdrop is drawn in world space; the autopilot runs that physics ahead to time its jumps and fails at exit if it took no ring and stomped no enemy), `benchmarks`
+reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the buildings, clouds and skyline are painted into `Image`s at startup and the parallax backdrop is drawn in world space; the autopilot plans again every fixed step, probing for the roof's end with `floorBelowOrNull` and for walls ahead with `sweepCollider` and following jump arcs with `slideCollider`, and fails at exit if it took no ring and stomped no enemy), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`), and
 `klyph-gradle-plugin` (the `com.eventslooped.klyph` Gradle plugin games apply, with its own
 reference in `klyph-gradle-plugin/README.md`; an included build through `pluginManagement` in
 `settings.gradle.kts`, so `sandbox`, `games:shooter`, `games:squish`, `games:roller` and `benchmarks` apply it by id and take
-their targets, SDL3 link flags, asset sync, `run`, `runRelease` and `distribute` from it; it is a
-separate Gradle build, so its unit and TestKit tests run with `./gradlew -p klyph-gradle-plugin
-check`, not with the root `check`). `./gradlew check`
+their targets, SDL3 link flags, asset sync, `run`, `runRelease` and `distribute` from it; its
+library mode, `com.eventslooped.klyph.library`, does the same without executables or their tasks
+for the engine modules; it is a separate Gradle build, so its unit and TestKit tests run with
+`./gradlew -p klyph-gradle-plugin check`, not with the root `check`). `./gradlew check`
 runs every module's tests and samples plus the interop-import rule; a single module's tests run
 with `:<module>:macosArm64Test`. GPU, window, event and audio device functions, `runApp`, `App` and
 `Assets` have no samples because they need a display or a device; `Audio` has samples because it
 also mixes without a device. `buildSrc` serves the engine modules (`klyph-platform`, `klyph`,
-`samples`): `klyph.native` configures their targets and the SDL3 link flags their test binaries
-need, `klyph.publish` their Maven publications, `CompileShadersTask` the shaders, and
+`samples`) and depends on the plugin's classes through `buildSrc/settings.gradle.kts`, which
+includes `klyph-gradle-plugin` too (Gradle builds it once for both): `klyph.native` applies
+the plugin's library mode, which configures their targets, finds SDL3 (`klyph.sdl3IncludeDir`
+feeds the `sdl3` cinterop) and adds the SDL3 link flags their test binaries need, and keeps only
+the engine's extras (host-only tests, `check` compiling the other targets and the shared
+metadata), `klyph.publish` their Maven publications, `CompileShadersTask` the shaders, and
 `klyph.lint` registers the interop-import rule (`checkNoInteropImports`, part of `check`), which
 `klyph.native` applies and the executables apply next to the plugin. `klyph.docs`, applied through
 `klyph.publish`, configures Dokka for the two published modules: `@sample` bodies from
@@ -174,8 +198,9 @@ configured, only its binaries link, and the other targets' link tasks are skippe
 targets leave the host out, such as `-Pklyph.target=mingwX64 -Psdl3.prefix=<MinGW folder>`, is a
 cross build and links every executable. `all` counts only as the whole value; an unknown name or
 both properties at once stops the build, and targets are configured in the order above whatever
-the order given (`buildSrc/src/main/kotlin/KlyphTargets.kt` and the plugin's `KlyphTargets.kt`
-share these rules and error texts).
+the order given (the rules and their error texts live once, in the plugin's `KlyphTargets.kt`;
+`klyph.native`, `klyph.publish` and `benchmarks` read the result through `klyph.hostTarget`,
+`klyph.configuredTargets` and `klyph.supportedTargets`).
 Value classes in `nativeMain` carry no `@JvmInline`: the shared native metadata compilation
 rejects it. `klyph` and `klyph-platform` publish as `com.eventslooped.klyph:<module>:1.0.0`
 (`-Pklyph.version=<v>` overrides) through `com.vanniktech.maven.publish`, configured in
@@ -197,21 +222,25 @@ to `mavenLocal`.
 `runApp` runs STARTUP once and applies the scene transitions queued so far. Each frame then runs:
 drop last frame's events, refresh audio, translate platform events into `app.input` and
 `app.events`, toggle the overlay, INPUT, FIXED_UPDATE zero or more times (interpolated transforms
-recorded before each step), propagate transforms, detect collisions and publish `Overlap` events,
+recorded before each step, then every `Velocity` applied to its `Transform` after the step's
+systems and their commands, by the fixed step length, then every `KinematicBody` moved against the
+solids through `app.collisions.moveBodies`), propagate transforms, detect collisions and publish `Overlap` events,
 UPDATE, count down `Lifetime` and advance `Fade`, advance particles, advance sprite animations
 (publishing `AnimationFinished`), LATE_UPDATE, propagate transforms, RENDER, queue the overlay on
 `app.canvas`, clamp `app.camera` to its bounds, draw sprites, `Text`, particles and `app.canvas`
 (WORLD runs, then SCREEN runs) and present, apply scene transitions, quit if `AppConfig.frameLimit`
-or `timeLimit` is reached. Commands apply after every system, after each of the lifetime/fade,
-particle and animation steps (so what they destroy is gone before the next step) and after the
-second propagation. Scene systems run after the App-level systems of the same phase. A pushed
-scene freezes the one below: its systems do not run, its lifetimes, fades, particle emitters,
-sprite animations and colliders stand still (the engine steps skip them and collision detection
-leaves them out), its entities keep rendering. The engine steps ask the internal
+or `timeLimit` is reached. Inside FIXED_UPDATE, `isJustPressed` and `isJustReleased` count fixed
+steps instead of frames: `ButtonStates` stamps each change with the number of the step that will see
+it, from the `StepClock` the loop advances through `Input.beginFixedStep`, so the first step after a
+press sees it once, even when the frame of the press ran no step. Commands apply after every system,
+after each of the lifetime/fade, particle and animation steps (so what they destroy is gone before
+the next step) and after the second propagation. Scene systems run after the App-level systems of
+the same phase. A pushed scene freezes the one below: its systems do not run, its velocities, kinematic bodies, lifetimes, fades,
+particle emitters, sprite animations and colliders stand still (its solids stop nothing) (the engine steps skip them and
+collision detection leaves them out), its entities keep rendering. The engine steps ask the internal
 `SceneStack.isFrozen(owner)` for an entity's owner id, and entities of no scene are never frozen;
 games cannot ask, so a game keeps its game logic in scene systems, which leaves frozen entities
-untouched. After the last frame every scene leaves the stack, top
-first, and SHUTDOWN runs.
+untouched. After the last frame every scene leaves the stack, top first, and SHUTDOWN runs.
 
 ## Audio
 

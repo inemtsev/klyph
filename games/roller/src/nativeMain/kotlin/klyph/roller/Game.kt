@@ -125,8 +125,8 @@ class Game(val art: Art, val sounds: Sounds, val isAutopilot: Boolean) {
     /** Where the title screen's camera has drifted to along the level. */
     var titleCameraX = 0f
 
-    /** A body the autopilot runs jumps ahead with, so looking ahead allocates nothing. */
-    val scratch = Body(0f, 0f)
+    /** Where the autopilot's last look ahead ended, reused so that planning allocates nothing of its own. */
+    val arc = Arc()
 
     private var isMusicOn = false
 
@@ -167,7 +167,12 @@ enum class RunOutcome { COMPLETE, GAME_OVER }
  * scene inserts a new one each time it enters, so every run starts fresh, and reads it through
  * [App.run].
  */
-class Run(val game: Game, val player: Entity) {
+class Run(
+    val game: Game,
+    val player: Entity,
+    /** Fixed steps completed when the run started, so its first step can tell itself apart. */
+    val startStep: Long,
+) {
     var score = 0
     var rings = 0
     var stomps = 0

@@ -78,13 +78,16 @@ internal object Sdl3Locator {
 
     /**
      * Returns the location to build against: [found] if a candidate had the header, otherwise a
-     * download of [version] for [host] into `<cacheRoot>/<version>/<host>`.
+     * download of [version] for [host] into `<cacheRoot>/<version>/<host>`. With [download] off
+     * (the `klyph.sdl3.download=false` property) nothing is downloaded.
      *
-     * @throws GradleException if nothing was found and SDL publishes no release for [host].
+     * @throws GradleException if nothing was found and SDL publishes no release for [host], or
+     * [download] is off.
      */
-    fun locate(found: String?, looked: List<String>, host: String, version: String, cacheRoot: File): Sdl3Location {
+    fun locate(found: String?, looked: List<String>, host: String, version: String, cacheRoot: File, download: Boolean = true): Sdl3Location {
         if (found != null) return Sdl3Location.Installed(File(found))
-        val release = Sdl3Release.forTarget(host, version) ?: throw GradleException(missingMessage(host, looked))
+        val release = (if (download) Sdl3Release.forTarget(host, version) else null)
+            ?: throw GradleException(missingMessage(host, looked))
         return Sdl3Location.Download(File(cacheRoot, "$version/$host"), release)
     }
 
@@ -100,6 +103,8 @@ internal object Sdl3Locator {
                 "https://github.com/libsdl-org/SDL/blob/main/docs/README-linux.md and install it, " +
                 "for example into /usr/local.\n" +
                 override
+        } else if (host == KlyphTargets.MACOS_ARM64) {
+            "$searched\nInstall SDL3 with brew install sdl3.\n$override"
         } else {
             "$searched\n$override"
         }

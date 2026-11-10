@@ -13,7 +13,8 @@ import kotlin.math.sqrt
  * Buttons and axes follow SDL's standard layout, named by position: [GamepadButton.SOUTH] is the
  * bottom face button on every pad. "Just pressed" is `true` for one frame after a button goes
  * down, and "just released" for one frame after it goes up; a press within one frame reads as
- * both. When the window loses focus every held button is released and every axis reads 0.
+ * both. Inside `Phase.FIXED_UPDATE` they are `true` for one fixed step instead, as [isJustPressed]
+ * describes. When the window loses focus every held button is released and every axis reads 0.
  *
  * A gamepad object lives for one connection. When the pad is disconnected it leaves
  * [Input.gamepads], [isConnected] turns `false` and every button and axis reads as released, but
@@ -30,8 +31,9 @@ public class Gamepad internal constructor(
     /** The name SDL reports for the device, or an empty string when it knows none. */
     public val name: String,
     deadZone: Float,
+    clock: StepClock,
 ) {
-    private val buttons = ButtonStates(GamepadButton.COUNT)
+    private val buttons = ButtonStates(GamepadButton.COUNT, clock)
     private val axes = FloatArray(GamepadAxis.COUNT)
     private var stickCacheValid = false
     private var leftStickCache = Vec2.ZERO
@@ -86,10 +88,24 @@ public class Gamepad internal constructor(
     /** Returns `true` while [button] is held down. */
     public fun isDown(button: GamepadButton): Boolean = buttons.isDown(button.index)
 
-    /** Returns `true` if [button] went down this frame. */
+    /**
+     * Returns `true` if [button] went down this frame.
+     *
+     * Inside `Phase.FIXED_UPDATE` it answers for fixed steps instead of frames: it is `true` in the
+     * first step after the button went down, and in no other, even when frames ran no step in
+     * between or a frame runs several steps. A button pressed and released before the step reads as
+     * both just pressed and just released in it.
+     */
     public fun isJustPressed(button: GamepadButton): Boolean = buttons.isJustPressed(button.index)
 
-    /** Returns `true` if [button] went up this frame. */
+    /**
+     * Returns `true` if [button] went up this frame.
+     *
+     * Inside `Phase.FIXED_UPDATE` it answers for fixed steps instead of frames: it is `true` in the
+     * first step after the button went up, and in no other, even when frames ran no step in between
+     * or a frame runs several steps. A button pressed and released before the step reads as both
+     * just pressed and just released in it.
+     */
     public fun isJustReleased(button: GamepadButton): Boolean = buttons.isJustReleased(button.index)
 
     internal fun beginFrame() = buttons.clearEdges()
@@ -159,7 +175,8 @@ public fun List<Gamepad>.isDown(button: GamepadButton): Boolean {
 
 /**
  * Returns `true` if [button] went down this frame on any connected gamepad of the list. An empty
- * list gives `false`.
+ * list gives `false`. Inside `Phase.FIXED_UPDATE` it answers for fixed steps, as
+ * [Gamepad.isJustPressed] does.
  *
  * Samples live in the sandbox because they need a display.
  */
@@ -173,7 +190,8 @@ public fun List<Gamepad>.isJustPressed(button: GamepadButton): Boolean {
 
 /**
  * Returns `true` if [button] went up this frame on any connected gamepad of the list. An empty
- * list gives `false`.
+ * list gives `false`. Inside `Phase.FIXED_UPDATE` it answers for fixed steps, as
+ * [Gamepad.isJustReleased] does.
  *
  * Samples live in the sandbox because they need a display.
  */

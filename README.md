@@ -61,6 +61,8 @@ template" and you have a window, a ship that flies, and CI on three desktops.
 - **Audio.** WAV and Ogg Vorbis effects with pitch and pan, streamed music with fades, mixed on
   SDL's audio thread. Games run quietly without a device, so CI is happy.
 - **Collisions.** Boxes and circles with layers and masks, reported as events, plus shape queries.
+- **Movement.** A velocity the engine applies each fixed step, and kinematic bodies that walk,
+  jump and land on solids and one-way ledges, with sweeps for what lies ahead.
 - **A Gradle plugin** that finds or downloads SDL3, runs your game and packages it.
 
 ## Fast and stable

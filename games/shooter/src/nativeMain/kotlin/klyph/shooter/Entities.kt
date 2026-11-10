@@ -7,12 +7,13 @@ import klyph.entity.Entity
 import klyph.entity.Interpolated
 import klyph.entity.Lifetime
 import klyph.entity.Transform
+import klyph.entity.Velocity
 import klyph.math.Vec2
 import klyph.math.degrees
 import klyph.math.distanceTo
-import klyph.particle.EmitterEnd
 import klyph.particle.EmitterSpace
 import klyph.particle.ParticleEmitter
+import klyph.particle.spawnBurst
 import klyph.platform.Color
 import klyph.render.AnimationEnd
 import klyph.render.AnimationMode
@@ -140,7 +141,7 @@ fun Commands.spawnDiver(art: Art, random: Random, ship: Vec2, viewTop: Float) {
         add(Transform, Transform(start.x, start.y))
         add(Sprite, Sprite(art.diver, Tuning.SHIP_SIZE, Tuning.SHIP_SIZE, layer = Tuning.LAYER_SHIPS))
         add(Collider, enemyCollider(Tuning.SHIP_RADIUS))
-        add(Velocity, Velocity(0f, 0f))
+        add(Velocity, Velocity())
         add(Dive, Dive(start.x, start.y, control.x, control.y, ship.x, ship.y, duration.coerceAtLeast(MIN_DIVE_SECONDS)))
         add(Enemy, Enemy(EnemyKind.DIVER))
         add(Interpolated, Interpolated)
@@ -177,21 +178,15 @@ fun Commands.spawnExplosion(art: Art, x: Float, y: Float) {
         add(Sprite, Sprite(animation.currentFrame, Tuning.EXPLOSION_SIZE, Tuning.EXPLOSION_SIZE, layer = Tuning.LAYER_EFFECTS))
         add(SpriteAnimation, animation)
     }
-    spawn {
-        val sparks = ParticleEmitter(art.particle, capacity = Tuning.BURST_PARTICLES).apply {
-            speed = Tuning.BURST_MIN_SPEED..Tuning.BURST_MAX_SPEED
-            lifetime = Tuning.BURST_MIN_LIFETIME..Tuning.BURST_MAX_LIFETIME
-            startColor = Tuning.BURST_START_COLOR
-            endColor = Tuning.BURST_END_COLOR
-            startScale = Tuning.BURST_START_SCALE
-            endScale = Tuning.BURST_END_SCALE
-            layer = Tuning.LAYER_EFFECTS
-            whenEmpty = EmitterEnd.DESTROY
-            emit(Tuning.BURST_PARTICLES)
-        }
-        add(Transform, Transform(x, y))
-        add(ParticleEmitter, sparks)
-    }
+    spawnBurst(
+        x, y,
+        ParticleEmitter.burst(
+            art.particle, Tuning.BURST_PARTICLES,
+            speed = Tuning.BURST_MIN_SPEED..Tuning.BURST_MAX_SPEED, lifetime = Tuning.BURST_MIN_LIFETIME..Tuning.BURST_MAX_LIFETIME,
+            startColor = Tuning.BURST_START_COLOR, endColor = Tuning.BURST_END_COLOR,
+            startScale = Tuning.BURST_START_SCALE, endScale = Tuning.BURST_END_SCALE, layer = Tuning.LAYER_EFFECTS,
+        ),
+    )
 }
 
 /** A dive at the ship from right next to it still takes this long, so it is a curve and not a jump. */

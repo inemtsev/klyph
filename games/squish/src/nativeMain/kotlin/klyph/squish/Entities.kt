@@ -7,11 +7,12 @@ import klyph.entity.Commands
 import klyph.entity.Entity
 import klyph.entity.Interpolated
 import klyph.entity.Transform
+import klyph.entity.Velocity
 import klyph.math.Vec2
 import klyph.math.angle
 import klyph.math.degrees
-import klyph.particle.EmitterEnd
 import klyph.particle.ParticleEmitter
+import klyph.particle.spawnBurst
 import klyph.platform.Color
 import klyph.platform.withAlpha
 import klyph.render.Fade
@@ -23,7 +24,6 @@ import klyph.text.TextAlign
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
-import kotlin.time.Duration
 
 // Factories for every kind of entity in the game. They queue the entity on App.commands, so they
 // are safe to call inside a World.forEach; the components attach after the running system.
@@ -116,15 +116,18 @@ fun Commands.spawnSquish(art: Art, font: Font, kind: BugKind, x: Float, y: Float
         add(Fade, Fade(Tuning.SQUASHED_FADE, end = FadeEnd.DESTROY))
     }
     spawnBurst(
-        art, kind.splatColor, x, y, Tuning.DROPLETS,
-        speed = Tuning.DROPLET_MIN_SPEED..Tuning.DROPLET_MAX_SPEED,
-        lifetime = Tuning.DROPLET_MIN_LIFETIME..Tuning.DROPLET_MAX_LIFETIME,
+        x, y,
+        ParticleEmitter.burst(
+            art.droplet, Tuning.DROPLETS, startColor = kind.splatColor,
+            speed = Tuning.DROPLET_MIN_SPEED..Tuning.DROPLET_MAX_SPEED, lifetime = Tuning.DROPLET_MIN_LIFETIME..Tuning.DROPLET_MAX_LIFETIME,
+            startScale = Tuning.DROPLET_START_SCALE, endScale = Tuning.DROPLET_END_SCALE, layer = Tuning.LAYER_EFFECTS,
+        ),
     )
     spawn {
         val lineHeight = font.lineHeight * Tuning.POPUP_SCALE
         add(Transform, Transform(x, y - kind.size / 2 - lineHeight))
         add(Text, Text(font, "+1", Tuning.POPUP_COLOR, Tuning.POPUP_SCALE, TextAlign.CENTER, layer = Tuning.LAYER_EFFECTS))
-        add(Velocity, Velocity(0f, -Tuning.POPUP_RISE))
+        add(Velocity, Velocity(dy = -Tuning.POPUP_RISE))
         add(Fade, Fade(Tuning.POPUP_FADE, end = FadeEnd.DESTROY))
     }
 }
@@ -133,40 +136,13 @@ fun Commands.spawnSquish(art: Art, font: Font, kind: BugKind, x: Float, y: Float
 fun Commands.spawnCrumbs(art: Art, food: Food, x: Float, y: Float) {
     val count = if (food.bites == 0) Tuning.CRUMBS_LAST_BITE else Tuning.CRUMBS
     spawnBurst(
-        art, food.kind.crumbColor, x, y, count,
-        speed = Tuning.CRUMB_MIN_SPEED..Tuning.CRUMB_MAX_SPEED,
-        lifetime = Tuning.CRUMB_MIN_LIFETIME..Tuning.CRUMB_MAX_LIFETIME,
+        x, y,
+        ParticleEmitter.burst(
+            art.droplet, count, startColor = food.kind.crumbColor,
+            speed = Tuning.CRUMB_MIN_SPEED..Tuning.CRUMB_MAX_SPEED, lifetime = Tuning.CRUMB_MIN_LIFETIME..Tuning.CRUMB_MAX_LIFETIME,
+            startScale = Tuning.DROPLET_START_SCALE, endScale = Tuning.DROPLET_END_SCALE, layer = Tuning.LAYER_EFFECTS,
+        ),
     )
-}
-
-/**
- * Bursts [count] particles of [color] out of ([x], [y]) at a [speed] in points per second, each
- * living a [lifetime] picked from its range, on an entity of their own, which the engine destroys
- * once the last of them has faded.
- */
-private fun Commands.spawnBurst(
-    art: Art,
-    color: Color,
-    x: Float,
-    y: Float,
-    count: Int,
-    speed: ClosedFloatingPointRange<Float>,
-    lifetime: ClosedRange<Duration>,
-) {
-    spawn {
-        val burst = ParticleEmitter(art.droplet, capacity = count).apply {
-            this.speed = speed
-            this.lifetime = lifetime
-            startColor = color
-            startScale = Tuning.DROPLET_START_SCALE
-            endScale = Tuning.DROPLET_END_SCALE
-            layer = Tuning.LAYER_EFFECTS
-            whenEmpty = EmitterEnd.DESTROY
-            emit(count)
-        }
-        add(Transform, Transform(x, y))
-        add(ParticleEmitter, burst)
-    }
 }
 
 /**

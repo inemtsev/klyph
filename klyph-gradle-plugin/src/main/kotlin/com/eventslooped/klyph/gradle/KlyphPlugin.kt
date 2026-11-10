@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.mpp.Executable
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
+import org.jetbrains.kotlin.gradle.tasks.CInteropProcess
 import org.jetbrains.kotlin.konan.target.Family
 import java.io.File
 
@@ -26,55 +27,44 @@ import java.io.File
  */
 public class KlyphPlugin : Plugin<Project> {
     override fun apply(project: Project) {
-        if (project.pluginManager.hasPlugin("org.jetbrains.kotlin.multiplatform")) {
-            throw GradleException(
-                "Apply com.eventslooped.klyph before org.jetbrains.kotlin.multiplatform, or drop the Kotlin plugin: klyph applies it.",
-            )
-        }
-        val extension = project.extensions.create("klyph", KlyphExtension::class.java)
-        extension.assetsDir.convention(project.layout.projectDirectory.dir("assets"))
-        extension.assetExcludes.convention(listOf("README.md"))
-        extension.sdl3Version.convention(Sdl3Release.DEFAULT_VERSION)
-        extension.targets.convention(listOf("host"))
+        KlyphBuild.apply(project, game = true)
+    }
+}
 
-        val copyAssets = project.tasks.register("copyAssets") {
-            group = "application"
-            description = "Copies the assets folder next to every executable of this project."
-        }
-
-        // Targets and binaries depend on the klyph { } block, which the build script sets after
-        // this plugin is applied, so they are created once the script has run. The callback is
-        // registered before Kotlin is applied so it runs ahead of Kotlin's own afterEvaluate
-        // work, while Kotlin still treats new targets as if the build script declared them.
-        project.afterEvaluate {
-            if (project.state.failure == null) KlyphBuild(project, extension, copyAssets).configure()
-        }
-        project.pluginManager.apply("org.jetbrains.kotlin.multiplatform")
+/**
+ * Turns a project into a klyph library, such as the shared code of a game split into modules:
+ * the same targets, SDL3 lookup and link settings for its test binaries as [KlyphPlugin], but no
+ * executable, no `entryPoint` and none of the run, asset or distribution tasks.
+ *
+ * Its id is `com.eventslooped.klyph.library`; configure it through [KlyphExtension].
+ */
+public class KlyphLibraryPlugin : Plugin<Project> {
+    override fun apply(project: Project) {
+        KlyphBuild.apply(project, game = false)
     }
 }
 
 private class KlyphBuild(
     private val project: Project,
     private val extension: KlyphExtension,
-    private val copyAssets: TaskProvider<Task>,
+    private val copyAssets: TaskProvider<Task>?,
 ) {
     private val providers = project.providers
 
     fun configure() {
-        val entryPoint = extension.entryPoint.orNull?.takeIf { it.isNotBlank() }
-            ?: throw GradleException("Set klyph { entryPoint = \"my.game.main\" }.")
-        val host = KlyphTargets.host(
-            osName = providers.systemProperty("os.name").get(),
-            osArch = providers.systemProperty("os.arch").get(),
-        )
-        val targetNames = KlyphTargets.resolve(
-            targetsProperty = providers.gradleProperty("klyph.targets").orNull,
-            targetProperty = providers.gradleProperty("klyph.target").orNull,
-            extension = extension.targets.get(),
-            host = host,
-        )
+        val entryPoint = if (copyAssets == null) {
+            null
+        } else {
+            extension.entryPoint.orNull?.takeIf { it.isNotBlank() }
+                ?: throw GradleException("Set klyph { entryPoint = \"my.game.main\" }.")
+        }
+        val host = extension.hostTarget.get()
+        val targetNames = extension.configuredTargets.get()
         val sdl3 = locateSdl3(host)
+        extension.locatedSdl3 = sdl3.prefix
         val fetch = (sdl3 as? Sdl3Location.Download)?.let { registerFetch(it) }
+        // A cinterop of the project may read SDL3's headers (KlyphExtension.sdl3IncludeDir).
+        if (fetch != null) project.tasks.withType(CInteropProcess::class.java).configureEach { dependsOn(fetch) }
         // Binaries link against the one SDL3 prefix found for the host, which holds the host's
         // library only. So a build that configures the host links only the host's executables
         // and test binaries; the other targets still compile. A build without the host target is
@@ -116,6 +106,7 @@ private class KlyphBuild(
             host = host,
             version = extension.sdl3Version.get(),
             cacheRoot = File(project.gradle.gradleUserHomeDir, "caches/klyph/sdl3"),
+            download = providers.gradleProperty("klyph.sdl3.download").map { it.toBoolean() }.getOrElse(true),
         )
         project.logger.info("klyph: SDL3 for ${project.path} is $location")
         return location
@@ -162,7 +153,7 @@ private class KlyphBuild(
 
     private fun configureTarget(
         target: KotlinNativeTarget,
-        entryPoint: String,
+        entryPoint: String?,
         prefix: File,
         fetch: TaskProvider<Task>?,
         isHost: Boolean,
@@ -175,8 +166,11 @@ private class KlyphBuild(
         }.get()
         val sdl3Dll = File(prefix, "bin/SDL3.dll")
 
-        target.binaries.executable {
-            this.entryPoint = entryPoint
+        // A library has no executable, so the rest of this function only sets up its test binaries.
+        if (entryPoint != null) {
+            target.binaries.executable {
+                this.entryPoint = entryPoint
+            }
         }
 
         // Every binary (executables and test runners) links against SDL3, whose library name is
@@ -215,6 +209,7 @@ private class KlyphBuild(
             }
         }
 
+        val allAssets = copyAssets ?: return
         target.binaries.withType(Executable::class.java).configureEach {
             val binary = this
             val link = binary.linkTaskProvider
@@ -231,7 +226,7 @@ private class KlyphBuild(
                 enabled = linksBinaries
             }
             link.configure { finalizedBy(assets) }
-            copyAssets.configure { dependsOn(assets) }
+            allAssets.configure { dependsOn(assets) }
 
             if (isHost) {
                 val debug = binary.buildType == NativeBuildType.DEBUG
@@ -286,8 +281,41 @@ private class KlyphBuild(
         }
     }
 
-    private companion object {
-        const val FETCH_TASK = "fetchSdl3"
-        const val FETCH_PREFIX = "com.eventslooped.klyph.sdl3.fetchPrefix"
+    companion object {
+        private const val FETCH_TASK = "fetchSdl3"
+        private const val FETCH_PREFIX = "com.eventslooped.klyph.sdl3.fetchPrefix"
+
+        /** Applies klyph to [project]: a [game] gets executables and their tasks, a library does not. */
+        fun apply(project: Project, game: Boolean) {
+            if (project.pluginManager.hasPlugin("org.jetbrains.kotlin.multiplatform")) {
+                val id = if (game) "com.eventslooped.klyph" else "com.eventslooped.klyph.library"
+                throw GradleException(
+                    "Apply $id before org.jetbrains.kotlin.multiplatform, or drop the Kotlin plugin: klyph applies it.",
+                )
+            }
+            val extension = project.extensions.create("klyph", KlyphExtension::class.java)
+            extension.assetsDir.convention(project.layout.projectDirectory.dir("assets"))
+            extension.assetExcludes.convention(listOf("README.md"))
+            extension.sdl3Version.convention(Sdl3Release.DEFAULT_VERSION)
+            extension.targets.convention(listOf("host"))
+
+            val copyAssets = if (!game) {
+                null
+            } else {
+                project.tasks.register("copyAssets") {
+                    group = "application"
+                    description = "Copies the assets folder next to every executable of this project."
+                }
+            }
+
+            // Targets and binaries depend on the klyph { } block, which the build script sets after
+            // this plugin is applied, so they are created once the script has run. The callback is
+            // registered before Kotlin is applied so it runs ahead of Kotlin's own afterEvaluate
+            // work, while Kotlin still treats new targets as if the build script declared them.
+            project.afterEvaluate {
+                if (project.state.failure == null) KlyphBuild(project, extension, copyAssets).configure()
+            }
+            project.pluginManager.apply("org.jetbrains.kotlin.multiplatform")
+        }
     }
 }

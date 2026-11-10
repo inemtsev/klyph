@@ -13,9 +13,15 @@ public class Transform(
     public var y: Float = 0f,
     /** Rotation in radians; positive turns clockwise on screen, because y points down. */
     public var rotation: Float = 0f,
-    /** Horizontal scale factor. */
+    /**
+     * Horizontal scale factor. It scales the entity's sprite, text and collider; set
+     * `Collider.scalesWithTransform` to `false` to keep it out of the collider.
+     */
     public var scaleX: Float = 1f,
-    /** Vertical scale factor. */
+    /**
+     * Vertical scale factor. It scales the entity's sprite, text and collider; set
+     * `Collider.scalesWithTransform` to `false` to keep it out of the collider.
+     */
     public var scaleY: Float = 1f,
 ) {
     override fun toString(): String = "Transform(x=$x, y=$y, rotation=$rotation, scale=${scaleX}x$scaleY)"

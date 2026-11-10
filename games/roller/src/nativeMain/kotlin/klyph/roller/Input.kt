@@ -10,10 +10,9 @@ import klyph.platform.Scancode
 import klyph.platform.WindowMode
 
 /**
- * What the hero is told to do, from the keyboard and gamepads or from the autopilot. Input is
- * read once per frame in INPUT and the hero moves in FIXED_UPDATE, which runs zero or more times
- * a frame, so a jump press is kept in [isJumpQueued] until a fixed step takes it: a press in a
- * frame with no step would otherwise be lost, and one in a frame with two would jump twice.
+ * What the hero is told to do, from the keyboard and gamepads or from the autopilot. The jump
+ * press the hero moves by is not here: the play scene reads it in FIXED_UPDATE, where the engine
+ * answers "just pressed" once per step, from [isJumpJustPressed] or from the autopilot.
  */
 class Controls {
     /** -1 for full left, 1 for full right. */
@@ -22,20 +21,20 @@ class Controls {
     /** Whether a jump button is held, which keeps a rising jump going. */
     var isJumpHeld = false
 
-    /** A jump was pressed and no fixed step has taken it yet. */
-    var isJumpQueued = false
-
-    /** `true` in the frame a jump button went down, for the menus. */
+    /** `true` in the frame a jump button went down, for the menus; the autopilot's jump in FIXED_UPDATE. */
     var isJumpPressed = false
 
-    /** Returns `true` once for a queued jump press and forgets it. */
-    fun takeJump(): Boolean {
-        val queued = isJumpQueued
-        isJumpQueued = false
-        return queued
-    }
+    override fun toString(): String = "Controls(move=$move, held=$isJumpHeld, pressed=$isJumpPressed)"
+}
 
-    override fun toString(): String = "Controls(move=$move, held=$isJumpHeld, queued=$isJumpQueued)"
+/**
+ * Returns `true` if Space, W, Up or a gamepad's south button went down: this frame in INPUT, and
+ * since the previous step in FIXED_UPDATE, so each press makes one jump whatever the frame rate.
+ */
+fun isJumpJustPressed(input: Input): Boolean {
+    val keyboard = input.keyboard
+    return keyboard.isJustPressed(Scancode.SPACE) || keyboard.isJustPressed(Scancode.W) ||
+        keyboard.isJustPressed(Scancode.UP) || input.gamepads.isJustPressed(GamepadButton.SOUTH)
 }
 
 /**
@@ -50,7 +49,6 @@ fun readControls(app: App) {
     if (game.isAutopilot) return
     val keyboard = app.input.keyboard
     var move = keyboard.axis(Scancode.LEFT, Scancode.RIGHT) + keyboard.axis(Scancode.A, Scancode.D)
-    var pressed = keyboard.isJustPressed(Scancode.SPACE) || keyboard.isJustPressed(Scancode.W) || keyboard.isJustPressed(Scancode.UP)
     var held = keyboard.isDown(Scancode.SPACE) || keyboard.isDown(Scancode.W) || keyboard.isDown(Scancode.UP)
     val gamepads = app.input.gamepads
     for (index in gamepads.indices) {
@@ -58,13 +56,11 @@ fun readControls(app: App) {
         move += gamepad.leftStick.x
         if (gamepad.isDown(GamepadButton.DPAD_LEFT)) move -= 1f
         if (gamepad.isDown(GamepadButton.DPAD_RIGHT)) move += 1f
-        pressed = pressed || gamepad.isJustPressed(GamepadButton.SOUTH)
         held = held || gamepad.isDown(GamepadButton.SOUTH)
     }
     controls.move = move.coerceIn(-1f, 1f)
     controls.isJumpHeld = held
-    controls.isJumpPressed = pressed
-    if (pressed) controls.isJumpQueued = true
+    controls.isJumpPressed = isJumpJustPressed(app.input)
 }
 
 // Menu keys. Every check is for a press this frame, so holding a key does not run through screens.

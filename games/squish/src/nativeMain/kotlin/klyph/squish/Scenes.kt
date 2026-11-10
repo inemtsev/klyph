@@ -55,7 +55,6 @@ class GameScenes {
 
         addSystem(Phase.UPDATE) { app -> app.round.swat(app) }
         addSystem(Phase.UPDATE) { app -> app.round.feedBugs(app) }
-        addSystem(Phase.UPDATE) { app -> drift(app) }
         addSystem(Phase.UPDATE) { app -> if (app.round.finishIfOver()) app.scenes.push(end) }
 
         addSystem(Phase.RENDER) { app -> app.round.drawHud(app) }

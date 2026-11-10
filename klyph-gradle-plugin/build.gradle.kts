@@ -45,6 +45,13 @@ gradlePlugin {
             description = "Builds, runs and packages Kotlin/Native games made with the klyph engine."
             tags = listOf("kotlin", "kotlin-native", "gamedev", "sdl3")
         }
+        register("klyphLibrary") {
+            id = "com.eventslooped.klyph.library"
+            implementationClass = "com.eventslooped.klyph.gradle.KlyphLibraryPlugin"
+            displayName = "klyph library"
+            description = "Builds Kotlin/Native libraries for klyph games: the klyph targets and SDL3 for their tests, without executables."
+            tags = listOf("kotlin", "kotlin-native", "gamedev", "sdl3")
+        }
     }
 }
 

@@ -70,6 +70,25 @@ public class Animation(
     public var isPaused: Boolean = false
 
     /**
+     * Playback rate: [advance] moves the playhead by its delta times [speed]. 1, the default, plays
+     * at [frameDuration] per frame, 2 twice as fast, 0.5 at half speed, and 0 holds the current
+     * frame as [isPaused] does. Must be finite and not negative. [frameDuration] and [duration] do
+     * not change with it.
+     *
+     * At a speed other than 1 each scaled delta is rounded to whole nanoseconds, so the frame
+     * changes can drift by up to a nanosecond per call.
+     *
+     * @throws IllegalArgumentException if set to a negative or infinite value or `NaN`.
+     *
+     * @sample samples.render.Animations.speed
+     */
+    public var speed: Float = 1f
+        set(value) {
+            require(value >= 0f && value.isFinite()) { "Speed $value is not a finite number of at least zero." }
+            field = value
+        }
+
+    /**
      * Returns how long the current frame has been shown, from zero until [frameDuration].
      *
      * A finished [AnimationMode.ONCE] animation reports exactly [frameDuration], because its last
@@ -79,11 +98,12 @@ public class Animation(
         get() = elapsedNanos.nanoseconds
 
     /**
-     * Moves the playhead forward by [delta].
+     * Moves the playhead forward by [delta] times [speed].
      *
      * A delta longer than one frame skips over the frames it covers, and a delta longer than the
      * whole animation wraps around or, for [AnimationMode.ONCE], finishes it. Time that does not
-     * fill a frame carries over in [frameElapsed]. Does nothing while [isPaused] or [isFinished].
+     * fill a frame carries over in [frameElapsed]. Does nothing while [isPaused] or [isFinished],
+     * or when [speed] is 0.
      *
      * @throws IllegalArgumentException if [delta] is negative.
      *
@@ -91,9 +111,10 @@ public class Animation(
      */
     public fun advance(delta: Duration) {
         require(!delta.isNegative()) { "Delta $delta is negative." }
-        if (isPaused || isFinished) return
+        if (isPaused || isFinished || speed == 0f) return
         // An infinite delta saturates to Long.MAX_VALUE nanoseconds, which still finishes or wraps.
-        val deltaNanos = delta.inWholeNanoseconds
+        // Speed 1, the common case, keeps the delta exact.
+        val deltaNanos = if (speed == 1f) delta.inWholeNanoseconds else (delta * speed.toDouble()).inWholeNanoseconds
         var frames = deltaNanos / frameNanos
         val remainder = deltaNanos % frameNanos
         // Compared as a difference so that elapsedNanos + remainder cannot overflow.
@@ -119,7 +140,7 @@ public class Animation(
     }
 
     /**
-     * Returns to frame 0 with no elapsed time, and clears [isFinished] and [isPaused].
+     * Returns to frame 0 with no elapsed time, and clears [isFinished] and [isPaused]. [speed] is kept.
      *
      * @sample samples.render.Animations.restart
      */
@@ -149,7 +170,8 @@ public class Animation(
         isFinished = false
     }
 
-    override fun toString(): String = "Animation(frame=$frameIndex/$frameCount, mode=$mode)"
+    /** Returns `Animation(frame=2/6, mode=LOOP, speed=1.0)`. The format may change. */
+    override fun toString(): String = "Animation(frame=$frameIndex/$frameCount, mode=$mode, speed=$speed)"
 }
 
 /**

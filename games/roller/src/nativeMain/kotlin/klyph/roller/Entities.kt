@@ -3,18 +3,22 @@ package klyph.roller
 import klyph.app.Assets
 import klyph.collision.Collider
 import klyph.collision.CollisionLayers
+import klyph.collision.Collisions
+import klyph.collision.KinematicBody
+import klyph.collision.Passable
 import klyph.collision.Shape
+import klyph.collision.Solid
 import klyph.entity.Commands
 import klyph.entity.Entity
 import klyph.entity.Interpolated
 import klyph.entity.Lifetime
 import klyph.entity.Transform
+import klyph.entity.Velocity
 import klyph.math.degrees
-import klyph.particle.EmitterEnd
 import klyph.particle.ParticleEmitter
+import klyph.particle.spawnBurst
 import klyph.platform.Color
 import klyph.platform.SamplerFilter
-import klyph.platform.withAlpha
 import klyph.render.Fade
 import klyph.render.FadeEnd
 import klyph.render.Sprite
@@ -26,7 +30,6 @@ import klyph.text.TextAlign
 import klyph.text.TextShadow
 import kotlin.math.ceil
 import kotlin.random.Random
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 // Factories for every kind of entity in the game. They queue the entity on App.commands, so they
@@ -36,12 +39,14 @@ import kotlin.time.Duration.Companion.milliseconds
 // it and vanish when it leaves the stack.
 
 /**
- * Builds the level's scenery: a painted texture for every building and ledge, the billboards on
- * their pylons, the potted plants, the air conditioners and the arrow sign at the end.
+ * Builds the level's scenery: a solid for every building and ledge, a painted texture for each,
+ * the billboards on their pylons, the potted plants, the air conditioners and the arrow sign at
+ * the end.
  */
 fun Commands.spawnScenery(assets: Assets, art: Art) {
     val level = RooftopRun
     val pixel = Tuning.PIXEL
+    for (block in level.blocks) spawnSolid(block)
     for (index in level.buildings.indices) {
         val building = level.buildings[index]
         val texelsWide = ceil((building.right - building.left) / pixel).toInt()
@@ -71,6 +76,21 @@ fun Commands.spawnScenery(assets: Assets, art: Art) {
 
 private const val PLANT_HEIGHT = 44f
 private const val SIGN_HEIGHT = 92f
+
+/**
+ * Spawns the invisible solid of [block], which the hero's body stops at: a building from its roof
+ * down past the pits' bottom, so its sides are walls, or a ledge as thick as its girder that he
+ * jumps up through and lands on.
+ */
+private fun Commands.spawnSolid(block: Block) {
+    val bottom = if (block.isLedge) block.top + Tuning.LEDGE_HEIGHT else Tuning.WORLD_HEIGHT + 2 * Tuning.PIT_MARGIN
+    spawn {
+        add(Transform, Transform((block.left + block.right) / 2, (block.top + bottom) / 2))
+        add(Collider, Collider(Shape.Box(block.right - block.left, bottom - block.top), layers = Layers.LEVEL, mask = CollisionLayers.NONE))
+        add(Solid, Solid(if (block.isLedge) Passable.FROM_BELOW else Passable.NEVER))
+        add(Block, block)
+    }
+}
 
 /** Spawns a static sprite of [width] by [height] whose top-left corner is at ([left], [top]). */
 private fun Commands.spawnBlock(region: TextureRegion, left: Float, top: Float, width: Float, height: Float) {
@@ -129,10 +149,9 @@ private val CATWALK_COLOR = Color(0x535C74FFu)
 /** Spawns the hero standing at the level's start and returns him. */
 fun Commands.spawnPlayer(art: Art): Entity = spawn {
     val start = RooftopRun.start
-    val body = Body(start.x, start.y)
     val height = Tuning.PLAYER_SPRITE_HEIGHT
     val region = art.skate[0]
-    add(Transform, Transform(start.x, start.y - height / 2))
+    add(Transform, Transform(start.x, start.y - Collisions.CONTACT_GAP - height / 2))
     add(Sprite, Sprite(region, height * region.width / region.height, height, layer = Tuning.LAYER_PLAYER))
     // The box's bottom is the feet, at the bottom of the sprite.
     add(
@@ -141,10 +160,11 @@ fun Commands.spawnPlayer(art: Art): Entity = spawn {
             Shape.Box(Tuning.PLAYER_WIDTH, Tuning.PLAYER_HEIGHT),
             offsetY = height / 2 - Tuning.PLAYER_HEIGHT / 2,
             layers = Layers.PLAYER,
-            mask = Layers.ENEMY + Layers.RING + Layers.HEART,
+            mask = Layers.PLAYER_MASK,
         ),
     )
-    add(Player, Player(body))
+    add(KinematicBody, KinematicBody())
+    add(Player, Player())
     add(Interpolated, Interpolated)
 }
 
@@ -156,8 +176,8 @@ fun Commands.spawnPickupsAndEnemies(art: Art, random: Random) {
         spawn {
             add(Transform, Transform(ring.x, ring.y))
             add(Sprite, Sprite(art.ring, Tuning.RING_SIZE, Tuning.RING_SIZE, layer = Tuning.LAYER_PICKUPS))
-            // Rings look for nothing; the hero looks for them.
-            add(Collider, Collider(Shape.Circle(Tuning.RING_RADIUS), layers = Layers.RING, mask = CollisionLayers.NONE))
+            // Rings look for nothing; the hero looks for them. The spin narrows the ring, not its hitbox.
+            add(Collider, Collider(Shape.Circle(Tuning.RING_RADIUS), layers = Layers.RING, mask = CollisionLayers.NONE).apply { scalesWithTransform = false })
             // Neighbours spin a little apart, so a line of rings ripples.
             add(Ring, Ring(phase = index * 0.45f))
         }
@@ -195,7 +215,7 @@ fun Commands.spawnPopup(font: Font, text: String, x: Float, y: Float) {
     spawn {
         add(Transform, Transform(x, y))
         add(Text, Text(font, text, Tuning.POPUP_COLOR, Tuning.POPUP_SCALE, TextAlign.CENTER, layer = Tuning.LAYER_EFFECTS, shadow = POPUP_SHADOW))
-        add(Drift, Drift(0f, -Tuning.POPUP_RISE))
+        add(Velocity, Velocity(dy = -Tuning.POPUP_RISE))
         add(Fade, Fade(Tuning.POPUP_FADE, end = FadeEnd.DESTROY, delay = Tuning.POPUP_DELAY))
     }
 }
@@ -209,7 +229,13 @@ fun Commands.spawnImpact(art: Art, random: Random, x: Float, y: Float) {
         add(Sprite, Sprite(art.star, Tuning.STAR_SIZE, Tuning.STAR_SIZE, color = Color(0xFFF27AFFu), layer = Tuning.LAYER_EFFECTS))
         add(Lifetime, Lifetime(Tuning.STAR_LIFETIME))
     }
-    spawnBurst(art.star, Color(0xFFFFFFFFu), x, y, count = 8, speed = 120f..220f, lifetime = 200.milliseconds..350.milliseconds, scale = 0.5f)
+    spawnBurst(
+        x, y,
+        ParticleEmitter.burst(
+            art.star, count = 8, speed = 120f..220f, lifetime = 200.milliseconds..350.milliseconds,
+            startScale = 0.5f, endScale = 0.15f, startRotation = 0f..6f, layer = Tuning.LAYER_EFFECTS,
+        ),
+    )
 }
 
 /** Leaves a stomped blob flattened on its roof at [x], fading after a moment, with a splash of slime. */
@@ -221,8 +247,12 @@ fun Commands.spawnSquashedBlob(art: Art, x: Float, roof: Float, isFlipped: Boole
         add(Fade, Fade(Tuning.SQUASHED_FADE, end = FadeEnd.DESTROY, delay = Tuning.SQUASHED_HOLD))
     }
     spawnBurst(
-        art.dust, Color(0x5BD13BFFu), x, roof - 8f, count = 14, speed = 90f..220f,
-        lifetime = 300.milliseconds..550.milliseconds, scale = 0.9f, direction = (-90f).degrees, spread = 150f.degrees, gravity = 700f,
+        x, roof - 8f,
+        ParticleEmitter.burst(
+            art.dust, count = 14, speed = 90f..220f, lifetime = 300.milliseconds..550.milliseconds,
+            direction = (-90f).degrees, spread = 150f.degrees, gravityY = 700f, startColor = Color(0x5BD13BFFu),
+            startScale = 0.9f, endScale = 0.27f, startRotation = 0f..6f, layer = Tuning.LAYER_EFFECTS,
+        ),
     )
 }
 
@@ -231,59 +261,31 @@ fun Commands.spawnFallingHeli(art: Art, x: Float, y: Float, direction: Float) {
     spawn {
         add(Transform, Transform(x, y))
         add(Sprite, Sprite(art.heli, Tuning.HELI_WIDTH, Tuning.HELI_HEIGHT, layer = Tuning.LAYER_SQUASHED, isFlippedX = direction > 0f))
-        add(Drift, Drift(vx = direction * 90f, vy = -180f, gravity = Tuning.GRAVITY, spin = Tuning.FALLING_SPIN * direction))
+        add(Velocity, Velocity(dx = direction * 90f, dy = -180f))
+        add(Tumble, Tumble(Tuning.FALLING_SPIN * direction))
         add(Lifetime, Lifetime(Tuning.FALLING_LIFETIME))
     }
 }
 
 /** Sparkles where a ring was taken. */
 fun Commands.spawnSparkle(art: Art, x: Float, y: Float, color: Color) {
-    spawnBurst(art.star, color, x, y, count = 7, speed = 60f..140f, lifetime = 250.milliseconds..450.milliseconds, scale = 0.6f)
+    spawnBurst(
+        x, y,
+        ParticleEmitter.burst(
+            art.star, count = 7, speed = 60f..140f, lifetime = 250.milliseconds..450.milliseconds, startColor = color,
+            startScale = 0.6f, endScale = 0.18f, startRotation = 0f..6f, layer = Tuning.LAYER_EFFECTS,
+        ),
+    )
 }
 
 /** Kicks up dust under the blades where the hero landed hard. */
 fun Commands.spawnDust(art: Art, x: Float, feet: Float) {
     spawnBurst(
-        art.dust, Color(0xF2EEF8D0u), x, feet - 2f, count = 10, speed = 40f..110f,
-        lifetime = 250.milliseconds..450.milliseconds, scale = 1.1f, direction = (-90f).degrees, spread = 170f.degrees, gravity = 120f,
+        x, feet - 2f,
+        ParticleEmitter.burst(
+            art.dust, count = 10, speed = 40f..110f, lifetime = 250.milliseconds..450.milliseconds,
+            direction = (-90f).degrees, spread = 170f.degrees, gravityY = 120f, startColor = Color(0xF2EEF8D0u),
+            startScale = 1.1f, endScale = 0.33f, startRotation = 0f..6f, layer = Tuning.LAYER_EFFECTS,
+        ),
     )
-}
-
-/**
- * Bursts [count] particles showing [region] tinted [color] out of ([x], [y]), on an entity of
- * their own that the engine destroys once the last of them has gone, in a fan of [spread]
- * around [direction]. They shrink from [scale] and fade out.
- */
-private fun Commands.spawnBurst(
-    region: TextureRegion,
-    color: Color,
-    x: Float,
-    y: Float,
-    count: Int,
-    speed: ClosedFloatingPointRange<Float>,
-    lifetime: ClosedRange<Duration>,
-    scale: Float,
-    direction: Float = 0f,
-    spread: Float = 360f.degrees,
-    gravity: Float = 0f,
-) {
-    spawn {
-        val burst = ParticleEmitter(region, capacity = count).apply {
-            this.speed = speed
-            this.lifetime = lifetime
-            this.direction = direction
-            this.spread = spread
-            gravityY = gravity
-            startColor = color
-            endColor = color.withAlpha(0f)
-            startScale = scale
-            endScale = scale * 0.3f
-            startRotation = 0f..6f
-            layer = Tuning.LAYER_EFFECTS
-            whenEmpty = EmitterEnd.DESTROY
-            emit(count)
-        }
-        add(Transform, Transform(x, y))
-        add(ParticleEmitter, burst)
-    }
 }

@@ -2,6 +2,7 @@ package klyph.shooter
 
 import klyph.app.App
 import klyph.entity.Transform
+import klyph.entity.Velocity
 import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.time.DurationUnit
@@ -41,7 +42,7 @@ private fun nextEnemyXOrNaN(app: App, ship: Transform): Float {
     app.world.forEach(Sway, Transform, Velocity) { _, sway, transform, velocity ->
         if (transform.y > ship.y - MIN_TARGET_GAP) return@forEach
         // Lead the target: aim where its sway will have taken it when a bullet fired now arrives.
-        val flightTime = (ship.y - transform.y) / (Tuning.BULLET_SPEED + velocity.y)
+        val flightTime = (ship.y - transform.y) / (Tuning.BULLET_SPEED + velocity.dy)
         val x = sway.centerX + Tuning.ENEMY_SWAY_AMPLITUDE * sin(sway.phase + sway.rate * flightTime)
         val distance = abs(x - ship.x)
         if (distance < bestDistance) {

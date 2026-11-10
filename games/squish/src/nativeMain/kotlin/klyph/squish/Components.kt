@@ -58,13 +58,6 @@ enum class FoodKind(val crumbColor: Color) {
     WATERMELON(Color(red = 0.95f, green = 0.2f, blue = 0.2f)),
 }
 
-/** Movement in world units per second: the rising "+1". The engine has no velocity of its own, by design. */
-class Velocity(var x: Float, var y: Float) {
-    override fun toString(): String = "Velocity($x, $y)"
-
-    companion object : ComponentType<Velocity>("Velocity")
-}
-
 /** A title screen bug walking round an ellipse of radii [radiusX] and [radiusY] about ([centerX], [centerY]). */
 class Orbit(val centerX: Float, val centerY: Float, val radiusX: Float, val radiusY: Float, var angle: Float, val rate: Float) {
     override fun toString(): String = "Orbit(radius=$radiusX x $radiusY, angle=$angle, rate=$rate)"

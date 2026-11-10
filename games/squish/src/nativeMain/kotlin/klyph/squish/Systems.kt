@@ -249,15 +249,6 @@ private fun Round.bite(app: App, bug: Bug, transform: Transform, foodEntity: Ent
     world.get(foodEntity, Collider).shape = Shape.Circle(food.baseRadius * scale)
 }
 
-/** Moves the entities that drift, the rising "+1"s. */
-fun drift(app: App) {
-    val dt = app.time.deltaSeconds
-    app.world.forEach(Velocity, Transform) { _, velocity, transform ->
-        transform.x += velocity.x * dt
-        transform.y += velocity.y * dt
-    }
-}
-
 /**
  * Records the score once the round is over and returns `true`, so the play scene shows the end
  * screen; returns `false` while it goes on.

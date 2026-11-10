@@ -67,7 +67,25 @@ class SpriteAnimationTest {
         val sheet = SpriteSheet.fromGrid(Texture(96, 16), columns = 6, rows = 1)
         val animation = SpriteAnimation(sheet, 100.milliseconds, AnimationMode.PING_PONG)
         animation.playhead.advance(200.milliseconds)
-        assertEquals("SpriteAnimation(frame=2/6, mode=PING_PONG, end=HOLD)", animation.toString())
+        assertEquals("SpriteAnimation(frame=2/6, mode=PING_PONG, speed=1.0, end=HOLD)", animation.toString())
+    }
+
+    @Test
+    fun speedIsThePlayheadsAndTheEngineAdvancesByIt() {
+        val sheet = SpriteSheet.fromGrid(Texture(96, 16), columns = 6, rows = 1)
+        val world = World()
+        val entity = world.create()
+        val sprite = Sprite(sheet[0])
+        val animation = SpriteAnimation(sheet, 100.milliseconds)
+        world.add(entity, Sprite, sprite)
+        world.add(entity, SpriteAnimation, animation)
+
+        animation.speed = 3f
+        assertEquals(3f, animation.playhead.speed)
+        world.advanceSpriteAnimations(100.milliseconds)
+        assertSame(sheet[3], sprite.region)
+        assertFailsWith<IllegalArgumentException> { animation.speed = -0.5f }
+        assertEquals("SpriteAnimation(frame=3/6, mode=LOOP, speed=3.0, end=HOLD)", animation.toString())
     }
 
     /** Returns the [AnimationFinished] events published so far this frame. */

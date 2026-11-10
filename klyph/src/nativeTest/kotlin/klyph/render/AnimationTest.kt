@@ -203,6 +203,56 @@ class AnimationTest {
     fun toStringShowsFrameAndMode() {
         val animation = Animation(frameCount = 8, frameDuration = 100.milliseconds)
         animation.advance(200.milliseconds)
-        assertEquals("Animation(frame=2/8, mode=LOOP)", animation.toString())
+        assertEquals("Animation(frame=2/8, mode=LOOP, speed=1.0)", animation.toString())
+    }
+
+    @Test
+    fun speedScalesTheDelta() {
+        val fast = Animation(frameCount = 8, frameDuration = 100.milliseconds)
+        fast.speed = 2f
+        fast.advance(150.milliseconds)
+        assertEquals(3, fast.frameIndex)
+        assertEquals(0.milliseconds, fast.frameElapsed)
+
+        val slow = Animation(frameCount = 8, frameDuration = 100.milliseconds)
+        slow.speed = 0.5f
+        slow.advance(150.milliseconds)
+        assertEquals(0, slow.frameIndex)
+        assertEquals(75.milliseconds, slow.frameElapsed)
+    }
+
+    @Test
+    fun speedZeroHoldsTheFrameEvenForAnInfiniteDelta() {
+        val animation = Animation(frameCount = 3, frameDuration = 100.milliseconds, mode = AnimationMode.ONCE)
+        animation.advance(150.milliseconds)
+        animation.speed = 0f
+        animation.advance(Duration.INFINITE)
+        assertEquals(1, animation.frameIndex)
+        assertEquals(50.milliseconds, animation.frameElapsed)
+        assertFalse(animation.isFinished)
+        animation.speed = 1f
+        animation.advance(Duration.INFINITE)
+        assertTrue(animation.isFinished)
+    }
+
+    @Test
+    fun speedFinishesAOnceAnimationSooner() {
+        val animation = Animation(frameCount = 4, frameDuration = 100.milliseconds, mode = AnimationMode.ONCE)
+        animation.speed = 4f
+        animation.advance(100.milliseconds)
+        assertTrue(animation.isFinished)
+    }
+
+    @Test
+    fun speedMustBeFiniteAndNotNegative() {
+        val animation = Animation(frameCount = 2, frameDuration = 100.milliseconds)
+        for (bad in listOf(-1f, Float.NaN, Float.POSITIVE_INFINITY)) {
+            val error = assertFailsWith<IllegalArgumentException> { animation.speed = bad }
+            assertEquals("Speed $bad is not a finite number of at least zero.", error.message)
+        }
+        assertEquals(1f, animation.speed)
+        animation.speed = 3f
+        animation.restart()
+        assertEquals(3f, animation.speed, "Restart keeps the speed.")
     }
 }

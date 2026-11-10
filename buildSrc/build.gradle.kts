@@ -13,4 +13,7 @@ dependencies {
     implementation("org.jetbrains.dokka:dokka-gradle-plugin:2.2.0")
     // Renders the guide pages in docs/ to HTML (Guide.kt); the Markdown parser Dokka itself uses.
     implementation("org.jetbrains:markdown-jvm:0.7.3")
+    // The klyph Gradle plugin, from the build buildSrc/settings.gradle.kts includes: klyph.native
+    // applies its library mode, which owns the target rules and the SDL3 lookup.
+    implementation("com.eventslooped.klyph:klyph-gradle-plugin")
 }

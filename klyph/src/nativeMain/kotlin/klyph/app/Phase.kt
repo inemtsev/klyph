@@ -17,7 +17,9 @@ public enum class Phase {
 
     /**
      * Runs zero or more times per frame at a fixed rate, for gameplay and physics. While it runs,
-     * [Time.delta] equals [Time.fixedDelta].
+     * [Time.delta] equals [Time.fixedDelta]. After the systems of each step, the engine moves every
+     * entity with a [klyph.entity.Velocity] by its velocity times [Time.fixedDelta], and then every
+     * [klyph.collision.KinematicBody], which stops at the [klyph.collision.Solid]s in its way.
      */
     FIXED_UPDATE,
 

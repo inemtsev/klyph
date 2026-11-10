@@ -7,8 +7,6 @@ plugins {
 
 description = "The SDL3, stb_image, stb_image_write and stb_vorbis bindings and the thin Kotlin API over them that the klyph engine is built on."
 
-val sdl3Prefix: String = Sdl3.prefix(project)
-
 kotlin {
     explicitApi()
 
@@ -17,7 +15,8 @@ kotlin {
             cinterops.create("sdl3") {
                 definitionFile.set(file("src/nativeInterop/cinterop/sdl3.def"))
                 packageName("sdl3")
-                includeDirs("$sdl3Prefix/include")
+                // The include folder of the SDL3 the klyph plugin found (klyph.native applies it).
+                includeDirs(klyph.sdl3IncludeDir)
             }
             // stb_image and stb_image_write, vendored; their implementations are compiled into the interop stubs.
             cinterops.create("stb") {

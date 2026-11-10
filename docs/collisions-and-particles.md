@@ -5,6 +5,11 @@ This page covers two engine steps that run every frame without a system of yours
 detection, which reports touching colliders as `Overlap` events and answers shape queries, and
 particles, which emit, move and fade pooled quads from emitter components.
 
+Detection only reports overlaps. Two colliders that overlap keep overlapping until a system moves one of
+them, and nothing stops a collider at a wall. For characters that stand on floors and stop at
+walls, mark the walls and floors with `Solid` and move the characters with `KinematicBody`; the
+[Platformers](platformers.md) page covers both and the sweep queries that go with them.
+
 The snippets on this page are code for the setup block of `runApp`, and they share these
 definitions:
 
@@ -29,9 +34,8 @@ object Enemy : ComponentType<Enemy>("Enemy")
 A `Collider` component makes an entity take part in overlap detection. Its shape is a
 `Shape.Box(width, height)`, an axis-aligned rectangle, or a `Shape.Circle(radius)`, both centered
 on the entity's position plus `offsetX` and `offsetY`. The position is the entity's
-`WorldTransform` when it has a parent and its `Transform` otherwise. The transform's scale
-multiplies the shape: a box by both scales, a circle's radius by the x scale. Rotation is
-ignored, so boxes stay upright.
+`WorldTransform` when it has a parent and its `Transform` otherwise. Rotation is ignored, so
+boxes stay upright.
 
 <!-- snippet: colliders -->
 ```kotlin
@@ -49,6 +53,28 @@ commands.spawn {
     add(Sprite, Sprite(assets.whitePixel, width = 4f, height = 12f))
     // Hits enemies only, so bullets pass through each other and through the player.
     add(Collider, Collider(Shape.Box(width = 4f, height = 12f), layers = Layers.BULLET, mask = Layers.ENEMY))
+}
+```
+
+## Scale and colliders
+
+The transform's scale scales the collider: a box's width by the x scale and its height by the y
+scale, a circle's radius by the x scale alone, and the offset by both. A circle on an entity
+scaled unevenly stays a circle, so it no longer matches the stretched sprite. When the scale only
+animates the sprite, as a squash or a coin's spin does, set `scalesWithTransform = false` on the
+collider and it keeps its size and offset whatever the scale:
+
+<!-- snippet: unscaled-collider -->
+```kotlin
+val coin = commands.spawn {
+    add(Transform, Transform(x = 200f, y = 300f))
+    add(Sprite, Sprite(assets.disc(24), color = Color.YELLOW))
+    // The spin narrows the sprite, never the hitbox.
+    add(Collider, Collider(Shape.Circle(12f)).apply { scalesWithTransform = false })
+}
+addSystem(Phase.UPDATE) { app ->
+    val seconds = app.time.elapsed.inWholeMilliseconds / 1000f
+    app.world.get(coin, Transform).scaleX = cos(seconds * 4f)
 }
 ```
 
@@ -156,33 +182,28 @@ emitted, a particle moves in world space and no longer follows the entity.
 
 Particles come from two sources: `emit(count)` requests a burst, emitted at the next advance, and
 `rate` emits continuously, in particles per second. An explosion is one burst on an entity of its
-own:
+own. `ParticleEmitter.burst(region, count)` makes such an emitter: its capacity is `count`, the
+burst is already requested and `whenEmpty` is `EmitterEnd.DESTROY`. Its named parameters set the
+other properties of the table below and default to the same values; set the rest, such as
+`angularVelocity`, on the result. `commands.spawnBurst(x, y, emitter)` spawns the entity that
+carries it:
 
 <!-- snippet: burst -->
 ```kotlin
-val sparks = ParticleEmitter(assets.disc(8), capacity = 64).apply {
-    speed = 80f..260f
-    lifetime = 300.milliseconds..700.milliseconds
-    gravityY = 200f
-    startColor = Color(1f, 0.8f, 0.3f)
-    endColor = Color(0.8f, 0.1f, 0f, 0f)
-    startScale = 1f
-    endScale = 0.2f
-    layer = 2
-    // The entity goes away once the last spark has faded.
-    whenEmpty = EmitterEnd.DESTROY
-    emit(64)
-}
-commands.spawn {
-    add(Transform, Transform(x = x, y = y))
-    add(ParticleEmitter, sparks)
-}
+// 64 sparks at once on an entity of their own, which goes away once the last has faded.
+val sparks = ParticleEmitter.burst(
+    assets.disc(8), count = 64,
+    speed = 80f..260f, lifetime = 300.milliseconds..700.milliseconds, gravityY = 200f,
+    startColor = Color(1f, 0.8f, 0.3f), endColor = Color(0.8f, 0.1f, 0f, 0f), endScale = 0.2f, layer = 2,
+)
+commands.spawnBurst(x, y, sparks)
 ```
 
 With `whenEmpty = EmitterEnd.DESTROY`, the engine destroys the emitter's entity once it has no
 live particle, no pending burst and a rate of 0, so the burst fades out and then cleans up after
-itself. Request the burst before the particle step of the frame, as above, or the emitter is
-empty at its first advance and is destroyed then. Destroying an emitter's entity removes its
+itself. An emitter set up by hand with `DESTROY` needs its `emit` call before the frame's
+particle step, or it is empty at its first advance and is destroyed then; `burst` requests the
+burst when it creates the emitter. Destroying an emitter's entity removes its
 particles at once, which is why the burst gets its own entity instead of living on the enemy that
 exploded.
 
@@ -256,7 +277,8 @@ Particles of an emitter whose scene is frozen stand still and keep drawing. 100,
   [otherThan](../klyph/klyph.collision/other-than.html)
 - [Collisions](../klyph/klyph.collision/-collisions/index.html)
 - [ParticleEmitter](../klyph/klyph.particle/-particle-emitter/index.html),
+  [spawnBurst](../klyph/klyph.particle/spawn-burst.html),
   [EmitterEnd](../klyph/klyph.particle/-emitter-end/index.html) and
   [EmitterSpace](../klyph/klyph.particle/-emitter-space/index.html)
 - [degrees](../klyph/klyph.math/degrees.html)
-- Next: [Text, canvas and overlay](text-canvas-and-overlay.md)
+- Next: [Platformers](platformers.md)

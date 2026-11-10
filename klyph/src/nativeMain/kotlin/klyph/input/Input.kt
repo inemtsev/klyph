@@ -10,10 +10,12 @@ import klyph.render.Camera
  *
  * The engine updates it at the start of each frame's `Phase.INPUT`, from the platform events that
  * arrived since the previous frame, before any system runs; it stays the same for the rest of the
- * frame. The matching `klyph.event` events are published in the same step, for code that needs
- * every event in order. When the window loses focus, every held key and button is released and
- * reads as just released that frame, and every gamepad axis reads 0, so nothing stays stuck while
- * the window is in the background.
+ * frame. Inside `Phase.FIXED_UPDATE`, "just pressed" and "just released" follow fixed steps
+ * instead of frames: a change is seen by the first step after it, once, as
+ * [Keyboard.isJustPressed] describes. The matching `klyph.event` events are published in the same
+ * step, for code that needs every event in order. When the window loses focus, every held key and
+ * button is released and reads as just released that frame, and every gamepad axis reads 0, so
+ * nothing stays stuck while the window is in the background.
  *
  * [toString] gives the number of keys and mouse buttons down and the number of gamepads, for
  * example `Input(keysDown=2, mouseButtonsDown=0, gamepads=1)`.
@@ -22,12 +24,13 @@ import klyph.render.Camera
  */
 public class Input internal constructor() {
     private val connected = ArrayList<Gamepad>()
+    private val clock = StepClock()
 
     /** The keyboard's keys. */
-    public val keyboard: Keyboard = Keyboard()
+    public val keyboard: Keyboard = Keyboard(clock)
 
     /** The mouse's position, movement, wheel and buttons. */
-    public val mouse: Mouse = Mouse()
+    public val mouse: Mouse = Mouse(clock)
 
     /**
      * The connected gamepads, in the order they were connected. The list is a read-only view that
@@ -81,7 +84,7 @@ public class Input internal constructor() {
             }
             is PlatformEvent.MouseWheelScrolled -> mouse.scroll(event.dx, event.dy)
             is PlatformEvent.GamepadConnected ->
-                if (gamepadOrNull(event.id) == null) connected.add(Gamepad(event.id, event.name, deadZone))
+                if (gamepadOrNull(event.id) == null) connected.add(Gamepad(event.id, event.name, deadZone, clock))
             is PlatformEvent.GamepadDisconnected -> {
                 val gamepad = gamepadOrNull(event.id) ?: return
                 connected.remove(gamepad)
@@ -101,6 +104,16 @@ public class Input internal constructor() {
             is PlatformEvent.WindowDensityChanged -> {}
         }
     }
+
+    /**
+     * Starts a fixed step: until [endFixedStep], "just pressed" and "just released" answer for the
+     * changes made since the previous step instead of this frame's. The frame loop calls it before
+     * each `Phase.FIXED_UPDATE` step's systems run.
+     */
+    internal fun beginFixedStep() = clock.beginFixedStep()
+
+    /** Ends the fixed step [beginFixedStep] started, so the frame's edges answer again. */
+    internal fun endFixedStep() = clock.endFixedStep()
 
     /**
      * Finishes the frame's update: publishes the mouse's vectors and computes its world position
