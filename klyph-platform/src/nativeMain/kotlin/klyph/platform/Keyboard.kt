@@ -129,7 +129,10 @@ import sdl3.SDL_SCANCODE_Z
  * Key codes are sparse (printable keys use their Unicode value, the rest have a high bit set), so
  * do not size arrays by them; index by [Scancode] instead.
  */
-public value class KeyCode(public val code: UInt) {
+public value class KeyCode(
+    /** The code as SDL reports it: the Unicode value of a printable key, or a value with a high bit set. */
+    public val code: UInt,
+) {
     override fun toString(): String = "KeyCode($code)"
 
     /** Holds the key codes, which follow the keyboard layout. */

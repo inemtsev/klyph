@@ -110,7 +110,12 @@ ones, `./gradlew detektBaseline` (and `./gradlew -p klyph-gradle-plugin detektBa
 the baselines without them. detekt runs without type resolution everywhere (Kotlin/Native has
 none, and in the plugin build it would fight the sam-with-receiver compiler plugin), so the rules
 that need it never fire. `MagicNumber` is off, since an engine's tuning values and maths are
-numbers, and lines may run to 140 columns.
+numbers, and lines may run to 140 columns. The rules of [API_STYLE.md](API_STYLE.md) that detekt
+can check from syntax alone are on for the library modules (`klyph`, `klyph-platform` and the
+plugin; the executables and samples are excluded by path): KDoc on every public declaration, a
+first sentence that ends, KDoc links only to public declarations, no Manager, Helper, Util,
+Wrapper, Data or Info in a class name, and no public `data class`, the last from detekt's
+`libraries` rule set, which both builds add to `detektPlugins`.
 
 ## Games and benchmarks
 

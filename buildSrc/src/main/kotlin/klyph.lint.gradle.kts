@@ -24,6 +24,10 @@ detekt {
     parallel = true
 }
 
+// The libraries rule set (ForbiddenPublicDataClass) ships outside the detekt distribution, at the
+// version of the plugin itself.
+dependencies.addProvider("detektPlugins", detekt.toolVersion.map { "dev.detekt:detekt-rules-libraries:$it" })
+
 // The compiled shaders (compileShaders) are generated into src.
 tasks.withType<Detekt>().configureEach {
     exclude("**/generated/**")

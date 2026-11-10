@@ -26,11 +26,11 @@ import kotlin.time.Duration.Companion.nanoseconds
  * Decoded audio: [frameCount] frames of 32-bit float samples, each frame holding one value per
  * channel, played at [sampleRate] frames per second. Samples are nominally in -1..1.
  *
- * This constructor copies [samples], which must be interleaved by channel: for stereo, left then
+ * This constructor copies its samples, which must be interleaved by channel: for stereo, left then
  * right for each frame. Decode a WAV or Ogg Vorbis file with [AudioSamples.decode] instead.
  *
  * @throws IllegalArgumentException if [channels] is not 1 or 2, [sampleRate] is not positive, or
- *   the size of [samples] is not a multiple of [channels].
+ *   the size of the samples is not a multiple of [channels].
  *
  * @sample samples.platform.Audio.get
  */

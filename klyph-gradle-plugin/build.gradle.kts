@@ -103,6 +103,9 @@ detekt {
     parallel = true
 }
 
+// The libraries rule set (ForbiddenPublicDataClass), at the version of the plugin itself.
+dependencies.addProvider("detektPlugins", detekt.toolVersion.map { "dev.detekt:detekt-rules-libraries:$it" })
+
 mavenPublishing {
     publishToMavenCentral()
     // Central rejects unsigned uploads; gating on the key keeps publishToMavenLocal working on
