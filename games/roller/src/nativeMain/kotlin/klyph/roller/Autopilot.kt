@@ -12,7 +12,10 @@ import kotlin.time.DurationUnit
 // hero's own physics ahead to see where a jump would land, and fills the same Controls the
 // keyboard and gamepads fill.
 
-/** Play scene INPUT system: decides this frame's move and whether to jump. */
+/**
+ * Play scene FIXED_UPDATE system, run before the hero moves: decides this step's move and whether
+ * to jump, so it decides once per step whatever the frame rate.
+ */
 fun Run.steerAutopilot(app: App) {
     val controls = game.controls
     val hero = app.world.getOrNull(player, Player) ?: return
@@ -28,7 +31,7 @@ fun Run.steerAutopilot(app: App) {
     controls.isJumpHeld = !isHelicopterAbove(app, body)
     if (body.isGrounded) {
         controls.move = 1f
-        if (shouldJump(app, body, dt)) controls.isJumpQueued = true
+        controls.isJumpPressed = shouldJump(app, body, dt)
         return
     }
     var move = 1f

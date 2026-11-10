@@ -43,11 +43,9 @@ class GameScenes {
     val play: Scene = buildScene("play") {
         onEnter { app -> startRun(app) }
 
-        addSystem(Phase.INPUT) { app ->
-            if (isPauseRequested(app)) app.scenes.push(pause)
-            if (app.game.isAutopilot) app.run.steerAutopilot(app)
-        }
+        addSystem(Phase.INPUT) { app -> if (isPauseRequested(app)) app.scenes.push(pause) }
 
+        addSystem(Phase.FIXED_UPDATE) { app -> if (app.game.isAutopilot) app.run.steerAutopilot(app) }
         addSystem(Phase.FIXED_UPDATE) { app -> app.run.tickClock(app) }
         addSystem(Phase.FIXED_UPDATE) { app -> app.run.movePlayer(app) }
         addSystem(Phase.FIXED_UPDATE) { app -> moveEnemies(app) }

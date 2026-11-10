@@ -11,18 +11,44 @@ Every device answers three questions per button:
 | Call | `true` when |
 |---|---|
 | `isDown(button)` | The button is held now. |
-| `isJustPressed(button)` | The button went down this frame. |
-| `isJustReleased(button)` | The button went up this frame. |
+| `isJustPressed(button)` | The button went down this frame, or since the last step in FIXED_UPDATE. |
+| `isJustReleased(button)` | The button went up this frame, or since the last step in FIXED_UPDATE. |
 
-"Just pressed" and "just released" last one frame. A tap shorter than a frame reads as both in
-the same frame, so no press is lost. Key repeat does not count as a press. When the window loses
-focus every held key and button is released, and reads as just released that frame, so nothing
-stays stuck while the game is in the background.
+"Just pressed" and "just released" last one frame, or one step in FIXED_UPDATE. A tap shorter
+than a frame reads as both in the same frame, so no press is lost. Key repeat does not count as a
+press. When the window loses focus every held key and button is released, and reads as just
+released that frame, so nothing stays stuck while the game is in the background.
 
-Read edges, the "just" calls, in INPUT or UPDATE, which run once per frame. FIXED_UPDATE may run
-zero times in a frame, or twice, so a press read there can be missed or seen twice. Held state
-is safe to read in any phase. The snippets on this page are code for the setup block of
-`runApp`.
+Held state reads the same in every phase. Edges, the "just" calls, follow the phase that reads
+them. In INPUT, UPDATE and the other phases that run once a frame, "just" means this frame.
+FIXED_UPDATE runs zero, one or several steps a frame, so there it means since the previous step:
+the first step after a press sees it and no other step does. A press in a frame that runs no step
+waits for the next frame's first step, and a frame's second step does not see it again. A tap
+shorter than a step reads as both just pressed and just released in that step, with the key
+already up. Read a jump where the physics runs:
+
+<!-- snippet: jump -->
+```kotlin
+var velocityY = 0f
+addSystem(Phase.FIXED_UPDATE) { app ->
+    val transform = app.world.get(player, Transform)
+    val ground = 500f
+    // One step sees each press, however many steps this frame runs.
+    val jump = app.input.keyboard.isJustPressed(Scancode.SPACE) || app.input.gamepads.isJustPressed(GamepadButton.SOUTH)
+    if (jump && transform.y >= ground) velocityY = -600f
+    velocityY += 1800f * app.time.deltaSeconds
+    transform.y += velocityY * app.time.deltaSeconds
+    if (transform.y >= ground) {
+        transform.y = ground
+        velocityY = 0f
+    }
+}
+```
+
+Each press reaches one step; a jump buffer or coyote time, which remember it for a few steps, is
+game logic, as in Rooftop Roller. A press that a menu reads in INPUT to start the game can also
+reach the first step of the scene it starts, when its frame ran no step. The snippets on this page
+are code for the setup block of `runApp`.
 
 ## Keyboard
 

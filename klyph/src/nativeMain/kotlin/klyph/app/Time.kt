@@ -67,6 +67,13 @@ public class Time internal constructor(fixedRate: Int) {
     public var frameCount: Long = 0
         private set
 
+    /**
+     * Number of [Phase.FIXED_UPDATE] steps completed so far. It is 0 during the first step and
+     * goes up by one at the end of every step, so a frame can add zero, one or several.
+     */
+    public var fixedStepCount: Long = 0
+        private set
+
     /** Starts a frame that lasted [frameDelta], clamped to between zero and [MAX_FRAME_DELTA]. */
     internal fun beginFrame(frameDelta: Duration) {
         check(!inFixedStep) { "Cannot begin a frame inside a fixed step." }
@@ -81,10 +88,11 @@ public class Time internal constructor(fixedRate: Int) {
         inFixedStep = true
     }
 
-    /** Switches [delta] back to the frame duration. */
+    /** Switches [delta] back to the frame duration and counts the step in [fixedStepCount]. */
     internal fun endFixedStep() {
         check(inFixedStep) { "No fixed step is running." }
         inFixedStep = false
+        fixedStepCount++
     }
 
     /** Ends the current frame and counts it in [frameCount]. */

@@ -167,7 +167,12 @@ enum class RunOutcome { COMPLETE, GAME_OVER }
  * scene inserts a new one each time it enters, so every run starts fresh, and reads it through
  * [App.run].
  */
-class Run(val game: Game, val player: Entity) {
+class Run(
+    val game: Game,
+    val player: Entity,
+    /** Fixed steps completed when the run started, so its first step can tell itself apart. */
+    val startStep: Long,
+) {
     var score = 0
     var rings = 0
     var stomps = 0

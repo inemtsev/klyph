@@ -93,6 +93,23 @@ class TimeTest {
     }
 
     @Test
+    fun fixedStepCountGoesUpAtTheEndOfEveryStep() {
+        val time = Time(60)
+        time.beginFrame(40.milliseconds)
+        assertEquals(0L, time.fixedStepCount)
+        time.beginFixedStep()
+        assertEquals(0L, time.fixedStepCount)
+        time.endFixedStep()
+        time.beginFixedStep()
+        time.endFixedStep()
+        assertEquals(2L, time.fixedStepCount)
+        time.endFrame()
+        time.beginFrame(1.milliseconds)
+        time.endFrame()
+        assertEquals(2L, time.fixedStepCount)
+    }
+
+    @Test
     fun deltaSwitchesToFixedDeltaInsideAFixedStep() {
         val time = Time(50)
         time.beginFrame(33.milliseconds)

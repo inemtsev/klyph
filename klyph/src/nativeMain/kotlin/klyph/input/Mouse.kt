@@ -12,16 +12,17 @@ import klyph.render.screenToWorld
  * Positions are in window points with (0, 0) at the top-left corner of the window's client area,
  * the unit of `Window.width`. The position is (0, 0) until the mouse first moves over the window.
  * "Just pressed" is `true` for one frame after a button goes down, and "just released" for one
- * frame after it goes up; a click within one frame reads as both. When the window loses focus
- * every held button is released.
+ * frame after it goes up; a click within one frame reads as both. Inside `Phase.FIXED_UPDATE`
+ * they are `true` for one fixed step instead, as [isJustPressed] describes. When the window loses
+ * focus every held button is released.
  *
  * [toString] gives the position and the number of buttons down, for example
  * `Mouse(position=Vec2(10.0, 20.0), down=1)`.
  *
  * Samples live in the sandbox because they need a display.
  */
-public class Mouse internal constructor() {
-    private val buttons = ButtonStates(MouseButton.COUNT)
+public class Mouse internal constructor(clock: StepClock) {
+    private val buttons = ButtonStates(MouseButton.COUNT, clock)
     private var x = 0f
     private var y = 0f
     private var deltaX = 0f
@@ -65,10 +66,24 @@ public class Mouse internal constructor() {
     /** Returns `true` while [button] is held down. */
     public fun isDown(button: MouseButton): Boolean = buttons.isDown(button.index)
 
-    /** Returns `true` if [button] went down this frame. */
+    /**
+     * Returns `true` if [button] went down this frame.
+     *
+     * Inside `Phase.FIXED_UPDATE` it answers for fixed steps instead of frames: it is `true` in the
+     * first step after the button went down, and in no other, even when frames ran no step in
+     * between or a frame runs several steps. A button pressed and released before the step reads as
+     * both just pressed and just released in it.
+     */
     public fun isJustPressed(button: MouseButton): Boolean = buttons.isJustPressed(button.index)
 
-    /** Returns `true` if [button] went up this frame. */
+    /**
+     * Returns `true` if [button] went up this frame.
+     *
+     * Inside `Phase.FIXED_UPDATE` it answers for fixed steps instead of frames: it is `true` in the
+     * first step after the button went up, and in no other, even when frames ran no step in between
+     * or a frame runs several steps. A button pressed and released before the step reads as both
+     * just pressed and just released in it.
+     */
     public fun isJustReleased(button: MouseButton): Boolean = buttons.isJustReleased(button.index)
 
     internal fun beginFrame() {

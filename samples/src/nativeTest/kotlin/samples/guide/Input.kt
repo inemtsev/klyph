@@ -38,6 +38,25 @@ class InputGuide {
         // end snippet
     }
 
+    fun App.jump(player: Entity) {
+        // snippet: jump
+        var velocityY = 0f
+        addSystem(Phase.FIXED_UPDATE) { app ->
+            val transform = app.world.get(player, Transform)
+            val ground = 500f
+            // One step sees each press, however many steps this frame runs.
+            val jump = app.input.keyboard.isJustPressed(Scancode.SPACE) || app.input.gamepads.isJustPressed(GamepadButton.SOUTH)
+            if (jump && transform.y >= ground) velocityY = -600f
+            velocityY += 1800f * app.time.deltaSeconds
+            transform.y += velocityY * app.time.deltaSeconds
+            if (transform.y >= ground) {
+                transform.y = ground
+                velocityY = 0f
+            }
+        }
+        // end snippet
+    }
+
     fun App.steer(player: Entity) {
         // snippet: axis
         addSystem(Phase.FIXED_UPDATE) { app ->

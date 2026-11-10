@@ -56,7 +56,9 @@ import kotlin.time.TimeSource
  * request, and finally [Phase.SHUTDOWN] runs once. STARTUP and SHUTDOWN run even when no frame
  * does. The loop also quits by itself once [AppConfig.frameLimit] frames have run or
  * [Time.elapsed] has reached [AppConfig.timeLimit]. At the start of INPUT the engine updates
- * [App.input] from the platform events and translates them into `klyph.event` events. In each
+ * [App.input] from the platform events and translates them into `klyph.event` events; inside a
+ * FIXED_UPDATE step, [App.input]'s "just pressed" and "just released" answer for the changes since
+ * the previous step instead of this frame's, so each change is seen by exactly one step. In each
  * FIXED_UPDATE step, after the systems have run and their commands have been applied, it moves
  * every entity with a `Velocity` by its velocity times [Time.fixedDelta]. Right after
  * UPDATE it counts down every `Lifetime` and advances every `Fade`, destroying the entities whose
@@ -268,10 +270,12 @@ private class FrameLoop(
         time.fixedStepAlpha = stepper.alpha
         for (step in 0 until steps) {
             time.beginFixedStep()
+            app.input.beginFixedStep()
             app.world.recordPreviousTransforms()
             app.run(Phase.FIXED_UPDATE)
             // Where a last FIXED_UPDATE system would move bodies, after the systems' commands applied.
             app.world.applyVelocities(time.deltaSeconds, app.scenes)
+            app.input.endFixedStep()
             time.endFixedStep()
         }
         mark = lap(Phase.FIXED_UPDATE.ordinal, mark)

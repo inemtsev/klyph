@@ -61,8 +61,7 @@ fun startRun(app: App) {
     val game = app.game
     val player = app.commands.spawnPlayer(game.art)
     app.commands.spawnPickupsAndEnemies(game.art, game.random)
-    app.resources.insert(Run(game, player))
-    game.controls.isJumpQueued = false
+    app.resources.insert(Run(game, player, startStep = app.time.fixedStepCount))
     game.startMusic(app)
     app.audio.music.volume = Tuning.MUSIC_VOLUME
     app.camera.lookAt(RooftopRun.start.x, Tuning.WORLD_HEIGHT / 2)
@@ -93,8 +92,9 @@ fun Run.movePlayer(app: App) {
             hero.invulnerable -= dt
             val hasControl = hero.hurtLock <= 0f
             val move = if (hasControl) controls.move else 0f
-            // Taken even without control, so a press during the knockback is not saved for later.
-            val jump = controls.takeJump() && hasControl
+            val isPressed = if (game.isAutopilot) controls.isJumpPressed else isJumpJustPressed(app.input)
+            // The run's first step can still see the press that started it on the title screen.
+            val jump = isPressed && hasControl && app.time.fixedStepCount > startStep
             body.step(RooftopRun.solids, move, isJumpPressed = jump, isJumpHeld = controls.isJumpHeld, dt = dt)
             if (move != 0f) hero.facing = sign(move)
             if (body.hasJumped) app.audio.play(game.sounds.jump, volume = 0.6f)
@@ -123,7 +123,6 @@ fun Run.movePlayer(app: App) {
             if (stateTimer <= 0f) outcomeOrNull = RunOutcome.GAME_OVER
         }
         RunState.FINISHING -> {
-            controls.takeJump()
             // Brakes against the roll until nearly still, so he stops by the sign, not past it.
             val brake = if (abs(body.vx) > 20f) -sign(body.vx) else 0f
             body.step(RooftopRun.solids, move = brake, isJumpPressed = false, isJumpHeld = false, dt = dt)

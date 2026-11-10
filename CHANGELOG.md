@@ -16,6 +16,21 @@ All notable changes to klyph are recorded here. The format follows
   spawns the entity that carries it.
 - `Animation.speed` and `SpriteAnimation.speed`, a playback rate multiplier; 0 holds the current
   frame. `Animation` and `SpriteAnimation` include it in `toString`.
+- `Time.fixedStepCount`, the number of `FIXED_UPDATE` steps completed so far.
+
+### Changed
+
+- `isJustPressed` and `isJustReleased` on `Keyboard`, `Mouse`, `Gamepad` and `List<Gamepad>` now
+  count fixed steps inside `FIXED_UPDATE`: a press or release is seen by the first step after it
+  and by no other. In 1.0 they answered for the frame in every phase, so a system reading them in
+  `FIXED_UPDATE` missed a press in a frame that ran no step, which happens on displays faster than
+  the fixed rate, and saw it twice in a frame that ran two. This is a behaviour change for 1.0
+  games that read edges in `FIXED_UPDATE`: they now get each press once, and a hand-made latch
+  that queued presses from `INPUT` for the next step can go. A tap shorter than a step reads as
+  both just pressed and just released in that step. Every other phase still answers for the
+  frame, and `isDown` is unchanged.
+- Rooftop Roller reads its jump press in `FIXED_UPDATE` and drops its jump latch; its autopilot
+  decides once per fixed step instead of once per frame.
 
 ## [1.0.0] - 2026-11-04
 

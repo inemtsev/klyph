@@ -15,24 +15,39 @@ import klyph.platform.toScancode
  * layout. A key code that no key on the layout produces is never down.
  *
  * "Just pressed" is `true` for one frame after a key goes down, and "just released" for one frame
- * after it goes up; a key pressed and released within one frame reads as both. Key repeat does
- * not count as a press. When the window loses focus every held key is released, so it reads as
- * just released that frame.
+ * after it goes up; a key pressed and released within one frame reads as both. Inside
+ * `Phase.FIXED_UPDATE` they are `true` for one fixed step instead, as [isJustPressed] describes.
+ * Key repeat does not count as a press. When the window loses focus every held key is released, so
+ * it reads as just released that frame.
  *
  * [toString] gives the number of keys down, for example `Keyboard(down=2)`.
  *
  * Samples live in the sandbox because they need a display.
  */
-public class Keyboard internal constructor() {
-    private val keys = ButtonStates(Scancode.COUNT)
+public class Keyboard internal constructor(clock: StepClock) {
+    private val keys = ButtonStates(Scancode.COUNT, clock)
 
     /** Returns `true` while the key at [scancode] is held down. */
     public fun isDown(scancode: Scancode): Boolean = keys.isDown(indexOf(scancode))
 
-    /** Returns `true` if the key at [scancode] went down this frame. */
+    /**
+     * Returns `true` if the key at [scancode] went down this frame.
+     *
+     * Inside `Phase.FIXED_UPDATE` it answers for fixed steps instead of frames: it is `true` in the
+     * first step after the key went down, and in no other, even when frames ran no step in between
+     * or a frame runs several steps. A key pressed and released before the step reads as both just
+     * pressed and just released in it.
+     */
     public fun isJustPressed(scancode: Scancode): Boolean = keys.isJustPressed(indexOf(scancode))
 
-    /** Returns `true` if the key at [scancode] went up this frame. */
+    /**
+     * Returns `true` if the key at [scancode] went up this frame.
+     *
+     * Inside `Phase.FIXED_UPDATE` it answers for fixed steps instead of frames: it is `true` in the
+     * first step after the key went up, and in no other, even when frames ran no step in between or
+     * a frame runs several steps. A key pressed and released before the step reads as both just
+     * pressed and just released in it.
+     */
     public fun isJustReleased(scancode: Scancode): Boolean = keys.isJustReleased(indexOf(scancode))
 
     /**
@@ -43,10 +58,24 @@ public class Keyboard internal constructor() {
      */
     public fun isDown(key: KeyCode): Boolean = isDown(key.toScancode())
 
-    /** Returns `true` if the key that types [key] under the current layout went down this frame. */
+    /**
+     * Returns `true` if the key that types [key] under the current layout went down this frame.
+     *
+     * Inside `Phase.FIXED_UPDATE` it answers for fixed steps instead of frames: it is `true` in the
+     * first step after the key went down, and in no other, even when frames ran no step in between
+     * or a frame runs several steps. A key pressed and released before the step reads as both just
+     * pressed and just released in it.
+     */
     public fun isJustPressed(key: KeyCode): Boolean = isJustPressed(key.toScancode())
 
-    /** Returns `true` if the key that types [key] under the current layout went up this frame. */
+    /**
+     * Returns `true` if the key that types [key] under the current layout went up this frame.
+     *
+     * Inside `Phase.FIXED_UPDATE` it answers for fixed steps instead of frames: it is `true` in the
+     * first step after the key went up, and in no other, even when frames ran no step in between or
+     * a frame runs several steps. A key pressed and released before the step reads as both just
+     * pressed and just released in it.
+     */
     public fun isJustReleased(key: KeyCode): Boolean = isJustReleased(key.toScancode())
 
     internal val downCount: Int get() = keys.downCount

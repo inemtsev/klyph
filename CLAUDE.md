@@ -208,16 +208,18 @@ UPDATE, count down `Lifetime` and advance `Fade`, advance particles, advance spr
 (publishing `AnimationFinished`), LATE_UPDATE, propagate transforms, RENDER, queue the overlay on
 `app.canvas`, clamp `app.camera` to its bounds, draw sprites, `Text`, particles and `app.canvas`
 (WORLD runs, then SCREEN runs) and present, apply scene transitions, quit if `AppConfig.frameLimit`
-or `timeLimit` is reached. Commands apply after every system, after each of the lifetime/fade,
-particle and animation steps (so what they destroy is gone before the next step) and after the
-second propagation. Scene systems run after the App-level systems of the same phase. A pushed
-scene freezes the one below: its systems do not run, its velocities, lifetimes, fades, particle
-emitters, sprite animations and colliders stand still (the engine steps skip them and collision detection
-leaves them out), its entities keep rendering. The engine steps ask the internal
+or `timeLimit` is reached. Inside FIXED_UPDATE, `isJustPressed` and `isJustReleased` count fixed
+steps instead of frames: `ButtonStates` stamps each change with the number of the step that will see
+it, from the `StepClock` the loop advances through `Input.beginFixedStep`, so the first step after a
+press sees it once, even when the frame of the press ran no step. Commands apply after every system,
+after each of the lifetime/fade, particle and animation steps (so what they destroy is gone before
+the next step) and after the second propagation. Scene systems run after the App-level systems of
+the same phase. A pushed scene freezes the one below: its systems do not run, its velocities, lifetimes, fades,
+particle emitters, sprite animations and colliders stand still (the engine steps skip them and
+collision detection leaves them out), its entities keep rendering. The engine steps ask the internal
 `SceneStack.isFrozen(owner)` for an entity's owner id, and entities of no scene are never frozen;
 games cannot ask, so a game keeps its game logic in scene systems, which leaves frozen entities
-untouched. After the last frame every scene leaves the stack, top
-first, and SHUTDOWN runs.
+untouched. After the last frame every scene leaves the stack, top first, and SHUTDOWN runs.
 
 ## Audio
 
