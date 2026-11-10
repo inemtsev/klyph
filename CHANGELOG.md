@@ -56,8 +56,9 @@ All notable changes to klyph are recorded here. The format follows
   that queued presses from `INPUT` for the next step can go. A tap shorter than a step reads as
   both just pressed and just released in that step. Every other phase still answers for the
   frame, and `isDown` is unchanged.
-- Rooftop Roller reads its jump press in `FIXED_UPDATE` and drops its jump latch; its autopilot
-  decides once per fixed step instead of once per frame.
+- Rooftop Roller runs on `KinematicBody` and `Solid` instead of its own movement and landing
+  code, reads its jump press in `FIXED_UPDATE` and drops its jump latch; its autopilot plans
+  with sweeps once per fixed step instead of running a copy of the hero's physics ahead.
 - `Collisions.toString` also gives the number of solids, as in
   `Collisions(cellSize=64.0, colliders=120, cells=85, pairs=3, solids=40)`.
 

@@ -3,7 +3,11 @@ package klyph.roller
 import klyph.app.Assets
 import klyph.collision.Collider
 import klyph.collision.CollisionLayers
+import klyph.collision.Collisions
+import klyph.collision.KinematicBody
+import klyph.collision.Passable
 import klyph.collision.Shape
+import klyph.collision.Solid
 import klyph.entity.Commands
 import klyph.entity.Entity
 import klyph.entity.Interpolated
@@ -35,12 +39,14 @@ import kotlin.time.Duration.Companion.milliseconds
 // it and vanish when it leaves the stack.
 
 /**
- * Builds the level's scenery: a painted texture for every building and ledge, the billboards on
- * their pylons, the potted plants, the air conditioners and the arrow sign at the end.
+ * Builds the level's scenery: a solid for every building and ledge, a painted texture for each,
+ * the billboards on their pylons, the potted plants, the air conditioners and the arrow sign at
+ * the end.
  */
 fun Commands.spawnScenery(assets: Assets, art: Art) {
     val level = RooftopRun
     val pixel = Tuning.PIXEL
+    for (block in level.blocks) spawnSolid(block)
     for (index in level.buildings.indices) {
         val building = level.buildings[index]
         val texelsWide = ceil((building.right - building.left) / pixel).toInt()
@@ -70,6 +76,21 @@ fun Commands.spawnScenery(assets: Assets, art: Art) {
 
 private const val PLANT_HEIGHT = 44f
 private const val SIGN_HEIGHT = 92f
+
+/**
+ * Spawns the invisible solid of [block], which the hero's body stops at: a building from its roof
+ * down past the pits' bottom, so its sides are walls, or a ledge as thick as its girder that he
+ * jumps up through and lands on.
+ */
+private fun Commands.spawnSolid(block: Block) {
+    val bottom = if (block.isLedge) block.top + Tuning.LEDGE_HEIGHT else Tuning.WORLD_HEIGHT + 2 * Tuning.PIT_MARGIN
+    spawn {
+        add(Transform, Transform((block.left + block.right) / 2, (block.top + bottom) / 2))
+        add(Collider, Collider(Shape.Box(block.right - block.left, bottom - block.top), layers = Layers.LEVEL, mask = CollisionLayers.NONE))
+        add(Solid, Solid(if (block.isLedge) Passable.FROM_BELOW else Passable.NEVER))
+        add(Block, block)
+    }
+}
 
 /** Spawns a static sprite of [width] by [height] whose top-left corner is at ([left], [top]). */
 private fun Commands.spawnBlock(region: TextureRegion, left: Float, top: Float, width: Float, height: Float) {
@@ -128,10 +149,9 @@ private val CATWALK_COLOR = Color(0x535C74FFu)
 /** Spawns the hero standing at the level's start and returns him. */
 fun Commands.spawnPlayer(art: Art): Entity = spawn {
     val start = RooftopRun.start
-    val body = Body(start.x, start.y)
     val height = Tuning.PLAYER_SPRITE_HEIGHT
     val region = art.skate[0]
-    add(Transform, Transform(start.x, start.y - height / 2))
+    add(Transform, Transform(start.x, start.y - Collisions.CONTACT_GAP - height / 2))
     add(Sprite, Sprite(region, height * region.width / region.height, height, layer = Tuning.LAYER_PLAYER))
     // The box's bottom is the feet, at the bottom of the sprite.
     add(
@@ -140,10 +160,11 @@ fun Commands.spawnPlayer(art: Art): Entity = spawn {
             Shape.Box(Tuning.PLAYER_WIDTH, Tuning.PLAYER_HEIGHT),
             offsetY = height / 2 - Tuning.PLAYER_HEIGHT / 2,
             layers = Layers.PLAYER,
-            mask = Layers.ENEMY + Layers.RING + Layers.HEART,
+            mask = Layers.PLAYER_MASK,
         ),
     )
-    add(Player, Player(body))
+    add(KinematicBody, KinematicBody())
+    add(Player, Player())
     add(Interpolated, Interpolated)
 }
 

@@ -1,5 +1,6 @@
 package klyph.roller
 
+import klyph.entity.ComponentType
 import klyph.math.Vec2
 import kotlin.math.PI
 import kotlin.math.sin
@@ -12,9 +13,13 @@ import kotlin.math.sin
 /**
  * Something the hero can stand on: a building's roof from [left] to [right] at [top], solid all the
  * way down, or a steel ledge, which is only solid from above so the hero can jump up through it.
+ * Each one becomes an entity with a `Solid` that carries its block as a component, so the hero's
+ * `KinematicBody.floorOrNull` leads back to it.
  */
-class Solid(val left: Float, val right: Float, val top: Float, val isLedge: Boolean) {
-    override fun toString(): String = "Solid($left..$right at $top${if (isLedge) ", ledge" else ""})"
+class Block(val left: Float, val right: Float, val top: Float, val isLedge: Boolean) {
+    override fun toString(): String = "Block($left..$right at $top${if (isLedge) ", ledge" else ""})"
+
+    companion object : ComponentType<Block>("Block")
 }
 
 /** A walker or a flier going back and forth between [minX] and [maxX] at height [y], starting at [startX]. */
@@ -41,25 +46,25 @@ object RooftopRun {
     /** The level's width; the camera never shows past it. */
     const val WIDTH = 7000f
 
-    /** The buildings, left to right. Their order matters to the autopilot and the respawn. */
-    val buildings: List<Solid> = listOf(
-        Solid(left = -40f, right = 980f, top = 400f, isLedge = false),
-        Solid(left = 1120f, right = 1840f, top = 360f, isLedge = false),
-        Solid(left = 2000f, right = 2560f, top = 420f, isLedge = false),
-        Solid(left = 2720f, right = 3540f, top = 380f, isLedge = false),
-        Solid(left = 3680f, right = 4080f, top = 330f, isLedge = false),
-        Solid(left = 4480f, right = 5380f, top = 400f, isLedge = false),
-        Solid(left = 5540f, right = 6240f, top = 370f, isLedge = false),
-        Solid(left = 6380f, right = WIDTH + 40f, top = 410f, isLedge = false),
+    /** The buildings, left to right. */
+    val buildings: List<Block> = listOf(
+        Block(left = -40f, right = 980f, top = 400f, isLedge = false),
+        Block(left = 1120f, right = 1840f, top = 360f, isLedge = false),
+        Block(left = 2000f, right = 2560f, top = 420f, isLedge = false),
+        Block(left = 2720f, right = 3540f, top = 380f, isLedge = false),
+        Block(left = 3680f, right = 4080f, top = 330f, isLedge = false),
+        Block(left = 4480f, right = 5380f, top = 400f, isLedge = false),
+        Block(left = 5540f, right = 6240f, top = 370f, isLedge = false),
+        Block(left = 6380f, right = WIDTH + 40f, top = 410f, isLedge = false),
     )
 
-    val ledges: List<Solid> = listOf(
-        Solid(left = 2160f, right = 2400f, top = 300f, isLedge = true),
-        Solid(left = 4150f, right = 4390f, top = 360f, isLedge = true),
+    val ledges: List<Block> = listOf(
+        Block(left = 2160f, right = 2400f, top = 300f, isLedge = true),
+        Block(left = 4150f, right = 4390f, top = 360f, isLedge = true),
     )
 
     /** Everything solid: the buildings, then the ledges. */
-    val solids: List<Solid> = buildings + ledges
+    val blocks: List<Block> = buildings + ledges
 
     /** Where the hero starts, standing on the first roof. */
     val start: Vec2 = Vec2(Tuning.PLAYER_START_X, buildings[0].top)

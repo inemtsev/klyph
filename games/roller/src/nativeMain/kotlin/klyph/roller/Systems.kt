@@ -2,6 +2,9 @@ package klyph.roller
 
 import klyph.app.App
 import klyph.app.deltaSeconds
+import klyph.collision.Collider
+import klyph.collision.Collisions
+import klyph.collision.KinematicBody
 import klyph.collision.Overlap
 import klyph.collision.otherThan
 import klyph.entity.Entity
@@ -75,70 +78,125 @@ fun Run.tickClock(app: App) {
 }
 
 /**
- * Moves the hero one fixed step: under the player's control while playing, frozen while he is
- * out of sight after a fall, tumbling away after the last heart, and gliding to a stop at the
- * sign. The entity's Transform follows his body.
+ * Steers the hero for this fixed step: under the player's control while playing, still while he
+ * is out of sight after a fall, tumbling away after the last heart, and gliding to a stop at the
+ * sign. It sets his `KinematicBody`'s speed, which the engine then moves him by, stopping him at
+ * the roofs; the contacts it reads are those the previous step's move left.
  */
 fun Run.movePlayer(app: App) {
     val dt = app.time.deltaSeconds
     val world = app.world
     val hero = world.getOrNull(player, Player) ?: return
-    val body = hero.body
+    val body = world.get(player, KinematicBody)
+    val transform = world.get(player, Transform)
     val controls = game.controls
+    val isGrounded = body.isGrounded
     hero.isHiddenForStep = false
+    hero.previousX = transform.x
+    hero.previousFeet = transform.feet
     when (state) {
         RunState.PLAYING -> {
             hero.hurtLock -= dt
             hero.invulnerable -= dt
+            if (isGrounded && !hero.wasGrounded && hero.fallSpeed > Tuning.DUST_LANDING_SPEED) {
+                app.commands.spawnDust(game.art, transform.x, transform.feet)
+            }
+            val roof = body.floorOrNull?.let { world.getOrNull(it, Block) }
+            if (isGrounded && roof != null && !roof.isLedge) {
+                hero.safeRoof = roof
+                hero.safeX = transform.x
+            }
             val hasControl = hero.hurtLock <= 0f
             val move = if (hasControl) controls.move else 0f
             val isPressed = if (game.isAutopilot) controls.isJumpPressed else isJumpJustPressed(app.input)
             // The run's first step can still see the press that started it on the title screen.
             val jump = isPressed && hasControl && app.time.fixedStepCount > startStep
-            body.step(RooftopRun.solids, move, isJumpPressed = jump, isJumpHeld = controls.isJumpHeld, dt = dt)
-            if (move != 0f) hero.facing = sign(move)
-            if (body.hasJumped) app.audio.play(game.sounds.jump, volume = 0.6f)
-            if (body.hasLanded && body.landingSpeed > Tuning.DUST_LANDING_SPEED) app.commands.spawnDust(game.art, body.x, body.feet)
-            if (body.isGrounded && body.groundIndex < RooftopRun.buildings.size) {
-                hero.safeBuilding = body.groundIndex
-                hero.safeX = body.x
+            body.dx = rollSpeed(body.dx, move, isGrounded, dt)
+            // Jumping, with a little grace either side of being on a roof.
+            hero.jumpBuffer = if (jump) Tuning.JUMP_BUFFER_SECONDS else hero.jumpBuffer - dt
+            hero.coyote = if (isGrounded) Tuning.COYOTE_SECONDS else hero.coyote - dt
+            if (hero.jumpBuffer > 0f && hero.coyote > 0f) {
+                body.dy = -Tuning.JUMP_SPEED
+                hero.coyote = 0f
+                hero.jumpBuffer = 0f
+                app.audio.play(game.sounds.jump, volume = 0.6f)
             }
-            if (body.feet > Tuning.WORLD_HEIGHT + Tuning.PIT_MARGIN) fall(app)
+            body.dy = fallSpeed(body.dy, controls.isJumpHeld, dt)
+            if (move != 0f) hero.facing = sign(move)
+            if (transform.feet > Tuning.WORLD_HEIGHT + Tuning.PIT_MARGIN) fall(app)
         }
         RunState.FALLING -> {
-            body.previousX = body.x
-            body.previousFeet = body.feet
+            body.dx = 0f
+            body.dy = 0f
             stateTimer -= dt
             if (stateTimer <= 0f) {
-                if (hearts == 0) outcomeOrNull = RunOutcome.GAME_OVER else respawn(hero)
+                if (hearts == 0) outcomeOrNull = RunOutcome.GAME_OVER else respawn(hero, body, transform)
             }
         }
         RunState.DYING -> {
-            body.previousX = body.x
-            body.previousFeet = body.feet
-            body.vy += Tuning.GRAVITY * dt
-            body.x += body.vx * dt
-            body.feet += body.vy * dt
+            // His collider no longer looks for the level, so the body falls through the roofs.
+            body.dy += Tuning.GRAVITY * dt
             stateTimer -= dt
             if (stateTimer <= 0f) outcomeOrNull = RunOutcome.GAME_OVER
         }
         RunState.FINISHING -> {
             // Brakes against the roll until nearly still, so he stops by the sign, not past it.
-            val brake = if (abs(body.vx) > 20f) -sign(body.vx) else 0f
-            body.step(RooftopRun.solids, move = brake, isJumpPressed = false, isJumpHeld = false, dt = dt)
+            val brake = if (abs(body.dx) > 20f) -sign(body.dx) else 0f
+            body.dx = rollSpeed(body.dx, brake, isGrounded, dt)
+            body.dy = fallSpeed(body.dy, isHeld = false, dt = dt)
             stateTimer -= dt
             if (stateTimer <= 0f) outcomeOrNull = RunOutcome.COMPLETE
         }
     }
-    val transform = world.get(player, Transform)
-    transform.x = body.x
-    transform.y = body.feet - Tuning.PLAYER_SPRITE_HEIGHT / 2
+    hero.wasGrounded = isGrounded
+    hero.fallSpeed = body.dy
     transform.rotation = when {
         state == RunState.DYING -> transform.rotation + 8f * dt * -hero.facing
-        body.isGrounded -> hero.facing * Tuning.LEAN * min(1f, abs(body.vx) / Tuning.MAX_SPEED)
+        isGrounded -> hero.facing * Tuning.LEAN * min(1f, abs(body.dx) / Tuning.MAX_SPEED)
         else -> 0f
     }
 }
+
+/**
+ * Whether the body stands on a roof: the last move ended on one and nothing has sent it up since.
+ * A stomp or a hit sets [KinematicBody.dy] rising while [KinematicBody.isOnFloor] still says
+ * where the last move ended, and on a roof the move zeroes `dy`, so a rising `dy` means he has
+ * left it.
+ */
+val KinematicBody.isGrounded: Boolean get() = isOnFloor && dy >= 0f
+
+/** The y of the hero's feet, the bottom of his box, whose Transform is the middle of his sprite. */
+val Transform.feet: Float get() = y + Tuning.PLAYER_SPRITE_HEIGHT / 2
+
+/**
+ * Returns the hero's horizontal speed after [dt] seconds of rolling from [dx] with [move] from -1
+ * to 1 pressed: pushing speeds him up, pushing back brakes hard, and letting go glides.
+ */
+fun rollSpeed(dx: Float, move: Float, isGrounded: Boolean, dt: Float): Float {
+    if (move == 0f) return approach(dx, 0f, (if (isGrounded) Tuning.GLIDE_FRICTION else Tuning.AIR_DRAG) * dt)
+    val isBraking = dx != 0f && sign(move) != sign(dx)
+    val acceleration = when {
+        isBraking -> Tuning.TURN_DECELERATION
+        isGrounded -> Tuning.GROUND_ACCELERATION
+        else -> Tuning.AIR_ACCELERATION
+    }
+    if (isBraking || abs(dx) < Tuning.MAX_SPEED) return (dx + move * acceleration * dt).coerceIn(-Tuning.MAX_SPEED, Tuning.MAX_SPEED)
+    // Faster than the top speed after a knockback: ease back down to it.
+    return approach(dx, sign(dx) * Tuning.MAX_SPEED, Tuning.GLIDE_FRICTION * dt)
+}
+
+/**
+ * Returns the hero's vertical speed after [dt] seconds of gravity from [dy]: stronger while he
+ * rises with the jump button up, which cuts a jump short, and never faster than the fall limit.
+ */
+fun fallSpeed(dy: Float, isHeld: Boolean, dt: Float): Float {
+    val gravity = if (dy < 0f && !isHeld) Tuning.GRAVITY * Tuning.SHORT_HOP_GRAVITY else Tuning.GRAVITY
+    return min(dy + gravity * dt, Tuning.MAX_FALL_SPEED)
+}
+
+/** Returns [value] moved toward [target] by at most [amount]. */
+private fun approach(value: Float, target: Float, amount: Float): Float =
+    if (value < target) min(value + amount, target) else max(value - amount, target)
 
 /** The hero fell into a gap: a heart is gone, and he waits out of sight before coming back. */
 private fun Run.fall(app: App) {
@@ -147,7 +205,7 @@ private fun Run.fall(app: App) {
     stateTimer = FALL_SECONDS
     shake = Tuning.CAMERA_SHAKE_SECONDS
     app.audio.play(game.sounds.hurt)
-    println("Fell into a gap at ${app.world.get(player, Player).body.x.toInt()}: $hearts hearts left.")
+    println("Fell into a gap at ${app.world.get(player, Transform).x.toInt()}: $hearts hearts left.")
 }
 
 private const val FALL_SECONDS = 0.8f
@@ -157,11 +215,18 @@ private const val FALL_SECONDS = 0.8f
  * He jumps there in one step, which the engine would draw as a dash across the screen between
  * two steps, so he stays hidden until the next step has recorded the new place.
  */
-private fun Run.respawn(hero: Player) {
-    val building = RooftopRun.buildings[hero.safeBuilding]
-    val x = (hero.safeX - Tuning.RESPAWN_BACKSET).coerceIn(building.left + Tuning.RESPAWN_EDGE_MARGIN, building.right - Tuning.RESPAWN_EDGE_MARGIN)
-    hero.body.placeAt(x, building.top)
+private fun Run.respawn(hero: Player, body: KinematicBody, transform: Transform) {
+    val roof = hero.safeRoof
+    val x = (hero.safeX - Tuning.RESPAWN_BACKSET).coerceIn(roof.left + Tuning.RESPAWN_EDGE_MARGIN, roof.right - Tuning.RESPAWN_EDGE_MARGIN)
+    transform.x = x
+    transform.y = roof.top - Collisions.CONTACT_GAP - Tuning.PLAYER_SPRITE_HEIGHT / 2
+    body.dx = 0f
+    body.dy = 0f
+    hero.previousX = x
+    hero.previousFeet = transform.feet
     hero.facing = 1f
+    hero.coyote = 0f
+    hero.jumpBuffer = 0f
     hero.invulnerable = Tuning.INVULNERABLE_SECONDS * 1.5f
     hero.hurtLock = 0f
     hero.isHiddenForStep = true
@@ -251,12 +316,12 @@ fun Run.resolveOverlaps(app: App) {
         val transform = world.get(other, Transform)
         val height = if (enemy.kind == EnemyKind.BLOB) Tuning.BLOB_HEIGHT else Tuning.HELI_HEIGHT
         val top = transform.y - height / 2
-        val body = hero.body
+        val body = world.get(player, KinematicBody)
         // Coming down onto it, with the feet above its top before the last step: a stomp.
-        if (body.vy > 0f && body.previousFeet <= top + Tuning.STOMP_TOLERANCE) {
-            stomp(app, hero, other, enemy, transform, top)
+        if (body.dy > 0f && hero.previousFeet <= top + Tuning.STOMP_TOLERANCE) {
+            stomp(app, hero, body, other, enemy, transform, top)
         } else {
-            hurt(app, hero, transform.x)
+            hurt(app, hero, body, transform.x)
         }
     }
 }
@@ -290,18 +355,16 @@ private fun Run.takeHeart(app: App, entity: Entity, heart: HeartPickup) {
     app.audio.play(game.sounds.heart, volume = 0.7f)
 }
 
-private fun Run.stomp(app: App, hero: Player, entity: Entity, enemy: Enemy, transform: Transform, top: Float) {
-    val body = hero.body
+private fun Run.stomp(app: App, hero: Player, body: KinematicBody, entity: Entity, enemy: Enemy, transform: Transform, top: Float) {
     enemy.isStomped = true
     app.commands.destroy(entity)
-    body.vy = -(if (game.controls.isJumpHeld) Tuning.STOMP_BOUNCE_HELD else Tuning.STOMP_BOUNCE)
-    body.isGrounded = false
-    body.coyote = 0f
+    body.dy = -(if (game.controls.isJumpHeld) Tuning.STOMP_BOUNCE_HELD else Tuning.STOMP_BOUNCE)
+    hero.coyote = 0f
     stomps++
     game.totalStomps++
     score += Tuning.STOMP_POINTS
     val commands = app.commands
-    commands.spawnImpact(game.art, game.random, (body.x + transform.x) / 2, top)
+    commands.spawnImpact(game.art, game.random, (app.world.get(player, Transform).x + transform.x) / 2, top)
     // Behind the hero, who bounces up and on, so the points stay in sight.
     commands.spawnPopup(app.assets.defaultFont, "150", transform.x - hero.facing * 44f, top - 18f)
     if (enemy.kind == EnemyKind.BLOB) {
@@ -313,22 +376,22 @@ private fun Run.stomp(app: App, hero: Player, entity: Entity, enemy: Enemy, tran
 }
 
 /** The hero ran into an enemy at [enemyX]: a heart is gone and he is knocked away from it, blinking, unless he is still blinking. */
-private fun Run.hurt(app: App, hero: Player, enemyX: Float) {
+private fun Run.hurt(app: App, hero: Player, body: KinematicBody, enemyX: Float) {
     if (hero.invulnerable > 0f) return
-    val body = hero.body
+    val x = app.world.get(player, Transform).x
     hearts--
-    body.vx = if (body.x < enemyX) -Tuning.KNOCKBACK_X else Tuning.KNOCKBACK_X
-    body.vy = -Tuning.KNOCKBACK_Y
-    body.isGrounded = false
+    body.dx = if (x < enemyX) -Tuning.KNOCKBACK_X else Tuning.KNOCKBACK_X
+    body.dy = -Tuning.KNOCKBACK_Y
     hero.hurtLock = Tuning.HURT_LOCK_SECONDS
     hero.invulnerable = Tuning.INVULNERABLE_SECONDS
     shake = Tuning.CAMERA_SHAKE_SECONDS
     app.audio.play(game.sounds.hurt)
-    println("Hit by an enemy at ${body.x.toInt()}: $hearts hearts left.")
+    println("Hit by an enemy at ${x.toInt()}: $hearts hearts left.")
     if (hearts == 0) {
         state = RunState.DYING
         stateTimer = DYING_SECONDS
-        body.vy = -Tuning.JUMP_SPEED * 0.8f
+        body.dy = -Tuning.JUMP_SPEED * 0.8f
+        app.world.get(player, Collider).mask = Layers.DYING_PLAYER_MASK
     }
 }
 
@@ -337,8 +400,8 @@ private const val DYING_SECONDS = 1.3f
 /** Ends the run well once the hero reaches the sign: works out the bonuses and lets him glide to a stop. */
 fun Run.checkGoal(app: App) {
     if (state != RunState.PLAYING) return
-    val hero = app.world.getOrNull(player, Player) ?: return
-    if (hero.body.x < RooftopRun.SIGN_X - 20f) return
+    val transform = app.world.getOrNull(player, Transform) ?: return
+    if (transform.x < RooftopRun.SIGN_X - 20f) return
     state = RunState.FINISHING
     stateTimer = FINISH_SECONDS
     heartBonus = hearts * Tuning.HEART_BONUS
@@ -362,12 +425,12 @@ private const val FINISH_SECONDS = 1.2f
 fun Run.animatePlayer(app: App) {
     val hero = app.world.getOrNull(player, Player) ?: return
     val sprite = app.world.get(player, Sprite)
-    val body = hero.body
+    val body = app.world.get(player, KinematicBody)
     val art = game.art
     val region = when {
         !body.isGrounded -> art.jump
-        abs(body.vx) > 15f -> {
-            hero.stride += abs(body.vx) * app.time.deltaSeconds / Tuning.STRIDE_LENGTH
+        abs(body.dx) > 15f -> {
+            hero.stride += abs(body.dx) * app.time.deltaSeconds / Tuning.STRIDE_LENGTH
             art.skate[hero.stride.toInt() % art.skate.size]
         }
         else -> art.skate[0]
@@ -388,12 +451,13 @@ fun Run.animatePlayer(app: App) {
  */
 fun Run.followCamera(app: App) {
     val hero = app.world.getOrNull(player, Player) ?: return
-    val body = hero.body
+    val x = app.world.get(player, Transform).x
+    val speed = app.world.get(player, KinematicBody).dx
     val camera = app.camera
     val dt = app.time.deltaSeconds
     val alpha = app.time.fixedStepAlpha
-    val drawnX = body.previousX + (body.x - body.previousX) * alpha
-    val ahead = hero.facing * Tuning.CAMERA_LOOK_AHEAD * min(1f, abs(body.vx) / Tuning.MAX_SPEED)
+    val drawnX = hero.previousX + (x - hero.previousX) * alpha
+    val ahead = hero.facing * Tuning.CAMERA_LOOK_AHEAD * min(1f, abs(speed) / Tuning.MAX_SPEED)
     lookAhead += (ahead - lookAhead) * (1f - exp(-Tuning.CAMERA_LOOK_AHEAD_SMOOTHING * dt))
     // Take last frame's shake out before easing, so it does not build up in the camera's position.
     camera.x -= shakeOffset
