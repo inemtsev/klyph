@@ -119,7 +119,8 @@ public class KinematicBody(
 
     /**
      * The y below which the body keeps falling through one-way solids after [dropThrough]: one-way
-     * solids whose top is at or above it are ignored. Negative infinity when the body is not dropping.
+     * solids whose top is at or above it, a y less than or equal to it, are ignored. Negative
+     * infinity when the body is not dropping.
      */
     internal var dropLine: Float = Float.NEGATIVE_INFINITY
 

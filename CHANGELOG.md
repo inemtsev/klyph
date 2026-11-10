@@ -66,9 +66,12 @@ floors, so a platformer takes as little code as a shooter: Rooftop Roller lost i
   `FIXED_UPDATE` missed a press in a frame that ran no step, which happens on displays faster than
   the fixed rate, and saw it twice in a frame that ran two. This is a behaviour change for 1.0
   games that read edges in `FIXED_UPDATE`: they now get each press once, and a hand-made latch
-  that queued presses from `INPUT` for the next step can go. A tap shorter than a step reads as
-  both just pressed and just released in that step. Every other phase still answers for the
-  frame, and `isDown` is unchanged.
+  that queued presses from `INPUT` for the next step can go. The same press is still a frame
+  edge in the other phases, so a press that starts play from a menu in `UPDATE` is also just
+  pressed in the first `FIXED_UPDATE` step of the new scene; compare `Time.fixedStepCount` with
+  the step the scene started on to tell the two apart, as Rooftop Roller does. A tap shorter
+  than a step reads as both just pressed and just released in that step. Every other phase still
+  answers for the frame, and `isDown` is unchanged.
 - Rooftop Roller runs on `KinematicBody` and `Solid` instead of its own movement and landing
   code, reads its jump press in `FIXED_UPDATE` and drops its jump latch; its autopilot probes the
   roofs with `floorBelowOrNull` and `sweepCollider` and follows its jumps with `slideCollider`

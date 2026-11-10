@@ -347,6 +347,67 @@ class KinematicBodyTest {
     }
 
     @Test
+    fun aSolidWithAParentOrAVelocityIsAnError() {
+        val world = World()
+        val building = world.create()
+        world.add(building, Transform, Transform(x = 100f, y = 200f))
+        val roof = world.solid(left = 0f, top = 100f, right = 200f, bottom = 140f)
+        world.setParent(roof, building)
+        val collisions = Collisions()
+        val parented = assertFailsWith<IllegalStateException> { collisions.moveBodies(world, step, scenes = null) }
+        assertEquals("Entity $roof has a Solid and a parent, but a solid must be a root entity.", parented.message)
+        assertFailsWith<IllegalStateException> { collisions.detect(world, Events()) }
+
+        world.destroy(roof)
+        val platform = world.solid(left = 0f, top = 100f, right = 200f, bottom = 140f)
+        world.add(platform, Velocity, Velocity(dx = 30f))
+        val moving = assertFailsWith<IllegalStateException> { collisions.moveBodies(world, step, scenes = null) }
+        assertEquals("Entity $platform has both a Solid and a Velocity, and solids cannot move.", moving.message)
+    }
+
+    @Test
+    fun aBodyWithAnOffsetColliderThatIgnoresScaleStopsByItsOwnBox() {
+        val world = World()
+        world.solid(left = 0f, top = 100f, right = 200f, bottom = 140f)
+        val entity = world.create()
+        // Drawn at twice the size, but the 20 by 20 box hangs 10 below the transform at scale 1.
+        val transform = Transform(x = 100f, y = 0f, scaleX = 2f, scaleY = 2f)
+        val body = KinematicBody()
+        world.add(entity, Transform, transform)
+        world.add(entity, Collider, Collider(Shape.Box(width = 20f, height = 20f), offsetX = 0f, offsetY = 10f).apply { scalesWithTransform = false })
+        world.add(entity, KinematicBody, body)
+        val collisions = Collisions()
+        repeat(60) {
+            body.dy += 1800f * step
+            collisions.moveBodies(world, step, scenes = null)
+        }
+        assertTrue(body.isOnFloor)
+        // Feet at y + 10 + 10: the transform rests 20 above the floor, not 40 as a scaled box would.
+        assertEquals(100f - gap - 20f, transform.y, 0.0001f)
+    }
+
+    @Test
+    fun dropThroughInTheAirIgnoresOnlyLedgesAtTheFeet() {
+        val world = World()
+        world.solid(left = 0f, top = 100f, right = 200f, bottom = 110f, passable = Passable.FROM_BELOW)
+        val lower = world.solid(left = 0f, top = 200f, right = 200f, bottom = 210f, passable = Passable.FROM_BELOW)
+        val collisions = Collisions()
+
+        // Feet above the ledge: the drop line is above its top, so the ledge still catches him.
+        val above = world.hero(x = 100f, y = 80f)
+        above.body.dropThrough()
+        collisions.run(world, above, steps = 60)
+        assertEquals(100f - gap, above.feet, 0.0001f)
+
+        // Feet level with the ledge in mid-air: he drops through it and lands on the next one down.
+        val level = world.hero(x = 100f, y = 90f)
+        level.body.dropThrough()
+        collisions.run(world, level, steps = 90)
+        assertEquals(200f - gap, level.feet, 0.0001f)
+        assertEquals(lower, level.body.floorOrNull)
+    }
+
+    @Test
     fun aSolidMovedByItsTransformStopsBodiesWhereItNowIs() {
         val world = World()
         val floor = world.solid(left = 0f, top = 100f, right = 200f, bottom = 140f)

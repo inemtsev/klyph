@@ -47,7 +47,8 @@ public class Collider(
      * places the collider. A negative scale then no longer mirrors the offset either.
      *
      * Set it after construction, as in `Collider(shape).apply { scalesWithTransform = false }`.
-     * A change takes effect at the next `Collisions.detect`.
+     * A change takes effect at the next `Collisions.detect` or body move; a sweep or slide before
+     * then still sees the collider as it was.
      *
      * @sample samples.collision.Colliders.scalesWithTransform
      */

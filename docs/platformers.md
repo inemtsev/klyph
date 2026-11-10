@@ -262,8 +262,8 @@ ledges.
 ## Limits
 
 - Bodies and solids are upright boxes: a rotation is ignored and a circle collider is an error.
-- Solids do not move bodies: there are no moving platforms, and a solid moved onto a body lets
-  the body pass through it.
+- Solids do not move bodies: there are no moving platforms, a solid with a `Velocity` or a parent
+  is an error, and a solid moved onto a body by its `Transform` lets the body pass through it.
 - Bodies do not stop each other. Use `Overlap` events between them, as for any colliders.
 - A body that starts a move inside a solid moves through that solid, so it is never stuck, but
   place bodies outside solids.

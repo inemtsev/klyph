@@ -128,6 +128,7 @@ internal class SolidGrid {
             ensureSolidCapacity(solids.size)
             val locals = world.storeOrNull(Transform)
             val worlds = world.storeOrNull(WorldTransform)
+            val velocities = world.storeOrNull(Velocity)
             val frozen = if (scenes != null && scenes.hasFrozen) scenes else null
             for (k in 0 until solids.size) {
                 val raw = solids.entities[k]
@@ -137,6 +138,8 @@ internal class SolidGrid {
                 checkNotNull(collider) { "Entity $entity has a Solid but no Collider." }
                 val shape = collider.shape
                 check(shape is Shape.Box) { "Entity $entity has a Solid whose collider shape $shape is not a Box." }
+                check(world.parentOrNull(entity) == null) { "Entity $entity has a Solid and a parent, but a solid must be a root entity." }
+                check(velocities?.getOrNull(entity) == null) { "Entity $entity has both a Solid and a Velocity, and solids cannot move." }
                 val x: Float
                 val y: Float
                 val scaleX: Float
@@ -251,7 +254,8 @@ internal class SolidGrid {
      *
      * A solid the box overlaps at the start is a hit at fraction 0 with the normal (0, 0), unless
      * [skipsOverlaps] is set, as for a body, which then moves through it. One-way solids follow
-     * [blocksOneWay], and those whose top is at or above [dropLine] are ignored.
+     * [blocksOneWay], and those whose top is at or above [dropLine], a y less than or equal to it,
+     * are ignored.
      */
     fun sweep(
         minX: Float, minY: Float, maxX: Float, maxY: Float,
