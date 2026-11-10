@@ -11,9 +11,9 @@ import klyph.entity.Velocity
 import klyph.math.Vec2
 import klyph.math.degrees
 import klyph.math.distanceTo
-import klyph.particle.EmitterEnd
 import klyph.particle.EmitterSpace
 import klyph.particle.ParticleEmitter
+import klyph.particle.spawnBurst
 import klyph.platform.Color
 import klyph.render.AnimationEnd
 import klyph.render.AnimationMode
@@ -178,21 +178,15 @@ fun Commands.spawnExplosion(art: Art, x: Float, y: Float) {
         add(Sprite, Sprite(animation.currentFrame, Tuning.EXPLOSION_SIZE, Tuning.EXPLOSION_SIZE, layer = Tuning.LAYER_EFFECTS))
         add(SpriteAnimation, animation)
     }
-    spawn {
-        val sparks = ParticleEmitter(art.particle, capacity = Tuning.BURST_PARTICLES).apply {
-            speed = Tuning.BURST_MIN_SPEED..Tuning.BURST_MAX_SPEED
-            lifetime = Tuning.BURST_MIN_LIFETIME..Tuning.BURST_MAX_LIFETIME
-            startColor = Tuning.BURST_START_COLOR
-            endColor = Tuning.BURST_END_COLOR
-            startScale = Tuning.BURST_START_SCALE
-            endScale = Tuning.BURST_END_SCALE
-            layer = Tuning.LAYER_EFFECTS
-            whenEmpty = EmitterEnd.DESTROY
-            emit(Tuning.BURST_PARTICLES)
-        }
-        add(Transform, Transform(x, y))
-        add(ParticleEmitter, sparks)
-    }
+    spawnBurst(
+        x, y,
+        ParticleEmitter.burst(
+            art.particle, Tuning.BURST_PARTICLES,
+            speed = Tuning.BURST_MIN_SPEED..Tuning.BURST_MAX_SPEED, lifetime = Tuning.BURST_MIN_LIFETIME..Tuning.BURST_MAX_LIFETIME,
+            startColor = Tuning.BURST_START_COLOR, endColor = Tuning.BURST_END_COLOR,
+            startScale = Tuning.BURST_START_SCALE, endScale = Tuning.BURST_END_SCALE, layer = Tuning.LAYER_EFFECTS,
+        ),
+    )
 }
 
 /** A dive at the ship from right next to it still takes this long, so it is a curve and not a jump. */
