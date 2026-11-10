@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>EmptyFunctionBlock:MusicTracks.kt:MusicTracks.&lt;no name provided>${}</ID>
+    <ID>EmptyFunctionBlock:Musics.kt:Musics.&lt;no name provided>${}</ID>
+    <ID>MatchingDeclarationName:Audio.kt:AudioGuide</ID>
+    <ID>MatchingDeclarationName:Commands.kt:CommandQueues</ID>
+    <ID>MatchingDeclarationName:Input.kt:InputGuide</ID>
+    <ID>VariableNaming:Commands.kt:CommandQueues$val Health = object : ComponentType&lt;Int>("Health") {}</ID>
+    <ID>VariableNaming:Commands.kt:CommandQueues$val Shield = object : ComponentType&lt;Int>("Shield") {}</ID>
+    <ID>VariableNaming:Worlds.kt:Worlds$val Armor = object : ComponentType&lt;Int>("Armor") {}</ID>
+    <ID>VariableNaming:Worlds.kt:Worlds$val Health = object : ComponentType&lt;Int>("Health") {}</ID>
+    <ID>VariableNaming:Worlds.kt:Worlds$val Mana = object : ComponentType&lt;Int>("Mana") {}</ID>
+  </CurrentIssues>
+</SmellBaseline>

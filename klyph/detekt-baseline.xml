@@ -1,0 +1,136 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:Audio.kt:Audio$previous.activeVoiceCount != active || previous.stolenVoiceCount != stolenVoiceCount || previous.droppedCommandCount != droppedCommandCount || previous.closedStreamCount != closedStreamCount</ID>
+    <ID>ComplexCondition:Collisions.kt:Collisions$!minX.isFinite() || !minY.isFinite() || !maxX.isFinite() || !maxY.isFinite()</ID>
+    <ID>ComplexCondition:KinematicBody.kt:dropLine != Float.NEGATIVE_INFINITY &amp;&amp; (moved.y + offsetY + halfHeight > dropLine || moved.isOnFloor || startSpeedY &lt; 0f)</ID>
+    <ID>ComplexCondition:SolidGrid.kt:SolidGrid$!changed &amp;&amp; (count >= solidCount || entities[count] != raw || boxes[o] != minX || boxes[o + 1] != minY || boxes[o + 2] != maxX || boxes[o + 3] != maxY || layerBits[count] != layers || isOneWay[count] != oneWay)</ID>
+    <ID>ComplexCondition:SolidGrid.kt:SolidGrid$!minX.isFinite() || !minY.isFinite() || !maxX.isFinite() || !maxY.isFinite()</ID>
+    <ID>ComplexCondition:SolidGrid.kt:SolidGrid$best >= 0 &amp;&amp; (fraction > hitFraction || (fraction == hitFraction &amp;&amp; Entity(entities[s]).index >= Entity(entities[best]).index))</ID>
+    <ID>CyclomaticComplexMethod:AppConfig.kt:AppConfig$override fun equals: Boolean</ID>
+    <ID>CyclomaticComplexMethod:AppConfig.kt:AppConfig.Companion$internal fun fromEnvironment: AppConfig</ID>
+    <ID>CyclomaticComplexMethod:BmFont.kt:BmFontLine.Companion$fun parseOrNull: BmFontLine?</ID>
+    <ID>CyclomaticComplexMethod:BmFont.kt:internal fun parseBmFont: Font</ID>
+    <ID>CyclomaticComplexMethod:Collisions.kt:Collisions$private fun collectOverlaps: Int</ID>
+    <ID>CyclomaticComplexMethod:Collisions.kt:Collisions$private fun findPairs</ID>
+    <ID>CyclomaticComplexMethod:Collisions.kt:Collisions$private fun gather</ID>
+    <ID>CyclomaticComplexMethod:Input.kt:Input$internal fun handle</ID>
+    <ID>CyclomaticComplexMethod:Loop.kt:FrameLoop$private fun translatePlatformEvents</ID>
+    <ID>CyclomaticComplexMethod:Mixer.kt:Mixer$override fun consume</ID>
+    <ID>CyclomaticComplexMethod:SolidGrid.kt:SolidGrid$fun refresh</ID>
+    <ID>CyclomaticComplexMethod:SolidGrid.kt:SolidGrid$private fun test</ID>
+    <ID>CyclomaticComplexMethod:SolidGrid.kt:SolidGrid$private fun walk</ID>
+    <ID>CyclomaticComplexMethod:SpriteOrder.kt:SpriteOrder$fun finish</ID>
+    <ID>CyclomaticComplexMethod:SpriteRenderer.kt:SpriteRenderer$private inline fun forEachSprite</ID>
+    <ID>EmptyFunctionBlock:AudioRendererTest.kt:AudioRendererTest.ConstantStream${}</ID>
+    <ID>EmptyFunctionBlock:MusicTrackTest.kt:MusicTrackTest.&lt;no name provided>${}</ID>
+    <ID>LargeClass:Collisions.kt:Collisions</ID>
+    <ID>LongMethod:BmFont.kt:internal fun parseBmFont: Font</ID>
+    <ID>LongMethod:Collisions.kt:Collisions$private fun buildGrid</ID>
+    <ID>LongMethod:Collisions.kt:Collisions$private fun gather</ID>
+    <ID>LongMethod:KinematicBody.kt:internal fun SolidGrid.slide</ID>
+    <ID>LongMethod:Loop.kt:FrameLoop$private fun frame</ID>
+    <ID>LongMethod:SolidGrid.kt:SolidGrid$fun refresh</ID>
+    <ID>LongMethod:SolidGrid.kt:SolidGrid$private fun test</ID>
+    <ID>LongMethod:SolidGrid.kt:SolidGrid$private fun walk</ID>
+    <ID>LongMethod:Transforms.kt:private fun World.propagateBelow: Int</ID>
+    <ID>LoopWithTooManyJumpStatements:BmFont.kt:BmFontLine.Companion$while</ID>
+    <ID>LoopWithTooManyJumpStatements:Collisions.kt:Collisions$for</ID>
+    <ID>LoopWithTooManyJumpStatements:Fonts.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:SolidGrid.kt:SolidGrid$for</ID>
+    <ID>LoopWithTooManyJumpStatements:World.kt:World$for</ID>
+    <ID>MaxLineLength:App.kt:App$*</ID>
+    <ID>MaxLineLength:AppConfig.kt:AppConfig.Companion$/** Returns [base] with the settings that the `KLYPH_*` variables [environment] returns replaced, as the public overload describes. */</ID>
+    <ID>MaxLineLength:AppConfig.kt:AppConfig.Companion$?:</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$"audio=AudioConfig(output=DEVICE, maxVoices=32, sampleRate=48000, bufferFrames=1024), collisionCellSize=64.0, overlayKey=${Scancode.F3}, "</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertEquals(Screenshot(5, "base.png"), AppConfig.fromEnvironment(base, environment("KLYPH_SCREENSHOT" to value)).screenshot, value)</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertEquals(base, AppConfig.fromEnvironment(base, environment("KLYPH_FRAMES" to "", "KLYPH_VSYNC" to "")), "An empty value counts as unset.")</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$val frames = assertFailsWith&lt;IllegalArgumentException> { AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_FRAMES" to "many")) }</ID>
+    <ID>MaxLineLength:Assets.kt:Assets$*</ID>
+    <ID>MaxLineLength:BmFont.kt:if (id !in pageFiles) throw FontException("Font file '$path' has page ids ${pageFiles.keys.sorted()}, which are not numbered from 0 without gaps.")</ID>
+    <ID>MaxLineLength:Camera.kt:/** Returns [position] moved so that [half] either side of it lies within [size] from [start], or the middle of that range when it is narrower. */</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$require(world.parentOrNull(entity) == null) { "Entity $entity has a parent, but only a root entity's collider can be moved in world space." }</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals(bruteForce, collisions.overlapping(probe.shape, x = probe.x, y = probe.y, mask = probe.mask), "$label, cell size $cellSize, query")</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals(bruteForce.firstOrNull(), collisions.firstOverlappingOrNull(probe.shape, x = probe.x, y = probe.y, mask = probe.mask))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$if (random.nextBoolean()) Shape.Circle(1f + random.nextFloat() * 30f) else Shape.Box(width = 2f + random.nextFloat() * 60f, height = 2f + random.nextFloat() * 60f)</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$shapes.add(TestShape(world.spawn(shape, x, y, layers, mask, scaleX = scale, scaleY = scale), shape, x, y, scale, layers, mask))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$val bruteForce = shapes.filter { probe.mask.intersects(it.layers) &amp;&amp; probe.overlapsIgnoringLayers(it) }.map { it.entity }.sortedBy { it.index }</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest.TestShape$circle -> circleOverlapsBox(x, y, halfWidth, other.x - other.halfWidth, other.y - other.halfHeight, other.x + other.halfWidth, other.y + other.halfHeight)</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest.TestShape$other.circle -> circleOverlapsBox(other.x, other.y, other.halfWidth, x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight)</ID>
+    <ID>MaxLineLength:DebugOverlay.kt:DebugOverlay$canvas.drawRect(x = MARGIN, y = MARGIN, width = panelWidth, height = panelHeight, color = PANEL_COLOR, layer = LAYER, space = DrawSpace.SCREEN)</ID>
+    <ID>MaxLineLength:DebugOverlay.kt:DebugOverlay$canvas.drawText(font, counts, x = left + timingsWidth + COLUMN_GAP, y = top, scale = TEXT_SCALE, layer = LAYER, space = DrawSpace.SCREEN)</ID>
+    <ID>MaxLineLength:DebugOverlayTest.kt:DebugOverlayTest$stats.publish(totalNanos = 16_000_000, fixedStepCount = 2, spriteCount = 100_000, drawCallCount = 3, collisionPairCount = 0, particleCount = 0)</ID>
+    <ID>MaxLineLength:Fonts.kt:internal inline</ID>
+    <ID>MaxLineLength:FrameStats.kt:FrameStats$internal</ID>
+    <ID>MaxLineLength:FrameStatsTest.kt:FrameStatsTest$stats.publish(totalNanos = 3_000_000, fixedStepCount = 2, spriteCount = 10, drawCallCount = 3, collisionPairCount = 4, particleCount = 5)</ID>
+    <ID>MaxLineLength:FrozenSceneTest.kt:FrozenSceneTest$assertEquals("KinematicBody(dx=0.0, dy=600.0, isOnFloor=false, isOnWall=false, wallNormalX=0.0, isOnCeiling=false)", frozen.toString())</ID>
+    <ID>MaxLineLength:FrozenSceneTest.kt:FrozenSceneTest$playEnter = { h.world.create().also { h.world.add(it, Sprite, frozen); h.world.add(it, Fade, Fade(1.seconds, end = FadeEnd.DESTROY)) } }</ID>
+    <ID>MaxLineLength:Interpolation.kt:previous.set(entity, PreviousTransform(transform.x, transform.y, transform.rotation, transform.scaleX, transform.scaleY, isFirstStep = true))</ID>
+    <ID>MaxLineLength:InterpolationTest.kt:InterpolationTest$assertEquals("PreviousTransform(x=1.0, y=2.0, rotation=0.5, scale=2.0x3.0, firstStep=true)", world.get(marked, PreviousTransform).toString())</ID>
+    <ID>MaxLineLength:KinematicBody.kt:KinematicBody$val contacts = "KinematicBody(dx=$dx, dy=$dy, isOnFloor=$isOnFloor, isOnWall=$isOnWall, wallNormalX=$wallNormalX, isOnCeiling=$isOnCeiling"</ID>
+    <ID>MaxLineLength:KinematicBody.kt:if</ID>
+    <ID>MaxLineLength:KinematicBodyTest.kt:KinematicBodyTest$world.add(entity, Collider, Collider(Shape.Box(width = 20f, height = 20f), offsetX = 0f, offsetY = 10f).apply { scalesWithTransform = false })</ID>
+    <ID>MaxLineLength:Loop.kt:*</ID>
+    <ID>MaxLineLength:Loop.kt:FrameLoop$if (app.overlay.isVisible) app.overlay.draw(app.canvas, app.assets.defaultFont, stats, time.fixedDelta, app.audio.stats.activeVoiceCount)</ID>
+    <ID>MaxLineLength:ParticleEmitterTest.kt:ParticleEmitterTest$assertTrue(emitter.particleCount in 1 until 20, "Some of 20 lifetimes in 0.5..1 s end before 0.8 s; count ${emitter.particleCount}.")</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$"Collider(shape=Circle(radius=8.0), offset=0.0x0.0, layers=CollisionLayers(0), mask=CollisionLayers(1), scalesWithTransform=false)"</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$assertEquals("Box height -1.0 is not positive.", assertFailsWith&lt;IllegalArgumentException> { Shape.Box(width = 1f, height = -1f) }.message)</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$assertEquals("Box width 0.0 is not positive.", assertFailsWith&lt;IllegalArgumentException> { Shape.Box(width = 0f, height = 1f) }.message)</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$assertEquals(ground, collisions.floorBelowOrNull(x = 50f, y = 96f, width = 4f, depth = 400f, mask = CollisionLayers.DEFAULT)?.entity)</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$assertFailsWith&lt;IllegalArgumentException> { collisions.slideBox(x = 0f, y = 0f, width = 20f, height = 20f, dx = Float.NaN, dy = 0f) }</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$collisions.slideBox(x = x, y = y, width = 20f, height = 20f, dx = speedX * step, dy = speedY * step, floorSnap = snap, result = slide)</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$val ledge = world.solid(left = 0f, top = 100f, right = 100f, bottom = 110f, passable = Passable.FROM_BELOW, layers = CollisionLayers.of(4))</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$val rising = collisions.slideBox(x = 50f, y = 90f, width = 20f, height = 20f, dx = 0f, dy = -1f, floorSnap = Collisions.FLOOR_SNAP_DISTANCE)</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$val snapped = collisions.slideBox(x = 50f, y = 90f, width = 20f, height = 20f, dx = 10f, dy = 0f, floorSnap = Collisions.FLOOR_SNAP_DISTANCE)</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$copyRecord(source, quad * SPRITE_RECORD_FLOATS, position * SPRITE_RECORD_FLOATS) { index, value -> records.set(index, value) }</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$writeRecord(count * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { index, value -> records.set(index, value) }</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$writeRecord(position * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { index, value -> records.set(index, value) }</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$assertEquals(stone, collisions.sweepBox(x = 50f, y = 0f, width = 10f, height = 10f, dx = 0f, dy = 100f, mask = CollisionLayers.DEFAULT)?.entity)</ID>
+    <ID>MaxLineLength:TextQuads.kt:addGlyphs(font, text, x + dx * c - dy * s, y + dx * s + dy * c, rotation, scaleX, scaleY, scale, align, shadowColor, layer, space)</ID>
+    <ID>MaxLineLength:TextQuads.kt:text.font</ID>
+    <ID>MaxLineLength:TextureRegionTest.kt:TextureRegionTest$assertEquals(texture.region(x = 0, y = 0, width = 8, height = 8).hashCode(), texture.region(x = 0, y = 0, width = 8, height = 8).hashCode())</ID>
+    <ID>MayBeConstant:BuiltInFont.kt:BuiltInFont.Companion$/** Top-left texel of the 3 by 3 white block in the cell after the last glyph. */ private val WHITE_X = (GLYPH_COUNT % COLUMNS) * CELL + 1</ID>
+    <ID>MayBeConstant:BuiltInFont.kt:BuiltInFont.Companion$private val WHITE_Y = (GLYPH_COUNT / COLUMNS) * CELL + 1</ID>
+    <ID>NestedBlockDepth:Loop.kt:public fun runApp</ID>
+    <ID>ReturnCount:Assets.kt:Assets$private fun textureOrNullAt: Texture?</ID>
+    <ID>ReturnCount:Assets.kt:Assets$public fun fontOrNull: Font?</ID>
+    <ID>ReturnCount:Assets.kt:Assets$public fun musicTrackOrNull: MusicTrack?</ID>
+    <ID>ReturnCount:Assets.kt:Assets$public fun soundOrNull: Sound?</ID>
+    <ID>ReturnCount:Audio.kt:Audio$public fun play: Voice</ID>
+    <ID>ReturnCount:Collisions.kt:Collisions$private fun collectOverlaps: Int</ID>
+    <ID>ReturnCount:Collisions.kt:Collisions$private fun shapesOverlap: Boolean</ID>
+    <ID>ReturnCount:Collisions.kt:Collisions$private fun testQuery: Int</ID>
+    <ID>ReturnCount:CollisionsTest.kt:CollisionsTest.TestShape$fun overlaps: Boolean</ID>
+    <ID>ReturnCount:DebugOverlay.kt:internal fun StringBuilder.appendFixed: StringBuilder</ID>
+    <ID>ReturnCount:Fade.kt:Fade$internal fun advance: Boolean</ID>
+    <ID>ReturnCount:Font.kt:Font$public fun glyphOrNull: Glyph?</ID>
+    <ID>ReturnCount:Font.kt:Font$public fun kerningOf: Float</ID>
+    <ID>ReturnCount:Mixer.kt:MusicLane$fun advanceFade: Boolean</ID>
+    <ID>ReturnCount:Mixer.kt:MusicLane$fun refill: Boolean</ID>
+    <ID>ReturnCount:Music.kt:Music$public fun play</ID>
+    <ID>ReturnCount:SceneStack.kt:SceneStack$internal fun isFrozen: Boolean</ID>
+    <ID>ReturnCount:Screenshot.kt:internal fun parseScreenshot: Screenshot?</ID>
+    <ID>ReturnCount:SolidGrid.kt:SolidGrid$private fun test</ID>
+    <ID>ReturnCount:SolidGrid.kt:SolidGrid$private fun walk</ID>
+    <ID>ReturnCount:SpritePass.kt:SpritePass$private fun acquireTarget: GpuTexture?</ID>
+    <ID>ReturnCount:SpriteRenderer.kt:SpriteRenderer$private inline fun forEachSprite</ID>
+    <ID>ReturnCount:World.kt:World$@Suppress("UNCHECKED_CAST") public inline fun &lt;A : Any, B : Any, C : Any> forEach</ID>
+    <ID>SwallowedException:Assets.kt:Assets$e: FontException</ID>
+    <ID>ThrowsCount:BmFont.kt:internal fun parseBmFont: Font</ID>
+    <ID>TooGenericExceptionCaught:SpriteRenderer.kt:SpriteRenderer$e: Throwable</ID>
+    <ID>TooManyFunctions:Assets.kt:Assets : AutoCloseable</ID>
+    <ID>TooManyFunctions:Audio.kt:Audio : AutoCloseable</ID>
+    <ID>TooManyFunctions:Collisions.kt:Collisions</ID>
+    <ID>TooManyFunctions:Commands.kt:Commands</ID>
+    <ID>TooManyFunctions:Gamepad.kt:Gamepad</ID>
+    <ID>TooManyFunctions:Keyboard.kt:Keyboard</ID>
+    <ID>TooManyFunctions:Mixer.kt:Mixer : CommandConsumer</ID>
+    <ID>TooManyFunctions:Mouse.kt:Mouse</ID>
+    <ID>TooManyFunctions:SceneStack.kt:SceneStack</ID>
+    <ID>TooManyFunctions:SolidGrid.kt:SolidGrid</ID>
+    <ID>TooManyFunctions:SpriteOrder.kt:SpriteOrder</ID>
+    <ID>TooManyFunctions:SpriteRenderer.kt:SpriteRenderer : AutoCloseable</ID>
+    <ID>TooManyFunctions:World.kt:World</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:Autopilot.kt:enemy.kind == EnemyKind.HELI &amp;&amp; !enemy.isStomped &amp;&amp; abs(transform.x - x) &lt; 110f &amp;&amp; transform.y &lt; feet</ID>
+    <ID>CyclomaticComplexMethod:Systems.kt:fun Run.movePlayer</ID>
+    <ID>CyclomaticComplexMethod:Systems.kt:fun Run.resolveOverlaps</ID>
+    <ID>LongMethod:Systems.kt:fun Run.movePlayer</ID>
+    <ID>LoopWithTooManyJumpStatements:Autopilot.kt:while</ID>
+    <ID>MatchingDeclarationName:Input.kt:Controls</ID>
+    <ID>MatchingDeclarationName:Scenes.kt:GameScenes</ID>
+    <ID>MaxLineLength:Autopilot.kt:private</ID>
+    <ID>MaxLineLength:Backdrop.kt:private</ID>
+    <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Box(Tuning.BLOB_WIDTH - 8f, Tuning.BLOB_HEIGHT - 8f), offsetY = 4f, layers = Layers.ENEMY, mask = CollisionLayers.NONE))</ID>
+    <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Box(Tuning.HELI_WIDTH - 12f, Tuning.HELI_HEIGHT - 16f), layers = Layers.ENEMY, mask = CollisionLayers.NONE))</ID>
+    <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Circle(Tuning.RING_RADIUS), layers = Layers.RING, mask = CollisionLayers.NONE).apply { scalesWithTransform = false })</ID>
+    <ID>MaxLineLength:Entities.kt:add(Sprite, Sprite(art.heart, Tuning.HEART_SIZE, Tuning.HEART_SIZE * art.heart.height / art.heart.width, layer = Tuning.LAYER_PICKUPS))</ID>
+    <ID>MaxLineLength:Entities.kt:add(Text, Text(font, text, Tuning.POPUP_COLOR, Tuning.POPUP_SCALE, TextAlign.CENTER, layer = Tuning.LAYER_EFFECTS, shadow = POPUP_SHADOW))</ID>
+    <ID>MaxLineLength:Entities.kt:add(Transform, Transform(x, roof - height * Tuning.SQUASHED_SCALE_Y / 2, scaleX = Tuning.SQUASHED_SCALE_X, scaleY = Tuning.SQUASHED_SCALE_Y))</ID>
+    <ID>MaxLineLength:Screens.kt:app.canvas.drawText(app.assets.defaultFont, text, x = x, y = y, color = color, scale = scale, align = align, layer = 2, shadow = TEXT_SHADOW)</ID>
+    <ID>MaxLineLength:Screens.kt:drawCentred(app, "Esc or Start: keep rolling", middle + Tuning.LINE_SPACING / 2, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
+    <ID>MaxLineLength:Screens.kt:drawCentred(app, "Space or A: roll again Esc: title", middle + 4f * spacing, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
+    <ID>MaxLineLength:Screens.kt:drawCentred(app, "Space or A: try again Esc: title", middle + 2.5f * spacing, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
+    <ID>MaxLineLength:Screens.kt:drawShadowed(app, RooftopRun.NAME, x = windowWidth - margin, y = margin + 6f, scale = Tuning.SMALL_TEXT_SCALE, align = TextAlign.RIGHT, color = Tuning.HINT_COLOR)</ID>
+    <ID>MaxLineLength:Screens.kt:drawShadowed(app, text, x = windowWidth / 2, y = bottom, scale = Tuning.TEXT_SCALE, align = TextAlign.CENTER, color = Tuning.SCORE_COLOR)</ID>
+    <ID>MaxLineLength:Screens.kt:private</ID>
+    <ID>NestedBlockDepth:Painting.kt:fun paintSkyline: Image</ID>
+    <ID>ReturnCount:Autopilot.kt:fun Run.steerAutopilot</ID>
+    <ID>ReturnCount:Autopilot.kt:private fun Run.shouldJump: Boolean</ID>
+    <ID>ReturnCount:Systems.kt:fun Run.checkGoal</ID>
+    <ID>ReturnCount:Systems.kt:fun rollSpeed: Float</ID>
+    <ID>TooManyFunctions:Entities.kt:klyph.roller.Entities.kt</ID>
+    <ID>TooManyFunctions:Systems.kt:klyph.roller.Systems.kt</ID>
+  </CurrentIssues>
+</SmellBaseline>

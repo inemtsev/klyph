@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>MatchingDeclarationName:Input.kt:Controls</ID>
+    <ID>MatchingDeclarationName:Scenes.kt:GameScenes</ID>
+    <ID>MaxLineLength:Main.kt:"Shooter ran ${app.time.frameCount} frames: score $score, wave $wave, best ${game.bestScore}, ${game.kills} enemies destroyed, "</ID>
+    <ID>MaxLineLength:Screens.kt:app.canvas.drawText(app.assets.defaultFont, text, x = app.window.width / 2f, y = y, color = color, scale = scale, align = TextAlign.CENTER, layer = 1)</ID>
+    <ID>MaxLineLength:Screens.kt:canvas.drawRect(x, y, Tuning.BOSS_BAR_WIDTH * share, Tuning.BOSS_BAR_HEIGHT, Tuning.BOSS_BAR_FILL, layer = Tuning.LAYER_EFFECTS, space = DrawSpace.WORLD)</ID>
+    <ID>MaxLineLength:Screens.kt:canvas.drawRect(x, y, Tuning.BOSS_BAR_WIDTH, Tuning.BOSS_BAR_HEIGHT, Tuning.BOSS_BAR_BACK, layer = Tuning.LAYER_EFFECTS, space = DrawSpace.WORLD)</ID>
+    <ID>ReturnCount:Input.kt:private fun Round.aimHeading: Float</ID>
+    <ID>ReturnCount:Systems.kt:private fun Round.shoot</ID>
+    <ID>ReturnCount:Systems.kt:private fun Round.strike: Boolean</ID>
+    <ID>TooManyFunctions:Systems.kt:klyph.shooter.Systems.kt</ID>
+  </CurrentIssues>
+</SmellBaseline>

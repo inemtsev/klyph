@@ -154,7 +154,9 @@ One `fetchSdl3` on the root project serves every project of the build. Downloads
 every build on the machine in
 `<Gradle user home>/caches/klyph/sdl3/<version>/` (normally `~/.gradle/caches/klyph/sdl3/`): the
 release file itself and the unpacked prefix in `<version>/<target>/`. A file whose SHA-256 does
-not match is deleted and fails the build. Delete the folder to download again.
+not match is deleted and fails the build. Delete the folder to download again. In the klyph
+repository, `tools/bump-sdl3.sh <version>` moves the default version and its pinned SHA-256
+hashes to another SDL release.
 
 ## Building the plugin
 

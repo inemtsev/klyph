@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:KlyphPlugin.kt:KlyphBuild$private fun configureTarget</ID>
+    <ID>LongMethod:KlyphPlugin.kt:KlyphBuild$private fun configureTarget</ID>
+    <ID>LoopWithTooManyJumpStatements:FetchSdl3.kt:Sdl3Fetcher$while</ID>
+    <ID>MaxLineLength:DistributionLayoutTest.kt:DistributionLayoutTest$assertEquals(File(prefix, "lib/x86_64-linux-gnu/libSDL3.so.0"), DistributionLayout.libraries(KlyphTargets.LINUX_X64, prefix)!!.single().first)</ID>
+    <ID>MaxLineLength:FetchSdl3.kt:CommandRunner$throw GradleException("Command failed with exit code ${result.exitValue}: ${command.joinToString(" ")}\n${errors.toString(Charsets.UTF_8).trim()}")</ID>
+    <ID>MaxLineLength:FetchSdl3.kt:Sdl3Fetcher$FileChannel.open(File(downloadDirectory, ".lock").toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE)</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$"${project.path} downloads SDL3 into ${location.prefix}, but another project of this build downloads it into $registered. "</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$description = "Downloads SDL ${release.version} for ${release.target} into ${location.prefix}, once for every project of the build."</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$description = "Runs the game (${binary.buildType.name.lowercase()} build). KLYPH_* variables come from the shell or -Pklyph.&lt;name&gt;."</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertFalse(Regex("^fetchSdl3", RegexOption.MULTILINE).containsMatchIn(output), "fetchSdl3 is registered although the prefix has SDL3.")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertFalse(hasTask(tasks, "distribute$foreignTargetTitle"), "distribute$foreignTargetTitle is registered although its link is off:\n$tasks")</ID>
+    <ID>MaxLineLength:KlyphTargets.kt:KlyphTargets$if (names.isEmpty()) throw GradleException("No klyph target is selected. Use host, all, or a comma-separated list of ${all.joinToString()}.")</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:DistributionLayout$.</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:PrepareDistribution$?:</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:PrepareDistribution$get() = objects.fileTree().from(sdl3Prefix).apply { include(DistributionLayout.libraryPatterns(target.get(), sdl3Prefix.get().asFile)) }</ID>
+    <ID>MaxLineLength:Sdl3Locator.kt:Sdl3Locator$fun</ID>
+    <ID>ThrowsCount:FetchSdl3.kt:Sdl3Fetcher$fun download</ID>
+    <ID>ThrowsCount:KlyphTargets.kt:KlyphTargets$fun resolve: List&lt;String&gt;</ID>
+  </CurrentIssues>
+</SmellBaseline>

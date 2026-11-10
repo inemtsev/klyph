@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:Main.kt:(frameLimit == null || frames &lt; frameLimit) &amp;&amp; (timeLimit == null || start.elapsedNow() &lt; timeLimit)</ID>
+    <ID>MaxLineLength:Main.kt:*</ID>
+    <ID>MaxLineLength:Main.kt:Window("klyph events", width = 800, height = 600, flags = setOf(WindowFlag.RESIZABLE, WindowFlag.HIGH_PIXEL_DENSITY))</ID>
+    <ID>MaxLineLength:Main.kt:canvas.drawRect(x = 40f, y = 200f, width = 64f, height = 64f, color = Color(red = 0.3f, green = 0.6f, blue = 1f), space = DrawSpace.WORLD)</ID>
+    <ID>MaxLineLength:Main.kt:canvas.drawRect(x = 8f, y = 8f, width = 220f, height = 28f, color = Color(red = 0f, green = 0f, blue = 0f, alpha = 0.6f), space = DrawSpace.SCREEN)</ID>
+    <ID>NestedBlockDepth:Main.kt:private fun printPlatformEvents</ID>
+  </CurrentIssues>
+</SmellBaseline>

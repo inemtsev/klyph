@@ -5,7 +5,10 @@ package klyph.platform
  *
  * @sample samples.platform.Colors.color
  */
-public value class Color(public val rgba: UInt) {
+public value class Color(
+    /** The packed value, `0xRRGGBBAA`. */
+    public val rgba: UInt,
+) {
     /** Red channel in `0.0..1.0`. */
     public val red: Float get() = channel(24)
 

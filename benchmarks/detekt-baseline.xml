@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>EmptyFunctionBlock:MixerBenchmark.kt:SineStream${}</ID>
+    <ID>MaxLineLength:HierarchyBenchmark.kt:fun color</ID>
+    <ID>MaxLineLength:HierarchyBenchmark.kt:world.add(entity, Sprite, Sprite(region, width = PARENT_SIZE * pointsPerPixel, height = PARENT_SIZE * pointsPerPixel, color = color()))</ID>
+    <ID>MaxLineLength:HierarchyBenchmark.kt:world.add(entity, Transform, Transform(x = random.nextFloat() * width, y = random.nextFloat() * height, rotation = random.nextFloat() * twoPi))</ID>
+    <ID>MaxLineLength:HierarchyBenchmark.kt:world.add(entity, Velocity, Velocity(dx = random.nextFloat() * 200f - 100f, dy = random.nextFloat() * 200f - 100f, spin = random.nextFloat() * 4f - 2f))</ID>
+    <ID>MaxLineLength:Main.kt:internal</ID>
+    <ID>MaxLineLength:MixerBenchmark.kt:AudioSamples(FloatArray(SOURCE_RATE) { sin(2 * PI * 440.0 * it / SOURCE_RATE).toFloat() * 0.1f }, channels = 1, sampleRate = SOURCE_RATE)</ID>
+    <ID>MaxLineLength:ParticleBenchmark.kt:description = "Runs KLYPH_SPRITES / 1000 emitters of 1000 particles each, kept full by their rate, and reports advance and extraction ms."</ID>
+    <ID>MaxLineLength:ParticleBenchmark.kt:startColor = Color(red = 0.5f + random.nextFloat() * 0.5f, green = 0.5f + random.nextFloat() * 0.5f, blue = 0.5f + random.nextFloat() * 0.5f)</ID>
+    <ID>MaxLineLength:SpriteBenchmark.kt:color = Color(red = 0.5f + random.nextFloat() * 0.5f, green = 0.5f + random.nextFloat() * 0.5f, blue = 0.5f + random.nextFloat() * 0.5f, alpha = 0.9f)</ID>
+    <ID>MaxLineLength:SpriteBenchmark.kt:description = "Moves and spins KLYPH_SPRITES textured sprites over KLYPH_TEXTURES textures and draws them through the sprite pass; KLYPH_INTERPOLATE=1 moves them in fixed steps."</ID>
+    <ID>MaxLineLength:SpriteBenchmark.kt:world.add(entity, Transform, Transform(x = random.nextFloat() * width, y = random.nextFloat() * height, rotation = random.nextFloat() * 2f * PI.toFloat()))</ID>
+    <ID>MaxLineLength:SpriteBenchmark.kt:world.add(entity, Velocity, Velocity(dx = random.nextFloat() * 200f - 100f, dy = random.nextFloat() * 200f - 100f, spin = random.nextFloat() * 4f - 2f))</ID>
+    <ID>UnusedParameter:Benchmark.kt:settings: BenchmarkSettings</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,24 @@
+# Every third-party version the build declares. The root build reads this file on its own;
+# buildSrc and the klyph-gradle-plugin build import it in their settings.gradle.kts.
+
+[versions]
+kotlin = "2.4.20"
+mavenPublish = "0.37.0"
+dokka = "2.2.0"
+markdown = "0.7.3"
+junit = "5.13.4"
+detekt = "2.0.0-alpha.6"
+
+[libraries]
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+maven-publish-gradle-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "mavenPublish" }
+dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
+markdown-jvm = { module = "org.jetbrains:markdown-jvm", version.ref = "markdown" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+detekt-gradle-plugin = { module = "dev.detekt:detekt-gradle-plugin", version.ref = "detekt" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-sam-with-receiver = { id = "org.jetbrains.kotlin.plugin.sam.with.receiver", version.ref = "kotlin" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }

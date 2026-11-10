@@ -1,0 +1,20 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "schedule": ["* 0-5 * * 1"],
+  "dependencyDashboard": true,
+  "enabledManagers": ["gradle", "gradle-wrapper", "github-actions"],
+  "ignorePaths": ["tools/template/**"],
+  "packageRules": [
+    {
+      "description": "Kotlin, its Gradle plugins and the Kotlin Gradle plugin move together.",
+      "matchPackageNames": ["org.jetbrains.kotlin*"],
+      "groupName": "Kotlin"
+    },
+    {
+      "description": "The detekt Gradle plugin and the detekt artifacts it resolves.",
+      "matchPackageNames": ["dev.detekt*", "io.gitlab.arturbosch.detekt*"],
+      "groupName": "detekt"
+    }
+  ]
+}

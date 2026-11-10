@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:Input.kt:fun readControls</ID>
+    <ID>LoopWithTooManyJumpStatements:Systems.kt:for</ID>
+    <ID>MatchingDeclarationName:Input.kt:Controls</ID>
+    <ID>MatchingDeclarationName:Scenes.kt:GameScenes</ID>
+    <ID>MaxLineLength:Entities.kt:fun</ID>
+    <ID>MaxLineLength:Screens.kt:app.canvas.drawText(app.assets.defaultFont, text, x = x, y = y, color = color, scale = scale, align = align, layer = 2, shadow = TEXT_SHADOW)</ID>
+    <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = barX, y = margin, width = Tuning.TIME_BAR_WIDTH * share, height = Tuning.TIME_BAR_HEIGHT, color = Tuning.TIME_BAR_FILL, layer = 1)</ID>
+    <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = barX, y = margin, width = Tuning.TIME_BAR_WIDTH, height = Tuning.TIME_BAR_HEIGHT, color = Tuning.TIME_BAR_BACK, layer = 1)</ID>
+    <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = x + column, y = y, width = check, height = height, color = Tuning.BLANKET_STRIPE_COLOR, layer = layer, space = DrawSpace.WORLD)</ID>
+    <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = x + offset, y = y + offset, width = width, height = height, color = Tuning.BLANKET_SHADOW_COLOR, layer = layer, space = DrawSpace.WORLD)</ID>
+    <ID>MaxLineLength:Screens.kt:canvas.drawRect(x = x, y = y + row, width = width, height = check, color = Tuning.BLANKET_STRIPE_COLOR, layer = layer, space = DrawSpace.WORLD)</ID>
+    <ID>MaxLineLength:Screens.kt:drawCentred(app, "Click or press Esc to keep playing", middle + Tuning.LINE_SPACING / 2, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)</ID>
+    <ID>MaxLineLength:Screens.kt:drawCentred(app, "Squish the bugs before they eat the picnic!", height * 0.08f + 2.2f * Tuning.LINE_SPACING, scale = Tuning.SMALL_TEXT_SCALE)</ID>
+    <ID>MaxLineLength:Screens.kt:private</ID>
+    <ID>MaxLineLength:Systems.kt:app.commands.spawnBug(game.art, random, food, target.x, target.y, x, y, lerp(Tuning.SPEED_FACTOR_START, Tuning.SPEED_FACTOR_END, progress))</ID>
+    <ID>TooManyFunctions:Systems.kt:klyph.squish.Systems.kt</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:Events.kt:EventPump$private fun translateOrNull: PlatformEvent?</ID>
+    <ID>LoopWithTooManyJumpStatements:AudioSamples.kt:AudioSamples.Companion$while</ID>
+    <ID>MatchingDeclarationName:Mouse.kt:MouseButton</ID>
+    <ID>MaxLineLength:FrameCapture.kt:*</ID>
+    <ID>ReturnCount:AudioDevice.kt:AudioDevice.Companion$private fun openOrReason: Any</ID>
+    <ID>ReturnCount:AudioSamples.kt:AudioSamples.Companion$private fun ByteArray.hasTag: Boolean</ID>
+    <ID>ReturnCount:AudioSamples.kt:AudioSamples.Companion$private fun readAll: Any</ID>
+    <ID>ReturnCount:Events.kt:EventPump$private fun connectGamepadOrNull: PlatformEvent?</ID>
+    <ID>ReturnCount:Events.kt:EventPump$public fun waitOrNull: PlatformEvent?</ID>
+    <ID>ReturnCount:Files.kt:Files$private inline fun &lt;R> readBytesOrElse: R</ID>
+    <ID>ReturnCount:FrameCapture.kt:@KlyphPlatformApi public fun CommandBuffer.recordCaptureOrNull: FrameCapture?</ID>
+    <ID>ReturnCount:Image.kt:Image.Companion$private inline fun &lt;R> decodeOrElse: R</ID>
+    <ID>ReturnCount:VorbisStream.kt:VorbisStream.Companion$internal fun &lt;R> openOrElse: R</ID>
+    <ID>SwallowedException:AudioDevice.kt:AudioDevice.Companion$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:AudioDevice.kt:AudioDevice.CallbackState$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:AudioDevice.kt:AudioDevice.Companion$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:GpuResources.kt:e: Throwable</ID>
+    <ID>TooManyFunctions:GpuResources.kt:klyph.platform.GpuResources.kt</ID>
+  </CurrentIssues>
+</SmellBaseline>

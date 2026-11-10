@@ -2,10 +2,11 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     `java-gradle-plugin`
-    kotlin("jvm") version "2.4.20"
+    alias(libs.plugins.kotlin.jvm)
     // Gradle's Action parameters become lambdas with a receiver, as in build scripts.
-    kotlin("plugin.sam.with.receiver") version "2.4.20"
-    id("com.vanniktech.maven.publish") version "0.37.0"
+    alias(libs.plugins.kotlin.sam.with.receiver)
+    alias(libs.plugins.maven.publish)
+    alias(libs.plugins.detekt)
 }
 
 group = "com.eventslooped.klyph"
@@ -31,7 +32,7 @@ kotlin {
 dependencies {
     // The plugin applies the Kotlin Multiplatform plugin of this version, so a game build does
     // not declare Kotlin itself.
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.20")
+    implementation(libs.kotlin.gradle.plugin)
 }
 
 gradlePlugin {
@@ -62,12 +63,12 @@ gradlePlugin.testSourceSets(functionalTest)
 
 dependencies {
     testImplementation(kotlin("test-junit5"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
+    testImplementation(libs.junit.jupiter)
     // java-gradle-plugin puts the Gradle API on the compile classpath only.
     testImplementation(gradleApi())
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     "functionalTestImplementation"(kotlin("test-junit5"))
-    "functionalTestImplementation"("org.junit.jupiter:junit-jupiter:5.13.4")
+    "functionalTestImplementation"(libs.junit.jupiter)
     "functionalTestImplementation"(gradleTestKit())
     "functionalTestRuntimeOnly"("org.junit.platform:junit-platform-launcher")
 }
@@ -87,6 +88,23 @@ val functionalTestTask = tasks.register<Test>("functionalTest") {
 tasks.check {
     dependsOn(functionalTestTask)
 }
+
+// The engine build's detekt configuration and layout, as klyph.lint in buildSrc sets them for the
+// engine modules: one baseline next to this file and `check` running the `detekt` task over src/,
+// without type resolution. This build could give detekt its classpaths, but detekt does not load
+// the sam-with-receiver compiler plugin, so every `register { }` lambda then reports unresolved
+// members, 150 lines of errors on each check; the plain run is quiet.
+detekt {
+    config.setFrom(layout.settingsDirectory.file("../config/detekt/detekt.yml"))
+    buildUponDefaultConfig = true
+    baseline = layout.projectDirectory.file("detekt-baseline.xml")
+    basePath = layout.settingsDirectory.dir("..")
+    source.setFrom(layout.projectDirectory.dir("src"))
+    parallel = true
+}
+
+// The libraries rule set (ForbiddenPublicDataClass), at the version of the plugin itself.
+dependencies.addProvider("detektPlugins", detekt.toolVersion.map { "dev.detekt:detekt-rules-libraries:$it" })
 
 mavenPublishing {
     publishToMavenCentral()

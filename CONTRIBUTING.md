@@ -42,8 +42,8 @@ opting the game in.
 - The review checklist in section 9 of [API_STYLE.md](API_STYLE.md) is ticked for every public
   declaration.
 - Every public declaration has KDoc and, where it can run without a GPU, a `@sample` in `samples/`.
-- `./gradlew check` passes, which covers the samples, the guide snippets and the interop-import
-  rule.
+- `./gradlew check` passes, which covers the samples, the guide snippets, detekt and the
+  interop-import rule.
 - Nothing outside `klyph-platform` imports `kotlinx.cinterop`, `sdl3`, `stb`, `vorbis`, `cnames`
   or `platform.*`.
 - The sample games under `games/` never opt into `@KlyphPlatformApi` and never need an engine
@@ -65,7 +65,7 @@ opting the game in.
 | `sandbox` | Smoke test: opens a window and clears it each frame. |
 | `benchmarks` | Named benchmarks, such as `sprites` and `mixer`. |
 | `docs` | The guide pages, rendered into the Dokka site. |
-| `tools` | The consumer test, the release secrets script and the template that becomes `klyph-template`. |
+| `tools` | The consumer test, the release secrets script, the SDL3 bump script and the template that becomes `klyph-template`. |
 
 ## Requirements
 
@@ -73,7 +73,9 @@ opting the game in.
 - SDL3 3.4 or newer. On macOS, `brew install sdl3`. The build finds Homebrew, `/usr/local` and
   `/usr` on its own; pass `-Psdl3.prefix=<path>` for anything else. On Windows, use SDL's
   `SDL3-devel-<version>-mingw.zip` and pass its `x86_64-w64-mingw32` folder with forward slashes,
-  such as `-Psdl3.prefix=C:/SDL3-3.4.18/x86_64-w64-mingw32`.
+  such as `-Psdl3.prefix=C:/SDL3-3.4.18/x86_64-w64-mingw32`. To move the plugin's SDL3 download
+  to a new release, run `tools/bump-sdl3.sh <version>`, which rewrites the default version and
+  the pinned SHA-256 hashes in `Sdl3Release.kt`.
 - [SDL_shadercross](https://github.com/libsdl-org/SDL_shadercross), only to change a shader.
   Without it the build uses the checked-in compiled shaders and prints a warning. Commit the
   regenerated `klyph/src/nativeMain/kotlin/klyph/render/generated/Shaders.kt` with the HLSL.
@@ -98,6 +100,23 @@ The build configures the host's own target: `macosArm64`, `linuxX64`, `linuxArm6
 `run` stay on the host target. `KLYPH_VALIDATION=1` turns on the GPU validation layer, which is
 slow but worth a run after touching `klyph-platform`.
 
+## Lint
+
+`check` runs [detekt](https://detekt.dev) on every module and on the plugin build, with the one
+configuration in [config/detekt/detekt.yml](config/detekt/detekt.yml). Each module keeps the
+findings that predate detekt in `detekt-baseline.xml` next to its build file, so `check` fails
+only on new ones. Fix a new finding rather than adding it to the baseline; after fixing old
+ones, `./gradlew detektBaseline` (and `./gradlew -p klyph-gradle-plugin detektBaseline`) rewrites
+the baselines without them. detekt runs without type resolution everywhere (Kotlin/Native has
+none, and in the plugin build it would fight the sam-with-receiver compiler plugin), so the rules
+that need it never fire. `MagicNumber` is off, since an engine's tuning values and maths are
+numbers, and lines may run to 140 columns. The rules of [API_STYLE.md](API_STYLE.md) that detekt
+can check from syntax alone are on for the library modules (`klyph`, `klyph-platform` and the
+plugin; the executables and samples are excluded by path): KDoc on every public declaration, a
+first sentence that ends, KDoc links only to public declarations, no Manager, Helper, Util,
+Wrapper, Data or Info in a class name, and no public `data class`, the last from detekt's
+`libraries` rule set, which both builds add to `detektPlugins`.
+
 ## Games and benchmarks
 
 The games live in `games/` and build with the klyph Gradle plugin, the way a game outside the
@@ -121,6 +140,14 @@ GPU each frame, so the display is out of the loop; use them for numbers.
 ```
 
 [BENCHMARKS.md](BENCHMARKS.md) has the method and the current results.
+
+## Dependency updates
+
+Third-party versions live in [gradle/libs.versions.toml](gradle/libs.versions.toml), which the
+root build, `buildSrc` and `klyph-gradle-plugin` all read. [Renovate](renovate.json) opens weekly
+pull requests for the catalog, the Gradle wrapper and the GitHub Actions, with Kotlin and detekt
+each grouped into one. It runs only once the Mend Renovate GitHub app is installed on the
+repository.
 
 ## Testing a release locally
 
