@@ -22,10 +22,12 @@ import kotlin.math.min
  * moves it down or up by `dy` times the step length in the same way. A stop leaves a gap of
  * [Collisions.CONTACT_GAP] units between the box and the solid, so the body never overlaps it, and zeroes
  * the velocity along that axis. Moving across and then up or down is exact for upright boxes; there
- * are no slopes and no moving platforms.
+ * are no slopes and no moving platforms. [Collisions.slideBox] and [Collisions.slideCollider] make
+ * the same move without a body, for planning ahead.
  *
  * After the move, [isOnFloor], [isOnWall], [isOnCeiling], [wallNormalX] and [floorOrNull] say what
- * the body touched. A body that stood on a floor before the move and is not moving up looks
+ * the body touched, and [hasLanded] and [landingSpeed] say whether it has just come down onto a
+ * floor. A body that stood on a floor before the move and is not moving up looks
  * [Collisions.FLOOR_SNAP_DISTANCE] units further down after it and lands on a floor it finds there, so a
  * body walking down a small step stays on the floor.
  *
@@ -38,10 +40,15 @@ import kotlin.math.min
  * [Solid], has no `Transform` or [Collider], has a collider that is not a box, has a parent or has a
  * speed that is not finite makes the next move throw [IllegalStateException] naming the entity.
  *
- * Interpolated bodies are drawn blended between their last two steps, as with `Velocity`.
+ * Interpolated bodies are drawn blended between their last two steps, as with `Velocity`. Two
+ * limits follow, both planned for 1.2 (issue #17): a body moved by setting its `Transform`, such
+ * as a respawn, is drawn sliding from the old place to the new one during the next step, a dash
+ * across the screen, unless the game hides it for that step; and the drawn, blended position is
+ * not public, so a camera that follows the body blends the last two positions itself.
  *
  * [toString] gives
- * `KinematicBody(dx=0.0, dy=0.0, isOnFloor=true, isOnWall=false, wallNormalX=0.0, isOnCeiling=false)`.
+ * `KinematicBody(dx=0.0, dy=0.0, isOnFloor=true, isOnWall=false, wallNormalX=0.0, isOnCeiling=false)`,
+ * followed by `, hasLanded=true, landingSpeed=450.0` after a move that landed.
  *
  * @sample samples.collision.Bodies.kinematicBody
  */
@@ -51,9 +58,19 @@ public class KinematicBody(
     /** Vertical speed in world units per second; positive moves down. A landing or a bump on a ceiling zeroes it. */
     public var dy: Float = 0f,
 ) {
-    /** Whether the last move ended on a floor: it landed moving down, or the floor check below found one. */
-    public var isOnFloor: Boolean = false
-        internal set
+    /** Whether the last move ended on a floor, whatever [dy] has been set to since. */
+    internal var isTouchingFloor: Boolean = false
+
+    /**
+     * Whether the body stands on a floor: the last move ended on one, landing moving down or found
+     * by the floor check below, and [dy] has not been set upward since. Setting `dy` below 0 for a
+     * jump turns it `false` at once, before the next move, so a system that reads it after its own
+     * jump, or a stomp that bounces the body up, sees the body leaving the floor.
+     *
+     * @sample samples.collision.Bodies.isOnFloor
+     */
+    public val isOnFloor: Boolean
+        get() = isTouchingFloor && dy >= 0f
 
     /** Whether the last move ran into a wall moving across. */
     public var isOnWall: Boolean = false
@@ -71,12 +88,31 @@ public class KinematicBody(
     public var wallNormalX: Float = 0f
         internal set
 
+    /**
+     * Whether the last move came down onto a floor and the move before it did not end on one, or
+     * had been sent up since: `true` for exactly one move per landing, the step to play a landing
+     * sound or raise dust. A body walking down a small step keeps its floor through the floor
+     * check, so it does not land. The first move of a body placed on a floor counts as a landing.
+     *
+     * @sample samples.collision.Bodies.hasLanded
+     */
+    public var hasLanded: Boolean = false
+        internal set
+
+    /**
+     * The downward speed in world units per second that the last move came down onto the floor
+     * with, the [dy] the move started with, or 0 when [hasLanded] is `false`. A landing zeroes `dy`,
+     * so this is where the speed of the fall is kept, such as for dust only after a long fall.
+     */
+    public var landingSpeed: Float = 0f
+        internal set
+
     /** The raw handle of the solid under the body after the last move, or [NO_FLOOR]. */
     internal var floorRaw: Long = NO_FLOOR
 
-    /** Returns the [Solid] entity the body stands on after the last move, or `null` while [isOnFloor] is `false`. */
+    /** Returns the [Solid] entity the body stands on, or `null` while [isOnFloor] is `false`. */
     public val floorOrNull: Entity?
-        get() = if (floorRaw == NO_FLOOR) null else Entity(floorRaw)
+        get() = if (floorRaw == NO_FLOOR || !isOnFloor) null else Entity(floorRaw)
 
     /** Whether [dropThrough] was called since the last move. */
     internal var isDropRequested: Boolean = false
@@ -100,18 +136,11 @@ public class KinematicBody(
         isDropRequested = true
     }
 
-    /** Clears the contact state at the start of a move. */
-    internal fun clearContacts() {
-        isOnFloor = false
-        isOnWall = false
-        isOnCeiling = false
-        wallNormalX = 0f
-        floorRaw = NO_FLOOR
-    }
-
     /** Returns `KinematicBody(dx=0.0, dy=0.0, isOnFloor=true, …)`. The format may change. */
-    override fun toString(): String =
-        "KinematicBody(dx=$dx, dy=$dy, isOnFloor=$isOnFloor, isOnWall=$isOnWall, wallNormalX=$wallNormalX, isOnCeiling=$isOnCeiling)"
+    override fun toString(): String {
+        val contacts = "KinematicBody(dx=$dx, dy=$dy, isOnFloor=$isOnFloor, isOnWall=$isOnWall, wallNormalX=$wallNormalX, isOnCeiling=$isOnCeiling"
+        return if (hasLanded) "$contacts, hasLanded=true, landingSpeed=$landingSpeed)" else "$contacts)"
+    }
 
     /** Component key for [KinematicBody]. */
     public companion object : ComponentType<KinematicBody>("KinematicBody") {
@@ -164,23 +193,82 @@ internal fun SolidGrid.moveBodies(world: World, deltaSeconds: Float, scenes: Sce
 private fun SolidGrid.moveBody(body: KinematicBody, transform: Transform, collider: Collider, shape: Shape.Box, deltaSeconds: Float) {
     val scaleX = if (collider.scalesWithTransform) transform.scaleX else 1f
     val scaleY = if (collider.scalesWithTransform) transform.scaleY else 1f
-    var centerX = transform.x + collider.offsetX * scaleX
-    var centerY = transform.y + collider.offsetY * scaleY
+    val offsetX = collider.offsetX * scaleX
+    val offsetY = collider.offsetY * scaleY
     val halfWidth = shape.width * abs(scaleX) * 0.5f
     val halfHeight = shape.height * abs(scaleY) * 0.5f
-    val mask = collider.mask.bits
-    val gap = Collisions.CONTACT_GAP
+    // Standing means touching a floor and not sent up since, so a standing body is not rising.
     val wasOnFloor = body.isOnFloor
-    val isRising = body.dy < 0f
-    body.clearContacts()
+    val startSpeedY = body.dy
     if (body.isDropRequested) {
         body.isDropRequested = false
         // Covers a ledge the feet rest on, a contact gap below them.
-        body.dropLine = centerY + halfHeight + 2 * gap
+        body.dropLine = transform.y + offsetY + halfHeight + 2 * Collisions.CONTACT_GAP
     }
     val dropLine = body.dropLine
+    val moved = bodySlide
+    slide(
+        transform.x, transform.y, offsetX, offsetY, halfWidth, halfHeight,
+        body.dx * deltaSeconds, startSpeedY * deltaSeconds, collider.mask.bits, dropLine,
+        // A body that walked off a small step down keeps its floor.
+        floorSnap = if (wasOnFloor) Collisions.FLOOR_SNAP_DISTANCE else 0f,
+        result = moved,
+    )
+    transform.x = moved.x
+    transform.y = moved.y
+    body.isTouchingFloor = moved.isOnFloor
+    body.isOnWall = moved.isOnWall
+    body.isOnCeiling = moved.isOnCeiling
+    body.wallNormalX = moved.wallNormalX
+    body.floorRaw = moved.floorRaw
+    if (moved.isOnWall) body.dx = 0f
+    if (moved.isOnFloor || moved.isOnCeiling) body.dy = 0f
+    body.hasLanded = moved.isOnFloor && !wasOnFloor
+    body.landingSpeed = if (body.hasLanded) startSpeedY else 0f
 
-    val moveX = body.dx * deltaSeconds
+    // The drop ends once the feet are below the line, on another floor, or rising.
+    if (dropLine != Float.NEGATIVE_INFINITY && (moved.y + offsetY + halfHeight > dropLine || moved.isOnFloor || startSpeedY < 0f)) {
+        body.dropLine = Float.NEGATIVE_INFINITY
+    }
+}
+
+/**
+ * Moves a box whose center is ([originX] + [offsetX], [originY] + [offsetY]) across by [moveX], then
+ * up or down by [moveY], stopping a contact gap short of the first solid on a layer in [mask] each
+ * way, and writes where its origin ends and what it touched into [result]. When the box did not
+ * end on a floor and is not moving up, it then looks [floorSnap] units further down and lands on a
+ * floor it finds there. One-way solids whose top is at or above [dropLine] are ignored.
+ *
+ * Every [KinematicBody] move and every [Collisions.slideBox] and [Collisions.slideCollider] runs
+ * through this one function, so a plan made with a slide is the move a body makes. Allocates nothing.
+ */
+internal fun SolidGrid.slide(
+    originX: Float,
+    originY: Float,
+    offsetX: Float,
+    offsetY: Float,
+    halfWidth: Float,
+    halfHeight: Float,
+    moveX: Float,
+    moveY: Float,
+    mask: Int,
+    dropLine: Float,
+    floorSnap: Float,
+    result: BoxSlide,
+) {
+    val gap = Collisions.CONTACT_GAP
+    var x = originX
+    var y = originY
+    var centerX = originX + offsetX
+    var centerY = originY + offsetY
+    var movedX = 0f
+    var movedY = 0f
+    var isOnFloor = false
+    var isOnWall = false
+    var isOnCeiling = false
+    var wallNormalX = 0f
+    var floorRaw = KinematicBody.NO_FLOOR
+
     if (moveX != 0f) {
         var stopX = centerX + moveX
         if (sweep(centerX - halfWidth, centerY - halfHeight, centerX + halfWidth, centerY + halfHeight, moveX, 0f, mask, skipsOverlaps = true, dropLine)) {
@@ -191,49 +279,50 @@ private fun SolidGrid.moveBody(body: KinematicBody, transform: Transform, collid
             } else {
                 min(centerX, max(stopX, rightOf(solid) + gap + halfWidth))
             }
-            body.dx = 0f
-            body.isOnWall = true
-            body.wallNormalX = hitNormalX
+            isOnWall = true
+            wallNormalX = hitNormalX
         }
-        transform.x += stopX - centerX
+        x += stopX - centerX
+        movedX += stopX - centerX
         centerX = stopX
     }
 
-    val moveY = body.dy * deltaSeconds
     if (moveY != 0f) {
         var stopY = centerY + moveY
         if (sweep(centerX - halfWidth, centerY - halfHeight, centerX + halfWidth, centerY + halfHeight, 0f, moveY, mask, skipsOverlaps = true, dropLine)) {
             val solid = hitSolid
             if (moveY > 0f) {
                 stopY = max(centerY, min(stopY, topOf(solid) - gap - halfHeight))
-                body.isOnFloor = true
-                body.floorRaw = entityAt(solid)
+                isOnFloor = true
+                floorRaw = entityAt(solid)
             } else {
                 stopY = min(centerY, max(stopY, bottomOf(solid) + gap + halfHeight))
-                body.isOnCeiling = true
+                isOnCeiling = true
             }
-            body.dy = 0f
         }
-        transform.y += stopY - centerY
+        y += stopY - centerY
+        movedY += stopY - centerY
         centerY = stopY
     }
 
-    // A body that walked off a small step down keeps its floor.
-    if (wasOnFloor && !body.isOnFloor && !isRising) {
-        val snap = Collisions.FLOOR_SNAP_DISTANCE
-        if (sweep(centerX - halfWidth, centerY - halfHeight, centerX + halfWidth, centerY + halfHeight, 0f, snap, mask, skipsOverlaps = true, dropLine)) {
+    if (floorSnap > 0f && !isOnFloor && moveY >= 0f) {
+        if (sweep(centerX - halfWidth, centerY - halfHeight, centerX + halfWidth, centerY + halfHeight, 0f, floorSnap, mask, skipsOverlaps = true, dropLine)) {
             val solid = hitSolid
-            val stopY = max(centerY, min(centerY + snap, topOf(solid) - gap - halfHeight))
-            transform.y += stopY - centerY
-            centerY = stopY
-            body.isOnFloor = true
-            body.floorRaw = entityAt(solid)
-            body.dy = 0f
+            val stopY = max(centerY, min(centerY + floorSnap, topOf(solid) - gap - halfHeight))
+            y += stopY - centerY
+            movedY += stopY - centerY
+            isOnFloor = true
+            floorRaw = entityAt(solid)
         }
     }
 
-    // The drop ends once the feet are below the line, on another floor, or rising.
-    if (dropLine != Float.NEGATIVE_INFINITY && (centerY + halfHeight > dropLine || body.isOnFloor || isRising)) {
-        body.dropLine = Float.NEGATIVE_INFINITY
-    }
+    result.x = x
+    result.y = y
+    result.movedX = movedX
+    result.movedY = movedY
+    result.isOnFloor = isOnFloor
+    result.isOnWall = isOnWall
+    result.isOnCeiling = isOnCeiling
+    result.wallNormalX = wallNormalX
+    result.floorRaw = floorRaw
 }

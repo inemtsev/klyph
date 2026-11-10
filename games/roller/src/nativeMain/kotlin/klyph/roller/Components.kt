@@ -43,11 +43,11 @@ class Player {
     /** How far through the skating stride he is; each whole stride swaps the skating frame. */
     var stride = 0f
 
-    /** Whether he stood on a roof before the last move, and how fast that move took him down, for the landing dust. */
-    var wasGrounded = false
-    var fallSpeed = 0f
-
-    /** Where he was before the last fixed step: the camera follows him between steps, and a stomp needs his feet above the enemy. */
+    /**
+     * Where he was before the last fixed step. The camera follows him where he is drawn, between his
+     * last two steps, which the engine does not tell (klyph issue #17), and a stomp needs his feet
+     * above the enemy before the step that touched it.
+     */
     var previousX = RooftopRun.start.x
     var previousFeet = RooftopRun.start.y
 

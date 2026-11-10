@@ -16,8 +16,9 @@ import kotlin.time.Duration
  * Finds overlapping [Collider]s: [detect] publishes an [Overlap] event for every overlapping pair,
  * and [overlappingTo], [overlapping] and [firstOverlappingOrNull] find the colliders a shape overlaps.
  * For ordinary colliders that is all: overlaps are reported, never resolved. Entities that also
- * have a [Solid] stop every [KinematicBody], which [moveBodies] moves, and [sweepBox] and
- * [sweepBoxTo] find the solids in the way of a moving box.
+ * have a [Solid] stop every [KinematicBody], which [moveBodies] moves; [sweepBox], [sweepBoxTo]
+ * and [sweepCollider] find the solids in the way of a moving box, [slideBox] and [slideCollider]
+ * make a body's move without a body, and [floorBelowOrNull] finds the floor under a point.
  *
  * `App.collisions` is the engine's instance: the engine calls [detect] on it once per frame,
  * after the last fixed update step and a transform propagation, so parented colliders are where
@@ -303,12 +304,209 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
         return solids.sweepAllTo(destination, x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight, dx, dy, mask.bits)
     }
 
+    /**
+     * Sweeps [entity]'s own box [Collider] from where it is along the straight move by ([dx], [dy])
+     * and returns where it first touches a [Solid] on a layer in the collider's mask, or `null` if
+     * the whole move is clear. It is [sweepBox] with the box placed as for a [KinematicBody]: at the
+     * entity's `Transform`, offset and scaled unless [Collider.scalesWithTransform] is `false`, so a
+     * game does not repeat its hero's collider size and offset to look ahead of him.
+     *
+     * The entity is looked up in the world the solids were last brought up to date with: `App.world`
+     * for `App.collisions`, otherwise the world of the last [detect] or [moveBodies]. The solids are
+     * read as [sweepBox] reads them, and a solid the box already overlaps is a hit at fraction 0.
+     *
+     * @throws IllegalArgumentException if [dx] or [dy] is not finite, or [entity] is not alive, has
+     *   no `Transform`, no [Collider] or one that is not a [Shape.Box], has a parent, or is a [Solid].
+     * @throws IllegalStateException if this instance has not met a world yet, or a solid is set up
+     *   wrongly, as [Solid] describes.
+     *
+     * @sample samples.collision.Sweeps.sweepCollider
+     */
+    public fun sweepCollider(entity: Entity, dx: Float, dy: Float): SweepHit? {
+        require(dx.isFinite() && dy.isFinite()) { "Sweep move ($dx, $dy) is not finite." }
+        val transform = placeCollider(entity)
+        solids.ensureCurrent(cellSize)
+        val centerX = transform.x + placedOffsetX
+        val centerY = transform.y + placedOffsetY
+        solids.sweep(
+            centerX - placedHalfWidth, centerY - placedHalfHeight, centerX + placedHalfWidth, centerY + placedHalfHeight,
+            dx, dy, placedMask, skipsOverlaps = false,
+        )
+        return solids.lastHitOrNull()
+    }
+
+    /**
+     * Moves a box [width] by [height] centered on ([x], [y]) by ([dx], [dy]) exactly as a
+     * [KinematicBody] moves in a fixed step, without moving anything, and writes where it comes to
+     * rest and what it touched into [result], which it returns. Pass the arguments by name and pass
+     * a [result] kept between calls, as in
+     * `slideBox(x = x, y = y, width = 24f, height = 40f, dx = speedX * dt, dy = speedY * dt, result = slide)`;
+     * [dx] and [dy] are the move of one step in world units, not speeds.
+     *
+     * The box moves across, then up or down, and stops a [CONTACT_GAP] short of the first [Solid] on
+     * a layer in [mask] each way. It passes one-way solids as a body does and moves out of a solid
+     * it starts inside. A body standing on a floor also keeps to a floor up to
+     * [FLOOR_SNAP_DISTANCE] below it; pass that distance as [floorSnap] when the box stood on a
+     * floor before the move and is not moving up, and the default 0 otherwise. A box moving up never
+     * snaps. [KinematicBody.dropThrough] has no counterpart here. The body's move and this one are
+     * the same code, so a jump followed step by step with the speeds the game's system would give
+     * ends where the body will, and the game zeroes its planned speeds where the body would: `dx`
+     * when [BoxSlide.isOnWall], `dy` when [BoxSlide.isOnFloor] or [BoxSlide.isOnCeiling].
+     *
+     * The solids are read as [sweepBox] reads them. It allocates nothing when given a [result].
+     *
+     * @throws IllegalArgumentException if [x], [y], [dx] or [dy] is not finite, [width] or [height]
+     *   is not a positive finite number, or [floorSnap] is negative or not finite.
+     * @throws IllegalStateException if a solid is set up wrongly, as [Solid] describes.
+     *
+     * @sample samples.collision.Slides.slideBox
+     */
+    public fun slideBox(
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        dx: Float,
+        dy: Float,
+        mask: CollisionLayers = CollisionLayers.ALL,
+        floorSnap: Float = 0f,
+        result: BoxSlide = BoxSlide(),
+    ): BoxSlide {
+        checkSweep(x, y, width, height, dx, dy)
+        checkFloorSnap(floorSnap)
+        solids.ensureCurrent(cellSize)
+        solids.slide(
+            x, y, 0f, 0f, width * 0.5f, height * 0.5f, dx, dy, mask.bits,
+            dropLine = Float.NEGATIVE_INFINITY, floorSnap = floorSnap, result = result,
+        )
+        return result
+    }
+
+    /**
+     * Moves [entity]'s own box [Collider] as [slideBox] moves a box, starting from where the
+     * collider would be if the entity's `Transform` were at ([x], [y]), and writes into [result],
+     * which it returns, where that `Transform` position comes to rest and what the box touched. The
+     * box is placed as for a [KinematicBody], offset and scaled by the entity's current `Transform`
+     * unless [Collider.scalesWithTransform] is `false`, and stops at the solids in the collider's
+     * mask. Pass the arguments by name.
+     *
+     * Starting from a given position rather than the entity's own lets a planner follow a jump step
+     * by step, feeding each step's [BoxSlide.x] and [BoxSlide.y] into the next, with no copy of the
+     * collider's size and offset. Starting from the entity's `Transform` and moving by its body's
+     * speed times the step length, it ends where the engine's move will put the body, given the same
+     * [floorSnap].
+     *
+     * The entity is looked up as [sweepCollider] looks it up. It allocates nothing when given a
+     * [result].
+     *
+     * @throws IllegalArgumentException if [x], [y], [dx] or [dy] is not finite, [floorSnap] is
+     *   negative or not finite, or [entity] is not alive, has no `Transform`, no [Collider] or one
+     *   that is not a [Shape.Box], has a parent, or is a [Solid].
+     * @throws IllegalStateException if this instance has not met a world yet, or a solid is set up
+     *   wrongly, as [Solid] describes.
+     *
+     * @sample samples.collision.Slides.slideCollider
+     */
+    public fun slideCollider(
+        entity: Entity,
+        x: Float,
+        y: Float,
+        dx: Float,
+        dy: Float,
+        floorSnap: Float = 0f,
+        result: BoxSlide = BoxSlide(),
+    ): BoxSlide {
+        require(x.isFinite() && y.isFinite()) { "Slide start ($x, $y) is not finite." }
+        require(dx.isFinite() && dy.isFinite()) { "Slide move ($dx, $dy) is not finite." }
+        checkFloorSnap(floorSnap)
+        placeCollider(entity)
+        solids.ensureCurrent(cellSize)
+        solids.slide(
+            x, y, placedOffsetX, placedOffsetY, placedHalfWidth, placedHalfHeight, dx, dy, placedMask,
+            dropLine = Float.NEGATIVE_INFINITY, floorSnap = floorSnap, result = result,
+        )
+        return result
+    }
+
+    /**
+     * Returns the first [Solid] on a layer in [mask] whose top a level line [width] wide centered on
+     * ([x], [y]) meets when moved [depth] units straight down, or `null` if there is none within
+     * [depth]. Pass the arguments by name, as in
+     * `floorBelowOrNull(x = x + 16f, y = feet, width = 4f, depth = 8f)` to ask whether there is
+     * floor just ahead of a walker's feet.
+     *
+     * The line is a falling body's feet: it lands on one-way solids whose top is at or below [y],
+     * and a solid whose top is exactly at [y] is met at once. A solid the line starts inside is not a
+     * floor below it and is passed through, as a body moves out of a solid it starts inside. The hit
+     * is a [SweepHit] whose [SweepHit.fraction] of [depth] gives the floor's top,
+     * `y + depth * fraction`, and whose normal is (0, -1). The solids are read as [sweepBox] reads
+     * them. It allocates nothing besides the hit it returns.
+     *
+     * @throws IllegalArgumentException if [x] or [y] is not finite, or [width] or [depth] is not a
+     *   positive finite number.
+     * @throws IllegalStateException if a solid is set up wrongly, as [Solid] describes.
+     *
+     * @sample samples.collision.Sweeps.floorBelowOrNull
+     */
+    public fun floorBelowOrNull(
+        x: Float,
+        y: Float,
+        width: Float,
+        depth: Float,
+        mask: CollisionLayers = CollisionLayers.ALL,
+    ): SweepHit? {
+        require(x.isFinite() && y.isFinite()) { "Probe start ($x, $y) is not finite." }
+        require(width > 0f && width.isFinite()) { "Probe width $width is not a positive finite number." }
+        require(depth > 0f && depth.isFinite()) { "Probe depth $depth is not a positive finite number." }
+        solids.ensureCurrent(cellSize)
+        val halfWidth = width * 0.5f
+        solids.sweep(x - halfWidth, y, x + halfWidth, y, 0f, depth, mask.bits, skipsOverlaps = true)
+        return solids.lastHitOrNull()
+    }
+
+    // The collider placeCollider found: its offset and half size in world units and its mask bits.
+    private var placedOffsetX = 0f
+    private var placedOffsetY = 0f
+    private var placedHalfWidth = 0f
+    private var placedHalfHeight = 0f
+    private var placedMask = 0
+
+    /**
+     * Checks that [entity] has a box collider that can be swept, records its offset, half size and
+     * mask, and returns its `Transform`.
+     */
+    private fun placeCollider(entity: Entity): Transform {
+        val world = solids.worldOrNull
+        checkNotNull(world) { "Collisions has met no world yet; call detect or moveBodies first." }
+        require(world.isAlive(entity)) { "Entity $entity is not alive." }
+        val transform = world.getOrNull(entity, Transform)
+        requireNotNull(transform) { "Entity $entity has no Transform." }
+        val collider = world.getOrNull(entity, Collider)
+        requireNotNull(collider) { "Entity $entity has no Collider." }
+        val shape = collider.shape
+        require(shape is Shape.Box) { "Entity $entity has a collider shape $shape that is not a Box." }
+        require(world.parentOrNull(entity) == null) { "Entity $entity has a parent, but only a root entity's collider can be moved in world space." }
+        require(world.getOrNull(entity, Solid) == null) { "Entity $entity is a Solid, and a solid cannot be moved against the solids." }
+        val scaleX = if (collider.scalesWithTransform) transform.scaleX else 1f
+        val scaleY = if (collider.scalesWithTransform) transform.scaleY else 1f
+        placedOffsetX = collider.offsetX * scaleX
+        placedOffsetY = collider.offsetY * scaleY
+        placedHalfWidth = shape.width * abs(scaleX) * 0.5f
+        placedHalfHeight = shape.height * abs(scaleY) * 0.5f
+        placedMask = collider.mask.bits
+        return transform
+    }
+
     private fun checkSweep(x: Float, y: Float, width: Float, height: Float, dx: Float, dy: Float) {
         require(x.isFinite() && y.isFinite()) { "Sweep start ($x, $y) is not finite." }
         require(width > 0f && height > 0f && width.isFinite() && height.isFinite()) {
             "Sweep box size ${width}x$height is not a positive finite size."
         }
         require(dx.isFinite() && dy.isFinite()) { "Sweep move ($dx, $dy) is not finite." }
+    }
+
+    private fun checkFloorSnap(floorSnap: Float) {
+        require(floorSnap >= 0f && floorSnap.isFinite()) { "Floor snap $floorSnap is negative or not finite." }
     }
 
     /**

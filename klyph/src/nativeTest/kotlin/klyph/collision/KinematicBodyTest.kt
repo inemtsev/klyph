@@ -376,6 +376,77 @@ class KinematicBodyTest {
     }
 
     @Test
+    fun isOnFloorTurnsFalseAsSoonAsDyIsSetUpward() {
+        val world = World()
+        val floor = world.solid(left = 0f, top = 100f, right = 200f, bottom = 140f)
+        val hero = world.hero(x = 100f, y = 90f - gap)
+        val collisions = Collisions()
+        collisions.run(world, hero, steps = 2)
+        assertTrue(hero.body.isOnFloor)
+        assertEquals(floor, hero.body.floorOrNull)
+
+        // A jump set by the game, before any move: no longer standing.
+        hero.body.dy = -600f
+        assertFalse(hero.body.isOnFloor)
+        assertNull(hero.body.floorOrNull)
+        // Setting it back before the move stands again: the last move did end on the floor.
+        hero.body.dy = 0f
+        assertTrue(hero.body.isOnFloor)
+
+        hero.body.dy = -600f
+        collisions.moveBodies(world, step, scenes = null)
+        assertFalse(hero.body.isOnFloor)
+        assertTrue(hero.feet < 100f - gap)
+    }
+
+    @Test
+    fun hasLandedIsTrueForExactlyOneMovePerLanding() {
+        val world = World()
+        world.solid(left = 0f, top = 100f, right = 400f, bottom = 140f)
+        val hero = world.hero(x = 100f, y = 0f)
+        val collisions = Collisions()
+        var landings = 0
+        var lastLandingSpeed = 0f
+        repeat(240) {
+            // Jump once, a second in, after the first landing.
+            if (it == 60) {
+                assertTrue(hero.body.isOnFloor)
+                hero.body.dy = -600f
+            }
+            val speed = hero.body.dy + 1800f * step
+            collisions.run(world, hero, steps = 1)
+            if (hero.body.hasLanded) {
+                landings++
+                lastLandingSpeed = hero.body.landingSpeed
+                assertEquals(speed, hero.body.landingSpeed)
+                assertTrue(hero.body.isOnFloor)
+                assertEquals(0f, hero.body.dy)
+            } else {
+                assertEquals(0f, hero.body.landingSpeed)
+            }
+        }
+        assertEquals(2, landings)
+        assertTrue(lastLandingSpeed > 500f, "A jump of 600 comes back down at about 600, not $lastLandingSpeed.")
+        assertTrue(hero.body.toString().endsWith("isOnCeiling=false)"))
+    }
+
+    @Test
+    fun walkingDownASmallStepIsNoLanding() {
+        val world = World()
+        world.solid(left = 0f, top = 100f, right = 100f, bottom = 140f)
+        world.solid(left = 100f, top = 101f, right = 400f, bottom = 140f)
+        val hero = world.hero(x = 80f, y = 90f - gap)
+        val collisions = Collisions()
+        collisions.run(world, hero, steps = 1)
+        assertTrue(hero.body.hasLanded)
+        repeat(30) {
+            collisions.run(world, hero, steps = 1, gravity = 0f, dx = 120f)
+            assertFalse(hero.body.hasLanded, "Step $it counted a landing.")
+        }
+        assertEquals(101f - gap, hero.feet, 0.0001f)
+    }
+
+    @Test
     fun toStringNamesTheSpeedAndTheContacts() {
         val body = KinematicBody(dx = 120f)
         assertEquals(
@@ -383,5 +454,16 @@ class KinematicBodyTest {
             body.toString(),
         )
         assertEquals("Solid(passable=FROM_BELOW)", Solid(Passable.FROM_BELOW).toString())
+
+        val world = World()
+        world.solid(left = 0f, top = 100f, right = 200f, bottom = 140f)
+        val hero = world.hero(x = 100f, y = 0f)
+        hero.body.dy = 900f
+        Collisions().moveBodies(world, 0.5.seconds)
+        assertEquals(
+            "KinematicBody(dx=0.0, dy=0.0, isOnFloor=true, isOnWall=false, wallNormalX=0.0, isOnCeiling=false, " +
+                "hasLanded=true, landingSpeed=900.0)",
+            hero.body.toString(),
+        )
     }
 }

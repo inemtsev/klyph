@@ -2,7 +2,7 @@ package klyph.roller
 
 import klyph.app.App
 import klyph.app.deltaSeconds
-import klyph.collision.Collisions
+import klyph.collision.BoxSlide
 import klyph.collision.KinematicBody
 import klyph.entity.Transform
 import kotlin.math.abs
@@ -12,8 +12,8 @@ import kotlin.math.sign
 // screen at once and the end screens after a moment (GameScenes does that), and in play it rolls
 // right at full speed, jumps at the end of every roof, at walls and at the blobs ahead of it, and
 // steers in the air to come down on a blob and never into a gap. It plans again every fixed step
-// from where the hero is, asking the engine's sweeps what is solid ahead and below, and fills the
-// same Controls the keyboard and gamepads fill.
+// from where the hero is, asking the engine what is solid ahead and below and following his jumps
+// with the move his body makes, and fills the same Controls the keyboard and gamepads fill.
 
 /**
  * Play scene FIXED_UPDATE system, run before the hero's own system: decides this step's move and
@@ -33,9 +33,9 @@ fun Run.steerAutopilot(app: App) {
     val feet = transform.feet
     // Held, so every jump goes full height, unless a helicopter hangs overhead to bump into.
     controls.isJumpHeld = !isHelicopterAbove(app, x, feet)
-    if (body.isGrounded) {
+    if (body.isOnFloor) {
         controls.move = 1f
-        controls.isJumpPressed = shouldJump(app, body, x, feet)
+        controls.isJumpPressed = shouldJump(app, body, transform)
         return
     }
     var move = 1f
@@ -46,9 +46,9 @@ fun Run.steerAutopilot(app: App) {
     }
     // Never steer into a gap: keep the first move whose fall ends on a roof.
     val arc = game.arc
-    if (!app.followArc(arc, x, feet, body.dx, body.dy, move).isLanded) {
+    if (!followArc(app, arc, x, transform.y, body.dx, body.dy, move).isLanded) {
         for (option in MOVES) {
-            if (app.followArc(arc, x, feet, body.dx, body.dy, option).isLanded) {
+            if (followArc(app, arc, x, transform.y, body.dx, body.dy, option).isLanded) {
                 move = option
                 break
             }
@@ -64,16 +64,13 @@ private val MOVES = floatArrayOf(1f, 0f, -1f)
  * just ahead, a jump now would come down on a blob walking on it, or a blob is about to run into
  * him.
  */
-private fun Run.shouldJump(app: App, body: KinematicBody, x: Float, feet: Float): Boolean {
-    val collisions = app.collisions
+private fun Run.shouldJump(app: App, body: KinematicBody, transform: Transform): Boolean {
+    val x = transform.x
+    val feet = transform.feet
     val reach = Tuning.AUTOPILOT_EDGE_MARGIN + abs(body.dx) * Tuning.AUTOPILOT_EDGE_SECONDS
-    // A thin box at the feet that far ahead, swept a little down, finds the roof there or a gap.
-    val floorAhead = collisions.sweepBox(x = x + reach, y = feet - 1f, width = 2f, height = 2f, dx = 0f, dy = FLOOR_PROBE, mask = Layers.LEVEL)
-    if (floorAhead == null) return true
-    // The hero's box rolled ahead as far: a wall in the way.
-    val height = Tuning.PLAYER_HEIGHT
-    val wall = collisions.sweepBox(x = x, y = feet - height / 2, width = Tuning.PLAYER_WIDTH, height = height, dx = reach, dy = 0f, mask = Layers.LEVEL)
-    if (wall != null) return true
+    // The roof under the feet that far ahead, or a gap; then his box rolled ahead as far: a wall.
+    if (app.collisions.floorBelowOrNull(x = x + reach, y = feet, width = 2f, depth = FLOOR_PROBE, mask = Layers.LEVEL) == null) return true
+    if (app.collisions.sweepCollider(player, dx = reach, dy = 0f) != null) return true
     var shouldStomp = false
     var nearest = Float.POSITIVE_INFINITY
     val arc = game.arc
@@ -84,7 +81,7 @@ private fun Run.shouldJump(app: App, body: KinematicBody, x: Float, feet: Float)
         if (dx < nearest) nearest = dx
         // Where a jump now would come down to the blob's top, and where the blob will be by then.
         val top = enemy.patrol.y - Tuning.BLOB_HEIGHT * 0.8f
-        app.followArc(arc, x, feet, body.dx, -Tuning.JUMP_SPEED, move = 1f, stopFeet = top)
+        followArc(app, arc, x, transform.y, body.dx, -Tuning.JUMP_SPEED, move = 1f, stopFeet = top)
         if (arc.isLanded || arc.feet < top) return@forEach
         val blobX = (transform.x + enemy.direction * Tuning.BLOB_SPEED * arc.seconds).coerceIn(enemy.patrol.minX, enemy.patrol.maxX)
         if (abs(arc.x - blobX) < AUTOPILOT_STOMP_AIM) shouldStomp = true
@@ -102,64 +99,52 @@ private const val AUTOPILOT_STOMP_AIM = 14f
 /** A blob nearer than this is jumped at whatever the landing, or it would hurt. */
 private const val AUTOPILOT_TOO_CLOSE = 70f
 
-/** Where an arc the autopilot followed ended. One is reused for every plan, so planning allocates only the sweeps' hits. */
+/** Where an arc the autopilot followed ended. One is reused for every plan, so planning allocates only the probes' hits. */
 class Arc {
+    /** Where the hero's Transform ended. */
     var x = 0f
-    var feet = 0f
+    var y = 0f
     var seconds = 0f
 
     /** Whether the arc ended on a roof or a ledge, rather than at its height or in a pit. */
     var isLanded = false
 
+    /** Each step's move, reused. */
+    val slide = BoxSlide()
+
+    val feet: Float get() = y + Tuning.PLAYER_SPRITE_HEIGHT / 2
+
     override fun toString(): String = "Arc(x=$x, feet=$feet, seconds=$seconds, landed=$isLanded)"
 }
 
 /**
- * Follows the hero from ([x], [feet]) at speed ([dx], [dy]) one fixed step at a time, holding
- * [move] and the jump button, until he lands, his falling feet come down to [stopFeet] or he
- * falls out of the world, and leaves where it ended in [arc]. Each step takes the speeds the
- * hero's own system gives and moves his box with two sweeps, across and then down, as the engine
- * moves his body.
+ * Follows the hero from his Transform at ([x], [y]) at speed ([dx], [dy]) one fixed step at a
+ * time, holding [move] and the jump button, until he lands, his falling feet come down to
+ * [stopFeet] or he falls out of the world, and leaves where it ended in [arc]. Each step takes the
+ * speeds the hero's own system gives and makes the move his body makes.
  */
-private fun App.followArc(arc: Arc, x: Float, feet: Float, dx: Float, dy: Float, move: Float, stopFeet: Float = Float.POSITIVE_INFINITY): Arc {
-    val dt = time.deltaSeconds
-    val gap = Collisions.CONTACT_GAP
-    val width = Tuning.PLAYER_WIDTH
-    val height = Tuning.PLAYER_HEIGHT
-    var stepX = x
-    var stepFeet = feet
+private fun Run.followArc(app: App, arc: Arc, x: Float, y: Float, dx: Float, dy: Float, move: Float, stopFeet: Float = Float.POSITIVE_INFINITY): Arc {
+    val dt = app.time.deltaSeconds
+    val slide = arc.slide
     var speedX = dx
     var speedY = dy
     var step = 0
+    arc.x = x
+    arc.y = y
     arc.isLanded = false
-    while (step < ARC_STEPS && stepFeet <= Tuning.WORLD_HEIGHT + Tuning.PIT_MARGIN) {
+    while (step < ARC_STEPS && arc.feet <= Tuning.WORLD_HEIGHT + Tuning.PIT_MARGIN) {
         step++
         speedX = rollSpeed(speedX, move, isGrounded = false, dt = dt)
         speedY = fallSpeed(speedY, isHeld = true, dt = dt)
-        val across = speedX * dt
-        val wall = collisions.sweepBox(x = stepX, y = stepFeet - height / 2, width = width, height = height, dx = across, dy = 0f, mask = Layers.LEVEL)
-        if (wall == null) {
-            stepX += across
-        } else {
-            stepX += across * wall.fraction - sign(across) * gap
-            speedX = 0f
-        }
-        val down = speedY * dt
-        val floor = collisions.sweepBox(x = stepX, y = stepFeet - height / 2, width = width, height = height, dx = 0f, dy = down, mask = Layers.LEVEL)
-        if (floor == null) {
-            stepFeet += down
-        } else {
-            stepFeet += down * floor.fraction - sign(down) * gap
-            if (floor.normalY < 0f) {
-                arc.isLanded = true
-                break
-            }
-            speedY = 0f
-        }
-        if (speedY > 0f && stepFeet >= stopFeet) break
+        app.collisions.slideCollider(player, x = arc.x, y = arc.y, dx = speedX * dt, dy = speedY * dt, result = slide)
+        arc.x = slide.x
+        arc.y = slide.y
+        arc.isLanded = slide.isOnFloor
+        if (arc.isLanded) break
+        if (slide.isOnWall) speedX = 0f
+        if (slide.isOnCeiling) speedY = 0f
+        if (speedY > 0f && arc.feet >= stopFeet) break
     }
-    arc.x = stepX
-    arc.feet = stepFeet
     arc.seconds = step * dt
     return arc
 }

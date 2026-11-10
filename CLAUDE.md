@@ -38,10 +38,13 @@ ledge) kept in a second grid inside `Collisions` (`SolidGrid`, rescanned at ever
 detection and rebuilt only when a solid changed, or before a sweep when the `Solid` or `Collider`
 store's version moved), a `KinematicBody(dx, dy)` on a root entity with a box collider is moved by
 the engine in every fixed step and stopped `Collisions.CONTACT_GAP` short of solids, reporting
-`isOnFloor`, `isOnWall`/`wallNormalX`, `isOnCeiling` and `floorOrNull`, with a
-`FLOOR_SNAP_DISTANCE` floor snap and `dropThrough()`, and `sweepBox`/`sweepBoxTo` sweep a box
-against the solids as they are now (a thick-ray Amanatides and Woo walk shared with the body move;
-gravity, coyote time and jump buffers stay game code), `app.canvas`, immediate quads and text in `WORLD` or
+`isOnFloor` (contact from the last move and `dy >= 0`), `isOnWall`/`wallNormalX`, `isOnCeiling`,
+`floorOrNull`, `hasLanded` and `landingSpeed`, with a `FLOOR_SNAP_DISTANCE` floor snap and
+`dropThrough()`, `sweepBox`/`sweepBoxTo`/`sweepCollider` sweep a box against the solids as they
+are now (a thick-ray Amanatides and Woo walk shared with the body move), `floorBelowOrNull` probes
+for a floor under a line, and `slideBox`/`slideCollider` make the body's move into a reusable
+`BoxSlide` through the same internal `SolidGrid.slide` the body uses (gravity, coyote time and
+jump buffers stay game code), `app.canvas`, immediate quads and text in `WORLD` or
 `SCREEN` space queued during RENDER, and `app.overlay`, the debug overlay toggled with F3; the
 `Text` and `ParticleEmitter` components draw with the sprites, fonts load through
 `app.assets.font` or come built in as `app.assets.defaultFont`, a texture's `SamplerFilter`,
@@ -72,7 +75,7 @@ every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` 
 `Wave` resource and shown in the HUD, drifters and divers that swoop at the ship, and every fifth
 wave is a boss with 12 hit points, a health bar drawn in world space and bullets on the
 `ENEMY_BULLET` layer; `KLYPH_AUTOPILOT=1` plays itself, with 4 enemies a wave so a 90 second run
-reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the buildings, clouds and skyline are painted into `Image`s at startup and the parallax backdrop is drawn in world space; the autopilot plans again every fixed step with `sweepBox`, probing for the roof's end and walls ahead and following jump arcs in sweeps, and fails at exit if it took no ring and stomped no enemy), `benchmarks`
+reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the buildings, clouds and skyline are painted into `Image`s at startup and the parallax backdrop is drawn in world space; the autopilot plans again every fixed step, probing for the roof's end with `floorBelowOrNull` and for walls ahead with `sweepCollider` and following jump arcs with `slideCollider`, and fails at exit if it took no ring and stomped no enemy), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`), and

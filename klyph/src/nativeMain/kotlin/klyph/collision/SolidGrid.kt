@@ -102,6 +102,13 @@ internal class SolidGrid {
     /** Every hit of a sweep that collects all, in the order the walk finds them. */
     private val collected = ArrayList<SweepHit>()
 
+    /** The slide every body move writes into, so moving bodies allocates nothing. */
+    val bodySlide: BoxSlide = BoxSlide()
+
+    /** The world of the last [refresh], or `null` before the first. */
+    val worldOrNull: World?
+        get() = world
+
     /**
      * Gathers every [Solid] of [world], except those owned by a scene [scenes] holds frozen, and
      * rebuilds the grid with cells [cellSize] across if any solid or the cell size changed.

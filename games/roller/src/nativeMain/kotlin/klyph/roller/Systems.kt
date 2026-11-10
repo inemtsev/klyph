@@ -90,7 +90,7 @@ fun Run.movePlayer(app: App) {
     val body = world.get(player, KinematicBody)
     val transform = world.get(player, Transform)
     val controls = game.controls
-    val isGrounded = body.isGrounded
+    val isGrounded = body.isOnFloor
     hero.isHiddenForStep = false
     hero.previousX = transform.x
     hero.previousFeet = transform.feet
@@ -98,7 +98,7 @@ fun Run.movePlayer(app: App) {
         RunState.PLAYING -> {
             hero.hurtLock -= dt
             hero.invulnerable -= dt
-            if (isGrounded && !hero.wasGrounded && hero.fallSpeed > Tuning.DUST_LANDING_SPEED) {
+            if (body.hasLanded && body.landingSpeed > Tuning.DUST_LANDING_SPEED) {
                 app.commands.spawnDust(game.art, transform.x, transform.feet)
             }
             val roof = body.floorOrNull?.let { world.getOrNull(it, Block) }
@@ -148,22 +148,12 @@ fun Run.movePlayer(app: App) {
             if (stateTimer <= 0f) outcomeOrNull = RunOutcome.COMPLETE
         }
     }
-    hero.wasGrounded = isGrounded
-    hero.fallSpeed = body.dy
     transform.rotation = when {
         state == RunState.DYING -> transform.rotation + 8f * dt * -hero.facing
         isGrounded -> hero.facing * Tuning.LEAN * min(1f, abs(body.dx) / Tuning.MAX_SPEED)
         else -> 0f
     }
 }
-
-/**
- * Whether the body stands on a roof: the last move ended on one and nothing has sent it up since.
- * A stomp or a hit sets [KinematicBody.dy] rising while [KinematicBody.isOnFloor] still says
- * where the last move ended, and on a roof the move zeroes `dy`, so a rising `dy` means he has
- * left it.
- */
-val KinematicBody.isGrounded: Boolean get() = isOnFloor && dy >= 0f
 
 /** The y of the hero's feet, the bottom of his box, whose Transform is the middle of his sprite. */
 val Transform.feet: Float get() = y + Tuning.PLAYER_SPRITE_HEIGHT / 2
@@ -213,7 +203,7 @@ private const val FALL_SECONDS = 0.8f
 /**
  * Puts the hero back on the last roof he stood on, a little behind where he left it, blinking.
  * He jumps there in one step, which the engine would draw as a dash across the screen between
- * two steps, so he stays hidden until the next step has recorded the new place.
+ * two steps (klyph issue #17), so he stays hidden until the next step has recorded the new place.
  */
 private fun Run.respawn(hero: Player, body: KinematicBody, transform: Transform) {
     val roof = hero.safeRoof
@@ -428,7 +418,7 @@ fun Run.animatePlayer(app: App) {
     val body = app.world.get(player, KinematicBody)
     val art = game.art
     val region = when {
-        !body.isGrounded -> art.jump
+        !body.isOnFloor -> art.jump
         abs(body.dx) > 15f -> {
             hero.stride += abs(body.dx) * app.time.deltaSeconds / Tuning.STRIDE_LENGTH
             art.skate[hero.stride.toInt() % art.skate.size]

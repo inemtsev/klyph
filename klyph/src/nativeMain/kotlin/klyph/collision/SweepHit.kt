@@ -3,8 +3,9 @@ package klyph.collision
 import klyph.entity.Entity
 
 /**
- * The first touch of a box swept by [Collisions.sweepBox] or [Collisions.sweepBoxTo] with a [Solid]:
- * which solid, how far along the move and which face.
+ * The first touch of a box swept by [Collisions.sweepBox], [Collisions.sweepBoxTo] or
+ * [Collisions.sweepCollider], or of the line [Collisions.floorBelowOrNull] moves down, with a
+ * [Solid]: which solid, how far along the move and which face.
  *
  * [fraction] is how far along the move the box gets before it touches the solid, from 0 at the
  * start to 1 at the end, so the box stops at `x + dx * fraction`, `y + dy * fraction`. The normal,

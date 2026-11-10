@@ -35,15 +35,25 @@ All notable changes to klyph are recorded here. The format follows
   `Collisions`, rebuilt only when a solid changes, and still take part in overlap detection.
 - `KinematicBody(dx, dy)`, a component the engine moves in every fixed step, after the `Velocity`
   step: across, then up or down, stopping a contact gap (`Collisions.CONTACT_GAP`) short of every
-  solid in its collider's mask. It reports `isOnFloor`, `isOnWall` with `wallNormalX`,
-  `isOnCeiling` and `floorOrNull`, keeps to a floor up to `Collisions.FLOOR_SNAP_DISTANCE` below
-  it, and `dropThrough()` falls through the one-way ledge it stands on. Gravity, coyote time and
-  jump buffers stay game code. `Collisions.moveBodies(world, delta)` runs the step without an app.
+  solid in its collider's mask. It reports `isOnWall` with `wallNormalX`, `isOnCeiling`,
+  `isOnFloor`, which also turns `false` as soon as `dy` is set upward, so a jump leaves the floor
+  before the next move, and `floorOrNull`; `hasLanded` is `true` for the one move per landing that
+  came down onto a floor, and `landingSpeed` keeps the speed it came down with. It keeps to a
+  floor up to `Collisions.FLOOR_SNAP_DISTANCE` below it, and `dropThrough()` falls through the
+  one-way ledge it stands on. Gravity, coyote time and jump buffers stay game code.
+  `Collisions.moveBodies(world, delta)` runs the step without an app.
 - `Collisions.sweepBox(x, y, width, height, dx, dy, mask)`, which returns the first solid a moving
   box touches as a `SweepHit` with the fraction of the move and the face's normal, and
   `Collisions.sweepBoxTo(destination, ...)`, which collects every solid along the move. Sweeps
   read the solids as they are now, so they work in `FIXED_UPDATE`, and a sweep with no move
-  returns the solid the box overlaps. `Collisions.solidCount` counts the solids.
+  returns the solid the box overlaps. `Collisions.sweepCollider(entity, dx, dy)` sweeps an
+  entity's own box collider with its offset, scale and mask, and
+  `Collisions.floorBelowOrNull(x, y, width, depth, mask)` finds the floor under a line such as a
+  walker's feet, landing on one-way ledges as a falling body does. `Collisions.slideBox(x, y,
+  width, height, dx, dy, mask, floorSnap, result)` and `Collisions.slideCollider(entity, x, y, dx,
+  dy, floorSnap, result)` make a body's move without a body, through the same code, and write
+  where the box ends and what it touched into a reusable `BoxSlide`, so a planner follows a jump
+  exactly as the body will. `Collisions.solidCount` counts the solids.
 
 ### Changed
 
@@ -57,8 +67,9 @@ All notable changes to klyph are recorded here. The format follows
   both just pressed and just released in that step. Every other phase still answers for the
   frame, and `isDown` is unchanged.
 - Rooftop Roller runs on `KinematicBody` and `Solid` instead of its own movement and landing
-  code, reads its jump press in `FIXED_UPDATE` and drops its jump latch; its autopilot plans
-  with sweeps once per fixed step instead of running a copy of the hero's physics ahead.
+  code, reads its jump press in `FIXED_UPDATE` and drops its jump latch; its autopilot probes the
+  roofs with `floorBelowOrNull` and `sweepCollider` and follows its jumps with `slideCollider`
+  instead of running a copy of the hero's physics ahead.
 - `Collisions.toString` also gives the number of solids, as in
   `Collisions(cellSize=64.0, colliders=120, cells=85, pairs=3, solids=40)`.
 

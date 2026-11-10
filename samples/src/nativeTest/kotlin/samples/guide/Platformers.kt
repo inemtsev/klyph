@@ -5,6 +5,8 @@ package samples.guide
 import klyph.app.App
 import klyph.app.Phase
 import klyph.app.deltaSeconds
+import klyph.audio.Sound
+import klyph.collision.BoxSlide
 import klyph.collision.Collider
 import klyph.collision.Collisions
 import klyph.collision.KinematicBody
@@ -42,14 +44,27 @@ class Walker(var direction: Float = 1f) {
 }
 // end snippet
 
-// snippet: landing
+// snippet: jump-landing
 /**
- * Returns the y at which a hero 24 by 40 units centered on ([x], [y]) would come to rest falling
- * straight down, or `null` if nothing is below it within 2000 units.
+ * Returns where [hero] comes down if he jumps now and keeps rolling at [dx], following his body's
+ * move one fixed step at a time, or `null` if he is still in the air after two seconds.
  */
-fun App.landingYOrNull(x: Float, y: Float): Float? {
-    val hit = collisions.sweepBox(x = x, y = y, width = 24f, height = 40f, dx = 0f, dy = 2000f) ?: return null
-    return y + 2000f * hit.fraction - Collisions.CONTACT_GAP
+fun App.jumpLandingOrNull(hero: Entity, dx: Float, slide: BoxSlide): BoxSlide? {
+    val transform = world.get(hero, Transform)
+    val dt = time.deltaSeconds
+    var x = transform.x
+    var y = transform.y
+    var dy = -700f
+    repeat(120) {
+        // The same gravity and fall limit as the system that moves him.
+        dy = minOf(dy + 1800f * dt, 900f)
+        collisions.slideCollider(hero, x = x, y = y, dx = dx * dt, dy = dy * dt, result = slide)
+        if (slide.isOnFloor) return slide
+        if (slide.isOnCeiling) dy = 0f
+        x = slide.x
+        y = slide.y
+    }
+    return null
 }
 // end snippet
 
@@ -103,6 +118,15 @@ class Platformers {
         // end snippet
     }
 
+    fun App.landSound(hero: Entity, thud: Sound) {
+        // snippet: land
+        addSystem(Phase.FIXED_UPDATE) { app ->
+            val body = app.world.get(hero, KinematicBody)
+            if (body.hasLanded && body.landingSpeed > 400f) app.audio.play(thud)
+        }
+        // end snippet
+    }
+
     fun App.dropDown(hero: Entity) {
         // snippet: drop
         addSystem(Phase.FIXED_UPDATE) { app ->
@@ -124,9 +148,9 @@ class Platformers {
         }
         addSystem(Phase.FIXED_UPDATE) { app ->
             app.world.forEach(Walker, KinematicBody, Transform) { _, walker, body, transform ->
-                // A thin box just ahead of the feet, swept a little down, finds the floor there.
+                // The floor just ahead of the feet, at the bottom of the 32 tall box, or a gap.
                 val ahead = transform.x + walker.direction * 16f
-                val floorAhead = app.collisions.sweepBox(x = ahead, y = transform.y, width = 4f, height = 32f, dx = 0f, dy = 8f)
+                val floorAhead = app.collisions.floorBelowOrNull(x = ahead, y = transform.y + 16f, width = 4f, depth = 8f)
                 if (body.isOnWall || (body.isOnFloor && floorAhead == null)) walker.direction = -walker.direction
                 body.dx = walker.direction * 80f
                 body.dy += 1800f * app.time.deltaSeconds

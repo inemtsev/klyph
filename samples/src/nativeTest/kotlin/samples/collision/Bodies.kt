@@ -41,6 +41,54 @@ class Bodies {
     }
 
     @Sample
+    fun isOnFloor() {
+        val world = World()
+        val floor = world.create()
+        world.add(floor, Transform, Transform(x = 0f, y = 120f))
+        world.add(floor, Collider, Collider(Shape.Box(width = 400f, height = 40f)))
+        world.add(floor, Solid, Solid())
+        val hero = world.create()
+        val body = KinematicBody(dy = 30f)
+        world.add(hero, Transform, Transform(x = 0f, y = 80f - Collisions.CONTACT_GAP))
+        world.add(hero, Collider, Collider(Shape.Box(width = 20f, height = 40f)))
+        world.add(hero, KinematicBody, body)
+        val collisions = Collisions()
+        collisions.moveBodies(world, 0.1.seconds)
+        assertPrints(body.isOnFloor, "true")
+
+        // A jump: the body no longer stands, before it has even moved.
+        body.dy = -500f
+        assertPrints(body.isOnFloor, "false")
+    }
+
+    @Sample
+    fun hasLanded() {
+        val world = World()
+        val floor = world.create()
+        world.add(floor, Transform, Transform(x = 0f, y = 120f))
+        world.add(floor, Collider, Collider(Shape.Box(width = 400f, height = 40f)))
+        world.add(floor, Solid, Solid())
+        val hero = world.create()
+        val body = KinematicBody(dy = 600f)
+        world.add(hero, Transform, Transform(x = 0f, y = 0f))
+        world.add(hero, Collider, Collider(Shape.Box(width = 20f, height = 40f)))
+        world.add(hero, KinematicBody, body)
+        val collisions = Collisions()
+
+        // Falling: 60 down, still in the air.
+        collisions.moveBodies(world, 0.1.seconds)
+        assertPrints(body.hasLanded, "false")
+        // Comes down onto the floor at 600 units per second.
+        collisions.moveBodies(world, 0.1.seconds)
+        assertPrints(body.hasLanded, "true")
+        assertPrints(body.landingSpeed, "600.0")
+        // Standing on it is no new landing.
+        collisions.moveBodies(world, 0.1.seconds)
+        assertPrints(body.hasLanded, "false")
+        assertPrints(body.isOnFloor, "true")
+    }
+
+    @Sample
     fun dropThrough() {
         val world = World()
         val ledge = world.create()

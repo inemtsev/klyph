@@ -88,7 +88,9 @@ An entity with both a `Velocity` and a `KinematicBody` is an error: the body's s
 The engine adds no gravity, so the system that reads the input adds it to `dy`. It runs in
 `FIXED_UPDATE`, before the engine's move in the same step, and reads the jump there with
 `isJustPressed`, which inside `FIXED_UPDATE` counts steps, so each press reaches exactly one
-step. The contact flags it reads are the ones the previous step's move left.
+step. The contact flags it reads are the ones the previous step's move left, except that
+`isOnFloor` turns `false` as soon as `dy` is set upward: once the system has jumped, the body no
+longer stands, before it has moved.
 
 <!-- snippet: run-and-jump -->
 ```kotlin
@@ -125,18 +127,31 @@ After every move the body says what it touched:
 
 | Property | Meaning |
 |---|---|
-| `isOnFloor` | The move ended on a floor: it landed moving down, or the floor check found one. |
+| `isOnFloor` | The body stands: the move ended on a floor, landing on it or found by the floor check, and `dy` has not been set upward since. |
 | `isOnWall` | The move ran into a wall moving across. |
 | `wallNormalX` | -1 for a wall on the right, 1 for one on the left, 0 with no wall: the way to push off for a wall jump. |
 | `isOnCeiling` | The move ran into a ceiling moving up. |
-| `floorOrNull` | The solid the body stands on, or `null` in the air. |
+| `floorOrNull` | The solid the body stands on, or `null` while `isOnFloor` is `false`. |
+| `hasLanded` | The move came down onto a floor and the body did not stand before it: `true` for one step per landing. |
+| `landingSpeed` | The downward speed that landing arrived with, kept because the landing zeroes `dy`; 0 without a landing. |
 
 A body that stood on a floor and is not moving up looks `Collisions.FLOOR_SNAP_DISTANCE`, 2 units,
 further down after its move and lands on a floor it finds there. Walking down a small step then
 keeps `isOnFloor` true instead of falling for one step, which would let coyote time start.
 
-To land with a sound or a puff of dust, keep the last step's `isOnFloor` in your system and act
-when it turns from `false` to `true`.
+To land with a sound or a puff of dust, act when `hasLanded` is `true`, and look at
+`landingSpeed` to do it only after a real fall:
+
+<!-- snippet: land -->
+```kotlin
+addSystem(Phase.FIXED_UPDATE) { app ->
+    val body = app.world.get(hero, KinematicBody)
+    if (body.hasLanded && body.landingSpeed > 400f) app.audio.play(thud)
+}
+```
+
+Walking down a small step is no landing, and neither is standing still. The first step of a body
+placed on a floor is one, at a low speed.
 
 ## Dropping through a ledge
 
@@ -161,7 +176,14 @@ The hit holds the solid, the `fraction` of the move the box gets through, from 0
 normal of the face it touched: `normalY` is -1 for a floor, because y points down.
 `sweepBoxTo(destination, …)` adds every solid along the move to a collection, in the order the box
 reaches them. A sweep with `dx` and `dy` both 0 returns the solid the box overlaps where it is.
-Sweeps follow the one-way rule and the `mask` parameter as bodies do.
+Sweeps follow the one-way rule and the `mask` parameter as bodies do. `sweepCollider(entity, dx,
+dy)` sweeps an entity's own box collider, placed, offset and scaled as for a body, against the
+solids in its mask, so a game need not repeat its hero's size to look ahead of him.
+
+`floorBelowOrNull(x, y, width, depth)` answers the question every walker and autopilot asks:
+is there floor under this point? It moves a level line `width` wide at height `y`, such as the
+feet, `depth` units down and returns the first solid whose top it meets, landing on one-way
+ledges as a falling body does.
 
 Unlike the overlap queries, which read the positions of the last detection, sweeps read the
 solids as they are now, so they work in `FIXED_UPDATE`. An enemy that turns at walls and at the
@@ -188,9 +210,9 @@ commands.spawn {
 }
 addSystem(Phase.FIXED_UPDATE) { app ->
     app.world.forEach(Walker, KinematicBody, Transform) { _, walker, body, transform ->
-        // A thin box just ahead of the feet, swept a little down, finds the floor there.
+        // The floor just ahead of the feet, at the bottom of the 32 tall box, or a gap.
         val ahead = transform.x + walker.direction * 16f
-        val floorAhead = app.collisions.sweepBox(x = ahead, y = transform.y, width = 4f, height = 32f, dx = 0f, dy = 8f)
+        val floorAhead = app.collisions.floorBelowOrNull(x = ahead, y = transform.y + 16f, width = 4f, depth = 8f)
         if (body.isOnWall || (body.isOnFloor && floorAhead == null)) walker.direction = -walker.direction
         body.dx = walker.direction * 80f
         body.dy += 1800f * app.time.deltaSeconds
@@ -198,23 +220,44 @@ addSystem(Phase.FIXED_UPDATE) { app ->
 }
 ```
 
-An autopilot or a smarter enemy can plan with sweeps too, such as finding where a fall from a
-point ends:
+## Planning a jump
 
-<!-- snippet: landing -->
+An autopilot or a smarter enemy plans by trying moves before making them. `slideBox` and
+`slideCollider` make the move a body makes in one step, across and then up or down with the same
+stops, contact gap and one-way rule, without a body and without moving anything. They write where
+the box ends and what it touched into a `BoxSlide` you pass in and reuse, so planning allocates
+nothing. The body's move and the slides are the same code, so a plan that feeds the slide the
+speeds your system would give ends where the body will:
+
+<!-- snippet: jump-landing -->
 ```kotlin
 /**
- * Returns the y at which a hero 24 by 40 units centered on ([x], [y]) would come to rest falling
- * straight down, or `null` if nothing is below it within 2000 units.
+ * Returns where [hero] comes down if he jumps now and keeps rolling at [dx], following his body's
+ * move one fixed step at a time, or `null` if he is still in the air after two seconds.
  */
-fun App.landingYOrNull(x: Float, y: Float): Float? {
-    val hit = collisions.sweepBox(x = x, y = y, width = 24f, height = 40f, dx = 0f, dy = 2000f) ?: return null
-    return y + 2000f * hit.fraction - Collisions.CONTACT_GAP
+fun App.jumpLandingOrNull(hero: Entity, dx: Float, slide: BoxSlide): BoxSlide? {
+    val transform = world.get(hero, Transform)
+    val dt = time.deltaSeconds
+    var x = transform.x
+    var y = transform.y
+    var dy = -700f
+    repeat(120) {
+        // The same gravity and fall limit as the system that moves him.
+        dy = minOf(dy + 1800f * dt, 900f)
+        collisions.slideCollider(hero, x = x, y = y, dx = dx * dt, dy = dy * dt, result = slide)
+        if (slide.isOnFloor) return slide
+        if (slide.isOnCeiling) dy = 0f
+        x = slide.x
+        y = slide.y
+    }
+    return null
 }
 ```
 
-To follow a jump, step its arc ahead in short sweeps, one per fixed step, with the same gravity
-your system adds.
+`slideCollider` starts from where the entity's `Transform` would be and returns that position, so
+each step's `x` and `y` feed the next; `slideBox` does the same for a box you describe. Neither
+looks for a floor below at the end unless you pass `floorSnap`, and neither drops through
+ledges.
 
 ## Limits
 
@@ -225,13 +268,19 @@ your system adds.
 - A body that starts a move inside a solid moves through that solid, so it is never stuck, but
   place bodies outside solids.
 - A scene frozen under a pushed scene keeps its bodies still, and its solids stop nothing.
+- A body moved by setting its `Transform`, such as a respawn, is drawn sliding from its old place
+  to the new one during the next step when it is `Interpolated`, a dash across the screen. Hide it
+  for that step. The drawn, blended position is not public either, so a camera that follows an
+  interpolated body keeps the body's last position and blends it with `time.fixedStepAlpha`
+  itself. Both are issue #17, planned for 1.2.
 
 ## See also
 
 - [Solid](../klyph/klyph.collision/-solid/index.html) and
   [Passable](../klyph/klyph.collision/-passable/index.html)
 - [KinematicBody](../klyph/klyph.collision/-kinematic-body/index.html)
-- [Collisions](../klyph/klyph.collision/-collisions/index.html) and
-  [SweepHit](../klyph/klyph.collision/-sweep-hit/index.html)
+- [Collisions](../klyph/klyph.collision/-collisions/index.html),
+  [SweepHit](../klyph/klyph.collision/-sweep-hit/index.html) and
+  [BoxSlide](../klyph/klyph.collision/-box-slide/index.html)
 - [Input](input.md) for `isJustPressed` in `FIXED_UPDATE`
 - Next: [Text, canvas and overlay](text-canvas-and-overlay.md)
