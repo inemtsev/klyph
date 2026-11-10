@@ -37,6 +37,21 @@ and the games never do. A declaration a game needs must not carry the marker. If
 `games/` stops compiling because of it, remove the marker from that declaration instead of
 opting the game in.
 
+## Reviewing a change
+
+- The review checklist in section 9 of [API_STYLE.md](API_STYLE.md) is ticked for every public
+  declaration.
+- Every public declaration has KDoc and, where it can run without a GPU, a `@sample` in `samples/`.
+- `./gradlew check` passes, which covers the samples, the guide snippets and the interop-import
+  rule.
+- Nothing outside `klyph-platform` imports `kotlinx.cinterop`, `sdl3`, `stb`, `vorbis`, `cnames`
+  or `platform.*`.
+- The sample games under `games/` never opt into `@KlyphPlatformApi` and never need an engine
+  change the issue did not ask for.
+- [CHANGELOG.md](CHANGELOG.md) has a line under `Unreleased` for anything a user can see.
+- A change to the frame order is reflected in the "Frame order" section of `CLAUDE.md` and in the
+  `runApp` KDoc.
+
 ## Layout
 
 | Module | Contents |

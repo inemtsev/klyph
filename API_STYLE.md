@@ -50,7 +50,7 @@ in the same PR rather than inventing a one-off.
 | `buildX { }` | Top-level factory through a builder DSL. | `buildGraph { edge(a, b) }` |
 | `emptyX()` | Shared immutable empty instance. | `emptyGraph()` |
 | `X.of(...)` | Companion factory for a value class whose constructor takes the raw representation, building it from the value users think in. | `CollisionLayers.of(3)` |
-| `X.use(...)` | Companion factory that returns a new `X` set up for one common use, named after that use. | `ParticleEmitter.burst(region, 12)` |
+| `X.<use>(...)` | Companion factory that returns a new `X` set up for one common use, named after that use. | `ParticleEmitter.burst(region, 12)` |
 | `spawnX(...)` on `Commands` | Queues spawning an entity set up as `X` and returns its handle, as `spawn { }` does. | `commands.spawnBurst(x, y, emitter)` |
 | `onX { }` | Builder function that registers an action run when `X` happens. | `buildScene("title") { onEnter { } }` |
 | `xOrNull()` | Function or property: same as `x()` but returns `null` instead of throwing. May stand alone when absence is normal rather than an error. | `firstOrNull()`, `nodeOrNull(id)`, `parentOrNull(child)`, `scenes.currentOrNull`, `collisions.floorBelowOrNull(x, y, width, depth)` |

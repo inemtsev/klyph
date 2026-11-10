@@ -6,6 +6,9 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
+Movement, jumps and floors. The engine now moves your entities and stops them at walls and
+floors, so a platformer takes as little code as a shooter: Rooftop Roller lost its physics file.
+
 ### Added
 
 - The Gradle plugin's library mode, `com.eventslooped.klyph.library`: the same targets, SDL3
