@@ -8,124 +8,69 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [1.1.0] - 2026-11-10
 
-Movement, jumps and floors. The engine now moves your entities and stops them at walls and
-floors, so a platformer takes as little code as a shooter: Rooftop Roller lost its physics file.
+Movement, jumps and floors: the engine moves your entities and stops them at walls and floors,
+so a platformer takes as little code as a shooter.
 
 ### Added
 
-- `Solid`, a component that makes an entity's box `Collider` a wall, floor or ledge that kinematic
-  bodies stop at. `Solid(passable = Passable.FROM_BELOW)` is a one-way ledge, landed on from above
-  and passed through from below and from the sides. Solids live in a grid of their own inside
-  `Collisions`, rebuilt only when a solid changes, and still take part in overlap detection. A
-  solid must be a root entity without a `Velocity`; solids never carry bodies.
-- `KinematicBody(dx, dy)`, a component the engine moves in every fixed step, after the `Velocity`
-  step: across, then up or down, stopping `Collisions.CONTACT_GAP` short of every solid in its
-  collider's mask. It reports `isOnFloor`, `isOnWall` with `wallNormalX`, `isOnCeiling` and
-  `floorOrNull`, plus `hasLanded` and `landingSpeed` for the one move that came down onto a
-  floor. It keeps to a floor up to `Collisions.FLOOR_SNAP_DISTANCE` below it, and `dropThrough()`
-  falls through the one-way ledge it stands on. Gravity, coyote time and jump buffers stay game
-  code. `Collisions.moveBodies(world, delta)` runs the step without an app.
-- Sweeps against the solids as they are now: `Collisions.sweepBox(x, y, width, height, dx, dy)`
-  returns the first solid a moving box touches as a `SweepHit`, `sweepBoxTo(destination, ...)`
-  collects every solid along the move, `sweepCollider(entity, dx, dy)` sweeps an entity's own box
-  collider, and `floorBelowOrNull(x, y, width, depth)` finds the floor under a line such as a
-  walker's feet.
-- Planning moves: `Collisions.slideBox(x, y, width, height, dx, dy, result)` and
-  `slideCollider(entity, x, y, dx, dy, result)` make a body's move without a body, through the
-  body's own code, and write where the box ends and what it touched into a reusable `BoxSlide`,
-  so a planner follows a jump exactly as the body will. `Collisions.solidCount` counts the solids.
-- `Velocity(dx, dy)`, a component the engine applies to its entity's `Transform` in every fixed
-  step, after the FIXED_UPDATE systems and by the fixed step length. `Interpolated` entities are
-  recorded before the move, and entities of a frozen scene stand still.
-- `ParticleEmitter.burst(region, count, ...)`, which makes an emitter that sends out one burst of
-  `count` particles and then destroys its entity, and `Commands.spawnBurst(x, y, emitter)`, which
-  spawns the entity that carries it.
-- `Animation.speed` and `SpriteAnimation.speed`, a playback rate multiplier; 0 holds the current
-  frame. `Animation` and `SpriteAnimation` include it in `toString`.
-- `Collider.scalesWithTransform`, `true` by default. Set to `false`, the collider keeps its shape
-  and offset at scale 1 whatever the entity's scale, so a squash or a spin animated through
-  `Transform.scaleX` and `scaleY` leaves the hitbox as it is.
-- `Time.fixedStepCount`, the number of `FIXED_UPDATE` steps completed so far.
-- The Gradle plugin's library mode, `com.eventslooped.klyph.library`: the same targets, SDL3
-  lookup and test-binary link settings as `com.eventslooped.klyph`, without an `entryPoint`, an
-  executable or the run, asset and distribution tasks, for the shared module of a game split
-  into several.
-- Read-only `klyph { }` members for build logic of your own: `hostTarget`, `supportedTargets`,
-  `configuredTargets` and `sdl3IncludeDir`, the SDL3 headers for a cinterop of your own; when
-  SDL3 is downloaded, every cinterop task runs after `fetchSdl3`.
-- The Gradle property `klyph.sdl3.download=false`, which stops the build instead of downloading
-  SDL3 when none is installed.
+- `Solid`: makes a box `Collider` a wall or floor, or a one-way ledge with `Passable.FROM_BELOW`.
+- `KinematicBody(dx, dy)`: moved by the engine each fixed step and stopped at solids, reporting
+  `isOnFloor`, `isOnWall`, `isOnCeiling`, `floorOrNull` and `hasLanded`, with `dropThrough()` for
+  ledges. Gravity and jumps stay game code; see the
+  [Platformers guide](https://inemtsev.github.io/klyph/guide/platformers.html).
+- Sweeps against solids: `Collisions.sweepBox`, `sweepBoxTo`, `sweepCollider` and `floorBelowOrNull`.
+- Planning a move without a body: `Collisions.slideBox` and `slideCollider`, into a reusable `BoxSlide`.
+- `Velocity(dx, dy)`: applied to the entity's `Transform` each fixed step.
+- `ParticleEmitter.burst(region, count, ...)` and `Commands.spawnBurst(x, y, emitter)` for one-shot effects.
+- `Animation.speed` and `SpriteAnimation.speed`: a playback rate multiplier.
+- `Collider.scalesWithTransform`: set to `false` to keep the hitbox at scale 1 while the sprite squashes or spins.
+- `Time.fixedStepCount`.
+- Gradle plugin: `com.eventslooped.klyph.library` for a game's shared module, read-only `klyph { }`
+  members `hostTarget`, `supportedTargets`, `configuredTargets` and `sdl3IncludeDir`, and
+  `klyph.sdl3.download=false` to stop the build instead of downloading SDL3.
 
 ### Changed
 
-- `isJustPressed` and `isJustReleased` on `Keyboard`, `Mouse`, `Gamepad` and `List<Gamepad>` now
-  count fixed steps inside `FIXED_UPDATE`: a press or release is seen by the first step after it
-  and by no other. In 1.0 they answered for the frame in every phase, so a system reading them in
-  `FIXED_UPDATE` missed a press in a frame that ran no step, which happens on displays faster than
-  the fixed rate, and saw it twice in a frame that ran two. This is a behaviour change for 1.0
-  games that read edges in `FIXED_UPDATE`: they now get each press once, and a hand-made latch
-  that queued presses from `INPUT` for the next step can go. The same press is still a frame
-  edge in the other phases, so a press that starts play from a menu in `UPDATE` is also just
-  pressed in the first `FIXED_UPDATE` step of the new scene; compare `Time.fixedStepCount` with
-  the step the scene started on to tell the two apart, as Rooftop Roller does. A tap shorter
-  than a step reads as both just pressed and just released in that step. Every other phase still
-  answers for the frame, and `isDown` is unchanged.
-- Rooftop Roller runs on `KinematicBody` and `Solid` instead of its own movement and landing
-  code, reads its jump press in `FIXED_UPDATE` and drops its jump latch; its autopilot probes the
-  roofs with `floorBelowOrNull` and `sweepCollider` and follows its jumps with `slideCollider`
-  instead of running a copy of the hero's physics ahead.
-- `Collisions.toString` also gives the number of solids, as in
-  `Collisions(cellSize=64.0, colliders=120, cells=85, pairs=3, solids=40)`.
+- `isJustPressed` and `isJustReleased` count fixed steps inside `FIXED_UPDATE`: each press is seen
+  by exactly one step. A game that latched presses from `INPUT` for the next step can drop the latch.
+- Rooftop Roller runs on `KinematicBody` and `Solid`; its own physics code is gone.
+- `Collisions.toString` includes `solids=N`.
 
 ## [1.0.0] - 2026-11-04
 
+The first stable release. Code written for 1.0 keeps working in every 1.x release, except the
+platform plumbing marked `@KlyphPlatformApi`.
+
 ### Added
 
-- API reference built with Dokka, with samples shown inline, published to GitHub Pages from
-  `v*` tags.
-- Release workflow that publishes the engine and the Gradle plugin to Maven Central from `v*`
-  tags and runs the consumer test against Central.
-- `CONTRIBUTING.md`, this changelog and a bug report template.
-- `@KlyphPlatformApi`, an opt-in marker (an error without opt-in) on the platform plumbing in
-  `klyph.platform` that only the engine calls: the GPU wrappers, `EventPump` and `PlatformEvent`,
-  `AudioDevice`, `AudioRenderer` and `Audio.renderer`, `Sdl.init` and `Sdl.quit`, the `Window`
-  factory and `WindowFlag`, `CompiledShader`, `FrameCapture` and `printError`. They are outside
-  the 1.0 compatibility promise. Games use none of them.
+- `@KlyphPlatformApi`: an opt-in marker on the SDL and GPU plumbing in `klyph.platform` that only
+  the engine calls. It is outside the compatibility promise, and games use none of it.
 - `AudioOutput` with `DEVICE` and `NONE`, for `AudioConfig.output`.
 - `Assets.spriteSheetOrNull` and `Files.readTextOrNull`.
-- `World(initialCapacity)` rejects a capacity below 1 with `IllegalArgumentException` instead of
-  failing on the first `create`.
-- `Color.BLACK`, `RED`, `GREEN`, `BLUE`, `YELLOW`, `CYAN`, `MAGENTA` and `GRAY`, all opaque, next
-  to `WHITE` and `TRANSPARENT`.
-- `Keyboard.axis(negative: KeyCode, positive: KeyCode)`, which finds both keys by their labels
-  under the current layout, beside the `Scancode` overload.
+- `Color.BLACK`, `RED`, `GREEN`, `BLUE`, `YELLOW`, `CYAN`, `MAGENTA` and `GRAY`.
+- `Keyboard.axis(negative: KeyCode, positive: KeyCode)`, beside the `Scancode` overload.
+- The [API reference](https://inemtsev.github.io/klyph/) with inline samples, published on every
+  release, and Maven Central publishing from `v*` tags.
 
 ### Changed
 
-- The sample games moved to `games/shooter` and `games/squish`; their Gradle paths are now
-  `:games:shooter` and `:games:squish`.
-- The shooter comes in waves, shown as "Wave n" in the HUD, and gains a diver, an enemy that
-  enters from the top of the view and swoops through the ship's position on an arc.
-- Every fifth wave of the shooter is a boss: the diver at three times the size, with 12 hit points
-  shown as a bar above it, sweeping the top of the arena and firing bullets down every second.
-  Destroying it scores 50 and starts the next wave.
-- Bug Squish hides the system cursor over its window, since the fly swatter is the pointer, and
-  F11 switches it to fullscreen and back.
-- Both sample games use the gameplay kit (`Lifetime`, `Fade`, `AnimationEnd`, `EmitterEnd`,
-  `EmitterSpace`, `Camera.follow` and `Camera.bounds`, `TextShadow`, `Overlap.otherThan`, the
-  gamepad list queries, `Assets.disc`) in place of their own copies.
-- CI runs the sandbox offscreen on every job and uploads frame 20 as a PNG artifact; the step must
-  pass on macOS and is informational on Linux and Windows, whose runners have no GPU.
-- The published javadoc jars hold the Dokka HTML reference instead of being empty.
-- `Camera` works in points: `viewportWidth` and `viewportHeight` are the window's size in points
-  (now `Float`), zoom 1 is one world unit per point, and `worldToScreen` and `screenToWorld` are
-  in points, like `Mouse.position` and `DrawSpace.SCREEN`. `App.camera` starts at zoom 1 on every
-  display; the renderer applies the pixel density. A game that set `zoom = 2 * window.pixelDensity`
-  sets `zoom = 2`.
-- A change of pixel density no longer changes `App.camera.zoom`.
-- `Canvas.drawSprite` and `Canvas.drawRect` default to `DrawSpace.SCREEN`, as `drawText` already
-  did; pass `space = DrawSpace.WORLD` to draw through the camera.
+- `Camera` works in points: zoom 1 is one world unit per point on every display, and
+  `viewportWidth`, `viewportHeight`, `worldToScreen` and `screenToWorld` are in points. A game that
+  set `zoom = 2 * window.pixelDensity` sets `zoom = 2`.
+- `Canvas.drawSprite` and `drawRect` default to `DrawSpace.SCREEN`; pass `space = DrawSpace.WORLD`
+  to draw through the camera.
 - `ParticleEmitter.lifetime` is a `ClosedRange<Duration>`, such as `0.5.seconds..1.seconds`.
+- `World(initialCapacity)` rejects a capacity below 1 with `IllegalArgumentException`.
+- `Music.play` throws `IllegalArgumentException` instead of `IllegalStateException` for a stream
+  that does not match the track.
+- `Files.writeBytes`, `Image.save`, `Window.capture` and `AppConfig.screenshot` create missing
+  folders on the way to the file.
+- The published javadoc jars hold the Dokka reference instead of being empty.
+- The sample games, benchmarks and sandbox read every `KLYPH_*` setting through
+  `AppConfig.fromEnvironment`.
+- The sample games moved to `games/shooter` and `games/squish` (`:games:shooter`, `:games:squish`).
+  The shooter has waves, divers and a boss every fifth wave; Bug Squish hides the cursor and
+  toggles fullscreen with F11. Both use the gameplay kit in place of their own copies.
 - `AudioConfig(enabled = false)` → `AudioConfig(output = AudioOutput.NONE)`; `AudioConfig.enabled` → `AudioConfig.output`.
 - `Assets.texture(image, filter)` → `Assets.createTexture(image, filter)`.
 - `Assets.music` → `Assets.musicTrack`, `Assets.musicOrNull` → `Assets.musicTrackOrNull`.
@@ -146,34 +91,20 @@ floors, so a platformer takes as little code as a shooter: Rooftop Roller lost i
 - `ParticleEmitter(region, maxParticles)` → `ParticleEmitter(region, capacity)`.
 - `Input.axis(negative, positive)` → `Keyboard.axis(negative, positive)`, called as `input.keyboard.axis(...)`.
 - `MouseWheel` → `MouseWheelScrolled`, in `klyph.event` and as `PlatformEvent.MouseWheelScrolled`.
-- `Commands.isEmpty` and `SceneStack.isEmpty` are functions: `isEmpty()`.
 - `EntityBuilder.parent(parent)` → `EntityBuilder.setParent(parent)`.
 - `Commands.spawn(build)` → `Commands.spawn(builder)`.
 - `SpriteAnimation.animation` → `SpriteAnimation.playhead`.
 - `Animation.elapsed` → `Animation.frameElapsed`.
 - `GamepadId.id` → `GamepadId.value`.
 - `GpuDevice.release(window)` → `GpuDevice.unclaim(window)`.
+- `Commands.isEmpty` and `SceneStack.isEmpty` are functions: `isEmpty()`.
 - `PcmStream` extends `AutoCloseable`.
-- `Music.play` throws `IllegalArgumentException` instead of `IllegalStateException` when the
-  track's stream does not match the track's channels or sample rate.
-- `toString` of `Camera`, `Sprite`, `Transform`, `WorldTransform` and `Collider` writes sizes as
-  `800.0x600.0`, without spaces.
-- The sample games read their settings through `AppConfig.fromEnvironment`, so
-  `KLYPH_SCREENSHOT` and the other `KLYPH_*` variables work for them as for the sandbox.
-- `Files.writeBytes`, and with it `Image.save`, `Window.capture` and `AppConfig.screenshot`,
-  creates the missing folders on the way to the file instead of failing, so a first screenshot
-  into a new folder is written.
-- The benchmarks apply every setting `AppConfig.fromEnvironment` reads, `KLYPH_SCREENSHOT`,
-  `KLYPH_OVERLAY` and `KLYPH_FULLSCREEN` included.
 
 ### Removed
 
-- The `Animation` component key (`Animation.Companion`): no engine step advanced a bare
-  `Animation` component. `SpriteAnimation` is the animation component.
-- `SpriteRenderer` and the public `Texture(device, handle, ...)` constructor are internal; `App`
-  never exposed what they need.
-- `Entity.raw` is internal; `Entity.index` and `Entity.generation` remain.
-- `TextureRegion.u0`, `v0`, `u1` and `v1` are internal; regions are in texels.
+- The `Animation` component key; `SpriteAnimation` is the animation component.
+- `SpriteRenderer`, the public `Texture` constructor, `Entity.raw` and `TextureRegion.u0`, `v0`,
+  `u1` and `v1` are internal.
 
 ## [0.1.0] - 2026-11-03
 
