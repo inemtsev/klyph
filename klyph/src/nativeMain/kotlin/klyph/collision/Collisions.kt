@@ -10,10 +10,14 @@ import klyph.scene.SceneStack
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.time.Duration
 
 /**
  * Finds overlapping [Collider]s: [detect] publishes an [Overlap] event for every overlapping pair,
  * and [overlappingTo], [overlapping] and [firstOverlappingOrNull] find the colliders a shape overlaps.
+ * For ordinary colliders that is all: overlaps are reported, never resolved. Entities that also
+ * have a [Solid] stop every [KinematicBody], which [moveBodies] moves, and [sweepBox] and
+ * [sweepBoxTo] find the solids in the way of a moving box.
  *
  * `App.collisions` is the engine's instance: the engine calls [detect] on it once per frame,
  * after the last fixed update step and a transform propagation, so parented colliders are where
@@ -40,8 +44,11 @@ import kotlin.math.max
  * see this frame's positions after the fixed steps; queries from the input and fixed update
  * phases see the previous frame's. Before the first [detect] every query finds nothing.
  *
- * [toString] gives `Collisions(cellSize=64.0, colliders=120, cells=85, pairs=3)`, the numbers of
- * the last [detect].
+ * Solids live in a grid of their own, with the same [cellSize], which the sweeps read as it is
+ * now, not as of the last [detect]; see [Solid] for when it is rebuilt.
+ *
+ * [toString] gives `Collisions(cellSize=64.0, colliders=120, cells=85, pairs=3, solids=40)`, the
+ * numbers of the last [detect] and the solids as of the last refresh.
  *
  * Not thread-safe.
  *
@@ -133,6 +140,16 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
     private var queryIsCircle = false
     private var queryMask = 0
 
+    /** The solids, their grid and the sweep. */
+    private val solids = SolidGrid()
+
+    /**
+     * Returns the number of [Solid]s in the solids grid as of its last refresh, which happens at
+     * every [detect], every [moveBodies] and every sweep after a solid or collider was added or removed.
+     */
+    public val solidCount: Int
+        get() = solids.solidCount
+
     /**
      * Takes a snapshot of every collider in [world], sorts it into the grid, and publishes an
      * [Overlap] into [events] for every pair of colliders that overlap, once per pair. A pair is
@@ -151,6 +168,11 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
      * instance you created. The engine's call also leaves out the colliders of scenes frozen below
      * the top of `App.scenes`, so they are in no pair and no query finds them.
      *
+     * It also brings the solids grid up to date with [world], as [moveBodies] does.
+     *
+     * @throws IllegalStateException if an entity has a [Solid] but no [Collider], or a collider
+     *   that is not a [Shape.Box].
+     *
      * @sample samples.collision.CollisionQueries.detect
      */
     public fun detect(world: World, events: Events) {
@@ -162,9 +184,131 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
      * that [scenes] holds frozen below its top. The engine's once-per-frame call.
      */
     internal fun detect(world: World, events: Events, scenes: SceneStack?) {
+        solids.refresh(world, scenes, cellSize)
         gather(world, scenes)
         buildGrid()
         findPairs(events)
+    }
+
+    /**
+     * Makes the sweeps answer for [world] before the first [detect] or [moveBodies], so a level
+     * spawned during setup is found by a sweep in the first fixed step. The engine calls it when
+     * it creates the app.
+     */
+    internal fun attach(world: World, scenes: SceneStack?) {
+        solids.refresh(world, scenes, cellSize)
+    }
+
+    /**
+     * Moves every [KinematicBody] in [world] by its speed times [delta] and stops it at the
+     * [Solid]s in the way, setting its contact state, as the class description of [KinematicBody]
+     * explains. It first brings the solids grid up to date with [world].
+     *
+     * The engine calls this on `App.collisions` in every fixed step, after the `FIXED_UPDATE`
+     * systems and the `Velocity` step, with the fixed step length, and leaves out the bodies and
+     * solids of scenes frozen below the top of `App.scenes`. Call it yourself only on an instance
+     * you created, such as in a test or a tool. Allocates nothing once the grid has grown.
+     *
+     * @throws IllegalArgumentException if [delta] is negative or infinite.
+     * @throws IllegalStateException if a body or a solid is set up wrongly, as [KinematicBody] and
+     *   [Solid] describe.
+     *
+     * @sample samples.collision.Bodies.kinematicBody
+     */
+    public fun moveBodies(world: World, delta: Duration) {
+        require(!delta.isNegative() && delta.isFinite()) { "Delta $delta is negative or infinite." }
+        moveBodies(world, (delta.inWholeNanoseconds / 1e9).toFloat(), scenes = null)
+    }
+
+    /** Moves the bodies as `moveBodies(world, delta)` does, leaving out what [scenes] holds frozen. The engine's call. */
+    internal fun moveBodies(world: World, deltaSeconds: Float, scenes: SceneStack?) {
+        solids.refresh(world, scenes, cellSize)
+        solids.moveBodies(world, deltaSeconds, scenes)
+    }
+
+    /**
+     * Sweeps a box [width] by [height] centered on ([x], [y]) along the straight move by ([dx],
+     * [dy]) and returns where it first touches a [Solid] on a layer in [mask], or `null` if the
+     * whole move is clear. Pass the arguments by name, as in
+     * `sweepBox(x = x, y = y, width = 24f, height = 40f, dx = 0f, dy = 300f)`.
+     *
+     * The returned [SweepHit] holds the solid, how far along the move the box touches it, from 0
+     * to 1, and the normal of the face it touches. Of two solids touched at the same moment, the one
+     * with the smaller [Entity.index] is returned. A box that only touches a solid along an edge
+     * and moves along it, or away from it, does not hit it. A solid the box already overlaps at the
+     * start is a hit at fraction 0 with the normal (0, 0), so a sweep with [dx] and [dy] both 0
+     * returns the first solid the box overlaps where it is. A [Passable.FROM_BELOW] solid is hit
+     * only by a box moving down whose bottom edge starts at or above the solid's top, as it stops
+     * bodies.
+     *
+     * Unlike the overlap queries, a sweep reads the solids as they are now: the grid is brought up
+     * to date at every [detect] and [moveBodies], and before a sweep when a solid or a collider was
+     * added, replaced or removed since. A solid moved since the last refresh is found where it was
+     * until the next one. The sweep visits only the grid cells along the move, in the order the box
+     * reaches them, and stops at the first hit; a move longer than the grid is wide tests every
+     * solid instead. It allocates nothing besides the hit it returns.
+     *
+     * @throws IllegalArgumentException if [x], [y], [dx] or [dy] is not finite, or [width] or
+     *   [height] is not a positive finite number.
+     * @throws IllegalStateException if a solid is set up wrongly, as [Solid] describes.
+     *
+     * @sample samples.collision.Sweeps.sweepBox
+     */
+    public fun sweepBox(
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        dx: Float,
+        dy: Float,
+        mask: CollisionLayers = CollisionLayers.ALL,
+    ): SweepHit? {
+        checkSweep(x, y, width, height, dx, dy)
+        solids.ensureCurrent(cellSize)
+        val halfWidth = width * 0.5f
+        val halfHeight = height * 0.5f
+        solids.sweep(x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight, dx, dy, mask.bits, skipsOverlaps = false)
+        return solids.lastHitOrNull()
+    }
+
+    /**
+     * Adds to [destination] a [SweepHit] for every [Solid] on a layer in [mask] that a box [width]
+     * by [height] centered on ([x], [y]) touches along the straight move by ([dx], [dy]), as if
+     * nothing stopped it, in the order the box reaches them, and returns [destination]. Hits at the
+     * same moment are ordered by [Entity.index]. Pass the arguments by name.
+     *
+     * Each hit is the one [sweepBox] would return if that solid were the only one, and the solids
+     * are read as [sweepBox] reads them. It allocates the hits and what [destination] needs to grow.
+     *
+     * @throws IllegalArgumentException if [x], [y], [dx] or [dy] is not finite, or [width] or
+     *   [height] is not a positive finite number.
+     * @throws IllegalStateException if a solid is set up wrongly, as [Solid] describes.
+     *
+     * @sample samples.collision.Sweeps.sweepBoxTo
+     */
+    public fun <C : MutableCollection<in SweepHit>> sweepBoxTo(
+        destination: C,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        dx: Float,
+        dy: Float,
+        mask: CollisionLayers = CollisionLayers.ALL,
+    ): C {
+        checkSweep(x, y, width, height, dx, dy)
+        solids.ensureCurrent(cellSize)
+        val halfWidth = width * 0.5f
+        val halfHeight = height * 0.5f
+        return solids.sweepAllTo(destination, x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight, dx, dy, mask.bits)
+    }
+
+    private fun checkSweep(x: Float, y: Float, width: Float, height: Float, dx: Float, dy: Float) {
+        require(x.isFinite() && y.isFinite()) { "Sweep start ($x, $y) is not finite." }
+        require(width > 0f && height > 0f && width.isFinite() && height.isFinite()) {
+            "Sweep box size ${width}x$height is not a positive finite size."
+        }
+        require(dx.isFinite() && dy.isFinite()) { "Sweep move ($dx, $dy) is not finite." }
     }
 
     /**
@@ -619,27 +763,44 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
     }
 
     override fun toString(): String =
-        "Collisions(cellSize=$cellSize, colliders=$colliderCount, cells=$cellCount, pairs=$pairCount)"
+        "Collisions(cellSize=$cellSize, colliders=$colliderCount, cells=$cellCount, pairs=$pairCount, solids=$solidCount)"
 
-    private companion object {
-        const val DEFAULT_CELL_SIZE: Float = 64f
-        const val INITIAL_COLLIDERS: Int = 64
+    /** Holds the distances a [KinematicBody] move keeps to and looks for solids. */
+    public companion object {
+        /**
+         * The gap in world units a [KinematicBody] keeps from a [Solid] it stops at, 0.01. The body
+         * stops this far short of the face, so it never overlaps the solid and the next move along
+         * the face, such as walking on a floor, does not count as running into it. It is small
+         * enough not to show, and larger than the rounding of positions within tens of thousands
+         * of units of the origin.
+         */
+        public const val CONTACT_GAP: Float = 0.01f
+
+        /**
+         * The distance in world units, 2, that a [KinematicBody] that stood on a floor and is not
+         * moving up looks down after its move for a floor to land on, so walking down a step of
+         * up to 2 units keeps it on the floor instead of falling for a step.
+         */
+        public const val FLOOR_SNAP_DISTANCE: Float = 2f
+
+        private const val DEFAULT_CELL_SIZE: Float = 64f
+        private const val INITIAL_COLLIDERS: Int = 64
 
         /** Floats per collider in the snapshot's bounds array. */
-        const val STRIDE: Int = 8
+        private const val STRIDE: Int = 8
 
         /** Floats per sorted entry in the bounding box copies. */
-        const val BOX_STRIDE: Int = 4
+        private const val BOX_STRIDE: Int = 4
 
         /** The most cells a collider may touch and still be placed in the grid. */
-        const val LARGE_CELLS: Long = 256
+        private const val LARGE_CELLS: Long = 256
 
-        fun checkCellSize(size: Float): Float {
+        private fun checkCellSize(size: Float): Float {
             require(size > 0f && size.isFinite()) { "Cell size $size is not a positive finite number." }
             return size
         }
 
-        fun hash(key: Long): Int {
+        private fun hash(key: Long): Int {
             val mixed = key * -7046029254386353131L
             return (mixed ushr 32).toInt() xor mixed.toInt()
         }

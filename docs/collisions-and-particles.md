@@ -5,6 +5,11 @@ This page covers two engine steps that run every frame without a system of yours
 detection, which reports touching colliders as `Overlap` events and answers shape queries, and
 particles, which emit, move and fade pooled quads from emitter components.
 
+Detection only reports overlaps. Two colliders that overlap keep overlapping until a system moves one of
+them, and nothing stops a collider at a wall. For characters that stand on floors and stop at
+walls, mark the walls and floors with `Solid` and move the characters with `KinematicBody`; the
+[Platformers](platformers.md) page covers both and the sweep queries that go with them.
+
 The snippets on this page are code for the setup block of `runApp`, and they share these
 definitions:
 
@@ -276,4 +281,4 @@ Particles of an emitter whose scene is frozen stand still and keep drawing. 100,
   [EmitterEnd](../klyph/klyph.particle/-emitter-end/index.html) and
   [EmitterSpace](../klyph/klyph.particle/-emitter-space/index.html)
 - [degrees](../klyph/klyph.math/degrees.html)
-- Next: [Text, canvas and overlay](text-canvas-and-overlay.md)
+- Next: [Platformers](platformers.md)

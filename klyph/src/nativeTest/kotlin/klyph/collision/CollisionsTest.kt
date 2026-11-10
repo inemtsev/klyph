@@ -371,7 +371,7 @@ class CollisionsTest {
         world.spawn(Shape.Box(width = 4f, height = 4f), 5f, 5f)
         world.spawn(Shape.Box(width = 4f, height = 4f), 6f, 6f)
         detect(world, collisions)
-        assertEquals("Collisions(cellSize=10.0, colliders=2, cells=1, pairs=1)", collisions.toString())
+        assertEquals("Collisions(cellSize=10.0, colliders=2, cells=1, pairs=1, solids=0)", collisions.toString())
     }
 
     @Test

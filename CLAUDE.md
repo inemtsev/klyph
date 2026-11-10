@@ -32,7 +32,16 @@ queue applied after every system, `app.resources`, shared state keyed by class, 
 sound effects and music, with sounds and tracks loaded through `app.assets.sound` and
 `app.assets.musicTrack`, `app.scenes`, a scene stack whose top scene's systems run and whose scenes own
 the entities they spawn, `app.collisions`, overlap detection after FIXED_UPDATE that publishes
-`Overlap` events and answers shape queries, `app.canvas`, immediate quads and text in `WORLD` or
+`Overlap` events and answers shape queries (overlap only for ordinary colliders), plus solid
+response: a `Solid` next to a box `Collider` is a wall or floor (`Passable.FROM_BELOW` a one-way
+ledge) kept in a second grid inside `Collisions` (`SolidGrid`, rescanned at every body move and
+detection and rebuilt only when a solid changed, or before a sweep when the `Solid` or `Collider`
+store's version moved), a `KinematicBody(dx, dy)` on a root entity with a box collider is moved by
+the engine in every fixed step and stopped `Collisions.CONTACT_GAP` short of solids, reporting
+`isOnFloor`, `isOnWall`/`wallNormalX`, `isOnCeiling` and `floorOrNull`, with a
+`FLOOR_SNAP_DISTANCE` floor snap and `dropThrough()`, and `sweepBox`/`sweepBoxTo` sweep a box
+against the solids as they are now (a thick-ray Amanatides and Woo walk shared with the body move;
+gravity, coyote time and jump buffers stay game code), `app.canvas`, immediate quads and text in `WORLD` or
 `SCREEN` space queued during RENDER, and `app.overlay`, the debug overlay toggled with F3; the
 `Text` and `ParticleEmitter` components draw with the sprites, fonts load through
 `app.assets.font` or come built in as `app.assets.defaultFont`, a texture's `SamplerFilter`,
@@ -210,8 +219,9 @@ to `mavenLocal`.
 `runApp` runs STARTUP once and applies the scene transitions queued so far. Each frame then runs:
 drop last frame's events, refresh audio, translate platform events into `app.input` and
 `app.events`, toggle the overlay, INPUT, FIXED_UPDATE zero or more times (interpolated transforms
-recorded before each step, and every `Velocity` applied to its `Transform` after the step's
-systems and their commands, by the fixed step length), propagate transforms, detect collisions and publish `Overlap` events,
+recorded before each step, then every `Velocity` applied to its `Transform` after the step's
+systems and their commands, by the fixed step length, then every `KinematicBody` moved against the
+solids through `app.collisions.moveBodies`), propagate transforms, detect collisions and publish `Overlap` events,
 UPDATE, count down `Lifetime` and advance `Fade`, advance particles, advance sprite animations
 (publishing `AnimationFinished`), LATE_UPDATE, propagate transforms, RENDER, queue the overlay on
 `app.canvas`, clamp `app.camera` to its bounds, draw sprites, `Text`, particles and `app.canvas`
@@ -222,8 +232,8 @@ it, from the `StepClock` the loop advances through `Input.beginFixedStep`, so th
 press sees it once, even when the frame of the press ran no step. Commands apply after every system,
 after each of the lifetime/fade, particle and animation steps (so what they destroy is gone before
 the next step) and after the second propagation. Scene systems run after the App-level systems of
-the same phase. A pushed scene freezes the one below: its systems do not run, its velocities, lifetimes, fades,
-particle emitters, sprite animations and colliders stand still (the engine steps skip them and
+the same phase. A pushed scene freezes the one below: its systems do not run, its velocities, kinematic bodies, lifetimes, fades,
+particle emitters, sprite animations and colliders stand still (its solids stop nothing) (the engine steps skip them and
 collision detection leaves them out), its entities keep rendering. The engine steps ask the internal
 `SceneStack.isFrozen(owner)` for an entity's owner id, and entities of no scene are never frozen;
 games cannot ask, so a game keeps its game logic in scene systems, which leaves frozen entities

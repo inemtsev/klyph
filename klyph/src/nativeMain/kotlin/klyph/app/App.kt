@@ -102,8 +102,10 @@ public class App internal constructor(
      * before [Phase.UPDATE], the engine propagates transforms and then calls [Collisions.detect],
      * which publishes an `Overlap` event into [events] for every overlapping pair; systems from
      * [Phase.UPDATE] on read them. Its shape queries read the positions of that detection, so they
-     * are current from [Phase.UPDATE] to the end of the frame. Its cell size starts as
-     * [AppConfig.collisionCellSize].
+     * are current from [Phase.UPDATE] to the end of the frame. In every fixed step, after the
+     * `Velocity` step, the engine calls [Collisions.moveBodies] on it, which moves every
+     * `KinematicBody` against the `Solid`s; its sweeps read the solids as they are now, so they work
+     * from [Phase.FIXED_UPDATE] too. Its cell size starts as [AppConfig.collisionCellSize].
      */
     public val collisions: Collisions = Collisions(config.collisionCellSize)
 
@@ -128,6 +130,11 @@ public class App internal constructor(
      * frame. It starts empty, and the app runs only its App-level systems while it is.
      */
     public val scenes: SceneStack = SceneStack()
+
+    init {
+        // Sweeps from the first fixed step find the solids spawned during setup.
+        collisions.attach(world, scenes)
+    }
 
     private val sceneHost = object : SceneHost {
         override val world: World get() = this@App.world

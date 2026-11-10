@@ -29,6 +29,21 @@ All notable changes to klyph are recorded here. The format follows
   spawns the entity that carries it.
 - `Animation.speed` and `SpriteAnimation.speed`, a playback rate multiplier; 0 holds the current
   frame. `Animation` and `SpriteAnimation` include it in `toString`.
+- `Solid`, a component that makes an entity's box `Collider` a wall, floor or ledge that kinematic
+  bodies stop at. `Solid(passable = Passable.FROM_BELOW)` is a one-way ledge, landed on from above
+  and passed through from below and from the sides. Solids live in a grid of their own inside
+  `Collisions`, rebuilt only when a solid changes, and still take part in overlap detection.
+- `KinematicBody(dx, dy)`, a component the engine moves in every fixed step, after the `Velocity`
+  step: across, then up or down, stopping a contact gap (`Collisions.CONTACT_GAP`) short of every
+  solid in its collider's mask. It reports `isOnFloor`, `isOnWall` with `wallNormalX`,
+  `isOnCeiling` and `floorOrNull`, keeps to a floor up to `Collisions.FLOOR_SNAP_DISTANCE` below
+  it, and `dropThrough()` falls through the one-way ledge it stands on. Gravity, coyote time and
+  jump buffers stay game code. `Collisions.moveBodies(world, delta)` runs the step without an app.
+- `Collisions.sweepBox(x, y, width, height, dx, dy, mask)`, which returns the first solid a moving
+  box touches as a `SweepHit` with the fraction of the move and the face's normal, and
+  `Collisions.sweepBoxTo(destination, ...)`, which collects every solid along the move. Sweeps
+  read the solids as they are now, so they work in `FIXED_UPDATE`, and a sweep with no move
+  returns the solid the box overlaps. `Collisions.solidCount` counts the solids.
 
 ### Changed
 
@@ -43,6 +58,8 @@ All notable changes to klyph are recorded here. The format follows
   frame, and `isDown` is unchanged.
 - Rooftop Roller reads its jump press in `FIXED_UPDATE` and drops its jump latch; its autopilot
   decides once per fixed step instead of once per frame.
+- `Collisions.toString` also gives the number of solids, as in
+  `Collisions(cellSize=64.0, colliders=120, cells=85, pairs=3, solids=40)`.
 
 ## [1.0.0] - 2026-11-04
 

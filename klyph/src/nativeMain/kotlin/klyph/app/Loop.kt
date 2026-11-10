@@ -60,7 +60,8 @@ import kotlin.time.TimeSource
  * FIXED_UPDATE step, [App.input]'s "just pressed" and "just released" answer for the changes since
  * the previous step instead of this frame's, so each change is seen by exactly one step. In each
  * FIXED_UPDATE step, after the systems have run and their commands have been applied, it moves
- * every entity with a `Velocity` by its velocity times [Time.fixedDelta]. Right after
+ * every entity with a `Velocity` by its velocity times [Time.fixedDelta], and then every
+ * `KinematicBody` through [App.collisions], stopping it at the `Solid`s in its way. Right after
  * UPDATE it counts down every `Lifetime` and advances every `Fade`, destroying the entities whose
  * time is up. Between UPDATE and LATE_UPDATE it advances every `ParticleEmitter` by the frame's
  * delta, emitting at the entity's current world position. It advances every `SpriteAnimation` and
@@ -79,8 +80,8 @@ import kotlin.time.TimeSource
  *
  * In every phase but STARTUP and SHUTDOWN, the systems of the scene on top of [App.scenes] run
  * after the App-level systems. A pushed scene freezes the one below: its systems do not run, its
- * velocities, particle emitters, sprite animations, lifetimes, fades and colliders stand still, its entities keep rendering. The
- * engine skips the velocities, emitters and animations of entities a frozen scene owns when it advances them,
+ * velocities, kinematic bodies, particle emitters, sprite animations, lifetimes, fades and colliders stand still, its entities keep rendering. The
+ * engine skips the velocities, bodies, emitters and animations of entities a frozen scene owns when it advances them,
  * and leaves their colliders out of overlap detection, so they are in no `Overlap` event and no
  * [App.collisions] query finds them. Entities of no scene are never frozen. The scene transitions queued during a frame apply at its end, after
  * drawing, and those queued in `setup` or STARTUP apply after STARTUP, before the first frame.
@@ -275,6 +276,8 @@ private class FrameLoop(
             app.run(Phase.FIXED_UPDATE)
             // Where a last FIXED_UPDATE system would move bodies, after the systems' commands applied.
             app.world.applyVelocities(time.deltaSeconds, app.scenes)
+            // Bodies after plain velocities, against the solids as this step's systems left them.
+            app.collisions.moveBodies(app.world, time.deltaSeconds, app.scenes)
             app.input.endFixedStep()
             time.endFixedStep()
         }

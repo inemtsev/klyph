@@ -44,6 +44,7 @@ val guidePages: List<String> = listOf(
     "input",
     "audio",
     "collisions-and-particles",
+    "platformers",
     "text-canvas-and-overlay",
     "shipping",
     "performance",

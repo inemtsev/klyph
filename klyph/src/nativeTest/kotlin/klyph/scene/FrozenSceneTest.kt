@@ -2,6 +2,8 @@ package klyph.scene
 
 import klyph.collision.Collider
 import klyph.collision.Collisions
+import klyph.collision.KinematicBody
+import klyph.collision.Solid
 import klyph.collision.Overlap
 import klyph.collision.Shape
 import klyph.entity.Entity
@@ -177,6 +179,39 @@ class FrozenSceneTest {
         assertEquals(0f, frozen.x)
         assertEquals(10f, running.x)
         assertEquals(20f, unowned.y)
+    }
+
+    @Test
+    fun kinematicBodyOfAFrozenSceneStandsStillAndItsSolidsStopNothing() {
+        val h = SceneHarness()
+        fun World.body(x: Float): KinematicBody = KinematicBody(dy = 600f).also { body ->
+            create().also {
+                add(it, Transform, Transform(x = x, y = 0f))
+                add(it, Collider, Collider(Shape.Box(width = 10f, height = 10f)))
+                add(it, KinematicBody, body)
+            }
+        }
+        fun World.floor(x: Float) = create().also {
+            add(it, Transform, Transform(x = x, y = 100f))
+            add(it, Collider, Collider(Shape.Box(width = 50f, height = 10f)))
+            add(it, Solid, Solid())
+        }
+        lateinit var frozen: KinematicBody
+        lateinit var running: KinematicBody
+        h.playUnderPause(
+            playEnter = {
+                frozen = h.world.body(0f)
+                h.world.floor(200f)
+            },
+            pauseEnter = { running = h.world.body(200f) },
+        )
+        val collisions = Collisions()
+        repeat(60) { collisions.moveBodies(h.world, 1f / 60f, h.stack) }
+        assertEquals("KinematicBody(dx=0.0, dy=600.0, isOnFloor=false, isOnWall=false, wallNormalX=0.0, isOnCeiling=false)", frozen.toString())
+        // The floor below the running body belongs to the frozen scene, so it falls past it.
+        assertTrue(!running.isOnFloor)
+        assertEquals(600f, running.dy)
+        assertEquals(0, collisions.solidCount)
     }
 
     @Test

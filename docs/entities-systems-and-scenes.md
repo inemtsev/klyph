@@ -88,7 +88,8 @@ Each frame runs these steps, in this order:
 3. Show or hide the debug overlay if its key went down.
 4. INPUT.
 5. FIXED_UPDATE, zero or more times, recording each `Interpolated` entity's transform before
-   each step and moving every entity with a `Velocity` after the step's systems.
+   each step, moving every entity with a `Velocity` after the step's systems, and then moving
+   every `KinematicBody` against the solids (see [Platformers](platformers.md)).
 6. Propagate transforms through the entity hierarchy, then detect collisions and publish
    `Overlap` events.
 7. UPDATE.
@@ -248,8 +249,8 @@ destroyed with their children. Entities created by the setup block, by App-level
 `onExit` action belong to no scene and stay, which suits a starfield behind every screen.
 
 **Freezing.** While a scene is pushed over another, the one below is frozen: its systems do not
-run, and its velocities, lifetimes, fades, particle emitters, sprite animations and colliders
-stand still.
+run, and its velocities, kinematic bodies, lifetimes, fades, particle emitters, sprite
+animations and colliders stand still.
 Its entities keep rendering, so the pause menu draws over the stopped game without a paused flag.
 App-level systems still run and still see frozen entities, so keep game logic in scene systems.
 

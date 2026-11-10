@@ -69,6 +69,7 @@ in the same PR rather than inventing a one-off.
 | `AbstractX` | Skeletal implementation for users who extend `X`. | `AbstractGraph` |
 | `isX` / `hasX` | Boolean property or function. No `getIsX`, no bare adjectives. | `isEmpty`, `hasCycle` |
 | `withX(value)` | Returns a copy of an immutable value with property `x` replaced and the rest kept. | `color.withAlpha(0f)` |
+| `sweepX(...)` | Moves shape `X` along a straight line against the solids and returns where it first touches one as a `SweepHit`, or `null`; `sweepXTo(destination, ...)` adds every solid along the line. | `collisions.sweepBox(x = 0f, y = 0f, width = 16f, height = 16f, dx = 0f, dy = 40f)` |
 | `XEnd` enum | Names what happens to an entity once a component has run its course; `HOLD` or `KEEP` leaves it, `DESTROY` destroys it. | `FadeEnd`, `AnimationEnd`, `EmitterEnd` |
 | `setX(handle, value)` | Changes property `x` of the thing a value-class handle refers to, on the service that owns it. Only for handles, which cannot hold mutable properties; everything else uses `var x`. | `audio.setVolume(voice, 0.5f)`, `audio.setPan(voice, -1f)` |
 | `XImpl` | Private or internal implementation of `X`. Never public. | `GraphImpl` |
@@ -96,16 +97,17 @@ General rules:
 - Parameters sharing a primitive type, or any `Boolean` parameter, are called
   with named arguments inside the library and documented so users do the same.
   Conventional ordered pairs and tuples are exempt, because nobody gets their
-  order wrong: (x, y), (width, height), (columns, rows) and (red, green, blue,
-  alpha) may be passed by position, as in `Transform(x, y)`.
+  order wrong: (x, y), (width, height), (dx, dy), (columns, rows) and (red,
+  green, blue, alpha) may be passed by position, as in `Transform(x, y)`.
 - A function taking one lambda MUST take it as the last parameter so the
   trailing-lambda form works.
 - Prefer composing small operations over adding configuration parameters to
   one big function. Add a new operator before you add a fifth parameter. A
   function may take five or more when every parameter after the first few has a
-  default and the KDoc asks for named arguments, as the `Canvas` draw calls and
-  the collision queries do, where splitting them into operators would allocate or
-  add a builder on every call.
+  default, or every parameter without one belongs to a conventional pair, and the
+  KDoc asks for named arguments, as the `Canvas` draw calls, the collision queries
+  and the sweeps (`sweepBox(x, y, width, height, dx, dy)`) do, where splitting
+  them into operators would allocate or add a builder on every call.
 - Builders take a lambda with receiver as the last parameter. Values the builder
   cannot work without MUST be normal parameters, not builder properties, because
   a builder cannot enforce required fields at compile time.
