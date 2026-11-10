@@ -2,10 +2,10 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     `java-gradle-plugin`
-    kotlin("jvm") version "2.4.20"
+    alias(libs.plugins.kotlin.jvm)
     // Gradle's Action parameters become lambdas with a receiver, as in build scripts.
-    kotlin("plugin.sam.with.receiver") version "2.4.20"
-    id("com.vanniktech.maven.publish") version "0.37.0"
+    alias(libs.plugins.kotlin.sam.with.receiver)
+    alias(libs.plugins.maven.publish)
 }
 
 group = "com.eventslooped.klyph"
@@ -31,7 +31,7 @@ kotlin {
 dependencies {
     // The plugin applies the Kotlin Multiplatform plugin of this version, so a game build does
     // not declare Kotlin itself.
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.20")
+    implementation(libs.kotlin.gradle.plugin)
 }
 
 gradlePlugin {
@@ -62,12 +62,12 @@ gradlePlugin.testSourceSets(functionalTest)
 
 dependencies {
     testImplementation(kotlin("test-junit5"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
+    testImplementation(libs.junit.jupiter)
     // java-gradle-plugin puts the Gradle API on the compile classpath only.
     testImplementation(gradleApi())
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     "functionalTestImplementation"(kotlin("test-junit5"))
-    "functionalTestImplementation"("org.junit.jupiter:junit-jupiter:5.13.4")
+    "functionalTestImplementation"(libs.junit.jupiter)
     "functionalTestImplementation"(gradleTestKit())
     "functionalTestRuntimeOnly"("org.junit.platform:junit-platform-launcher")
 }

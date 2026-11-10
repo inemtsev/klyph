@@ -13,6 +13,12 @@ dependencyResolutionManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    // The engine build's version catalog, which the root build reads by itself.
+    versionCatalogs {
+        create("libs") {
+            from(files("../gradle/libs.versions.toml"))
+        }
+    }
 }
 
 rootProject.name = "klyph-gradle-plugin"
