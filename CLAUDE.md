@@ -97,7 +97,11 @@ feeds the `sdl3` cinterop) and adds the SDL3 link flags their test binaries need
 the engine's extras (host-only tests, `check` compiling the other targets and the shared
 metadata), `klyph.publish` their Maven publications, `CompileShadersTask` the shaders, and
 `klyph.lint` registers the interop-import rule (`checkNoInteropImports`, part of `check`), which
-`klyph.native` applies and the executables apply next to the plugin. `klyph.docs`, applied through
+`klyph.native` applies and the executables apply next to the plugin; it also applies detekt
+(`dev.detekt`, whose version is in `gradle/libs.versions.toml` with every other third-party
+version), whose `detekt` task, part of `check`, reads `config/detekt/detekt.yml` and the module's
+`detekt-baseline.xml` (`./gradlew detektBaseline` rewrites them) and runs without type resolution
+on Kotlin/Native. `klyph.docs`, applied through
 `klyph.publish`, configures Dokka for the two published modules: `@sample` bodies from
 `samples/src/nativeTest/kotlin`, module documentation from `docs/klyph.md` and
 `docs/klyph-platform.md`, and source links to GitHub. `./gradlew dokkaGenerate` writes the

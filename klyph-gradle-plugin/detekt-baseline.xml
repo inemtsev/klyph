@@ -1,0 +1,81 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:KlyphPlugin.kt:KlyphBuild$private fun configureTarget</ID>
+    <ID>ImplicitDefaultLocale:FetchSdl3.kt:Sdl3Fetcher$"%02x".format(it)</ID>
+    <ID>LongMethod:KlyphPlugin.kt:KlyphBuild$private fun configureTarget</ID>
+    <ID>LongParameterList:FetchSdl3.kt:Sdl3FetchService$@Synchronized fun fetch</ID>
+    <ID>LongParameterList:FetchSdl3.kt:Sdl3Fetcher$fun fetch</ID>
+    <ID>LongParameterList:KlyphPlugin.kt:KlyphBuild$private fun configureTarget</ID>
+    <ID>LongParameterList:Sdl3Locator.kt:Sdl3Locator$fun locate: Sdl3Location</ID>
+    <ID>LoopWithTooManyJumpStatements:FetchSdl3.kt:Sdl3Fetcher$while</ID>
+    <ID>MagicNumber:FetchSdl3.kt:Sdl3Fetcher$200</ID>
+    <ID>MagicNumber:PrepareDistribution.kt:MacExecutable$3</ID>
+    <ID>MaxLineLength:DistributionLayoutTest.kt:DistributionLayoutTest$Files.createSymbolicLink(File(prefix, "lib/x86_64-linux-gnu/libSDL3.so.0").toPath(), File("libSDL3.so.0.4.18").toPath())</ID>
+    <ID>MaxLineLength:DistributionLayoutTest.kt:DistributionLayoutTest$assertEquals("@rpath/SDL3.framework/Versions/A/SDL3", MacExecutable.rpathName("@rpath/SDL3.framework/Versions/A/SDL3"))</ID>
+    <ID>MaxLineLength:DistributionLayoutTest.kt:DistributionLayoutTest$assertEquals("lib/libSDL3.0.dylib", DistributionLayout.libraryPatterns(KlyphTargets.MACOS_ARM64, prefix).first())</ID>
+    <ID>MaxLineLength:DistributionLayoutTest.kt:DistributionLayoutTest$assertEquals(File(prefix, "lib/x86_64-linux-gnu/libSDL3.so.0"), DistributionLayout.libraries(KlyphTargets.LINUX_X64, prefix)!!.single().first)</ID>
+    <ID>MaxLineLength:DistributionLayoutTest.kt:DistributionLayoutTest$assertEquals(listOf("lib/x86_64-linux-gnu/libSDL3.so.0"), DistributionLayout.libraryPatterns(KlyphTargets.LINUX_X64, prefix))</ID>
+    <ID>MaxLineLength:FetchSdl3.kt:&lt;no name provided&gt;$override</ID>
+    <ID>MaxLineLength:FetchSdl3.kt:CommandRunner$throw GradleException("Command failed with exit code ${result.exitValue}: ${command.joinToString(" ")}\n${errors.toString(Charsets.UTF_8).trim()}")</ID>
+    <ID>MaxLineLength:FetchSdl3.kt:FetchSdl3$"No SHA-256 is pinned for $name. This plugin pins SDL3 ${Sdl3Release.DEFAULT_VERSION}; for another version pass "</ID>
+    <ID>MaxLineLength:FetchSdl3.kt:Sdl3Fetcher$FileChannel.open(File(downloadDirectory, ".lock").toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE)</ID>
+    <ID>MaxLineLength:FetchSdl3.kt:Sdl3Fetcher$Files.move(partial.toPath(), archive.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)</ID>
+    <ID>MaxLineLength:FetchSdl3.kt:Sdl3Fetcher$if (!path.startsWith(destination)) throw GradleException("${archive.name} has an entry outside its folder: ${entry.name}.")</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$"${project.path} downloads SDL3 into ${location.prefix}, but another project of this build downloads it into $registered. "</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$configureTarget(target, entryPoint, sdl3.prefix, fetch, isHost = name == host, linksBinaries = name == host || crossBuild)</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$description = "Downloads SDL ${release.version} for ${release.target} into ${location.prefix}, once for every project of the build."</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$description = "Runs the game (${binary.buildType.name.lowercase()} build). KLYPH_* variables come from the shell or -Pklyph.&lt;name&gt;."</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$description = "Zips the release executable, its assets and SDL3 for ${target.name} into build/distributions/$folder.zip."</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$if</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$if (linksBinaries &amp;&amp; binary.buildType == NativeBuildType.RELEASE) registerDistribution(binary, target, prefix, fetch, isHost)</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$sha256.set(rootProviders.provider { release.sha256 }.orElse(rootProviders.gradleProperty("klyph.sdl3.sha256")))</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$throw GradleException("Cannot find $sdl3Dll to copy next to the binary. Check the SDL3 prefix.")</ID>
+    <ID>MaxLineLength:KlyphPlugin.kt:KlyphBuild$val service = project.gradle.sharedServices.registerIfAbsent(Sdl3FetchService.NAME, Sdl3FetchService::class.java) {}</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$File(projectDir, "$game/src/nativeMain/kotlin/Main.kt").writeText("package $game\n\nfun main() = println(\"$game\")\n")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$File(projectDir, "src/nativeMain/kotlin/Main.kt").writeText("package hello\n\nfun main() = println(\"hello\")\n")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertContains(described, "host: $hostTarget, targets: [$hostTarget], include: ${sdl3Prefix.invariantSeparatorsPath}/include")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertContains(output, "Set klyph.targets or klyph.target, not both: klyph.targets=host, klyph.target=$foreignTarget.")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertContains(wrong, "klyph: SDL3 prefix $missing from -Psdl3.prefix has no include/SDL3/SDL.h; looking further.")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertFalse(Regex("^fetchSdl3", RegexOption.MULTILINE).containsMatchIn(output), "fetchSdl3 is registered although the prefix has SDL3.")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertFalse(hasTask(tasks, "distribute$foreignTargetTitle"), "distribute$foreignTargetTitle is registered although its link is off:\n$tasks")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertTrue(Regex("^$task - ", RegexOption.MULTILINE).containsMatchIn(output), "Task $task is missing:\n$output")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertTrue(Regex("^fetchSdl3 - ", RegexOption.MULTILINE).containsMatchIn(output), "fetchSdl3 is missing:\n$output")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertTrue(hasTask(output, "distribute$foreignTargetTitle"), "distribute$foreignTargetTitle is missing:\n$output")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$assertTrue(hasTask(tasks, "linkReleaseExecutable$foreignTargetTitle"), "The $foreignTarget link task is missing:\n$tasks")</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$private fun hasTask: Boolean</ID>
+    <ID>MaxLineLength:KlyphPluginFunctionalTest.kt:KlyphPluginFunctionalTest$val output = runner("help", "-Pklyph.sdl3.ignoreSystem=true", "-Pklyph.sdl3.download=false").buildAndFail().output</ID>
+    <ID>MaxLineLength:KlyphTargets.kt:KlyphTargets$"Unknown klyph target ${unknown.joinToString()}. Use host, all, or a comma-separated list of ${all.joinToString()}."</ID>
+    <ID>MaxLineLength:KlyphTargets.kt:KlyphTargets$fun</ID>
+    <ID>MaxLineLength:KlyphTargets.kt:KlyphTargets$if (names.isEmpty()) throw GradleException("No klyph target is selected. Use host, all, or a comma-separated list of ${all.joinToString()}.")</ID>
+    <ID>MaxLineLength:KlyphTargets.kt:KlyphTargets$throw GradleException("Set klyph.targets or klyph.target, not both: klyph.targets=$list, klyph.target=$single.")</ID>
+    <ID>MaxLineLength:KlyphTargetsTest.kt:KlyphTargetsTest$"No klyph target is selected. Use host, all, or a comma-separated list of macosArm64, linuxX64, linuxArm64, mingwX64."</ID>
+    <ID>MaxLineLength:KlyphTargetsTest.kt:KlyphTargetsTest$"Unknown klyph target all. Use host, all, or a comma-separated list of macosArm64, linuxX64, linuxArm64, mingwX64."</ID>
+    <ID>MaxLineLength:KlyphTargetsTest.kt:KlyphTargetsTest$"Unknown klyph target iosArm64, tvos. Use host, all, or a comma-separated list of macosArm64, linuxX64, linuxArm64, mingwX64."</ID>
+    <ID>MaxLineLength:KlyphTargetsTest.kt:KlyphTargetsTest$assertEquals("Set klyph.targets or klyph.target, not both: klyph.targets=macosArm64, klyph.target=mingwX64.", failure.message)</ID>
+    <ID>MaxLineLength:KlyphTargetsTest.kt:KlyphTargetsTest$assertEquals(listOf("linuxArm64", "mingwX64"), KlyphTargets.resolve(null, null, listOf("mingwX64", "linuxArm64"), host))</ID>
+    <ID>MaxLineLength:KlyphTargetsTest.kt:KlyphTargetsTest$val failure = assertFailsWith&lt;GradleException&gt; { KlyphTargets.resolve("macosArm64", " mingwX64", listOf("host"), host) }</ID>
+    <ID>MaxLineLength:KlyphTargetsTest.kt:KlyphTargetsTest$val failure = assertFailsWith&lt;GradleException&gt; { KlyphTargets.resolve(null, null, listOf("iosArm64", "tvos"), host) }</ID>
+    <ID>MaxLineLength:KlyphTargetsTest.kt:KlyphTargetsTest$val fromProperty = assertFailsWith&lt;GradleException&gt; { KlyphTargets.resolve("all,mingwX64", null, listOf("host"), host) }</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:DistributionLayout$"LINUX" -&gt; File(Sdl3Locator.libraryDir(prefix, target), "libSDL3.so.0").takeIf { it.isFile }?.let { listOf(it to "libSDL3.so.0") }</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:DistributionLayout$"OSX" -&gt; listOf("$lib/libSDL3.0.dylib", "$lib/SDL3.framework/Versions/A/SDL3", "$lib/SDL3.framework/Versions/A/Resources/**")</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:DistributionLayout$.</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:MacExecutable$fun isSdl3: Boolean</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:MacExecutable$lines.drop(index + 1).take(3).firstOrNull { it.startsWith("path ") }?.removePrefix("path ")?.substringBefore(" (offset")</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:MacExecutable$otoolL.lines().drop(1).map { it.trim() }.filter { it.isNotEmpty() }.map { it.substringBefore(" (compatibility").trim() }</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:PrepareDistribution$?:</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:PrepareDistribution$get() = objects.fileTree().from(sdl3Prefix).apply { include(DistributionLayout.libraryPatterns(target.get(), sdl3Prefix.get().asFile)) }</ID>
+    <ID>MaxLineLength:PrepareDistribution.kt:PrepareDistribution$if (KlyphTargets.family(target.get()) == "OSX") MacExecutable.loadSdl3FromOwnFolder(copied, CommandRunner(exec)::run)</ID>
+    <ID>MaxLineLength:Sdl3Locator.kt:Sdl3Location$/** Folder with `include/SDL3/SDL.h`, the library folder [Sdl3Locator.libraryDir] finds and, on Windows, `bin/SDL3.dll`. */</ID>
+    <ID>MaxLineLength:Sdl3Locator.kt:Sdl3Locator$fun</ID>
+    <ID>MaxLineLength:Sdl3LocatorTest.kt:Sdl3LocatorTest$assertEquals("https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-3.4.18.dmg", location.release.url)</ID>
+    <ID>MaxLineLength:Sdl3LocatorTest.kt:Sdl3LocatorTest$assertTrue(Regex("[0-9a-f]{64}").matches(hash), "SHA-256 of ${release.fileName} is not 64 hex digits: $hash")</ID>
+    <ID>MaxLineLength:Sdl3LocatorTest.kt:Sdl3LocatorTest$val location = Sdl3Locator.locate("/opt/homebrew/opt/sdl3", emptyList(), KlyphTargets.MACOS_ARM64, "3.4.18", cache)</ID>
+    <ID>NoNameShadowing:KlyphPlugin.kt:KlyphBuild${ it.destination }</ID>
+    <ID>NoNameShadowing:KlyphPlugin.kt:KlyphBuild${ it.outputFile }</ID>
+    <ID>NoNameShadowing:Sdl3FetcherTest.kt:Sdl3FetcherTest${ commands += it; "" }</ID>
+    <ID>ThrowsCount:FetchSdl3.kt:Sdl3Fetcher$fun download</ID>
+    <ID>ThrowsCount:KlyphTargets.kt:KlyphTargets$fun resolve: List&lt;String&gt;</ID>
+  </CurrentIssues>
+</SmellBaseline>

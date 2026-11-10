@@ -1,0 +1,1033 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:Audio.kt:Audio$previous.activeVoiceCount != active || previous.stolenVoiceCount != stolenVoiceCount || previous.droppedCommandCount != droppedCommandCount || previous.closedStreamCount != closedStreamCount</ID>
+    <ID>ComplexCondition:Collisions.kt:Collisions$!minX.isFinite() || !minY.isFinite() || !maxX.isFinite() || !maxY.isFinite()</ID>
+    <ID>ComplexCondition:KinematicBody.kt:dropLine != Float.NEGATIVE_INFINITY &amp;&amp; (moved.y + offsetY + halfHeight > dropLine || moved.isOnFloor || startSpeedY &lt; 0f)</ID>
+    <ID>ComplexCondition:SolidGrid.kt:SolidGrid$!changed &amp;&amp; (count >= solidCount || entities[count] != raw || boxes[o] != minX || boxes[o + 1] != minY || boxes[o + 2] != maxX || boxes[o + 3] != maxY || layerBits[count] != layers || isOneWay[count] != oneWay)</ID>
+    <ID>ComplexCondition:SolidGrid.kt:SolidGrid$!minX.isFinite() || !minY.isFinite() || !maxX.isFinite() || !maxY.isFinite()</ID>
+    <ID>ComplexCondition:SolidGrid.kt:SolidGrid$best >= 0 &amp;&amp; (fraction > hitFraction || (fraction == hitFraction &amp;&amp; Entity(entities[s]).index >= Entity(entities[best]).index))</ID>
+    <ID>CyclomaticComplexMethod:AppConfig.kt:AppConfig$override fun equals: Boolean</ID>
+    <ID>CyclomaticComplexMethod:AppConfig.kt:AppConfig.Companion$internal fun fromEnvironment: AppConfig</ID>
+    <ID>CyclomaticComplexMethod:BmFont.kt:BmFontLine.Companion$fun parseOrNull: BmFontLine?</ID>
+    <ID>CyclomaticComplexMethod:BmFont.kt:internal fun parseBmFont: Font</ID>
+    <ID>CyclomaticComplexMethod:Collisions.kt:Collisions$private fun collectOverlaps: Int</ID>
+    <ID>CyclomaticComplexMethod:Collisions.kt:Collisions$private fun findPairs</ID>
+    <ID>CyclomaticComplexMethod:Collisions.kt:Collisions$private fun gather</ID>
+    <ID>CyclomaticComplexMethod:Input.kt:Input$internal fun handle</ID>
+    <ID>CyclomaticComplexMethod:Loop.kt:FrameLoop$private fun translatePlatformEvents</ID>
+    <ID>CyclomaticComplexMethod:Mixer.kt:Mixer$override fun consume</ID>
+    <ID>CyclomaticComplexMethod:SolidGrid.kt:SolidGrid$fun refresh</ID>
+    <ID>CyclomaticComplexMethod:SolidGrid.kt:SolidGrid$private fun test</ID>
+    <ID>CyclomaticComplexMethod:SolidGrid.kt:SolidGrid$private fun walk</ID>
+    <ID>CyclomaticComplexMethod:SpriteOrder.kt:SpriteOrder$fun finish</ID>
+    <ID>CyclomaticComplexMethod:SpriteRenderer.kt:SpriteRenderer$private inline fun forEachSprite</ID>
+    <ID>EmptyFunctionBlock:AudioRendererTest.kt:AudioRendererTest.ConstantStream${}</ID>
+    <ID>EmptyFunctionBlock:MusicTrackTest.kt:MusicTrackTest.&lt;no name provided>${}</ID>
+    <ID>LargeClass:Collisions.kt:Collisions</ID>
+    <ID>LongMethod:BmFont.kt:internal fun parseBmFont: Font</ID>
+    <ID>LongMethod:Collisions.kt:Collisions$private fun buildGrid</ID>
+    <ID>LongMethod:Collisions.kt:Collisions$private fun gather</ID>
+    <ID>LongMethod:KinematicBody.kt:internal fun SolidGrid.slide</ID>
+    <ID>LongMethod:Loop.kt:FrameLoop$private fun frame</ID>
+    <ID>LongMethod:SolidGrid.kt:SolidGrid$fun refresh</ID>
+    <ID>LongMethod:SolidGrid.kt:SolidGrid$private fun test</ID>
+    <ID>LongMethod:SolidGrid.kt:SolidGrid$private fun walk</ID>
+    <ID>LongMethod:Transforms.kt:private fun World.propagateBelow: Int</ID>
+    <ID>LoopWithTooManyJumpStatements:BmFont.kt:BmFontLine.Companion$while</ID>
+    <ID>LoopWithTooManyJumpStatements:Collisions.kt:Collisions$for</ID>
+    <ID>LoopWithTooManyJumpStatements:Fonts.kt:for</ID>
+    <ID>LoopWithTooManyJumpStatements:SolidGrid.kt:SolidGrid$for</ID>
+    <ID>LoopWithTooManyJumpStatements:World.kt:World$for</ID>
+    <ID>MagicNumber:Angles.kt:180.0</ID>
+    <ID>MagicNumber:AnglesTest.kt:AnglesTest$180f</ID>
+    <ID>MagicNumber:AnglesTest.kt:AnglesTest$1e-4f</ID>
+    <ID>MagicNumber:AnglesTest.kt:AnglesTest$45f</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$0.5f</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$10</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$1_000_000_000L</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$3</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$3f</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$4</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$4f</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$5</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$6</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$60</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$600</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$600L</ID>
+    <ID>MagicNumber:AnimationTest.kt:AnimationTest$8</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$1000</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$120</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$1280</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$20</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$21</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$32f</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$4</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$5</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$60</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$64f</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$720</ID>
+    <ID>MagicNumber:AppConfigTest.kt:AppConfigTest$8f</ID>
+    <ID>MagicNumber:AudioRendererTest.kt:AudioRendererTest$0.25f</ID>
+    <ID>MagicNumber:AudioRendererTest.kt:AudioRendererTest$0.5f</ID>
+    <ID>MagicNumber:AudioRendererTest.kt:AudioRendererTest$10</ID>
+    <ID>MagicNumber:AudioRendererTest.kt:AudioRendererTest$100</ID>
+    <ID>MagicNumber:AudioRendererTest.kt:AudioRendererTest$16</ID>
+    <ID>MagicNumber:AudioRendererTest.kt:AudioRendererTest$1e-6f</ID>
+    <ID>MagicNumber:AudioRendererTest.kt:AudioRendererTest$20</ID>
+    <ID>MagicNumber:AudioRendererTest.kt:AudioRendererTest$200</ID>
+    <ID>MagicNumber:AudioRendererTest.kt:AudioRendererTest$400</ID>
+    <ID>MagicNumber:AudioRendererTest.kt:AudioRendererTest$64</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$0.05f</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$0.25f</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$0.2f</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$0.5f</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$0.99f</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$10</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$100</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$1000</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$10_000</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$10f</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$120</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$15</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$16</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$198</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$1e-6f</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$224</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$24_000</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$3</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$30</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$32</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$4</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$499</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$4f</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$64</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$7</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$8</ID>
+    <ID>MagicNumber:AudioTest.kt:AudioTest$99</ID>
+    <ID>MagicNumber:BmFont.kt:0xFFFF</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$10</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$12f</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$16f</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$2f</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$3f</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$4</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$4f</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$5f</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$6f</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$8</ID>
+    <ID>MagicNumber:BmFontTest.kt:BmFontTest$9f</ID>
+    <ID>MagicNumber:BuiltInFont.kt:BuiltInFont.Companion$3</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$0x20</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$0x7E</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$0xFFFFFF00u</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$16f</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$28</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$3</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$4</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$7f</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$8</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$8f</ID>
+    <ID>MagicNumber:BuiltInFontTest.kt:BuiltInFontTest$95</ID>
+    <ID>MagicNumber:Camera.kt:0.5f</ID>
+    <ID>MagicNumber:Camera.kt:10</ID>
+    <ID>MagicNumber:Camera.kt:12</ID>
+    <ID>MagicNumber:Camera.kt:13</ID>
+    <ID>MagicNumber:Camera.kt:15</ID>
+    <ID>MagicNumber:Camera.kt:16</ID>
+    <ID>MagicNumber:Camera.kt:4</ID>
+    <ID>MagicNumber:Camera.kt:5</ID>
+    <ID>MagicNumber:CameraTest.kt:0.5f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$0.05f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$0.25f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$10</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$100</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$1000f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$100f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$1080f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$10f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$11</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$12</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$120f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$1280f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$13</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$14</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$15</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$150f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$1600f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$17f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$1920f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$2000f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$200f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$2f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$3</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$300f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$320f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$390f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$400f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$5</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$5000f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$500f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$50f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$5f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$6</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$600f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$7</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$700f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$720f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$7f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$8</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$800f</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$9</ID>
+    <ID>MagicNumber:CameraTest.kt:CameraTest$90f</ID>
+    <ID>MagicNumber:Canvas.kt:Canvas$0.5f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$108f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$10f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$111f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$12</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$127f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$15f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$16</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$16f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$18f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$1e-4f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$20f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$22f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$25f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$3</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$30f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$4</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$40f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$5</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$5f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$6</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$76f</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$8</ID>
+    <ID>MagicNumber:CanvasTest.kt:CanvasTest$92f</ID>
+    <ID>MagicNumber:CollisionLayersTest.kt:CollisionLayersTest$0b1010</ID>
+    <ID>MagicNumber:CollisionLayersTest.kt:CollisionLayersTest$3</ID>
+    <ID>MagicNumber:CollisionLayersTest.kt:CollisionLayersTest$31</ID>
+    <ID>MagicNumber:CollisionLayersTest.kt:CollisionLayersTest$4</ID>
+    <ID>MagicNumber:CollisionLayersTest.kt:CollisionLayersTest$5</ID>
+    <ID>MagicNumber:Collisions.kt:Collisions$0.5f</ID>
+    <ID>MagicNumber:Collisions.kt:Collisions$1e9</ID>
+    <ID>MagicNumber:Collisions.kt:Collisions$3</ID>
+    <ID>MagicNumber:Collisions.kt:Collisions$32</ID>
+    <ID>MagicNumber:Collisions.kt:Collisions$4</ID>
+    <ID>MagicNumber:Collisions.kt:Collisions$5</ID>
+    <ID>MagicNumber:Collisions.kt:Collisions$6</ID>
+    <ID>MagicNumber:Collisions.kt:Collisions$7</ID>
+    <ID>MagicNumber:Collisions.kt:Collisions.Companion$32</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$0.1f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$1.5f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$10</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$100</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$1000f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$100f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$106f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$10f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$14f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$15.5f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$16f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$19f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$2000</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$250f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$3</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$32f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$3f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$4</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$4f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$50</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$50f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$5f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$6.5f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$6000f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$64f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$6f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$8f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$9.5f</ID>
+    <ID>MagicNumber:CollisionsTest.kt:CollisionsTest$9f</ID>
+    <ID>MagicNumber:CommandRingTest.kt:CommandRingTest$1000</ID>
+    <ID>MagicNumber:CommandRingTest.kt:CommandRingTest$3</ID>
+    <ID>MagicNumber:CommandRingTest.kt:CommandRingTest$4</ID>
+    <ID>MagicNumber:CommandRingTest.kt:CommandRingTest$99</ID>
+    <ID>MagicNumber:CommandsTest.kt:CommandsTest$1000</ID>
+    <ID>MagicNumber:CommandsTest.kt:CommandsTest$2000</ID>
+    <ID>MagicNumber:CommandsTest.kt:CommandsTest$3</ID>
+    <ID>MagicNumber:CommandsTest.kt:CommandsTest$4</ID>
+    <ID>MagicNumber:CommandsTest.kt:CommandsTest$5</ID>
+    <ID>MagicNumber:CommandsTest.kt:CommandsTest$7</ID>
+    <ID>MagicNumber:DebugOverlay.kt:10</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$0.001</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$0.05</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$0.96</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$1.5</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$10</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$100_000_000</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$10L</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$12</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$12.0</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$1234</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$1234.4</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$1234.5</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$123456789.0</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$123_456</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$15</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$16.666</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$16_700_000</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$180f</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$1_250_000</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$1e-3f</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$1e-9</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$1e30</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$20</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$20L</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$20_000_000</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$25.0</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$2_004_999</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$3</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$30</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$30.0</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$300_000</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$30L</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$32f</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$3f</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$4</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$40</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$400_000</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$40L</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$5</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$50_000</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$64f</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$65_000_000L</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$6_000</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$6_000_000L</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$70</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$8f</ID>
+    <ID>MagicNumber:DebugOverlayTest.kt:DebugOverlayTest$9</ID>
+    <ID>MagicNumber:DiscCacheTest.kt:DiscCacheTest$10</ID>
+    <ID>MagicNumber:DiscCacheTest.kt:DiscCacheTest$5</ID>
+    <ID>MagicNumber:DiscCacheTest.kt:DiscCacheTest$8</ID>
+    <ID>MagicNumber:DrawSpace.kt:10</ID>
+    <ID>MagicNumber:DrawSpace.kt:12</ID>
+    <ID>MagicNumber:DrawSpace.kt:13</ID>
+    <ID>MagicNumber:DrawSpace.kt:15</ID>
+    <ID>MagicNumber:DrawSpace.kt:16</ID>
+    <ID>MagicNumber:DrawSpace.kt:2f</ID>
+    <ID>MagicNumber:DrawSpace.kt:5</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$100</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$12</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$13</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$15</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$16</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$3</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$300f</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$4</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$400f</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$5</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$600f</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$800f</ID>
+    <ID>MagicNumber:DrawSpaceTest.kt:DrawSpaceTest$9f</ID>
+    <ID>MagicNumber:Entity.kt:Entity.Companion$0xFFFF_FFFFL</ID>
+    <ID>MagicNumber:Entity.kt:Entity.Companion$32</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$10</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$11</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$12</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$3</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$3f</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$4</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$4f</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$600</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$800</ID>
+    <ID>MagicNumber:FadeTest.kt:FadeTest$0.2f</ID>
+    <ID>MagicNumber:FadeTest.kt:FadeTest$0.3f</ID>
+    <ID>MagicNumber:FadeTest.kt:FadeTest$0.5f</ID>
+    <ID>MagicNumber:FadeTest.kt:FadeTest$0.75f</ID>
+    <ID>MagicNumber:FadeTest.kt:FadeTest$255f</ID>
+    <ID>MagicNumber:FileCacheTest.kt:FileCacheTest$8</ID>
+    <ID>MagicNumber:FixedStepInputTest.kt:FixedStepInputTest$10</ID>
+    <ID>MagicNumber:FixedStepInputTest.kt:FixedStepInputTest$20</ID>
+    <ID>MagicNumber:FixedStepInputTest.kt:FixedStepInputTest$3</ID>
+    <ID>MagicNumber:FixedStepInputTest.kt:FixedStepInputTest$4</ID>
+    <ID>MagicNumber:FixedStepInputTest.kt:FixedStepInputTest$40</ID>
+    <ID>MagicNumber:FixedStepInputTest.kt:FixedStepInputTest$5</ID>
+    <ID>MagicNumber:FixedStepInputTest.kt:FixedStepInputTest$8</ID>
+    <ID>MagicNumber:FixedStepInputTest.kt:FixedStepLoopTest$15</ID>
+    <ID>MagicNumber:FixedStepInputTest.kt:FixedStepLoopTest$4</ID>
+    <ID>MagicNumber:FixedStepperTest.kt:FixedStepperTest$0.25f</ID>
+    <ID>MagicNumber:FixedStepperTest.kt:FixedStepperTest$0.5f</ID>
+    <ID>MagicNumber:FixedStepperTest.kt:FixedStepperTest$0.99f</ID>
+    <ID>MagicNumber:FixedStepperTest.kt:FixedStepperTest$5</ID>
+    <ID>MagicNumber:FixedStepperTest.kt:FixedStepperTest$59</ID>
+    <ID>MagicNumber:FixedStepperTest.kt:FixedStepperTest$60</ID>
+    <ID>MagicNumber:Font.kt:Font.Companion$15</ID>
+    <ID>MagicNumber:Font.kt:Font.Companion$16</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$0.5f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$10f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$13f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$14f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$15f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$16f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$18f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$3.5f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$30f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$32f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$48f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$4f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$6.5f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$7f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$8f</ID>
+    <ID>MagicNumber:FontLayoutTest.kt:FontLayoutTest$9f</ID>
+    <ID>MagicNumber:FrameStats.kt:FrameStats$3</ID>
+    <ID>MagicNumber:FrameStatsTest.kt:FrameStatsTest$10</ID>
+    <ID>MagicNumber:FrameStatsTest.kt:FrameStatsTest$1_000</ID>
+    <ID>MagicNumber:FrameStatsTest.kt:FrameStatsTest$2_000_000</ID>
+    <ID>MagicNumber:FrameStatsTest.kt:FrameStatsTest$3</ID>
+    <ID>MagicNumber:FrameStatsTest.kt:FrameStatsTest$4</ID>
+    <ID>MagicNumber:FrameStatsTest.kt:FrameStatsTest$5</ID>
+    <ID>MagicNumber:FrameStatsTest.kt:FrameStatsTest$500</ID>
+    <ID>MagicNumber:FrameStatsTest.kt:FrameStatsTest$700</ID>
+    <ID>MagicNumber:FrameStatsTest.kt:FrameStatsTest$7_000_000</ID>
+    <ID>MagicNumber:FrameStatsTest.kt:FrameStatsTest$800</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$0.1f</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$0.5f</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$10</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$10f</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$13</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$200f</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$20f</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$255f</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$3</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$4</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$5f</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$60</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$600f</ID>
+    <ID>MagicNumber:FrozenSceneTest.kt:FrozenSceneTest$60f</ID>
+    <ID>MagicNumber:HierarchyTest.kt:HierarchyTest$3</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$0.12f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$0.15f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$0.1f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$0.5f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$0.75f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$0.85f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$0.8f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$100_000u</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$100f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$10f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$150f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$15f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$18f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$1e-5f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$200f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$20f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$25f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$2f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$30f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$3f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$3u</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$40f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$50f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$5f</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$6u</ID>
+    <ID>MagicNumber:InputTest.kt:InputTest$9u</ID>
+    <ID>MagicNumber:InterpolationTest.kt:InterpolationTest$0.25f</ID>
+    <ID>MagicNumber:InterpolationTest.kt:InterpolationTest$0.5f</ID>
+    <ID>MagicNumber:InterpolationTest.kt:InterpolationTest$100f</ID>
+    <ID>MagicNumber:InterpolationTest.kt:InterpolationTest$110f</ID>
+    <ID>MagicNumber:InterpolationTest.kt:InterpolationTest$1e-3f</ID>
+    <ID>MagicNumber:InterpolationTest.kt:InterpolationTest$1e-4f</ID>
+    <ID>MagicNumber:InterpolationTest.kt:InterpolationTest$1e-6f</ID>
+    <ID>MagicNumber:InterpolationTest.kt:InterpolationTest$3</ID>
+    <ID>MagicNumber:InterpolationTest.kt:InterpolationTest$3f</ID>
+    <ID>MagicNumber:InterpolationTest.kt:InterpolationTest$4f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$0.0001f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$0.001f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$0.01f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$100f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$101f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$120</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$1200f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$1800f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$200f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$20f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$240</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$290f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$30</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$300f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$4f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$500f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$5f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$60</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$600f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$60_000f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$60f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$8f</ID>
+    <ID>MagicNumber:KinematicBodyTest.kt:KinematicBodyTest$900f</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$0.25f</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$0.5f</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$10</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$100</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$1000</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$16</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$1e-4f</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$1e-6f</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$200</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$3</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$479</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$480</ID>
+    <ID>MagicNumber:MusicTest.kt:MusicTest$5f</ID>
+    <ID>MagicNumber:MusicTrackTest.kt:MusicTrackTest$0.3f</ID>
+    <ID>MagicNumber:MusicTrackTest.kt:MusicTrackTest$100</ID>
+    <ID>MagicNumber:MusicTrackTest.kt:MusicTrackTest$16</ID>
+    <ID>MagicNumber:MusicTrackTest.kt:MusicTrackTest$1_000_000_000L</ID>
+    <ID>MagicNumber:MusicTrackTest.kt:MusicTrackTest$20</ID>
+    <ID>MagicNumber:MusicTrackTest.kt:MusicTrackTest$3</ID>
+    <ID>MagicNumber:MusicTrackTest.kt:MusicTrackTest$40</ID>
+    <ID>MagicNumber:MusicTrackTest.kt:MusicTrackTest$512</ID>
+    <ID>MagicNumber:ParticleEmitter.kt:ParticleEmitter.Companion$100f</ID>
+    <ID>MagicNumber:ParticleEmitter.kt:ParticleEmitter.Companion$50f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$0.05f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$0.1f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$0.25f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$0.2f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$0.3f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$0.4f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$0.5f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$0.9f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$10</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$10f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$120f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$20</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$25f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$3</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$30</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$30f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$4</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$40f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$5</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$50f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$59</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$5f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$6</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$60</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$60f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$6f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$700f</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$8</ID>
+    <ID>MagicNumber:ParticleEmitterTest.kt:ParticleEmitterTest$90</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$0.5f</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$100</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$101</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$12</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$12f</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$16</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$16f</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$1e-4f</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$3</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$34f</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$4</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$4f</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$5</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$6</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$7f</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$8</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$8f</ID>
+    <ID>MagicNumber:ParticleExtractionTest.kt:ParticleExtractionTest$9f</ID>
+    <ID>MagicNumber:Particles.kt:10</ID>
+    <ID>MagicNumber:Particles.kt:11</ID>
+    <ID>MagicNumber:Particles.kt:12</ID>
+    <ID>MagicNumber:Particles.kt:13</ID>
+    <ID>MagicNumber:Particles.kt:14</ID>
+    <ID>MagicNumber:Particles.kt:15</ID>
+    <ID>MagicNumber:Particles.kt:3</ID>
+    <ID>MagicNumber:Particles.kt:4</ID>
+    <ID>MagicNumber:Particles.kt:5</ID>
+    <ID>MagicNumber:Particles.kt:6</ID>
+    <ID>MagicNumber:Particles.kt:7</ID>
+    <ID>MagicNumber:Particles.kt:8</ID>
+    <ID>MagicNumber:Particles.kt:9</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$10</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$11</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$12</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$13</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$14</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$15</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$3</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$4</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$5</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$6</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$7</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$8</ID>
+    <ID>MagicNumber:QuadBuffer.kt:QuadBuffer$9</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$100f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$109.9f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$10f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$110f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$20f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$30f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$40f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$45f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$50f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$51f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$5f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$60f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$69.9f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$70f</ID>
+    <ID>MagicNumber:RectTest.kt:RectTest$9.9f</ID>
+    <ID>MagicNumber:ResourcesTest.kt:ResourcesTest$5</ID>
+    <ID>MagicNumber:ResourcesTest.kt:ResourcesTest$80</ID>
+    <ID>MagicNumber:SceneStackTest.kt:SceneStackTest$3</ID>
+    <ID>MagicNumber:SceneStackTest.kt:SceneStackTest$7</ID>
+    <ID>MagicNumber:ScreenshotTest.kt:ScreenshotTest$20</ID>
+    <ID>MagicNumber:ScreenshotTest.kt:ScreenshotTest$3</ID>
+    <ID>MagicNumber:ScreenshotTest.kt:ScreenshotTest$4</ID>
+    <ID>MagicNumber:ScreenshotTest.kt:ScreenshotTest$5</ID>
+    <ID>MagicNumber:ShapeTest.kt:ShapeTest$4f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$0.00001f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$0.0001f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$0.25f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$0.8f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$0.9f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$100f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$101f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$10f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$120</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$140f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$141f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$150f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$1800f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$200f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$3</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$380f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$400f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$4f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$500f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$50f</ID>
+    <ID>MagicNumber:SlideTest.kt:SlideTest$90f</ID>
+    <ID>MagicNumber:SolidGrid.kt:SolidGrid$3</ID>
+    <ID>MagicNumber:SolidGrid.kt:SolidGrid.Companion$32</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$0.1f</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$0.25f</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$0.2f</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$0.3f</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$0.5f</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$100</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$16</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$1e-4f</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$3</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$36</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$4</ID>
+    <ID>MagicNumber:SoundTest.kt:SoundTest$8</ID>
+    <ID>MagicNumber:SpriteAnimationTest.kt:SpriteAnimationTest$0.5f</ID>
+    <ID>MagicNumber:SpriteAnimationTest.kt:SpriteAnimationTest$10</ID>
+    <ID>MagicNumber:SpriteAnimationTest.kt:SpriteAnimationTest$3</ID>
+    <ID>MagicNumber:SpriteAnimationTest.kt:SpriteAnimationTest$3f</ID>
+    <ID>MagicNumber:SpriteAnimationTest.kt:SpriteAnimationTest$8</ID>
+    <ID>MagicNumber:SpriteOrder.kt:SpriteOrder$3</ID>
+    <ID>MagicNumber:SpriteOrder.kt:SpriteOrder$5</ID>
+    <ID>MagicNumber:SpriteOrder.kt:SpriteOrder$7</ID>
+    <ID>MagicNumber:SpriteOrder.kt:SpriteOrder.Companion$32</ID>
+    <ID>MagicNumber:SpriteOrderTest.kt:SpriteOrderTest$3</ID>
+    <ID>MagicNumber:SpriteOrderTest.kt:SpriteOrderTest$4</ID>
+    <ID>MagicNumber:SpriteOrderTest.kt:SpriteOrderTest$5</ID>
+    <ID>MagicNumber:SpriteOrderTest.kt:SpriteOrderTest$6</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$10</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$11</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$12</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$13</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$14</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$15</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$3</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$4</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$5</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$6</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$7</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$8</ID>
+    <ID>MagicNumber:SpriteRenderer.kt:SpriteRenderer$9</ID>
+    <ID>MagicNumber:SpriteSheetTest.kt:SpriteSheetTest$3</ID>
+    <ID>MagicNumber:SpriteSheetTest.kt:SpriteSheetTest$4</ID>
+    <ID>MagicNumber:SpriteSheetTest.kt:SpriteSheetTest$7</ID>
+    <ID>MagicNumber:SpriteSheetTest.kt:SpriteSheetTest$8</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$0.00001f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$0.25f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$0.35f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$0.45f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$0.4f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$0.5f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$0.725f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$0.75f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$155f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$2000</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$200f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$25f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$300</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$4f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$70f</ID>
+    <ID>MagicNumber:SweepTest.kt:SweepTest$90f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$0.39f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$0.41f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$0.5f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$100f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$105f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$10f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$110f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$112f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$12</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$16</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$16f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$1e-4f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$205f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$20f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$3</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$307f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$4</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$55f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$57f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$6</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$64f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$70f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$7f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$93f</ID>
+    <ID>MagicNumber:TextExtractionTest.kt:TextExtractionTest$96f</ID>
+    <ID>MagicNumber:TextQuads.kt:0.5f</ID>
+    <ID>MagicNumber:TextShadow.kt:TextShadow$0x000000B4u</ID>
+    <ID>MagicNumber:TextureRegionTest.kt:TextureRegionTest$0.25f</ID>
+    <ID>MagicNumber:TextureRegionTest.kt:TextureRegionTest$0.375f</ID>
+    <ID>MagicNumber:TextureRegionTest.kt:TextureRegionTest$0.75f</ID>
+    <ID>MagicNumber:TextureRegionTest.kt:TextureRegionTest$16</ID>
+    <ID>MagicNumber:TextureRegionTest.kt:TextureRegionTest$16f</ID>
+    <ID>MagicNumber:TextureRegionTest.kt:TextureRegionTest$32</ID>
+    <ID>MagicNumber:TextureRegionTest.kt:TextureRegionTest$32f</ID>
+    <ID>MagicNumber:TextureRegionTest.kt:TextureRegionTest$64</ID>
+    <ID>MagicNumber:TimeTest.kt:TimeTest$0.02f</ID>
+    <ID>MagicNumber:TimeTest.kt:TimeTest$0.033f</ID>
+    <ID>MagicNumber:TimeTest.kt:TimeTest$0.1f</ID>
+    <ID>MagicNumber:TimeTest.kt:TimeTest$0.25f</ID>
+    <ID>MagicNumber:TimeTest.kt:TimeTest$0.75f</ID>
+    <ID>MagicNumber:TimeTest.kt:TimeTest$12</ID>
+    <ID>MagicNumber:TimeTest.kt:TimeTest$5</ID>
+    <ID>MagicNumber:TimeTest.kt:TimeTest$50</ID>
+    <ID>MagicNumber:TimeTest.kt:TimeTest$60</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$0.5f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$10f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$111f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$11f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$12f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$14f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$200</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$202f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$3f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$4f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$5f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$6f</ID>
+    <ID>MagicNumber:TransformsTest.kt:TransformsTest$99f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$0.5f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$0.6f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$0.8f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$0f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$1.2f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$15f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$1e-6f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$2.5f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$20f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$25f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$2f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$30f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$3f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$4f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$5f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$6f</ID>
+    <ID>MagicNumber:Vec2Test.kt:Vec2Test$7f</ID>
+    <ID>MagicNumber:VelocityTest.kt:VelocityTest$0.5f</ID>
+    <ID>MagicNumber:VelocityTest.kt:VelocityTest$120</ID>
+    <ID>MagicNumber:VelocityTest.kt:VelocityTest$37.5f</ID>
+    <ID>MagicNumber:VelocityTest.kt:VelocityTest$40f</ID>
+    <ID>MagicNumber:VelocityTest.kt:VelocityTest$60f</ID>
+    <ID>MagicNumber:VelocityTest.kt:VelocityTest$91f</ID>
+    <ID>MagicNumber:WorldTest.kt:WorldTest$10</ID>
+    <ID>MagicNumber:WorldTest.kt:WorldTest$100</ID>
+    <ID>MagicNumber:WorldTest.kt:WorldTest$3</ID>
+    <ID>MagicNumber:WorldTest.kt:WorldTest$4</ID>
+    <ID>MagicNumber:WorldTest.kt:WorldTest$5</ID>
+    <ID>MagicNumber:WorldTest.kt:WorldTest$50</ID>
+    <ID>MagicNumber:WorldTest.kt:WorldTest$6</ID>
+    <ID>MagicNumber:WorldTest.kt:WorldTest$7</ID>
+    <ID>MaxLineLength:Animation.kt:Animation$/** The number of times [advance] has finished this animation, so a reader can tell each finish apart, a restart included. */</ID>
+    <ID>MaxLineLength:App.kt:App$*</ID>
+    <ID>MaxLineLength:AppConfig.kt:AppConfig$require(timeLimit == null || (!timeLimit.isNegative() &amp;&amp; timeLimit.isFinite())) { "Time limit $timeLimit is negative or infinite." }</ID>
+    <ID>MaxLineLength:AppConfig.kt:AppConfig.Companion$/** Returns [base] with the settings that the `KLYPH_*` variables [environment] returns replaced, as the public overload describes. */</ID>
+    <ID>MaxLineLength:AppConfig.kt:AppConfig.Companion$?:</ID>
+    <ID>MaxLineLength:AppConfig.kt:AppConfig.Companion$else -> throw IllegalArgumentException("Environment variable $name is '$value', which is neither 0 nor 1.")</ID>
+    <ID>MaxLineLength:AppConfig.kt:AppConfig.Companion$public</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$"audio=AudioConfig(output=DEVICE, maxVoices=32, sampleRate=48000, bufferFrames=1024), collisionCellSize=64.0, overlayKey=${Scancode.F3}, "</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$"overlay=HIDDEN, frameLimit=null, timeLimit=null, windowMode=WINDOWED, cursor=VISIBLE, screenshot=null)"</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$"presentMode=VSYNC, target=WINDOW, gpuSync=NONE, validation=DISABLED, clearColor=Color(#1a1f2eff), assetRoot=null, "</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertEquals("Environment variable KLYPH_FRAMES is 'many', which is not a whole number of at least 0.", frames.message)</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertEquals(AppConfig(audio = AudioConfig(maxVoices = 8)).hashCode(), AppConfig(audio = AudioConfig(maxVoices = 8)).hashCode())</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertEquals(AppConfig(screenshot = Screenshot(20, "shot.png")), AppConfig(screenshot = Screenshot(20, "shot.png")))</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertEquals(Screenshot(5, "base.png"), AppConfig.fromEnvironment(base, environment("KLYPH_SCREENSHOT" to value)).screenshot, value)</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertEquals(base, AppConfig.fromEnvironment(base, environment("KLYPH_FRAMES" to "", "KLYPH_VSYNC" to "")), "An empty value counts as unset.")</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertEquals(null, AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_SCREENSHOT" to "shot.png")).screenshot)</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertFailsWith&lt;IllegalArgumentException> { AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_FRAMES" to "-1")) }</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertFailsWith&lt;IllegalArgumentException> { AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_FULLSCREEN" to "yes")) }</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertFailsWith&lt;IllegalArgumentException> { AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_SECONDS" to "soon")) }</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$assertNotEquals(AppConfig(screenshot = Screenshot(20, "shot.png")), AppConfig(screenshot = Screenshot(21, "shot.png")))</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$environment("KLYPH_VALIDATION" to "0", "KLYPH_VSYNC" to "1", "KLYPH_OFFSCREEN" to "0", "KLYPH_OVERLAY" to "0")</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$val flag = assertFailsWith&lt;IllegalArgumentException> { AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_VSYNC" to "yes")) }</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$val frames = assertFailsWith&lt;IllegalArgumentException> { AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_FRAMES" to "many")) }</ID>
+    <ID>MaxLineLength:AppConfigTest.kt:AppConfigTest$val windowed = AppConfig.fromEnvironment(AppConfig(windowMode = WindowMode.FULLSCREEN), environment("KLYPH_FULLSCREEN" to "0"))</ID>
+    <ID>MaxLineLength:Assets.kt:Assets$*</ID>
+    <ID>MaxLineLength:Assets.kt:Assets$/** Returns the texture of the file at the already [resolved] path with [filter], or `null` if it cannot be loaded. */</ID>
+    <ID>MaxLineLength:Assets.kt:Assets$public</ID>
+    <ID>MaxLineLength:Assets.kt:Assets$return parseBmFont(bytes.decodeToString(), resolved) { file -> loadPage(if (isAbsolute(file)) file else folder + file) }</ID>
+    <ID>MaxLineLength:Assets.kt:DiscCache.Companion$/** Returns a white disc [diameter] texels across, centered in an image with one transparent texel on every side. */</ID>
+    <ID>MaxLineLength:Assets.kt:DiscCache.Companion$image.fillCircle(centerX = size * 0.5f, centerY = size * 0.5f, radius = diameter * 0.5f, color = Color.WHITE)</ID>
+    <ID>MaxLineLength:AudioRendererTest.kt:AudioRendererTest$assertEquals("Audio(isEnabled=true, voices=32, masterVolume=1.0, effectsVolume=1.0, musicVolume=1.0)", audio.toString())</ID>
+    <ID>MaxLineLength:AudioStats.kt:AudioStats.Companion$val EMPTY: AudioStats = AudioStats(activeVoiceCount = 0, stolenVoiceCount = 0L, droppedCommandCount = 0L, closedStreamCount = 0L)</ID>
+    <ID>MaxLineLength:AudioTest.kt:AudioTest$private</ID>
+    <ID>MaxLineLength:BmFont.kt:BmFontLine$private</ID>
+    <ID>MaxLineLength:BmFont.kt:if (first in 0..0xFFFF &amp;&amp; second in 0..0xFFFF) kernings[Font.kerningKey(first.toChar(), second.toChar())] = amount</ID>
+    <ID>MaxLineLength:BmFont.kt:if (id !in pageFiles) throw FontException("Font file '$path' has page ids ${pageFiles.keys.sorted()}, which are not numbered from 0 without gaps.")</ID>
+    <ID>MaxLineLength:BmFont.kt:throw FontException("Font file '$path' line ${glyph.lineNumber} uses page ${glyph.page}, which no 'page' line declares.")</ID>
+    <ID>MaxLineLength:BmFont.kt:throw FontException("Font file '$path' line ${raw.lineNumber} places a glyph outside page ${raw.page}.", e)</ID>
+    <ID>MaxLineLength:BmFontTest.kt:BmFontTest$val missingCommon = "page id=0 file=\"a.png\"\nchar id=65 x=0 y=0 width=1 height=1 xoffset=0 yoffset=0 xadvance=1 page=0"</ID>
+    <ID>MaxLineLength:BmFontTest.kt:BmFontTest$val missingKey = "common lineHeight=10 base=8\npage id=0 file=\"a.png\"\nchar id=65 x=0 y=0 width=1 xoffset=0 yoffset=0 xadvance=1"</ID>
+    <ID>MaxLineLength:BoxSlide.kt:BoxSlide$*</ID>
+    <ID>MaxLineLength:BoxSlide.kt:BoxSlide$/** The direction pointing away from the wall the box ran into: -1 for a wall on its right, 1 for one on its left, 0 with no wall. */</ID>
+    <ID>MaxLineLength:BoxSlide.kt:BoxSlide$/** The x the slide ended at: the box's center for [Collisions.slideBox], the entity's position for [Collisions.slideCollider]. */</ID>
+    <ID>MaxLineLength:BoxSlide.kt:BoxSlide$/** The y the slide ended at: the box's center for [Collisions.slideBox], the entity's position for [Collisions.slideCollider]. */</ID>
+    <ID>MaxLineLength:Camera.kt:/** Returns [position] moved so that [half] either side of it lies within [size] from [start], or the middle of that range when it is narrower. */</ID>
+    <ID>MaxLineLength:CameraTest.kt:CameraTest$Camera(x = 3f, y = 4f, zoom = 3f, rotation = (PI / 2).toFloat(), viewportWidth = 640f, viewportHeight = 480f)</ID>
+    <ID>MaxLineLength:CameraTest.kt:CameraTest$assertEquals("Camera(x=1.0, y=2.0, zoom=3.0, rotation=0.5, viewport=800.0x600.0, bounds=null)", camera.toString())</ID>
+    <ID>MaxLineLength:CameraTest.kt:CameraTest$assertTrue(abs(200f - coarse.x) &lt; 2f, "After a second at a smoothing of 5 the camera is within 1% of the target, at ${coarse.x}.")</ID>
+    <ID>MaxLineLength:CameraTest.kt:CameraTest$assertTrue(abs(coarse.x - fine.x) &lt; 0.05f &amp;&amp; abs(coarse.y - fine.y) &lt; 0.05f, "Coarse ${coarse.x}, fine ${fine.x}.")</ID>
+    <ID>MaxLineLength:CameraTest.kt:CameraTest$val camera = Camera(x = -35f, y = 12.5f, zoom = 1.75f, rotation = 2.1f, viewportWidth = 1280f, viewportHeight = 720f)</ID>
+    <ID>MaxLineLength:Canvas.kt:Canvas$quads.addText(font, text, x, y, rotation = 0f, scaleX = 1f, scaleY = 1f, scale, align, color, layer, space, shadow)</ID>
+    <ID>MaxLineLength:CanvasTest.kt:CanvasTest$assertFailsWith&lt;IllegalStateException> { canvas.drawRect(x = 0f, y = 0f, width = 1f, height = 1f, color = Color.WHITE) }</ID>
+    <ID>MaxLineLength:Collisions.kt:/** Returns whether the circles at ([ax], [ay]) of radius [ar] and at ([bx], [by]) of radius [br] share interior area. */</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$/** Moves the bodies as `moveBodies(world, delta)` does, leaving out what [scenes] holds frozen. The engine's call. */</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$/** Returns the number of overlapping pairs the last [detect] found, which is the number of [Overlap] events it published. */</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$centerX - placedHalfWidth</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$circleOverlapsBox(bounds[o + 4], bounds[o + 5], bounds[o + 6], queryMinX, queryMinY, queryMaxX, queryMaxY)</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$circleOverlapsBox(queryCenterX, queryCenterY, queryRadius, bounds[o], bounds[o + 1], bounds[o + 2], bounds[o + 3])</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$if (!((aMinX &lt; boxes[e + 2]) and (bMinX &lt; aMaxX) and (aMinY &lt; boxes[e + 3]) and (bMinY &lt; aMaxY))) continue</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$if (!boxesOverlap(queryMinX, queryMinY, queryMaxX, queryMaxY, bounds[o], bounds[o + 1], bounds[o + 2], bounds[o + 3])) return found</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$if (cellOf(max(aMinX, bMinX), inverse) != cellX || cellOf(max(aMinY, bMinY), inverse) != cellY) continue</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$require(world.getOrNull(entity, Solid) == null) { "Entity $entity is a Solid, and a solid cannot be moved against the solids." }</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$require(world.parentOrNull(entity) == null) { "Entity $entity has a parent, but only a root entity's collider can be moved in world space." }</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$return circlesOverlap(bounds[io + 4], bounds[io + 5], bounds[io + 6], bounds[jo + 4], bounds[jo + 5], bounds[jo + 6])</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$return solids.sweepAllTo(destination, x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight, dx, dy, mask.bits)</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$solids.sweep(x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight, dx, dy, mask.bits, skipsOverlaps = false)</ID>
+    <ID>MaxLineLength:Collisions.kt:internal</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$.</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$Shape.Box(width = 10f, height = 10f)</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals("Cell size 0.0 is not a positive finite number.", assertFailsWith&lt;IllegalArgumentException> { Collisions(0f) }.message)</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals(bruteForce, collisions.overlapping(probe.shape, x = probe.x, y = probe.y, mask = probe.mask), "$label, cell size $cellSize, query")</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals(bruteForce.firstOrNull(), collisions.firstOverlappingOrNull(probe.shape, x = probe.x, y = probe.y, mask = probe.mask))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals(false, overlap(Shape.Box(width = 10f, height = 10f), Shape.Box(width = 10f, height = 10f), bx = 0f, by = 10f))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals(false, overlap(Shape.Box(width = 10f, height = 10f), Shape.Box(width = 10f, height = 10f), bx = 10f, by = 0f))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals(false, overlap(Shape.Box(width = 10f, height = 10f), Shape.Box(width = 10f, height = 10f), bx = 10f, by = 10f))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals(false, overlap(Shape.Box(width = 10f, height = 10f), Shape.Box(width = 4f, height = 4f), bx = 0f, by = 20f))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals(listOf(box), collisions.overlapping(Shape.Box(width = 12f, height = 2f), x = 15f, y = 0f, mask = enemy))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertEquals(listOf(box, circle), collisions.overlapping(Shape.Box(width = 10_000f, height = 10_000f), x = 0f, y = 0f))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertTrue(overlap(Shape.Box(width = 100f, height = 100f), Shape.Box(width = 2f, height = 2f), bx = 10f, by = -10f))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertTrue(overlap(Shape.Box(width = 100f, height = 2f), Shape.Box(width = 2f, height = 100f), bx = 0f, by = 0f))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$assertTrue(overlap(Shape.Box(width = 10f, height = 10f), Shape.Box(width = 10f, height = 10f), bx = 9.5f, by = 9.5f))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$if (random.nextBoolean()) Shape.Circle(1f + random.nextFloat() * 30f) else Shape.Box(width = 2f + random.nextFloat() * 60f, height = 2f + random.nextFloat() * 60f)</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$shapes.add(TestShape(world.spawn(shape, x, y), shape, x, y, 1f, CollisionLayers.DEFAULT, CollisionLayers.ALL))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$shapes.add(TestShape(world.spawn(shape, x, y, layers, mask, scaleX = scale, scaleY = scale), shape, x, y, scale, layers, mask))</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest$val bruteForce = shapes.filter { probe.mask.intersects(it.layers) &amp;&amp; probe.overlapsIgnoringLayers(it) }.map { it.entity }.sortedBy { it.index }</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest.TestShape$circle -> circleOverlapsBox(x, y, halfWidth, other.x - other.halfWidth, other.y - other.halfHeight, other.x + other.halfWidth, other.y + other.halfHeight)</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest.TestShape$other.circle -> circleOverlapsBox(other.x, other.y, other.halfWidth, x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight)</ID>
+    <ID>MaxLineLength:CollisionsTest.kt:CollisionsTest.TestShape$other.x - other.halfWidth</ID>
+    <ID>MaxLineLength:CommandRingTest.kt:CommandRingTest$assertTrue(ring.push(1, int0 = 10, int1 = 11, int2 = 12, float0 = 0.5f, float1 = 1.5f, float2 = 2.5f, reference = payload))</ID>
+    <ID>MaxLineLength:DebugOverlay.kt:DebugOverlay$canvas.drawRect(x = MARGIN, y = MARGIN, width = panelWidth, height = panelHeight, color = PANEL_COLOR, layer = LAYER, space = DrawSpace.SCREEN)</ID>
+    <ID>MaxLineLength:DebugOverlay.kt:DebugOverlay$canvas.drawRect(x = left, y = lineY, width = graphWidth, height = 1f, color = LINE_COLOR, layer = LAYER, space = DrawSpace.SCREEN)</ID>
+    <ID>MaxLineLength:DebugOverlay.kt:DebugOverlay$canvas.drawText(font, counts, x = left + timingsWidth + COLUMN_GAP, y = top, scale = TEXT_SCALE, layer = LAYER, space = DrawSpace.SCREEN)</ID>
+    <ID>MaxLineLength:DebugOverlayTest.kt:DebugOverlayTest$assertFailsWith&lt;IllegalStateException> { DebugOverlay().draw(canvas, font, FrameStats(), 16.milliseconds, voices = 0) }</ID>
+    <ID>MaxLineLength:DebugOverlayTest.kt:DebugOverlayTest$fun format</ID>
+    <ID>MaxLineLength:DebugOverlayTest.kt:DebugOverlayTest$private fun recordOf: Float</ID>
+    <ID>MaxLineLength:DebugOverlayTest.kt:DebugOverlayTest$stats.publish(totalNanos = 16_000_000, fixedStepCount = 2, spriteCount = 100_000, drawCallCount = 3, collisionPairCount = 0, particleCount = 0)</ID>
+    <ID>MaxLineLength:EngineEvents.kt:GamepadButtonPressed$override fun equals: Boolean</ID>
+    <ID>MaxLineLength:EngineEvents.kt:GamepadButtonReleased$override fun equals: Boolean</ID>
+    <ID>MaxLineLength:EngineEvents.kt:MouseWheelScrolled$override fun equals: Boolean</ID>
+    <ID>MaxLineLength:EventsTest.kt:EventsTest$assertEquals("MouseButtonReleased(button=MouseButton(2), x=1.0, y=2.0)", MouseButtonReleased(MouseButton.RIGHT, 1f, 2f).toString())</ID>
+    <ID>MaxLineLength:EventsTest.kt:EventsTest$assertNotEquals(KeyPressed(escape, isRepeat = false, scancode), KeyPressed(escape, isRepeat = false, Scancode(1u)))</ID>
+    <ID>MaxLineLength:FileCacheTest.kt:FileCacheTest$assertNotSame(cache.getOrNull("/assets/ship.png", SamplerFilter.LINEAR), cache.getOrNull("/assets/ship.png", SamplerFilter.NEAREST))</ID>
+    <ID>MaxLineLength:FontLayoutTest.kt:FontLayoutTest$private</ID>
+    <ID>MaxLineLength:FontLayoutTest.kt:FontLayoutTest$val font = Font(listOf(Glyph('a', null, 0f, 0f, 5f)), emptyMap(), lineHeight = 10f, baseline = 8f, pages = emptyList())</ID>
+    <ID>MaxLineLength:Fonts.kt:internal inline</ID>
+    <ID>MaxLineLength:FrameStats.kt:FrameStats$"gpuWait=${ms(gpuWait)}, fixedStepCount=$fixedStepCount, spriteCount=$spriteCount, drawCallCount=$drawCallCount, "</ID>
+    <ID>MaxLineLength:FrameStats.kt:FrameStats$internal</ID>
+    <ID>MaxLineLength:FrameStatsTest.kt:FrameStatsTest$"FrameStats(total=0.000ms, input=0.000ms, fixedUpdate=0.000ms, collisionDetection=0.000ms, update=0.000ms, "</ID>
+    <ID>MaxLineLength:FrameStatsTest.kt:FrameStatsTest$"spriteExtraction=0.000ms, spriteRecording=0.000ms, gpuWait=0.000ms, fixedStepCount=0, spriteCount=0, drawCallCount=0, "</ID>
+    <ID>MaxLineLength:FrameStatsTest.kt:FrameStatsTest$stats.publish(totalNanos = 0, fixedStepCount = 0, spriteCount = 0, drawCallCount = 0, collisionPairCount = 0, particleCount = 0)</ID>
+    <ID>MaxLineLength:FrameStatsTest.kt:FrameStatsTest$stats.publish(totalNanos = 3_000_000, fixedStepCount = 2, spriteCount = 10, drawCallCount = 3, collisionPairCount = 4, particleCount = 5)</ID>
+    <ID>MaxLineLength:FrozenSceneTest.kt:FrozenSceneTest$assertEquals("KinematicBody(dx=0.0, dy=600.0, isOnFloor=false, isOnWall=false, wallNormalX=0.0, isOnCeiling=false)", frozen.toString())</ID>
+    <ID>MaxLineLength:FrozenSceneTest.kt:FrozenSceneTest$pauseEnter = { h.world.create().also { h.world.add(it, Sprite, running); h.world.add(it, Fade, Fade(1.seconds)) } }</ID>
+    <ID>MaxLineLength:FrozenSceneTest.kt:FrozenSceneTest$playEnter = { h.world.create().also { h.world.add(it, Sprite, frozen); h.world.add(it, Fade, Fade(1.seconds, end = FadeEnd.DESTROY)) } }</ID>
+    <ID>MaxLineLength:InputTest.kt:InputTest$assertFalse(kept.isDown(GamepadButton.NORTH), "A disconnected pad matches nothing, even in a list kept from before.")</ID>
+    <ID>MaxLineLength:InputTest.kt:InputTest$frame(PlatformEvent.GamepadAxisMoved(id, GamepadAxis.LEFT_X, 0.1f), PlatformEvent.GamepadAxisMoved(id, GamepadAxis.LEFT_Y, 0f))</ID>
+    <ID>MaxLineLength:Interpolation.kt:previous.set(entity, PreviousTransform(transform.x, transform.y, transform.rotation, transform.scaleX, transform.scaleY, isFirstStep = true))</ID>
+    <ID>MaxLineLength:Interpolation.kt:private</ID>
+    <ID>MaxLineLength:InterpolationTest.kt:InterpolationTest$assertEquals("PreviousTransform(x=1.0, y=2.0, rotation=0.5, scale=2.0x3.0, firstStep=true)", world.get(marked, PreviousTransform).toString())</ID>
+    <ID>MaxLineLength:KinematicBody.kt:"Entity $entity has both a Velocity and a KinematicBody; give a body its speed through KinematicBody.dx and dy."</ID>
+    <ID>MaxLineLength:KinematicBody.kt:KinematicBody$val contacts = "KinematicBody(dx=$dx, dy=$dy, isOnFloor=$isOnFloor, isOnWall=$isOnWall, wallNormalX=$wallNormalX, isOnCeiling=$isOnCeiling"</ID>
+    <ID>MaxLineLength:KinematicBody.kt:check(solids?.getOrNull(entity) == null) { "Entity $entity has both a Solid and a KinematicBody, and solids cannot move." }</ID>
+    <ID>MaxLineLength:KinematicBody.kt:check(world.parentOrNull(entity) == null) { "Entity $entity has a KinematicBody and a parent, but a body must be a root entity." }</ID>
+    <ID>MaxLineLength:KinematicBody.kt:if</ID>
+    <ID>MaxLineLength:KinematicBody.kt:private</ID>
+    <ID>MaxLineLength:KinematicBodyTest.kt:KinematicBodyTest$"Entity ${hero.entity} has both a Velocity and a KinematicBody; give a body its speed through KinematicBody.dx and dy."</ID>
+    <ID>MaxLineLength:KinematicBodyTest.kt:KinematicBodyTest$assertEquals("Entity $round has a KinematicBody whose collider shape Circle(radius=4.0) is not a Box.", error.message)</ID>
+    <ID>MaxLineLength:KinematicBodyTest.kt:KinematicBodyTest$assertEquals("Entity ${child.entity} has a KinematicBody and a parent, but a body must be a root entity.", parented.message)</ID>
+    <ID>MaxLineLength:KinematicBodyTest.kt:KinematicBodyTest$val inside = collisions.sweepBox(x = hero.transform.x, y = hero.transform.y, width = 20f, height = 20f, dx = 0f, dy = 0f)</ID>
+    <ID>MaxLineLength:KinematicBodyTest.kt:KinematicBodyTest$world.add(entity, Collider, Collider(Shape.Box(width = 20f, height = 20f), offsetX = 0f, offsetY = 10f).apply { scalesWithTransform = false })</ID>
+    <ID>MaxLineLength:Loop.kt:*</ID>
+    <ID>MaxLineLength:Loop.kt:FrameLoop$/** Returns `true` once [AppConfig.frameLimit] frames have run or [Time.elapsed] has reached [AppConfig.timeLimit]. */</ID>
+    <ID>MaxLineLength:Loop.kt:FrameLoop$if (app.overlay.isVisible) app.overlay.draw(app.canvas, app.assets.defaultFont, stats, time.fixedDelta, app.audio.stats.activeVoiceCount)</ID>
+    <ID>MaxLineLength:Loop.kt:FrameLoop$is PlatformEvent.KeyDown -> events.publish(KeyPressed(event.key, isRepeat = event.isRepeat, event.scancode))</ID>
+    <ID>MaxLineLength:Loop.kt:FrameLoop$is PlatformEvent.MouseButtonUp -> events.publish(MouseButtonReleased(event.button, x = event.x, y = event.y))</ID>
+    <ID>MaxLineLength:Loop.kt:FrameLoop$is PlatformEvent.MouseMoved -> events.publish(MouseMoved(x = event.x, y = event.y, dx = event.dx, dy = event.dy))</ID>
+    <ID>MaxLineLength:Loop.kt:GpuDevice(setOf(ShaderFormat.MSL, ShaderFormat.SPIRV, ShaderFormat.DXIL), config.validation)</ID>
+    <ID>MaxLineLength:Mixer.kt:Mixer$if (isCurrent(slot, ring.int1At(row))) steps[slot] = stepOf(sounds[slot]!!.sampleRate, ring.float0At(row))</ID>
+    <ID>MaxLineLength:MusicTrack.kt:MusicTrack$"Stream of $this has ${stream.channels} channels at ${stream.sampleRate} Hz, not $channels at $sampleRate Hz."</ID>
+    <ID>MaxLineLength:MusicTrackTest.kt:MusicTrackTest$assertFailsWith&lt;IllegalArgumentException> { MusicTrack((-1).nanoseconds, channels = 1, sampleRate = 48000, open = open) }</ID>
+    <ID>MaxLineLength:MusicTrackTest.kt:MusicTrackTest$assertFailsWith&lt;IllegalArgumentException> { MusicTrack(Duration.ZERO, channels = 1, sampleRate = 0, open = open) }</ID>
+    <ID>MaxLineLength:MusicTrackTest.kt:MusicTrackTest$assertFailsWith&lt;IllegalArgumentException> { MusicTrack(Duration.ZERO, channels = 3, sampleRate = 48000, open = open) }</ID>
+    <ID>MaxLineLength:ParticleEmitter.kt:ParticleEmitter$"ParticleEmitter(particles=$particleCount/$capacity, rate=$rate, layer=$layer, visible=$isVisible, startColor=$startColor, "</ID>
+    <ID>MaxLineLength:ParticleEmitter.kt:ParticleEmitter$/** Emits [amount] particles at ([x], [y]) with [direction] turned by [turn]; the caller has checked that they fit. */</ID>
+    <ID>MaxLineLength:ParticleEmitterTest.kt:ParticleEmitterTest$"ParticleEmitter(particles=0/16, rate=30.0, layer=0, visible=true, startColor=Color(#ffffffff), endColor=null, "</ID>
+    <ID>MaxLineLength:ParticleEmitterTest.kt:ParticleEmitterTest$assertTrue(emitter.particleCount in 1 until 20, "Some of 20 lifetimes in 0.5..1 s end before 0.8 s; count ${emitter.particleCount}.")</ID>
+    <ID>MaxLineLength:Rect.kt:Rect$other is Rect &amp;&amp; x.equals(other.x) &amp;&amp; y.equals(other.y) &amp;&amp; width.equals(other.width) &amp;&amp; height.equals(other.height)</ID>
+    <ID>MaxLineLength:Rect.kt:Rect$require(height >= 0f &amp;&amp; height.isFinite()) { "Rectangle height $height is not a finite number of at least zero." }</ID>
+    <ID>MaxLineLength:SceneStackTest.kt:SceneStackTest$a = h.scene("a", enter = { current += h.stack.currentOrNull?.name }, exit = { current += h.stack.currentOrNull?.name })</ID>
+    <ID>MaxLineLength:SceneStackTest.kt:SceneStackTest$addSystem(Phase.INPUT, h.system { if (firstSystemSaw == null) firstSystemSaw = h.world.getOrNull(spawned, Health)?.points })</ID>
+    <ID>MaxLineLength:SceneStackTest.kt:SceneStackTest$addSystem(Phase.UPDATE, h.system { if (!h.world.isAlive(fromSceneSystem)) fromSceneSystem = h.commands.spawn() })</ID>
+    <ID>MaxLineLength:SceneStackTest.kt:SceneStackTest$b = h.scene("b", enter = { current += h.stack.currentOrNull?.name }, exit = { current += h.stack.currentOrNull?.name })</ID>
+    <ID>MaxLineLength:SceneStackTest.kt:SceneStackTest$for (e in listOf(fromEnterCommands, fromEnterWorld, fromSceneSystem, fromAppSystem)) assertTrue(h.world.isAlive(e))</ID>
+    <ID>MaxLineLength:SceneStackTest.kt:SceneStackTest$val a = h.scene("a", enter = { aEntity = h.world.create() }, exit = { aliveDuringExits += h.world.isAlive(cEntity) })</ID>
+    <ID>MaxLineLength:SceneStackTest.kt:SceneStackTest$val c = h.scene("c", enter = { cEntity = h.world.create() }, exit = { aliveDuringExits += h.world.isAlive(aEntity) })</ID>
+    <ID>MaxLineLength:Schedule.kt:Schedule$inline</ID>
+    <ID>MaxLineLength:ScheduleTest.kt:ScheduleTest$if (system === spawn) spawned = commands.spawn { add(Marker, Marker()) } else seen += world.has(spawned, Marker)</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$"Collider(shape=Box(width=4.0, height=2.0), offset=1.0x-2.0, layers=CollisionLayers(0), mask=CollisionLayers(1))"</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$"Collider(shape=Circle(radius=8.0), offset=0.0x0.0, layers=CollisionLayers(0), mask=CollisionLayers(1), scalesWithTransform=false)"</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$Collider(Shape.Box(width = 4f, height = 2f), offsetX = 1f, offsetY = -2f, mask = CollisionLayers.of(1)).toString()</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$assertEquals("Box height -1.0 is not positive.", assertFailsWith&lt;IllegalArgumentException> { Shape.Box(width = 1f, height = -1f) }.message)</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$assertEquals("Box width 0.0 is not positive.", assertFailsWith&lt;IllegalArgumentException> { Shape.Box(width = 0f, height = 1f) }.message)</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$assertEquals("Circle radius 0.0 is not positive.", assertFailsWith&lt;IllegalArgumentException> { Shape.Circle(0f) }.message)</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$assertEquals(ground, collisions.floorBelowOrNull(x = 50f, y = 96f, width = 4f, depth = 400f, mask = CollisionLayers.DEFAULT)?.entity)</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$assertFailsWith&lt;IllegalArgumentException> { collisions.floorBelowOrNull(x = 0f, y = 0f, width = 0f, depth = 8f) }</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$assertFailsWith&lt;IllegalArgumentException> { collisions.floorBelowOrNull(x = 0f, y = Float.NaN, width = 4f, depth = 8f) }</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$assertFailsWith&lt;IllegalArgumentException> { collisions.slideBox(x = 0f, y = 0f, width = 0f, height = 20f, dx = 1f, dy = 0f) }</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$assertFailsWith&lt;IllegalArgumentException> { collisions.slideBox(x = 0f, y = 0f, width = 20f, height = 20f, dx = Float.NaN, dy = 0f) }</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$assertFailsWith&lt;IllegalArgumentException> { collisions.slideCollider(hero, x = Float.POSITIVE_INFINITY, y = 0f, dx = 0f, dy = 1f) }</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$collisions.slideBox(x = x, y = y, width = 20f, height = 20f, dx = speedX * step, dy = speedY * step, floorSnap = snap, result = slide)</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$collisions.slideCollider(hero, x = x, y = y, dx = speedX * step, dy = speedY * step, floorSnap = snap, result = slide)</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$private</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$val depth = assertFailsWith&lt;IllegalArgumentException> { collisions.floorBelowOrNull(x = 0f, y = 0f, width = 4f, depth = 0f) }</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$val ledge = world.solid(left = 0f, top = 100f, right = 100f, bottom = 110f, passable = Passable.FROM_BELOW, layers = CollisionLayers.of(4))</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$val rising = collisions.slideBox(x = 50f, y = 90f, width = 20f, height = 20f, dx = 0f, dy = -1f, floorSnap = Collisions.FLOOR_SNAP_DISTANCE)</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$val sink = collisions.slideBox(x = 50f, y = 200f, width = 20f, height = 20f, dx = 0f, dy = 200f, mask = CollisionLayers.DEFAULT)</ID>
+    <ID>MaxLineLength:SlideTest.kt:SlideTest$val snapped = collisions.slideBox(x = 50f, y = 90f, width = 20f, height = 20f, dx = 10f, dy = 0f, floorSnap = Collisions.FLOOR_SNAP_DISTANCE)</ID>
+    <ID>MaxLineLength:SolidGrid.kt:SolidGrid$/** Refreshes against the world of the last [refresh] if a solid or a collider was added, replaced or removed since. */</ID>
+    <ID>MaxLineLength:SolidGrid.kt:SolidGrid$check(velocities?.getOrNull(entity) == null) { "Entity $entity has both a Solid and a Velocity, and solids cannot move." }</ID>
+    <ID>MaxLineLength:SolidGrid.kt:SolidGrid$check(world.parentOrNull(entity) == null) { "Entity $entity has a Solid and a parent, but a solid must be a root entity." }</ID>
+    <ID>MaxLineLength:SolidGrid.kt:SolidGrid$if</ID>
+    <ID>MaxLineLength:SolidGrid.kt:SolidGrid.Companion$/** The most cells a solid may cover and still be placed in the grid; solids rarely change, so it is generous. */</ID>
+    <ID>MaxLineLength:SpriteAnimationTest.kt:SpriteAnimationTest$assertEquals(listOf(AnimationFinished(entity)), events.finished(), "A restarted animation publishes again when it finishes.")</ID>
+    <ID>MaxLineLength:SpriteAnimationTest.kt:SpriteAnimationTest$assertEquals(listOf(AnimationFinished(entity)), events.finished(), "The event names the entity even though it is gone.")</ID>
+    <ID>MaxLineLength:SpriteAnimationTest.kt:SpriteAnimationTest$assertFailsWith&lt;IllegalArgumentException> { SpriteAnimation(SpriteSheet(Texture(8, 8), emptyList()), 100.milliseconds) }</ID>
+    <ID>MaxLineLength:SpriteAnimationTest.kt:SpriteAnimationTest$world.add(entity, SpriteAnimation, SpriteAnimation(sheet, 100.milliseconds, AnimationMode.ONCE, AnimationEnd.DESTROY))</ID>
+    <ID>MaxLineLength:SpriteOrder.kt:SpriteOrder$placeCursors[group] = if (group &lt; predictedCount &amp;&amp; predictedKeys[group] == key) predictedStarts[group] else UNPLACED</ID>
+    <ID>MaxLineLength:SpriteOrderTest.kt:SpriteOrderTest$val expected = sprites.indices.sortedWith(compareBy({ sprites[it].first }, { slot.getValue(sprites[it].second) }))</ID>
+    <ID>MaxLineLength:SpritePass.kt:SpritePass$fun</ID>
+    <ID>MaxLineLength:SpritePass.kt:SpritePass$private</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$copyRecord(source, quad * SPRITE_RECORD_FLOATS, position * SPRITE_RECORD_FLOATS) { index, value -> records.set(index, value) }</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$copyRecord(source, quad * SPRITE_RECORD_FLOATS, written * SPRITE_RECORD_FLOATS) { index, value -> records.set(index, value) }</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$internal</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$order.addGroupWithoutPosition(order.groupFor(quads.layers[quad], quads.textureAt(quad), quads.spaceAt(quad)))</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$private inline</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$require(fixedStepAlpha >= 0f &amp;&amp; fixedStepAlpha &lt;= 1f) { "Fixed step alpha $fixedStepAlpha is not between 0 and 1." }</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$require(initialCapacity &lt;= MAX_CAPACITY) { "Sprite capacity $initialCapacity is above the maximum of $MAX_CAPACITY." }</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$source.copyInto(scratch, next * SPRITE_RECORD_FLOATS, quad * SPRITE_RECORD_FLOATS, (quad + 1) * SPRITE_RECORD_FLOATS)</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$val position = order.placeGroup(order.groupFor(quads.layers[quad], quads.textureAt(quad), quads.spaceAt(quad)))</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$writeRecord(count * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { index, value -> records.set(index, value) }</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$writeRecord(index * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { i, value -> scratch[i] = value }</ID>
+    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$writeRecord(position * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { index, value -> records.set(index, value) }</ID>
+    <ID>MaxLineLength:SpriteSheet.kt:SpriteSheet$require(region.texture === texture) { "Region $index is on ${region.texture}, not on the sheet's $texture." }</ID>
+    <ID>MaxLineLength:SpriteSheetTest.kt:SpriteSheetTest$assertFailsWith&lt;IllegalArgumentException> { SpriteSheet.fromGrid(texture, columns = 5, rows = 1, cellWidth = 16) }</ID>
+    <ID>MaxLineLength:SpriteSheetTest.kt:SpriteSheetTest$val sheet = SpriteSheet.fromGrid(texture, columns = 2, rows = 1, margin = 1, spacing = 2, cellWidth = 10, cellHeight = 12)</ID>
+    <ID>MaxLineLength:SpriteSheets.kt:"Grid of $columns x $rows cells of ${cellWidth}x$cellHeight needs ${gridWidth}x$gridHeight texels but $texture is smaller."</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$assertEquals(0.45f, collisions.sweepBox(x = 0f, y = 0f, width = 10f, height = 10f, dx = 100f, dy = 0f)?.fraction)</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$assertEquals(0.725f, collisions.sweepBox(x = 0f, y = 0f, width = 10f, height = 10f, dx = 200f, dy = 0f)?.fraction)</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$assertEquals(SweepHit(block, 0f, 0f, 0f), collisions.sweepBox(x = 50f, y = 50f, width = 10f, height = 10f, dx = 0f, dy = 0f))</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$assertEquals(SweepHit(block, 0f, 0f, 0f), collisions.sweepBox(x = 95f, y = 50f, width = 20f, height = 20f, dx = 100f, dy = 0f))</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$assertEquals(SweepHit(ledge, 0.5f, 0f, -1f), collisions.sweepBox(x = 100f, y = 80f, width = 20f, height = 20f, dx = 0f, dy = 20f))</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$assertEquals(SweepHit(ledge, 0f, 0f, -1f), collisions.sweepBox(x = 100f, y = 90f, width = 20f, height = 20f, dx = 0f, dy = 20f))</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$assertEquals(stone, collisions.sweepBox(x = 50f, y = 0f, width = 10f, height = 10f, dx = 0f, dy = 100f, mask = CollisionLayers.DEFAULT)?.entity)</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$assertNull(collisions.sweepBox(x = 50f, y = 0f, width = 10f, height = 10f, dx = 0f, dy = 100f, mask = CollisionLayers.NONE))</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$assertTrue(collisions.sweepBoxTo(ArrayList(), x = 0f, y = 0f, width = 1f, height = 1f, dx = 5f, dy = 0f).isEmpty())</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$collisions.sweepBoxTo(ArrayList(), x = 0f, y = 0f, width = 1f, height = 1f, dx = Float.POSITIVE_INFINITY, dy = 0f)</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$val diagonal = collisions.sweepBoxTo(ArrayList(), x = 600f, y = 400f, width = 20f, height = 20f, dx = -400f, dy = -400f)</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$val expectedAll = flat.sweepBoxTo(ArrayList(), x = x, y = y, width = width, height = height, dx = dx, dy = dy)</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$val fromAbove = assertNotNull(collisions.sweepBox(x = 250f, y = -100f, width = 20f, height = 20f, dx = 0f, dy = 200f))</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$val fromBelow = assertNotNull(collisions.sweepBox(x = 400f, y = 350f, width = 20f, height = 20f, dx = 0f, dy = -100f))</ID>
+    <ID>MaxLineLength:SweepTest.kt:SweepTest$val fromLeft = assertNotNull(collisions.sweepBox(x = -50f, y = 150f, width = 20f, height = 20f, dx = 100f, dy = 0f))</ID>
+    <ID>MaxLineLength:TextExtractionTest.kt:TextExtractionTest$assertEquals(listOf(110f, 7f), second.floats(0, 0, 2), "From the second step on, it blends halfway from 100 to 110.")</ID>
+    <ID>MaxLineLength:TextExtractionTest.kt:TextExtractionTest$text.shadow = TextShadow(offsetX = 1f, offsetY = 3f, color = Color(red = 0f, green = 0f, blue = 0f, alpha = 0.8f))</ID>
+    <ID>MaxLineLength:TextExtractionTest.kt:TextExtractionTest$val text = Text(font, StringBuilder("A"), color = Color(red = 1f, green = 1f, blue = 1f, alpha = 0.5f), layer = 3)</ID>
+    <ID>MaxLineLength:TextQuads.kt:add(region, x + cx * c - cy * s, y + cx * s + cy * c, width * scaleX, height * scaleY, rotation, color, layer, space)</ID>
+    <ID>MaxLineLength:TextQuads.kt:addGlyphs(font, text, x + dx * c - dy * s, y + dx * s + dy * c, rotation, scaleX, scaleY, scale, align, shadowColor, layer, space)</ID>
+    <ID>MaxLineLength:TextQuads.kt:text.font</ID>
+    <ID>MaxLineLength:TextureRegionTest.kt:TextureRegionTest$assertEquals(texture.region(x = 0, y = 0, width = 8, height = 8), texture.region(x = 0, y = 0, width = 8, height = 8))</ID>
+    <ID>MaxLineLength:TextureRegionTest.kt:TextureRegionTest$assertEquals(texture.region(x = 0, y = 0, width = 8, height = 8).hashCode(), texture.region(x = 0, y = 0, width = 8, height = 8).hashCode())</ID>
+    <ID>MaxLineLength:TextureRegionTest.kt:TextureRegionTest$assertNotEquals(texture.region(x = 0, y = 0, width = 8, height = 8), Texture(64, 32).region(x = 0, y = 0, width = 8, height = 8))</ID>
+    <ID>MaxLineLength:TextureRegionTest.kt:TextureRegionTest$assertNotEquals(texture.region(x = 0, y = 0, width = 8, height = 8), texture.region(x = 8, y = 0, width = 8, height = 8))</ID>
+    <ID>MaxLineLength:TransformsTest.kt:TransformsTest$assertEquals("WorldTransform(x=1.0, y=2.0, rotation=0.0, scale=1.0x1.0)", world.get(e, WorldTransform).toString())</ID>
+    <ID>MaxLineLength:Vec2.kt:Vec2.Companion$public</ID>
+    <ID>MaxLineLength:World.kt:World$public</ID>
+    <ID>MayBeConstant:BuiltInFont.kt:BuiltInFont.Companion$/** Top-left texel of the 3 by 3 white block in the cell after the last glyph. */ private val WHITE_X = (GLYPH_COUNT % COLUMNS) * CELL + 1</ID>
+    <ID>MayBeConstant:BuiltInFont.kt:BuiltInFont.Companion$private val WHITE_Y = (GLYPH_COUNT / COLUMNS) * CELL + 1</ID>
+    <ID>NestedBlockDepth:Loop.kt:public fun runApp</ID>
+    <ID>ReturnCount:Assets.kt:Assets$private fun textureOrNullAt: Texture?</ID>
+    <ID>ReturnCount:Assets.kt:Assets$public fun fontOrNull: Font?</ID>
+    <ID>ReturnCount:Assets.kt:Assets$public fun musicTrackOrNull: MusicTrack?</ID>
+    <ID>ReturnCount:Assets.kt:Assets$public fun soundOrNull: Sound?</ID>
+    <ID>ReturnCount:Audio.kt:Audio$public fun play: Voice</ID>
+    <ID>ReturnCount:Collisions.kt:Collisions$private fun collectOverlaps: Int</ID>
+    <ID>ReturnCount:Collisions.kt:Collisions$private fun shapesOverlap: Boolean</ID>
+    <ID>ReturnCount:Collisions.kt:Collisions$private fun testQuery: Int</ID>
+    <ID>ReturnCount:CollisionsTest.kt:CollisionsTest.TestShape$fun overlaps: Boolean</ID>
+    <ID>ReturnCount:DebugOverlay.kt:internal fun StringBuilder.appendFixed: StringBuilder</ID>
+    <ID>ReturnCount:Fade.kt:Fade$internal fun advance: Boolean</ID>
+    <ID>ReturnCount:Font.kt:Font$public fun glyphOrNull: Glyph?</ID>
+    <ID>ReturnCount:Font.kt:Font$public fun kerningOf: Float</ID>
+    <ID>ReturnCount:Mixer.kt:MusicLane$fun advanceFade: Boolean</ID>
+    <ID>ReturnCount:Mixer.kt:MusicLane$fun refill: Boolean</ID>
+    <ID>ReturnCount:Music.kt:Music$public fun play</ID>
+    <ID>ReturnCount:SceneStack.kt:SceneStack$internal fun isFrozen: Boolean</ID>
+    <ID>ReturnCount:Screenshot.kt:internal fun parseScreenshot: Screenshot?</ID>
+    <ID>ReturnCount:SolidGrid.kt:SolidGrid$private fun test</ID>
+    <ID>ReturnCount:SolidGrid.kt:SolidGrid$private fun walk</ID>
+    <ID>ReturnCount:SpritePass.kt:SpritePass$private fun acquireTarget: GpuTexture?</ID>
+    <ID>ReturnCount:SpriteRenderer.kt:SpriteRenderer$private inline fun forEachSprite</ID>
+    <ID>ReturnCount:World.kt:World$@Suppress("UNCHECKED_CAST") public inline fun &lt;A : Any, B : Any, C : Any> forEach</ID>
+    <ID>SwallowedException:Assets.kt:Assets$e: FontException</ID>
+    <ID>ThrowsCount:BmFont.kt:internal fun parseBmFont: Font</ID>
+    <ID>TooGenericExceptionCaught:SpriteRenderer.kt:SpriteRenderer$e: Throwable</ID>
+    <ID>TooManyFunctions:Assets.kt:Assets : AutoCloseable</ID>
+    <ID>TooManyFunctions:Audio.kt:Audio : AutoCloseable</ID>
+    <ID>TooManyFunctions:Collisions.kt:Collisions</ID>
+    <ID>TooManyFunctions:Commands.kt:Commands</ID>
+    <ID>TooManyFunctions:Gamepad.kt:Gamepad</ID>
+    <ID>TooManyFunctions:Keyboard.kt:Keyboard</ID>
+    <ID>TooManyFunctions:Mixer.kt:Mixer : CommandConsumer</ID>
+    <ID>TooManyFunctions:Mouse.kt:Mouse</ID>
+    <ID>TooManyFunctions:SceneStack.kt:SceneStack</ID>
+    <ID>TooManyFunctions:SolidGrid.kt:SolidGrid</ID>
+    <ID>TooManyFunctions:SpriteOrder.kt:SpriteOrder</ID>
+    <ID>TooManyFunctions:SpriteRenderer.kt:SpriteRenderer : AutoCloseable</ID>
+    <ID>TooManyFunctions:World.kt:World</ID>
+  </CurrentIssues>
+</SmellBaseline>

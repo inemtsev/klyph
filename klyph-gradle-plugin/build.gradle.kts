@@ -1,3 +1,5 @@
+import dev.detekt.gradle.Detekt
+import dev.detekt.gradle.DetektCreateBaselineTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -6,6 +8,7 @@ plugins {
     // Gradle's Action parameters become lambdas with a receiver, as in build scripts.
     alias(libs.plugins.kotlin.sam.with.receiver)
     alias(libs.plugins.maven.publish)
+    alias(libs.plugins.detekt)
 }
 
 group = "com.eventslooped.klyph"
@@ -86,6 +89,32 @@ val functionalTestTask = tasks.register<Test>("functionalTest") {
 
 tasks.check {
     dependsOn(functionalTestTask)
+}
+
+// The engine build's detekt configuration and layout, as klyph.lint in buildSrc sets them for the
+// engine modules: one baseline next to this file and `check` running the `detekt` task over src/.
+// This is a JVM build, so that task also gets the compiled classes and classpaths of all three
+// source sets, which turns on type resolution and the rules that need it.
+detekt {
+    config.setFrom(layout.settingsDirectory.file("../config/detekt/detekt.yml"))
+    buildUponDefaultConfig = true
+    baseline = layout.projectDirectory.file("detekt-baseline.xml")
+    basePath = layout.settingsDirectory.dir("..")
+    source.setFrom(layout.projectDirectory.dir("src"))
+    parallel = true
+}
+
+// detekt's analysis does not load the sam-with-receiver compiler plugin (passing it with -Xplugin
+// changes nothing), so inside Action lambdas such as tasks.register { } the receiver's members do
+// not resolve and the rules see them as unknown; the run still succeeds.
+val analysisClasspath: FileCollection = files(sourceSets.map { it.compileClasspath + it.output })
+tasks.named<Detekt>("detekt") {
+    classpath.setFrom(analysisClasspath)
+    jvmTarget = "17"
+}
+tasks.named<DetektCreateBaselineTask>("detektBaseline") {
+    classpath.setFrom(analysisClasspath)
+    jvmTarget = "17"
 }
 
 mavenPublishing {

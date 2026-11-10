@@ -1,0 +1,184 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:Events.kt:EventPump$private fun translateOrNull: PlatformEvent?</ID>
+    <ID>LoopWithTooManyJumpStatements:AudioSamples.kt:AudioSamples.Companion$while</ID>
+    <ID>MagicNumber:AudioDeviceTest.kt:AudioDeviceTest$10_000u</ID>
+    <ID>MagicNumber:AudioDeviceTest.kt:AudioDeviceTest$1_000_000</ID>
+    <ID>MagicNumber:AudioDeviceTest.kt:AudioDeviceTest$200</ID>
+    <ID>MagicNumber:AudioDeviceTest.kt:AudioDeviceTest$48000</ID>
+    <ID>MagicNumber:AudioDeviceTest.kt:AudioDeviceTest$50_000u</ID>
+    <ID>MagicNumber:AudioDeviceTest.kt:AudioDeviceTest$512</ID>
+    <ID>MagicNumber:AudioDeviceTest.kt:AudioDeviceTest$65536</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$0.1f</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$0.4f</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$0.5f</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$0.6f</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$10</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$11</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$11025</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$12</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$127f</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$128f</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$16</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$1_000_000_000L</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$1e-6f</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$22050</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$272108L</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$3</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$30</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$32767f</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$32768f</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$36</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$4</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$40</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$44100</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$5</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$5512</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$5512L</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$6</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$7</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$8</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$8000</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$9</ID>
+    <ID>MagicNumber:AudioSamplesTest.kt:AudioSamplesTest$9f</ID>
+    <ID>MagicNumber:Color.kt:0.5f</ID>
+    <ID>MagicNumber:Color.kt:0xFFFFFF00u</ID>
+    <ID>MagicNumber:Color.kt:16</ID>
+    <ID>MagicNumber:Color.kt:24</ID>
+    <ID>MagicNumber:Color.kt:255f</ID>
+    <ID>MagicNumber:Color.kt:8</ID>
+    <ID>MagicNumber:Color.kt:Color$0xFFu</ID>
+    <ID>MagicNumber:Color.kt:Color$16</ID>
+    <ID>MagicNumber:Color.kt:Color$255f</ID>
+    <ID>MagicNumber:Color.kt:Color$8</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0.1f</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0.2f</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0.3f</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0.5f</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0x11223300u</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0x11223380u</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0x112233FFu</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0x808040C0u</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0xFF0000FFu</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0xFFFFFF00u</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$0xFFFFFFFFu</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$1.1f</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$1.5f</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$255f</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$3f</ID>
+    <ID>MagicNumber:ColorTest.kt:ColorTest$7f</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$0.5f</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$3u</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$4u</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$5</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$512</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$6</ID>
+    <ID>MagicNumber:EventsTest.kt:EventsTest$7u</ID>
+    <ID>MagicNumber:FrameCapture.kt:4</ID>
+    <ID>MagicNumber:FrameCapture.kt:FrameCapture$3</ID>
+    <ID>MagicNumber:FrameCapture.kt:FrameCapture$4</ID>
+    <ID>MagicNumber:GpuCommands.kt:4</ID>
+    <ID>MagicNumber:Image.kt:0.5f</ID>
+    <ID>MagicNumber:Image.kt:255</ID>
+    <ID>MagicNumber:Image.kt:255f</ID>
+    <ID>MagicNumber:Image.kt:Image$0.5f</ID>
+    <ID>MagicNumber:Image.kt:Image$16</ID>
+    <ID>MagicNumber:Image.kt:Image$24</ID>
+    <ID>MagicNumber:Image.kt:Image$255</ID>
+    <ID>MagicNumber:Image.kt:Image$255f</ID>
+    <ID>MagicNumber:Image.kt:Image$3</ID>
+    <ID>MagicNumber:Image.kt:Image$8</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0.45f</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0.55f</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0x000000FFu</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0x0000FFFFu</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0x00FF00FFu</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0x01020304u</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0x10203040u</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0x11223344u</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0x12345678u</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0x80FF00C0u</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0xFF0000FFu</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0xFFFFFF00u</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0xFFFFFF80u</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0xFFFFFFFFu</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$0xFFu</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$10</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$119</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$13</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$15</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$16</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$26</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$3</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$32</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$4</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$40</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$5</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$6</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$64</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$65536</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$7</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$71</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$78</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$8</ID>
+    <ID>MagicNumber:ImageTest.kt:ImageTest$80</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$0.01f</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$10</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$100</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$10000</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$1e-6f</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$22050</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$2205L</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$300</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$40</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$5512</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$5512L</ID>
+    <ID>MagicNumber:VorbisStreamTest.kt:VorbisStreamTest$6</ID>
+    <ID>MatchingDeclarationName:Mouse.kt:MouseButton</ID>
+    <ID>MaxLineLength:AudioDevice.kt:AudioDevice.Companion$SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, spec.ptr, audioCallback, stateRef.asCPointer())</ID>
+    <ID>MaxLineLength:ColorTest.kt:ColorTest$for</ID>
+    <ID>MaxLineLength:Events.kt:EventPump$PlatformEvent.KeyDown(KeyCode(event.key.key), isRepeat = event.key.repeat, scancode = Scancode(event.key.scancode))</ID>
+    <ID>MaxLineLength:Events.kt:EventPump$PlatformEvent.MouseButtonDown(it, x = event.button.x, y = event.button.y, clicks = event.button.clicks.toInt())</ID>
+    <ID>MaxLineLength:Events.kt:EventPump$val milliseconds = if (timeout.isInfinite()) -1 else remaining.inWholeMilliseconds.coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()</ID>
+    <ID>MaxLineLength:Events.kt:PlatformEvent.GamepadButtonDown$override fun equals: Boolean</ID>
+    <ID>MaxLineLength:Events.kt:PlatformEvent.MouseButtonUp$public</ID>
+    <ID>MaxLineLength:Events.kt:PlatformEvent.MouseWheelScrolled$override fun equals: Boolean</ID>
+    <ID>MaxLineLength:EventsTest.kt:EventsTest$assertEquals("KeyUp(key=KeyCode(97), scancode=Scancode(4))", PlatformEvent.KeyUp(KeyCode.A, Scancode.A).toString())</ID>
+    <ID>MaxLineLength:EventsTest.kt:EventsTest$assertEquals("MouseWheelScrolled(dx=0.0, dy=1.0)", PlatformEvent.MouseWheelScrolled(dx = 0f, dy = 1f).toString())</ID>
+    <ID>MaxLineLength:EventsTest.kt:EventsTest$assertEquals(down.hashCode(), PlatformEvent.KeyDown(KeyCode.ESCAPE, isRepeat = false, scancode = Scancode.ESCAPE).hashCode())</ID>
+    <ID>MaxLineLength:EventsTest.kt:EventsTest$assertNotEquals&lt;PlatformEvent>(down, PlatformEvent.KeyDown(KeyCode.ESCAPE, isRepeat = true, scancode = Scancode.ESCAPE))</ID>
+    <ID>MaxLineLength:FilesTest.kt:FilesTest$assertTrue(message.startsWith("File '" + Files.basePath + fileName + "/file.bin' could not be written: "), message)</ID>
+    <ID>MaxLineLength:FilesTest.kt:FilesTest$val saved = content.usePinned { SDL_SaveFile(Files.basePath + fileName, it.addressOf(0), content.size.convert()) }</ID>
+    <ID>MaxLineLength:FrameCapture.kt:*</ID>
+    <ID>MaxLineLength:FrameCapture.kt:printError("klyph: frame capture to ${paths.joinToString()} failed: $format is not an 8-bit RGBA or BGRA format.")</ID>
+    <ID>MaxLineLength:FrameCapture.kt:printError("klyph: frame capture to ${paths.joinToString()} failed: ${sdlFailureMessage("SDL_CreateGPUTransferBuffer")}")</ID>
+    <ID>MaxLineLength:FrameCapture.kt:printError("klyph: frame capture to ${paths.joinToString()} failed: the frame is ${captureWidth}x$captureHeight pixels.")</ID>
+    <ID>MaxLineLength:GpuCommands.kt:/** Draws [vertexCount] vertices starting at [firstVertex] with the bound pipeline. Pass the `Int` parameters by name. */</ID>
+    <ID>MaxLineLength:GpuDevice.kt:CommandBuffer$GpuFence(SDL_SubmitGPUCommandBufferAndAcquireFence(handle) ?: sdlFailure("SDL_SubmitGPUCommandBufferAndAcquireFence"))</ID>
+    <ID>MaxLineLength:ImageTest.kt:ImageTest$assertFailsWith&lt;IllegalArgumentException> { image.fillCircle(centerX = 0f, centerY = 0f, radius = -1f, color = Color.WHITE) }</ID>
+    <ID>MaxLineLength:ImageTest.kt:ImageTest$assertFailsWith&lt;IllegalArgumentException> { image.fillCircle(centerX = Float.NaN, centerY = 0f, radius = 1f, color = Color.WHITE) }</ID>
+    <ID>MaxLineLength:Sdl.kt:Sdl$/** Shuts down every running subsystem, however many times [init] started it. Nothing from this package may be used afterwards. */</ID>
+    <ID>MaxLineLength:Sdl.kt:internal</ID>
+    <ID>MaxLineLength:VorbisStream.kt:VorbisStream$"Output of size ${output.size} cannot hold $frames frames of $channels channels at offset $destinationOffset."</ID>
+    <ID>MaxLineLength:VorbisStream.kt:VorbisStream$stb_vorbis_get_samples_float_interleaved(decoder, channels, pinned.addressOf(destinationOffset), frames * channels)</ID>
+    <ID>MaxLineLength:VorbisStream.kt:VorbisStream.Companion$return onFailure("it has $channels channels at $sampleRate Hz, and only mono and stereo are supported")</ID>
+    <ID>MaxLineLength:VorbisStreamTest.kt:VorbisStreamTest$assertTrue(abs(expected - actual) &lt; 1e-6f, "Frame $frame channel $channel: $actual, expected $expected.")</ID>
+    <ID>MaxLineLength:Window.kt:Window$get() = if (SDL_GetWindowFlags(handle) and SDL_WINDOW_FULLSCREEN != 0uL) WindowMode.FULLSCREEN else WindowMode.WINDOWED</ID>
+    <ID>ReturnCount:AudioDevice.kt:AudioDevice.Companion$private fun openOrReason: Any</ID>
+    <ID>ReturnCount:AudioSamples.kt:AudioSamples.Companion$private fun ByteArray.hasTag: Boolean</ID>
+    <ID>ReturnCount:AudioSamples.kt:AudioSamples.Companion$private fun readAll: Any</ID>
+    <ID>ReturnCount:Events.kt:EventPump$private fun connectGamepadOrNull: PlatformEvent?</ID>
+    <ID>ReturnCount:Events.kt:EventPump$public fun waitOrNull: PlatformEvent?</ID>
+    <ID>ReturnCount:Files.kt:Files$private inline fun &lt;R> readBytesOrElse: R</ID>
+    <ID>ReturnCount:FrameCapture.kt:@KlyphPlatformApi public fun CommandBuffer.recordCaptureOrNull: FrameCapture?</ID>
+    <ID>ReturnCount:Image.kt:Image.Companion$private inline fun &lt;R> decodeOrElse: R</ID>
+    <ID>ReturnCount:VorbisStream.kt:VorbisStream.Companion$internal fun &lt;R> openOrElse: R</ID>
+    <ID>SwallowedException:AudioDevice.kt:AudioDevice.Companion$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:AudioDevice.kt:AudioDevice.CallbackState$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:AudioDevice.kt:AudioDevice.Companion$e: Throwable</ID>
+    <ID>TooGenericExceptionCaught:GpuResources.kt:e: Throwable</ID>
+    <ID>TooManyFunctions:GpuResources.kt:klyph.platform.GpuResources.kt</ID>
+  </CurrentIssues>
+</SmellBaseline>

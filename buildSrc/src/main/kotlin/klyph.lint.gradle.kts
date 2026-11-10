@@ -1,9 +1,37 @@
 // Convention plugin for every module of this repository: the rule that native interop stays
-// inside klyph-platform. The engine modules get it through klyph.native; the executables, which
-// build with the com.eventslooped.klyph plugin, apply it next to that plugin.
+// inside klyph-platform, and detekt. The engine modules get it through klyph.native; the
+// executables, which build with the com.eventslooped.klyph plugin, apply it next to that plugin.
+
+import dev.detekt.gradle.Detekt
+import dev.detekt.gradle.DetektCreateBaselineTask
 
 plugins {
     base
+    id("dev.detekt")
+}
+
+// One configuration for the whole repository, config/detekt/detekt.yml, and one baseline per
+// module next to its build file, which `detektBaseline` rewrites. `check` runs the plain `detekt`
+// task over every Kotlin file under src/. Kotlin/Native source sets have no type resolution in
+// detekt, so the rules that need it skip these modules; the per-source-set tasks the plugin also
+// registers are left out of `check`.
+detekt {
+    config.setFrom(layout.settingsDirectory.file("config/detekt/detekt.yml"))
+    buildUponDefaultConfig = true
+    baseline = layout.projectDirectory.file("detekt-baseline.xml")
+    basePath = layout.settingsDirectory
+    source.setFrom(layout.projectDirectory.dir("src"))
+    parallel = true
+}
+
+// The compiled shaders (compileShaders) are generated into src.
+tasks.withType<Detekt>().configureEach {
+    exclude("**/generated/**")
+    dependsOn(tasks.matching { it.name == "compileShaders" })
+}
+tasks.withType<DetektCreateBaselineTask>().configureEach {
+    exclude("**/generated/**")
+    dependsOn(tasks.matching { it.name == "compileShaders" })
 }
 
 val checkNoInteropImports = tasks.register("checkNoInteropImports") {

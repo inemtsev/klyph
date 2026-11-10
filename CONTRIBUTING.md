@@ -42,8 +42,8 @@ opting the game in.
 - The review checklist in section 9 of [API_STYLE.md](API_STYLE.md) is ticked for every public
   declaration.
 - Every public declaration has KDoc and, where it can run without a GPU, a `@sample` in `samples/`.
-- `./gradlew check` passes, which covers the samples, the guide snippets and the interop-import
-  rule.
+- `./gradlew check` passes, which covers the samples, the guide snippets, detekt and the
+  interop-import rule.
 - Nothing outside `klyph-platform` imports `kotlinx.cinterop`, `sdl3`, `stb`, `vorbis`, `cnames`
   or `platform.*`.
 - The sample games under `games/` never opt into `@KlyphPlatformApi` and never need an engine
@@ -97,6 +97,16 @@ The build configures the host's own target: `macosArm64`, `linuxX64`, `linuxArm6
 `mingwX64`. `-Pklyph.targets=all` configures all four, which a macOS host can compile; tests and
 `run` stay on the host target. `KLYPH_VALIDATION=1` turns on the GPU validation layer, which is
 slow but worth a run after touching `klyph-platform`.
+
+## Lint
+
+`check` runs [detekt](https://detekt.dev) on every module and on the plugin build, with the one
+configuration in [config/detekt/detekt.yml](config/detekt/detekt.yml). Each module keeps the
+findings that predate detekt in `detekt-baseline.xml` next to its build file, so `check` fails
+only on new ones. Fix a new finding rather than adding it to the baseline; after fixing old
+ones, `./gradlew detektBaseline` (and `./gradlew -p klyph-gradle-plugin detektBaseline`) rewrites
+the baselines without them. detekt has no type resolution for Kotlin/Native, so the rules that
+need it skip the engine modules and the games; the plugin build is JVM and gets it.
 
 ## Games and benchmarks
 
