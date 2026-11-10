@@ -156,33 +156,28 @@ emitted, a particle moves in world space and no longer follows the entity.
 
 Particles come from two sources: `emit(count)` requests a burst, emitted at the next advance, and
 `rate` emits continuously, in particles per second. An explosion is one burst on an entity of its
-own:
+own. `ParticleEmitter.burst(region, count)` makes such an emitter: its capacity is `count`, the
+burst is already requested and `whenEmpty` is `EmitterEnd.DESTROY`. Its named parameters set the
+other properties of the table below and default to the same values; set the rest, such as
+`angularVelocity`, on the result. `commands.spawnBurst(x, y, emitter)` spawns the entity that
+carries it:
 
 <!-- snippet: burst -->
 ```kotlin
-val sparks = ParticleEmitter(assets.disc(8), capacity = 64).apply {
-    speed = 80f..260f
-    lifetime = 300.milliseconds..700.milliseconds
-    gravityY = 200f
-    startColor = Color(1f, 0.8f, 0.3f)
-    endColor = Color(0.8f, 0.1f, 0f, 0f)
-    startScale = 1f
-    endScale = 0.2f
-    layer = 2
-    // The entity goes away once the last spark has faded.
-    whenEmpty = EmitterEnd.DESTROY
-    emit(64)
-}
-commands.spawn {
-    add(Transform, Transform(x = x, y = y))
-    add(ParticleEmitter, sparks)
-}
+// 64 sparks at once on an entity of their own, which goes away once the last has faded.
+val sparks = ParticleEmitter.burst(
+    assets.disc(8), count = 64,
+    speed = 80f..260f, lifetime = 300.milliseconds..700.milliseconds, gravityY = 200f,
+    startColor = Color(1f, 0.8f, 0.3f), endColor = Color(0.8f, 0.1f, 0f, 0f), endScale = 0.2f, layer = 2,
+)
+commands.spawnBurst(x, y, sparks)
 ```
 
 With `whenEmpty = EmitterEnd.DESTROY`, the engine destroys the emitter's entity once it has no
 live particle, no pending burst and a rate of 0, so the burst fades out and then cleans up after
-itself. Request the burst before the particle step of the frame, as above, or the emitter is
-empty at its first advance and is destroyed then. Destroying an emitter's entity removes its
+itself. An emitter set up by hand with `DESTROY` needs its `emit` call before the frame's
+particle step, or it is empty at its first advance and is destroyed then; `burst` requests the
+burst when it creates the emitter. Destroying an emitter's entity removes its
 particles at once, which is why the burst gets its own entity instead of living on the enemy that
 exploded.
 
@@ -256,6 +251,7 @@ Particles of an emitter whose scene is frozen stand still and keep drawing. 100,
   [otherThan](../klyph/klyph.collision/other-than.html)
 - [Collisions](../klyph/klyph.collision/-collisions/index.html)
 - [ParticleEmitter](../klyph/klyph.particle/-particle-emitter/index.html),
+  [spawnBurst](../klyph/klyph.particle/spawn-burst.html),
   [EmitterEnd](../klyph/klyph.particle/-emitter-end/index.html) and
   [EmitterSpace](../klyph/klyph.particle/-emitter-space/index.html)
 - [degrees](../klyph/klyph.math/degrees.html)

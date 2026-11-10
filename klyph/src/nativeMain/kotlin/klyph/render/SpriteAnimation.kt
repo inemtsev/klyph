@@ -13,8 +13,9 @@ import kotlin.time.Duration
  * [frameDuration] in the order [mode] sets.
  *
  * Every frame, at the start of [klyph.app.Phase.LATE_UPDATE], the engine advances [playhead] by
- * the frame's delta and sets the entity's [Sprite.region] to [currentFrame]. An entity with a
- * `SpriteAnimation` but no [Sprite] is not animated. Pause, restart or seek through [playhead].
+ * the frame's delta times [speed] and sets the entity's [Sprite.region] to [currentFrame]. An
+ * entity with a `SpriteAnimation` but no [Sprite] is not animated. Pause, restart or seek through
+ * [playhead], and change the playback rate with [speed].
  *
  * When an [AnimationMode.ONCE] animation has shown its last frame for the full [frameDuration],
  * the engine publishes one [AnimationFinished] event for the entity, which `LATE_UPDATE` and
@@ -28,8 +29,8 @@ import kotlin.time.Duration
  * it, so many animations can share one list without allocating; that list must not change
  * afterwards.
  *
- * [toString] gives the current frame, the frame count and the mode, for example
- * `SpriteAnimation(frame=2/6, mode=LOOP, end=HOLD)`.
+ * [toString] gives the current frame, the frame count, the mode and the speed, for example
+ * `SpriteAnimation(frame=2/6, mode=LOOP, speed=1.0, end=HOLD)`.
  *
  * Has no sample because creating a [Texture] needs a GPU device, which samples cannot open.
  *
@@ -58,13 +59,29 @@ public class SpriteAnimation(
     /** The [Animation.finishCount] of [playhead] the engine has published [AnimationFinished] for. */
     internal var reportedFinishes: Int = 0
 
-    /** Returns `SpriteAnimation(frame=2/6, mode=LOOP, end=HOLD)`. The format may change. */
+    /** Returns `SpriteAnimation(frame=2/6, mode=LOOP, speed=1.0, end=HOLD)`. The format may change. */
     override fun toString(): String =
-        "SpriteAnimation(frame=${playhead.frameIndex}/${frames.size}, mode=${playhead.mode}, end=$end)"
+        "SpriteAnimation(frame=${playhead.frameIndex}/${frames.size}, mode=${playhead.mode}, speed=${playhead.speed}, end=$end)"
 
     /** Component key for [SpriteAnimation]. */
     public companion object : ComponentType<SpriteAnimation>("SpriteAnimation")
 }
+
+/**
+ * Playback rate of the animation, the [Animation.speed] of its [SpriteAnimation.playhead]: 1, the
+ * default, shows each frame for its frame duration, 2 plays twice as fast and 0 holds the current
+ * frame. Set it every frame to match the animation to motion, such as a walk cycle that speeds up
+ * with the character. Must be finite and not negative.
+ *
+ * @throws IllegalArgumentException if set to a negative or infinite value or `NaN`.
+ *
+ * @sample samples.render.Animations.speed
+ */
+public var SpriteAnimation.speed: Float
+    get() = playhead.speed
+    set(value) {
+        playhead.speed = value
+    }
 
 /**
  * Creates a sprite animation that plays every region of [sheet] in index order, showing each one

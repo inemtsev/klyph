@@ -5,6 +5,7 @@ import klyph.render.AnimationMode
 import klyph.render.duration
 import samples.Sample
 import samples.assertPrints
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
@@ -18,7 +19,21 @@ class Animations {
         assertPrints(walk.frameElapsed, "50ms")
         // LOOP wraps from the last frame back to the first.
         walk.advance(150.milliseconds)
-        assertPrints(walk, "Animation(frame=0/4, mode=LOOP)")
+        assertPrints(walk, "Animation(frame=0/4, mode=LOOP, speed=1.0)")
+    }
+
+    @Sample
+    fun speed() {
+        val walk = Animation(frameCount = 4, frameDuration = 100.milliseconds)
+        // Twice as fast: 100 milliseconds of game time move the playhead two frames.
+        walk.speed = 2f
+        walk.advance(100.milliseconds)
+        assertPrints(walk.frameIndex, "2")
+        // Zero holds the current frame.
+        walk.speed = 0f
+        walk.advance(1000.milliseconds)
+        assertPrints(walk.frameIndex, "2")
+        assertFailsWith<IllegalArgumentException> { walk.speed = -1f }
     }
 
     @Sample

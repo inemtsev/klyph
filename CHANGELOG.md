@@ -6,7 +6,16 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- `Velocity(dx, dy)`, a component the engine applies to its entity's `Transform` in every fixed
+  step, after the FIXED_UPDATE systems and by the fixed step length. `Interpolated` entities are
+  recorded before the move, and entities of a frozen scene stand still.
+- `ParticleEmitter.burst(region, count, ...)`, which makes an emitter that sends out one burst of
+  `count` particles and then destroys its entity, and `Commands.spawnBurst(x, y, emitter)`, which
+  spawns the entity that carries it.
+- `Animation.speed` and `SpriteAnimation.speed`, a playback rate multiplier; 0 holds the current
+  frame. `Animation` and `SpriteAnimation` include it in `toString`.
 
 ## [1.0.0] - 2026-11-04
 

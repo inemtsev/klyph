@@ -7,6 +7,7 @@ import klyph.entity.Entity
 import klyph.entity.Interpolated
 import klyph.entity.Lifetime
 import klyph.entity.Transform
+import klyph.entity.Velocity
 import klyph.math.Vec2
 import klyph.math.degrees
 import klyph.math.distanceTo
@@ -140,7 +141,7 @@ fun Commands.spawnDiver(art: Art, random: Random, ship: Vec2, viewTop: Float) {
         add(Transform, Transform(start.x, start.y))
         add(Sprite, Sprite(art.diver, Tuning.SHIP_SIZE, Tuning.SHIP_SIZE, layer = Tuning.LAYER_SHIPS))
         add(Collider, enemyCollider(Tuning.SHIP_RADIUS))
-        add(Velocity, Velocity(0f, 0f))
+        add(Velocity, Velocity())
         add(Dive, Dive(start.x, start.y, control.x, control.y, ship.x, ship.y, duration.coerceAtLeast(MIN_DIVE_SECONDS)))
         add(Enemy, Enemy(EnemyKind.DIVER))
         add(Interpolated, Interpolated)

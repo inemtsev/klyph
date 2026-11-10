@@ -25,7 +25,9 @@ import klyph.render.follow
 import klyph.render.fromGrid
 import klyph.render.lookAt
 import klyph.render.region
+import klyph.render.speed
 import klyph.render.worldToScreen
+import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 
 class SpritesAndAnimation {
@@ -115,6 +117,17 @@ class SpritesAndAnimation {
             val isMoving = app.input.keyboard.axis(Scancode.A, Scancode.D) != 0f
             walk.isPaused = !isMoving
             if (!isMoving) walk.seek(0)
+        }
+        // end snippet
+    }
+
+    fun App.matchRunToPace(player: Entity) {
+        // snippet: speed
+        addSystem(Phase.UPDATE) { app ->
+            // The legs keep up with the ground: half rate at a standstill, one and a half at full pace.
+            val run = app.world.get(player, SpriteAnimation)
+            val pace = abs(app.input.keyboard.axis(Scancode.A, Scancode.D))
+            run.speed = 0.5f + pace
         }
         // end snippet
     }

@@ -161,6 +161,21 @@ addSystem(Phase.UPDATE) { app ->
 }
 ```
 
+`speed` changes how fast an animation plays without changing its `frameDuration`: the engine
+advances it by the frame's delta times `speed`. 1 is the normal rate, 2 twice as fast, and 0
+holds the current frame like `isPaused`. A negative speed throws `IllegalArgumentException`.
+`animation.speed` is the playhead's `Animation.speed`, so either works:
+
+<!-- snippet: speed -->
+```kotlin
+addSystem(Phase.UPDATE) { app ->
+    // The legs keep up with the ground: half rate at a standstill, one and a half at full pace.
+    val run = app.world.get(player, SpriteAnimation)
+    val pace = abs(app.input.keyboard.axis(Scancode.A, Scancode.D))
+    run.speed = 0.5f + pace
+}
+```
+
 The frames of a `SpriteAnimation` may come from different textures. The animation keeps the list
 it is given rather than copying it, so many entities can share one list; do not change the list
 afterwards. `SpriteAnimation(sheet, ...)` shares the sheet's own list.

@@ -2,6 +2,7 @@ package klyph.shooter
 
 import klyph.collision.CollisionLayers
 import klyph.entity.ComponentType
+import klyph.entity.Velocity
 
 /**
  * The collision layers of the game. Bullets look for enemies, enemies for the player and bullets,
@@ -119,10 +120,3 @@ class Bullet {
 
 /** A bullet the boss fired, which hurts the player. */
 object EnemyBullet : ComponentType<EnemyBullet>("EnemyBullet")
-
-/** Movement in world units per second. The engine has no velocity of its own, by design. */
-class Velocity(var x: Float, var y: Float) {
-    override fun toString(): String = "Velocity($x, $y)"
-
-    companion object : ComponentType<Velocity>("Velocity")
-}

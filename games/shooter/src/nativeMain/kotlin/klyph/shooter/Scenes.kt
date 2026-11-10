@@ -47,7 +47,7 @@ class GameScenes {
         addSystem(Phase.FIXED_UPDATE) { app -> app.round.updatePlayer(app) }
         addSystem(Phase.FIXED_UPDATE) { app -> app.round.spawnEnemies(app) }
         addSystem(Phase.FIXED_UPDATE) { app -> steerDivers(app) }
-        addSystem(Phase.FIXED_UPDATE) { app -> moveBodies(app) }
+        addSystem(Phase.FIXED_UPDATE) { app -> swayDrifters(app) }
         addSystem(Phase.FIXED_UPDATE) { app -> app.round.removeStrays(app) }
 
         addSystem(Phase.UPDATE) { app -> app.round.resolveOverlaps(app) }

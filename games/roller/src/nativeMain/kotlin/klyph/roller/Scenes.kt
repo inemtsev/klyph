@@ -51,8 +51,8 @@ class GameScenes {
         addSystem(Phase.FIXED_UPDATE) { app -> app.run.tickClock(app) }
         addSystem(Phase.FIXED_UPDATE) { app -> app.run.movePlayer(app) }
         addSystem(Phase.FIXED_UPDATE) { app -> moveEnemies(app) }
+        addSystem(Phase.FIXED_UPDATE) { app -> tumble(app) }
 
-        addSystem(Phase.UPDATE) { app -> drift(app) }
         addSystem(Phase.UPDATE) { app -> animatePickups(app) }
         addSystem(Phase.UPDATE) { app -> app.run.resolveOverlaps(app) }
         addSystem(Phase.UPDATE) { app -> app.run.checkGoal(app) }

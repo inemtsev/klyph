@@ -6,6 +6,7 @@ import klyph.entity.Transform
 import klyph.entity.World
 import klyph.entity.propagateTransforms
 import klyph.math.degrees
+import klyph.platform.Color
 import klyph.render.Texture
 import klyph.render.asRegion
 import kotlin.math.PI
@@ -342,6 +343,64 @@ class ParticleEmitterTest {
         world.advanceParticles(1f, commands = commands)
         assertEquals(0, kept.particleCount)
         assertTrue(commands.isEmpty(), "KEEP, the default, never destroys.")
+    }
+
+    @Test
+    fun burstEmitsItsCountOnceAndThenDestroysItsEntity() {
+        val world = World()
+        val commands = Commands(world)
+        val burst = ParticleEmitter.burst(region, 6, speed = 10f..20f, lifetime = 0.2.seconds..0.2.seconds, layer = 3)
+        assertEquals(6, burst.capacity)
+        assertEquals(EmitterEnd.DESTROY, burst.whenEmpty)
+        assertEquals(0f, burst.rate)
+        assertEquals(3, burst.layer)
+        val entity = commands.spawnBurst(30f, 40f, burst)
+        commands.apply()
+        assertEquals(30f, world.get(entity, Transform).x)
+        assertEquals(40f, world.get(entity, Transform).y)
+
+        assertEquals(6, world.advanceParticles(0.1f, commands = commands))
+        assertEquals(30f, burst.xs[0])
+        assertEquals(40f, burst.ys[0])
+        assertTrue(commands.isEmpty(), "Live particles keep the entity.")
+        assertEquals(6, world.advanceParticles(0.05f, commands = commands), "A burst emits once.")
+
+        world.advanceParticles(0.2f, commands = commands)
+        commands.apply()
+        assertFalse(world.isAlive(entity), "The entity goes once the last particle has lived its lifetime.")
+    }
+
+    @Test
+    fun burstSetsThePropertiesItIsGiven() {
+        val tint = Color(1f, 0.5f, 0f)
+        val burst = ParticleEmitter.burst(
+            region, 4,
+            direction = 1f, spread = 0.5f, gravityY = 700f, startColor = tint, endColor = Color.WHITE,
+            startScale = 0.9f, endScale = 0.3f, startRotation = 0f..6f,
+        )
+        assertEquals(1f, burst.direction)
+        assertEquals(0.5f, burst.spread)
+        assertEquals(700f, burst.gravityY)
+        assertEquals(tint, burst.startColor)
+        assertEquals(Color.WHITE, burst.endColor)
+        assertEquals(0.9f, burst.startScale)
+        assertEquals(0.3f, burst.endScale)
+        assertEquals(0f..6f, burst.startRotation)
+        assertEquals(4, burst.pendingBurst)
+
+        val defaults = ParticleEmitter.burst(region, 1)
+        val plain = ParticleEmitter(region)
+        assertEquals(plain.speed, defaults.speed)
+        assertEquals(plain.lifetime, defaults.lifetime)
+        assertEquals(plain.spread, defaults.spread)
+        assertEquals(null, defaults.endColor)
+    }
+
+    @Test
+    fun burstNeedsAPositiveCount() {
+        val error = assertFailsWith<IllegalArgumentException> { ParticleEmitter.burst(region, 0) }
+        assertEquals("Particle count 0 is not positive.", error.message)
+        assertFailsWith<IllegalArgumentException> { ParticleEmitter.burst(region, 3, spread = -1f) }
     }
 
     @Test

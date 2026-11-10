@@ -7,6 +7,7 @@ import klyph.collision.contains
 import klyph.collision.otherThan
 import klyph.entity.Entity
 import klyph.entity.Transform
+import klyph.entity.Velocity
 import klyph.math.Rect
 import klyph.math.Vec2
 import klyph.math.angle
@@ -159,7 +160,7 @@ fun Round.spawnEnemies(app: App) {
     }
 }
 
-/** Steers the divers along their curves, so the next step moves them by their [Velocity]. */
+/** Steers the divers along their curves; the engine moves them by their [Velocity] at the end of the step. */
 fun steerDivers(app: App) {
     val dt = app.time.deltaSeconds
     app.world.forEach(Dive, Velocity, Transform) { _, dive, velocity, transform ->
@@ -167,21 +168,17 @@ fun steerDivers(app: App) {
             dive.progress = (dive.progress + dt / dive.duration).coerceAtMost(1f)
             // The derivative of the curve, per second: where the diver heads at this point of it.
             val t = dive.progress
-            velocity.x = 2f * ((1f - t) * (dive.controlX - dive.startX) + t * (dive.targetX - dive.controlX)) / dive.duration
-            velocity.y = 2f * ((1f - t) * (dive.controlY - dive.startY) + t * (dive.targetY - dive.controlY)) / dive.duration
+            velocity.dx = 2f * ((1f - t) * (dive.controlX - dive.startX) + t * (dive.targetX - dive.controlX)) / dive.duration
+            velocity.dy = 2f * ((1f - t) * (dive.controlY - dive.startY) + t * (dive.targetY - dive.controlY)) / dive.duration
         }
         // The art points down, a quarter turn on from +x, where Vec2 angles start.
-        transform.rotation = Vec2(velocity.x, velocity.y).angle - 90f.degrees
+        transform.rotation = Vec2(velocity.dx, velocity.dy).angle - 90f.degrees
     }
 }
 
-/** Moves everything with a [Velocity], and sways and banks the drifters. */
-fun moveBodies(app: App) {
+/** Sways and banks the drifters; the engine carries them down by their [Velocity]. */
+fun swayDrifters(app: App) {
     val dt = app.time.deltaSeconds
-    app.world.forEach(Velocity, Transform) { _, velocity, transform ->
-        transform.x += velocity.x * dt
-        transform.y += velocity.y * dt
-    }
     app.world.forEach(Sway, Transform) { _, sway, transform ->
         sway.phase += sway.rate * dt
         transform.x = sway.centerX + Tuning.ENEMY_SWAY_AMPLITUDE * sin(sway.phase)

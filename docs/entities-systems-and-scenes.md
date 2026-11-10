@@ -14,14 +14,14 @@ which by convention is the class's companion object:
 
 <!-- snippet: component -->
 ```kotlin
-/** How fast an entity moves, in world units per second. */
-class Velocity(var x: Float, var y: Float) {
-    companion object : ComponentType<Velocity>("Velocity")
+/** How fast an entity turns, in radians per second. */
+class Spin(var rate: Float) {
+    companion object : ComponentType<Spin>("Spin")
 }
 ```
 
-The engine's components follow the same pattern: `Transform`, `Sprite`, `Text`, `Collider`,
-`ParticleEmitter`, `SpriteAnimation`, `Lifetime` and `Fade` are both the class and the key, so
+The engine's components follow the same pattern: `Transform`, `Velocity`, `Sprite`, `Text`,
+`Collider`, `ParticleEmitter`, `SpriteAnimation`, `Lifetime` and `Fade` are both the class and the key, so
 you write `world.add(entity, Transform, Transform(x = 10f))`. A marker that carries no data, such
 as `Interpolated`, is an object that is its own key and value.
 
@@ -32,15 +32,15 @@ as `Interpolated`, is an object that is its own key and value.
 val world = World()
 val rock = world.create()
 world.add(rock, Transform, Transform(x = 10f, y = 20f))
-world.add(rock, Velocity, Velocity(x = 30f, y = 0f))
+world.add(rock, Spin, Spin(rate = 2f))
 
-world.get(rock, Velocity).x += 5f
+world.get(rock, Spin).rate += 0.5f
 println(world.getOrNull(rock, Sprite)) // null: the rock has no sprite
-println(world.has(rock, Velocity)) // true
+println(world.has(rock, Spin)) // true
 
-world.forEach(Transform, Velocity) { entity, transform, velocity ->
-    transform.x += velocity.x / 60f
-    println("$entity is at ${transform.x}")
+world.forEach(Transform, Spin) { entity, transform, spin ->
+    transform.rotation += spin.rate / 60f
+    println("$entity is turned ${transform.rotation} radians")
 }
 world.destroy(rock)
 println(world.isAlive(rock)) // false
@@ -61,9 +61,8 @@ last frame. Systems of a phase run in the order they were added.
 ```kotlin
 addSystem(Phase.FIXED_UPDATE) { app ->
     val dt = app.time.deltaSeconds
-    app.world.forEach(Transform, Velocity) { _, transform, velocity ->
-        transform.x += velocity.x * dt
-        transform.y += velocity.y * dt
+    app.world.forEach(Transform, Spin) { _, transform, spin ->
+        transform.rotation += spin.rate * dt
     }
 }
 ```
@@ -89,7 +88,7 @@ Each frame runs these steps, in this order:
 3. Show or hide the debug overlay if its key went down.
 4. INPUT.
 5. FIXED_UPDATE, zero or more times, recording each `Interpolated` entity's transform before
-   each step.
+   each step and moving every entity with a `Velocity` after the step's systems.
 6. Propagate transforms through the entity hierarchy, then detect collisions and publish
    `Overlap` events.
 7. UPDATE.
@@ -123,7 +122,7 @@ addSystem(Phase.UPDATE) { app ->
     if (app.input.keyboard.isJustPressed(Scancode.SPACE)) {
         app.commands.spawn {
             add(Transform, Transform(x = 640f, y = 600f))
-            add(Velocity, Velocity(x = 0f, y = -400f))
+            add(Velocity, Velocity(dy = -400f))
             add(Sprite, Sprite(app.assets.disc(8)))
         }
     }
@@ -185,11 +184,11 @@ val config = AppConfig(title = "My game", fixedRate = 50, maxFixedStepsPerFrame 
 runApp(config) {
     val ball = world.create()
     world.add(ball, Transform, Transform(x = 100f, y = 100f))
-    world.add(ball, Velocity, Velocity(x = 120f, y = 0f))
+    // The engine moves it 120 units a second, in fixed steps.
+    world.add(ball, Velocity, Velocity(dx = 120f))
     world.add(ball, Sprite, Sprite(assets.disc(16)))
     // Drawn between its last two fixed steps, so it moves smoothly at any frame rate.
     world.add(ball, Interpolated, Interpolated)
-    moveBodies()
 }
 ```
 
@@ -249,12 +248,37 @@ destroyed with their children. Entities created by the setup block, by App-level
 `onExit` action belong to no scene and stay, which suits a starfield behind every screen.
 
 **Freezing.** While a scene is pushed over another, the one below is frozen: its systems do not
-run, and its lifetimes, fades, particle emitters, sprite animations and colliders stand still.
+run, and its velocities, lifetimes, fades, particle emitters, sprite animations and colliders
+stand still.
 Its entities keep rendering, so the pause menu draws over the stopped game without a paused flag.
 App-level systems still run and still see frozen entities, so keep game logic in scene systems.
 
 If an `onEnter` action throws, its scene is taken off the stack again and its entities are
 destroyed before the exception propagates.
+
+## Velocity
+
+`Velocity(dx, dy)` moves its entity's `Transform` by `dx` and `dy` world units per second. The
+engine applies it in every fixed step, after that step's FIXED_UPDATE systems, using the step
+length, so it moves exactly as a FIXED_UPDATE system adding `velocity * time.deltaSeconds` would,
+and `Interpolated` entities with a velocity are drawn smoothly. A FIXED_UPDATE system that changes
+the velocity, to steer or to add gravity, affects the move of the same step. For a child, the
+velocity is in its parent's space.
+
+<!-- snippet: velocity -->
+```kotlin
+val rock = commands.spawn {
+    add(Transform, Transform(x = x, y = y))
+    add(Sprite, Sprite(assets.disc(12)))
+    // Thrown up and to the right; the engine moves it in every fixed step.
+    add(Velocity, Velocity(dx = 150f, dy = -300f))
+    add(Lifetime, Lifetime(3.seconds))
+}
+addSystem(Phase.FIXED_UPDATE) { app ->
+    // Runs before the engine's move in the same step, so gravity counts at once.
+    app.world.getOrNull(rock, Velocity)?.let { it.dy += 600f * app.time.deltaSeconds }
+}
+```
 
 ## Lifetime and Fade
 
@@ -351,6 +375,7 @@ that happen once, such as a window losing focus.
   [Commands](../klyph/klyph.entity/-commands/index.html) and
   [ComponentType](../klyph/klyph.entity/-component-type/index.html)
 - [Transform](../klyph/klyph.entity/-transform/index.html),
+  [Velocity](../klyph/klyph.entity/-velocity/index.html),
   [WorldTransform](../klyph/klyph.entity/-world-transform/index.html) and
   [Interpolated](../klyph/klyph.entity/-interpolated/index.html)
 - [Phase](../klyph/klyph.app/-phase/index.html) and [Time](../klyph/klyph.app/-time/index.html)

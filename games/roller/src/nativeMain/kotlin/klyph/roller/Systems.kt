@@ -6,6 +6,7 @@ import klyph.collision.Overlap
 import klyph.collision.otherThan
 import klyph.entity.Entity
 import klyph.entity.Transform
+import klyph.entity.Velocity
 import klyph.math.Rect
 import klyph.platform.Color
 import klyph.render.Sprite
@@ -198,18 +199,16 @@ fun moveEnemies(app: App) {
     }
 }
 
-// UPDATE
-
-/** Moves the effects that drift: rising popups and tumbling helicopters. */
-fun drift(app: App) {
+/** Spins the stomped helicopters and pulls them down; the engine moves them by their [Velocity]. */
+fun tumble(app: App) {
     val dt = app.time.deltaSeconds
-    app.world.forEach(Drift, Transform) { _, drift, transform ->
-        drift.vy += drift.gravity * dt
-        transform.x += drift.vx * dt
-        transform.y += drift.vy * dt
-        transform.rotation += drift.spin * dt
+    app.world.forEach(Tumble, Velocity, Transform) { _, tumble, velocity, transform ->
+        velocity.dy += Tuning.GRAVITY * dt
+        transform.rotation += tumble.spin * dt
     }
 }
+
+// UPDATE
 
 /**
  * Spins the rings by narrowing their sprites, which leaves their colliders as they are (a

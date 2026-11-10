@@ -15,9 +15,9 @@ import klyph.entity.ComponentType
 import klyph.entity.Entity
 import klyph.entity.Transform
 import klyph.math.degrees
-import klyph.particle.EmitterEnd
 import klyph.particle.EmitterSpace
 import klyph.particle.ParticleEmitter
+import klyph.particle.spawnBurst
 import klyph.platform.Color
 import klyph.platform.Scancode
 import klyph.render.Sprite
@@ -103,23 +103,13 @@ class CollisionsAndParticles {
 
     fun App.explode(x: Float, y: Float) {
         // snippet: burst
-        val sparks = ParticleEmitter(assets.disc(8), capacity = 64).apply {
-            speed = 80f..260f
-            lifetime = 300.milliseconds..700.milliseconds
-            gravityY = 200f
-            startColor = Color(1f, 0.8f, 0.3f)
-            endColor = Color(0.8f, 0.1f, 0f, 0f)
-            startScale = 1f
-            endScale = 0.2f
-            layer = 2
-            // The entity goes away once the last spark has faded.
-            whenEmpty = EmitterEnd.DESTROY
-            emit(64)
-        }
-        commands.spawn {
-            add(Transform, Transform(x = x, y = y))
-            add(ParticleEmitter, sparks)
-        }
+        // 64 sparks at once on an entity of their own, which goes away once the last has faded.
+        val sparks = ParticleEmitter.burst(
+            assets.disc(8), count = 64,
+            speed = 80f..260f, lifetime = 300.milliseconds..700.milliseconds, gravityY = 200f,
+            startColor = Color(1f, 0.8f, 0.3f), endColor = Color(0.8f, 0.1f, 0f, 0f), endScale = 0.2f, layer = 2,
+        )
+        commands.spawnBurst(x, y, sparks)
         // end snippet
     }
 

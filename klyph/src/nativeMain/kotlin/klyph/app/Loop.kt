@@ -4,6 +4,7 @@ import klyph.audio.Audio
 import klyph.audio.AudioConfig
 import klyph.audio.AudioOutput
 import klyph.entity.advanceLifetimes
+import klyph.entity.applyVelocities
 import klyph.entity.propagateTransforms
 import klyph.entity.recordPreviousTransforms
 import klyph.particle.advanceParticles
@@ -55,7 +56,9 @@ import kotlin.time.TimeSource
  * request, and finally [Phase.SHUTDOWN] runs once. STARTUP and SHUTDOWN run even when no frame
  * does. The loop also quits by itself once [AppConfig.frameLimit] frames have run or
  * [Time.elapsed] has reached [AppConfig.timeLimit]. At the start of INPUT the engine updates
- * [App.input] from the platform events and translates them into `klyph.event` events. Right after
+ * [App.input] from the platform events and translates them into `klyph.event` events. In each
+ * FIXED_UPDATE step, after the systems have run and their commands have been applied, it moves
+ * every entity with a `Velocity` by its velocity times [Time.fixedDelta]. Right after
  * UPDATE it counts down every `Lifetime` and advances every `Fade`, destroying the entities whose
  * time is up. Between UPDATE and LATE_UPDATE it advances every `ParticleEmitter` by the frame's
  * delta, emitting at the entity's current world position. It advances every `SpriteAnimation` and
@@ -74,8 +77,8 @@ import kotlin.time.TimeSource
  *
  * In every phase but STARTUP and SHUTDOWN, the systems of the scene on top of [App.scenes] run
  * after the App-level systems. A pushed scene freezes the one below: its systems do not run, its
- * particle emitters, sprite animations, lifetimes, fades and colliders stand still, its entities keep rendering. The
- * engine skips the emitters and animations of entities a frozen scene owns when it advances them,
+ * velocities, particle emitters, sprite animations, lifetimes, fades and colliders stand still, its entities keep rendering. The
+ * engine skips the velocities, emitters and animations of entities a frozen scene owns when it advances them,
  * and leaves their colliders out of overlap detection, so they are in no `Overlap` event and no
  * [App.collisions] query finds them. Entities of no scene are never frozen. The scene transitions queued during a frame apply at its end, after
  * drawing, and those queued in `setup` or STARTUP apply after STARTUP, before the first frame.
@@ -267,6 +270,8 @@ private class FrameLoop(
             time.beginFixedStep()
             app.world.recordPreviousTransforms()
             app.run(Phase.FIXED_UPDATE)
+            // Where a last FIXED_UPDATE system would move bodies, after the systems' commands applied.
+            app.world.applyVelocities(time.deltaSeconds, app.scenes)
             time.endFixedStep()
         }
         mark = lap(Phase.FIXED_UPDATE.ordinal, mark)

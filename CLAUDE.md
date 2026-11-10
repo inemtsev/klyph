@@ -38,12 +38,17 @@ chosen when it loads, picks linear or nearest sampling, and `app.window` has `cu
 hidden only while over the window), `setCursor(image, hotspotX, hotspotY)`, `mode` (`WindowMode`,
 fullscreen is borderless desktop fullscreen; `AppConfig.windowMode` and `AppConfig.cursor` set
 both at startup) and `capture(path)`, which reads the next drawn frame back and writes it as a PNG
-through the vendored `stb_image_write.h`, offscreen too; the gameplay kit: `Lifetime` destroys its
+through the vendored `stb_image_write.h`, offscreen too; the gameplay kit: `Velocity(dx, dy)`
+moves its entity's `Transform` in units per second, applied by the engine in every fixed step
+after the FIXED_UPDATE systems; `Lifetime` destroys its
 entity when its time runs out and `Fade` blends the alpha of its `Sprite` and `Text` to a target
 (`FadeEnd.DESTROY` destroys after), both counted down by the engine after UPDATE; a ONCE
-`SpriteAnimation` publishes `AnimationFinished` and with `AnimationEnd.DESTROY` destroys its entity;
+`SpriteAnimation` publishes `AnimationFinished` and with `AnimationEnd.DESTROY` destroys its entity,
+and its `speed` (the playhead's `Animation.speed`) scales its playback rate;
 a `ParticleEmitter` with `whenEmpty = EmitterEnd.DESTROY` destroys its entity once it has nothing
-left, and `space = EmitterSpace.LOCAL` turns its direction with the entity; `Camera.follow` eases
+left, `ParticleEmitter.burst(region, count, …)` makes such a one-shot emitter and
+`Commands.spawnBurst(x, y, emitter)` spawns the entity carrying it, and
+`space = EmitterSpace.LOCAL` turns its direction with the entity; `Camera.follow` eases
 toward a point and `Camera.bounds` keeps the view inside a `Rect`; `TextShadow` draws under text
 through `Text.shadow` or `drawText(shadow = …)`; `app.assets.whitePixel` and `app.assets.disc(d)`
 are ready-made regions; `AppConfig.fromEnvironment()` reads the `KLYPH_*` limits and switches,
@@ -197,7 +202,8 @@ to `mavenLocal`.
 `runApp` runs STARTUP once and applies the scene transitions queued so far. Each frame then runs:
 drop last frame's events, refresh audio, translate platform events into `app.input` and
 `app.events`, toggle the overlay, INPUT, FIXED_UPDATE zero or more times (interpolated transforms
-recorded before each step), propagate transforms, detect collisions and publish `Overlap` events,
+recorded before each step, and every `Velocity` applied to its `Transform` after the step's
+systems and their commands, by the fixed step length), propagate transforms, detect collisions and publish `Overlap` events,
 UPDATE, count down `Lifetime` and advance `Fade`, advance particles, advance sprite animations
 (publishing `AnimationFinished`), LATE_UPDATE, propagate transforms, RENDER, queue the overlay on
 `app.canvas`, clamp `app.camera` to its bounds, draw sprites, `Text`, particles and `app.canvas`
@@ -205,8 +211,8 @@ UPDATE, count down `Lifetime` and advance `Fade`, advance particles, advance spr
 or `timeLimit` is reached. Commands apply after every system, after each of the lifetime/fade,
 particle and animation steps (so what they destroy is gone before the next step) and after the
 second propagation. Scene systems run after the App-level systems of the same phase. A pushed
-scene freezes the one below: its systems do not run, its lifetimes, fades, particle emitters,
-sprite animations and colliders stand still (the engine steps skip them and collision detection
+scene freezes the one below: its systems do not run, its velocities, lifetimes, fades, particle
+emitters, sprite animations and colliders stand still (the engine steps skip them and collision detection
 leaves them out), its entities keep rendering. The engine steps ask the internal
 `SceneStack.isFrozen(owner)` for an entity's owner id, and entities of no scene are never frozen;
 games cannot ask, so a game keeps its game logic in scene systems, which leaves frozen entities

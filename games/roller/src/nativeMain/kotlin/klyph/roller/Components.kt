@@ -78,12 +78,11 @@ class HeartPickup(val baseY: Float) {
 }
 
 /**
- * Movement of an effect in units per second, pulled down by [gravity] and turning at [spin]
- * radians per second: rising score popups and stomped helicopters tumbling away. The engine has
- * no velocity of its own.
+ * A stomped helicopter tumbling away, turning at [spin] radians per second while gravity bends
+ * its [klyph.entity.Velocity] down.
  */
-class Drift(var vx: Float, var vy: Float, val gravity: Float = 0f, val spin: Float = 0f) {
-    override fun toString(): String = "Drift($vx, $vy, gravity=$gravity, spin=$spin)"
+class Tumble(val spin: Float) {
+    override fun toString(): String = "Tumble(spin=$spin)"
 
-    companion object : ComponentType<Drift>("Drift")
+    companion object : ComponentType<Tumble>("Tumble")
 }

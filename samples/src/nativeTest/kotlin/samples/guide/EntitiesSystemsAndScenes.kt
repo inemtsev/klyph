@@ -11,6 +11,7 @@ import klyph.entity.ComponentType
 import klyph.entity.Interpolated
 import klyph.entity.Lifetime
 import klyph.entity.Transform
+import klyph.entity.Velocity
 import klyph.entity.World
 import klyph.entity.WorldTransform
 import klyph.event.KeyPressed
@@ -27,9 +28,9 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 // snippet: component
-/** How fast an entity moves, in world units per second. */
-class Velocity(var x: Float, var y: Float) {
-    companion object : ComponentType<Velocity>("Velocity")
+/** How fast an entity turns, in radians per second. */
+class Spin(var rate: Float) {
+    companion object : ComponentType<Spin>("Spin")
 }
 // end snippet
 
@@ -50,28 +51,27 @@ class EntitiesSystemsAndScenes {
         val world = World()
         val rock = world.create()
         world.add(rock, Transform, Transform(x = 10f, y = 20f))
-        world.add(rock, Velocity, Velocity(x = 30f, y = 0f))
+        world.add(rock, Spin, Spin(rate = 2f))
 
-        world.get(rock, Velocity).x += 5f
+        world.get(rock, Spin).rate += 0.5f
         println(world.getOrNull(rock, Sprite)) // null: the rock has no sprite
-        println(world.has(rock, Velocity)) // true
+        println(world.has(rock, Spin)) // true
 
-        world.forEach(Transform, Velocity) { entity, transform, velocity ->
-            transform.x += velocity.x / 60f
-            println("$entity is at ${transform.x}")
+        world.forEach(Transform, Spin) { entity, transform, spin ->
+            transform.rotation += spin.rate / 60f
+            println("$entity is turned ${transform.rotation} radians")
         }
         world.destroy(rock)
         println(world.isAlive(rock)) // false
         // end snippet
     }
 
-    fun App.moveBodies() {
+    fun App.spinBodies() {
         // snippet: system
         addSystem(Phase.FIXED_UPDATE) { app ->
             val dt = app.time.deltaSeconds
-            app.world.forEach(Transform, Velocity) { _, transform, velocity ->
-                transform.x += velocity.x * dt
-                transform.y += velocity.y * dt
+            app.world.forEach(Transform, Spin) { _, transform, spin ->
+                transform.rotation += spin.rate * dt
             }
         }
         // end snippet
@@ -89,7 +89,7 @@ class EntitiesSystemsAndScenes {
             if (app.input.keyboard.isJustPressed(Scancode.SPACE)) {
                 app.commands.spawn {
                     add(Transform, Transform(x = 640f, y = 600f))
-                    add(Velocity, Velocity(x = 0f, y = -400f))
+                    add(Velocity, Velocity(dy = -400f))
                     add(Sprite, Sprite(app.assets.disc(8)))
                 }
             }
@@ -124,11 +124,11 @@ class EntitiesSystemsAndScenes {
         runApp(config) {
             val ball = world.create()
             world.add(ball, Transform, Transform(x = 100f, y = 100f))
-            world.add(ball, Velocity, Velocity(x = 120f, y = 0f))
+            // The engine moves it 120 units a second, in fixed steps.
+            world.add(ball, Velocity, Velocity(dx = 120f))
             world.add(ball, Sprite, Sprite(assets.disc(16)))
             // Drawn between its last two fixed steps, so it moves smoothly at any frame rate.
             world.add(ball, Interpolated, Interpolated)
-            moveBodies()
         }
         // end snippet
     }
@@ -166,6 +166,22 @@ class EntitiesSystemsAndScenes {
             }
         }
         scenes.replace(title)
+        // end snippet
+    }
+
+    fun App.fallWithVelocity(x: Float, y: Float) {
+        // snippet: velocity
+        val rock = commands.spawn {
+            add(Transform, Transform(x = x, y = y))
+            add(Sprite, Sprite(assets.disc(12)))
+            // Thrown up and to the right; the engine moves it in every fixed step.
+            add(Velocity, Velocity(dx = 150f, dy = -300f))
+            add(Lifetime, Lifetime(3.seconds))
+        }
+        addSystem(Phase.FIXED_UPDATE) { app ->
+            // Runs before the engine's move in the same step, so gravity counts at once.
+            app.world.getOrNull(rock, Velocity)?.let { it.dy += 600f * app.time.deltaSeconds }
+        }
         // end snippet
     }
 

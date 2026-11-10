@@ -366,9 +366,60 @@ public class ParticleEmitter(
         "ParticleEmitter(particles=$particleCount/$capacity, rate=$rate, layer=$layer, visible=$isVisible, startColor=$startColor, " +
             "endColor=$endColor, whenEmpty=$whenEmpty, space=$space, region=$region)"
 
-    /** Component key for [ParticleEmitter]. */
+    /** Component key for [ParticleEmitter], and factories of emitters set up for common effects. */
     public companion object : ComponentType<ParticleEmitter>("ParticleEmitter") {
         private const val FULL_TURN: Float = (2.0 * PI).toFloat()
+
+        /**
+         * Creates an emitter that sends out one burst of [count] particles showing [region] and
+         * then removes its entity: its capacity is [count], the burst is requested with [emit],
+         * [rate] is 0 and [whenEmpty] is [EmitterEnd.DESTROY]. Put it on an entity of its own, for
+         * example with `Commands.spawnBurst`; the engine emits the burst at the next particle step
+         * and destroys the entity once the last particle has lived its lifetime.
+         *
+         * The other parameters set the emitter properties of the same name and default to their
+         * defaults, so a call names only what it changes. Pass them as named arguments. Properties
+         * without a parameter, such as [gravityX] or [angularVelocity], can be set on the result
+         * before it is added. Each parameter has the range its property documents.
+         *
+         * Has no sample because creating a [klyph.render.Texture] needs a GPU device, which samples
+         * cannot open.
+         *
+         * @throws IllegalArgumentException if [count] is not positive, or a parameter is outside the
+         *   range its property documents.
+         */
+        public fun burst(
+            region: TextureRegion,
+            count: Int,
+            speed: ClosedFloatingPointRange<Float> = 50f..100f,
+            lifetime: ClosedRange<Duration> = 500.milliseconds..1.seconds,
+            direction: Float = 0f,
+            spread: Float = FULL_TURN,
+            gravityY: Float = 0f,
+            startColor: Color = Color.WHITE,
+            endColor: Color? = null,
+            startScale: Float = 1f,
+            endScale: Float = 1f,
+            startRotation: ClosedFloatingPointRange<Float> = 0f..0f,
+            layer: Int = 0,
+        ): ParticleEmitter {
+            require(count > 0) { "Particle count $count is not positive." }
+            return ParticleEmitter(region, capacity = count).apply {
+                this.speed = speed
+                this.lifetime = lifetime
+                this.direction = direction
+                this.spread = spread
+                this.gravityY = gravityY
+                this.startColor = startColor
+                this.endColor = endColor
+                this.startScale = startScale
+                this.endScale = endScale
+                this.startRotation = startRotation
+                this.layer = layer
+                whenEmpty = EmitterEnd.DESTROY
+                emit(count)
+            }
+        }
     }
 }
 

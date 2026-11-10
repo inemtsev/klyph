@@ -7,8 +7,10 @@ import klyph.collision.Shape
 import klyph.entity.Entity
 import klyph.entity.Lifetime
 import klyph.entity.Transform
+import klyph.entity.Velocity
 import klyph.entity.World
 import klyph.entity.advanceLifetimes
+import klyph.entity.applyVelocities
 import klyph.event.Events
 import klyph.particle.EmitterEnd
 import klyph.particle.ParticleEmitter
@@ -157,6 +159,24 @@ class FrozenSceneTest {
         assertEquals(1, h.commands.size, "Only the top scene's entity is queued.")
         h.commands.apply()
         assertTrue(!h.world.isAlive(top))
+    }
+
+    @Test
+    fun velocityOfAFrozenSceneDoesNotMove() {
+        val h = SceneHarness()
+        val frozen = Transform()
+        val running = Transform()
+        val unowned = Transform()
+        fun World.moving(transform: Transform) = create().also {
+            add(it, Transform, transform)
+            add(it, Velocity, Velocity(dx = 10f, dy = 20f))
+        }
+        h.world.moving(unowned)
+        h.playUnderPause(playEnter = { h.world.moving(frozen) }, pauseEnter = { h.world.moving(running) })
+        h.world.applyVelocities(1f, h.stack)
+        assertEquals(0f, frozen.x)
+        assertEquals(10f, running.x)
+        assertEquals(20f, unowned.y)
     }
 
     @Test
