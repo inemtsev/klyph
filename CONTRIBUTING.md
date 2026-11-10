@@ -122,6 +122,14 @@ GPU each frame, so the display is out of the loop; use them for numbers.
 
 [BENCHMARKS.md](BENCHMARKS.md) has the method and the current results.
 
+## Dependency updates
+
+Third-party versions live in [gradle/libs.versions.toml](gradle/libs.versions.toml), which the
+root build, `buildSrc` and `klyph-gradle-plugin` all read. [Renovate](renovate.json) opens weekly
+pull requests for the catalog, the Gradle wrapper and the GitHub Actions, with Kotlin and detekt
+each grouped into one. It runs only once the Mend Renovate GitHub app is installed on the
+repository.
+
 ## Testing a release locally
 
 `tools/consumer-test.sh local` builds the shooter in a fresh folder from the artifacts in `~/.m2`,
