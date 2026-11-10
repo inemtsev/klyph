@@ -24,10 +24,13 @@ class CollisionsTest {
         offsetY: Float = 0f,
         scaleX: Float = 1f,
         scaleY: Float = 1f,
+        scalesWithTransform: Boolean = true,
     ): Entity {
         val entity = create()
         add(entity, Transform, Transform(x = x, y = y, scaleX = scaleX, scaleY = scaleY))
-        add(entity, Collider, Collider(shape, offsetX = offsetX, offsetY = offsetY, layers = layers, mask = mask))
+        val collider = Collider(shape, offsetX = offsetX, offsetY = offsetY, layers = layers, mask = mask)
+        collider.scalesWithTransform = scalesWithTransform
+        add(entity, Collider, collider)
         return entity
     }
 
@@ -130,6 +133,65 @@ class CollisionsTest {
         val target = offsets.spawn(Shape.Circle(1f), -12f, 0f)
         offsets.spawn(Shape.Circle(1f), 10f, 0f)
         assertEquals(listOf(Overlap(probe, target)), detect(offsets))
+    }
+
+    @Test
+    fun unscaledColliderIgnoresScale() {
+        // The same circle of radius 5 at x = 0, scaled by 2, against a probe at x = 14 reaching
+        // back to x = 9: scaled it reaches x = 10 and overlaps, unscaled it reaches x = 5 and not.
+        val scaled = World()
+        scaled.spawn(Shape.Circle(5f), 0f, 0f, scaleX = 2f, scaleY = 2f)
+        scaled.spawn(Shape.Circle(5f), 14f, 0f)
+        assertEquals(1, detect(scaled).size)
+
+        val unscaled = World()
+        unscaled.spawn(Shape.Circle(5f), 0f, 0f, scaleX = 2f, scaleY = 2f, scalesWithTransform = false)
+        unscaled.spawn(Shape.Circle(5f), 14f, 0f)
+        assertEquals(emptyList(), detect(unscaled))
+
+        // A box squashed to nothing keeps its full size, and its offset is not scaled or mirrored:
+        // the 10x10 box offset by (5, 0) stays from x = 0 to 10.
+        val squashed = World()
+        val box = squashed.spawn(
+            Shape.Box(width = 10f, height = 10f), 0f, 0f, offsetX = 5f, scaleX = -0.01f, scaleY = 0.01f, scalesWithTransform = false,
+        )
+        val right = squashed.spawn(Shape.Box(width = 2f, height = 2f), 9.5f, 4.5f)
+        squashed.spawn(Shape.Box(width = 2f, height = 2f), -1.5f, 0f)
+        assertEquals(listOf(Overlap(box, right)), detect(squashed))
+    }
+
+    @Test
+    fun unscaledColliderInWorldTransformIgnoresParentScale() {
+        val world = World()
+        val ship = world.create()
+        world.add(ship, Transform, Transform(x = 100f, y = 0f, scaleX = 3f, scaleY = 3f))
+        val shield = world.spawn(Shape.Circle(4f), 0f, 0f, scalesWithTransform = false)
+        world.setParent(shield, ship)
+        world.propagateTransforms()
+        // Scaled by the parent the radius would be 12 and reach x = 112; unscaled it reaches 104.
+        world.spawn(Shape.Circle(1f), 106f, 0f)
+        assertEquals(emptyList(), detect(world))
+        world.get(shield, Collider).scalesWithTransform = true
+        assertEquals(1, detect(world).size)
+    }
+
+    @Test
+    fun queriesAgreeWithDetectionOnUnscaledColliders() {
+        val world = World()
+        val ring = world.spawn(Shape.Circle(10f), 0f, 0f, scaleX = 0.1f, scalesWithTransform = false)
+        val hero = world.spawn(Shape.Circle(2f), 11f, 0f)
+        val collisions = Collisions()
+        assertEquals(listOf(Overlap(ring, hero)), detect(world, collisions))
+        // Scaled, the ring's radius would be 1; unscaled it is 10 in every query.
+        assertEquals(listOf(ring), collisions.overlapping(Shape.Circle(2f), 0f, 9f))
+        assertEquals(ring, collisions.firstOverlappingOrNull(Shape.Box(width = 2f, height = 2f), -9.5f, 0f))
+        assertEquals(listOf(ring), collisions.overlappingTo(ArrayList(), Shape.Circle(1f), 0f, -9.5f))
+
+        world.get(ring, Collider).scalesWithTransform = true
+        assertEquals(emptyList(), detect(world, collisions))
+        assertEquals(emptyList(), collisions.overlapping(Shape.Circle(2f), 0f, 9f))
+        assertNull(collisions.firstOverlappingOrNull(Shape.Box(width = 2f, height = 2f), -9.5f, 0f))
+        assertEquals(emptyList(), collisions.overlappingTo(ArrayList(), Shape.Circle(1f), 0f, -9.5f))
     }
 
     @Test

@@ -209,16 +209,12 @@ fun tumble(app: App) {
 
 // UPDATE
 
-/**
- * Spins the rings by narrowing their sprites, which leaves their colliders as they are (a
- * Transform's scale would shrink the circle too), bobs the hearts, and turns the enemies the way
- * they go.
- */
+/** Spins the rings, bobs the hearts, and turns the enemies the way they go. */
 fun animatePickups(app: App) {
     val seconds = app.time.elapsed.inWholeMilliseconds / 1000f
     val world = app.world
-    world.forEach(Ring, Sprite) { _, ring, sprite ->
-        sprite.width = Tuning.RING_SIZE * max(0.15f, abs(cos(seconds * Tuning.RING_SPIN_RATE + ring.phase)))
+    world.forEach(Ring, Transform) { _, ring, transform ->
+        transform.scaleX = max(0.15f, abs(cos(seconds * Tuning.RING_SPIN_RATE + ring.phase)))
     }
     world.forEach(HeartPickup, Transform) { _, heart, transform ->
         transform.y = heart.baseY + Tuning.HEART_BOB * sin(seconds * 3f)

@@ -155,8 +155,8 @@ fun Commands.spawnPickupsAndEnemies(art: Art, random: Random) {
         spawn {
             add(Transform, Transform(ring.x, ring.y))
             add(Sprite, Sprite(art.ring, Tuning.RING_SIZE, Tuning.RING_SIZE, layer = Tuning.LAYER_PICKUPS))
-            // Rings look for nothing; the hero looks for them.
-            add(Collider, Collider(Shape.Circle(Tuning.RING_RADIUS), layers = Layers.RING, mask = CollisionLayers.NONE))
+            // Rings look for nothing; the hero looks for them. The spin narrows the ring, not its hitbox.
+            add(Collider, Collider(Shape.Circle(Tuning.RING_RADIUS), layers = Layers.RING, mask = CollisionLayers.NONE).apply { scalesWithTransform = false })
             // Neighbours spin a little apart, so a line of rings ripples.
             add(Ring, Ring(phase = index * 0.45f))
         }

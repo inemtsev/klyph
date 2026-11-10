@@ -29,9 +29,8 @@ object Enemy : ComponentType<Enemy>("Enemy")
 A `Collider` component makes an entity take part in overlap detection. Its shape is a
 `Shape.Box(width, height)`, an axis-aligned rectangle, or a `Shape.Circle(radius)`, both centered
 on the entity's position plus `offsetX` and `offsetY`. The position is the entity's
-`WorldTransform` when it has a parent and its `Transform` otherwise. The transform's scale
-multiplies the shape: a box by both scales, a circle's radius by the x scale. Rotation is
-ignored, so boxes stay upright.
+`WorldTransform` when it has a parent and its `Transform` otherwise. Rotation is ignored, so
+boxes stay upright.
 
 <!-- snippet: colliders -->
 ```kotlin
@@ -49,6 +48,28 @@ commands.spawn {
     add(Sprite, Sprite(assets.whitePixel, width = 4f, height = 12f))
     // Hits enemies only, so bullets pass through each other and through the player.
     add(Collider, Collider(Shape.Box(width = 4f, height = 12f), layers = Layers.BULLET, mask = Layers.ENEMY))
+}
+```
+
+## Scale and colliders
+
+The transform's scale scales the collider: a box's width by the x scale and its height by the y
+scale, a circle's radius by the x scale alone, and the offset by both. A circle on an entity
+scaled unevenly stays a circle, so it no longer matches the stretched sprite. When the scale only
+animates the sprite, as a squash or a coin's spin does, set `scalesWithTransform = false` on the
+collider and it keeps its size and offset whatever the scale:
+
+<!-- snippet: unscaled-collider -->
+```kotlin
+val coin = commands.spawn {
+    add(Transform, Transform(x = 200f, y = 300f))
+    add(Sprite, Sprite(assets.disc(24), color = Color.YELLOW))
+    // The spin narrows the sprite, never the hitbox.
+    add(Collider, Collider(Shape.Circle(12f)).apply { scalesWithTransform = false })
+}
+addSystem(Phase.UPDATE) { app ->
+    val seconds = app.time.elapsed.inWholeMilliseconds / 1000f
+    app.world.get(coin, Transform).scaleX = cos(seconds * 4f)
 }
 ```
 

@@ -8,6 +8,10 @@ All notable changes to klyph are recorded here. The format follows
 
 ### Added
 
+- `Collider.scalesWithTransform`, `true` by default. Set to `false`, the collider keeps its shape
+  and offset at scale 1 whatever the entity's scale, so a squash or a spin animated through
+  `Transform.scaleX` and `scaleY` leaves the hitbox as it is.
+- `Time.fixedStepCount`, the number of `FIXED_UPDATE` steps completed so far.
 - `Velocity(dx, dy)`, a component the engine applies to its entity's `Transform` in every fixed
   step, after the FIXED_UPDATE systems and by the fixed step length. `Interpolated` entities are
   recorded before the move, and entities of a frozen scene stand still.
@@ -16,7 +20,6 @@ All notable changes to klyph are recorded here. The format follows
   spawns the entity that carries it.
 - `Animation.speed` and `SpriteAnimation.speed`, a playback rate multiplier; 0 holds the current
   frame. `Animation` and `SpriteAnimation` include it in `toString`.
-- `Time.fixedStepCount`, the number of `FIXED_UPDATE` steps completed so far.
 
 ### Changed
 

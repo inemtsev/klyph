@@ -142,9 +142,10 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
      * at a point do not. Boxes are compared as axis-aligned rectangles, circles by the distance
      * between their centers, and a circle and a box by the box point closest to the circle's center.
      *
-     * Each collider sits where the class description of [Collider] says, scaled and offset, with
-     * rotation ignored. An entity with a [Collider] but neither a `Transform` nor a
-     * `WorldTransform` is skipped, as is one whose position or size is not finite.
+     * Each collider sits where the class description of [Collider] says, offset and scaled unless
+     * [Collider.scalesWithTransform] is `false`, with rotation ignored. An entity with a [Collider]
+     * but neither a `Transform` nor a `WorldTransform` is skipped, as is one whose position or size
+     * is not finite.
      *
      * The engine calls this on `App.collisions` once per frame; call it yourself only on an
      * instance you created. The engine's call also leaves out the colliders of scenes frozen below
@@ -254,20 +255,23 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
                     scaleY = transform.scaleY
                 }
                 val collider = colliders.items.itemAt<Collider>(k)
-                val centerX = x + collider.offsetX * scaleX
-                val centerY = y + collider.offsetY * scaleY
+                val scalesWithTransform = collider.scalesWithTransform
+                val colliderScaleX = if (scalesWithTransform) scaleX else 1f
+                val colliderScaleY = if (scalesWithTransform) scaleY else 1f
+                val centerX = x + collider.offsetX * colliderScaleX
+                val centerY = y + collider.offsetY * colliderScaleY
                 val halfWidth: Float
                 val halfHeight: Float
                 val circle: Boolean
                 when (val shape = collider.shape) {
                     is Shape.Circle -> {
-                        halfWidth = shape.radius * abs(scaleX)
+                        halfWidth = shape.radius * abs(colliderScaleX)
                         halfHeight = halfWidth
                         circle = true
                     }
                     is Shape.Box -> {
-                        halfWidth = shape.width * abs(scaleX) * 0.5f
-                        halfHeight = shape.height * abs(scaleY) * 0.5f
+                        halfWidth = shape.width * abs(colliderScaleX) * 0.5f
+                        halfHeight = shape.height * abs(colliderScaleY) * 0.5f
                         circle = false
                     }
                 }

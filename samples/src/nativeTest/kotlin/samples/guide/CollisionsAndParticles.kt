@@ -22,6 +22,7 @@ import klyph.platform.Color
 import klyph.platform.Scancode
 import klyph.render.Sprite
 import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -57,6 +58,21 @@ class CollisionsAndParticles {
             add(Sprite, Sprite(assets.whitePixel, width = 4f, height = 12f))
             // Hits enemies only, so bullets pass through each other and through the player.
             add(Collider, Collider(Shape.Box(width = 4f, height = 12f), layers = Layers.BULLET, mask = Layers.ENEMY))
+        }
+        // end snippet
+    }
+
+    fun App.spinCoin() {
+        // snippet: unscaled-collider
+        val coin = commands.spawn {
+            add(Transform, Transform(x = 200f, y = 300f))
+            add(Sprite, Sprite(assets.disc(24), color = Color.YELLOW))
+            // The spin narrows the sprite, never the hitbox.
+            add(Collider, Collider(Shape.Circle(12f)).apply { scalesWithTransform = false })
+        }
+        addSystem(Phase.UPDATE) { app ->
+            val seconds = app.time.elapsed.inWholeMilliseconds / 1000f
+            app.world.get(coin, Transform).scaleX = cos(seconds * 4f)
         }
         // end snippet
     }
