@@ -65,7 +65,7 @@ opting the game in.
 | `sandbox` | Smoke test: opens a window and clears it each frame. |
 | `benchmarks` | Named benchmarks, such as `sprites` and `mixer`. |
 | `docs` | The guide pages, rendered into the Dokka site. |
-| `tools` | The consumer test, the release secrets script and the template that becomes `klyph-template`. |
+| `tools` | The consumer test, the release secrets script, the SDL3 bump script and the template that becomes `klyph-template`. |
 
 ## Requirements
 
@@ -73,7 +73,9 @@ opting the game in.
 - SDL3 3.4 or newer. On macOS, `brew install sdl3`. The build finds Homebrew, `/usr/local` and
   `/usr` on its own; pass `-Psdl3.prefix=<path>` for anything else. On Windows, use SDL's
   `SDL3-devel-<version>-mingw.zip` and pass its `x86_64-w64-mingw32` folder with forward slashes,
-  such as `-Psdl3.prefix=C:/SDL3-3.4.18/x86_64-w64-mingw32`.
+  such as `-Psdl3.prefix=C:/SDL3-3.4.18/x86_64-w64-mingw32`. To move the plugin's SDL3 download
+  to a new release, run `tools/bump-sdl3.sh <version>`, which rewrites the default version and
+  the pinned SHA-256 hashes in `Sdl3Release.kt`.
 - [SDL_shadercross](https://github.com/libsdl-org/SDL_shadercross), only to change a shader.
   Without it the build uses the checked-in compiled shaders and prints a warning. Commit the
   regenerated `klyph/src/nativeMain/kotlin/klyph/render/generated/Shaders.kt` with the HLSL.
