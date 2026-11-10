@@ -35,7 +35,7 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      # Lands in /opt/homebrew/opt/sdl3, which buildSrc/src/main/kotlin/Sdl3.kt checks first.
+      # Lands in /opt/homebrew/opt/sdl3, which the klyph plugin's Sdl3Locator checks first.
       - name: Install SDL3
         run: brew install sdl3
 

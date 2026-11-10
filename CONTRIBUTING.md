@@ -44,7 +44,8 @@ opting the game in.
 | `klyph-platform` | SDL3 bindings and the thin Kotlin API over them; the only module that touches C interop. |
 | `klyph` | The engine: entities, scenes, rendering, text, particles, collisions, audio. |
 | `samples` | The `@sample` functions referenced from KDoc, run as tests. |
-| `klyph-gradle-plugin` | The Gradle plugin games apply, a separate Gradle build included through `pluginManagement`. |
+| `klyph-gradle-plugin` | The Gradle plugin games apply, a separate Gradle build included through `pluginManagement`. Its library mode configures the engine modules too, so the target rules and the SDL3 lookup live only here. |
+| `buildSrc` | The engine modules' convention plugins (`klyph.native`, `klyph.publish`, `klyph.docs`, `klyph.lint`) and the shader and guide tasks, built against the plugin above. |
 | `games/shooter`, `games/squish`, `games/roller` | The sample games. |
 | `sandbox` | Smoke test: opens a window and clears it each frame. |
 | `benchmarks` | Named benchmarks, such as `sprites` and `mixer`. |

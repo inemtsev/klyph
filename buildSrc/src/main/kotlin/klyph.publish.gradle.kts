@@ -18,17 +18,20 @@ plugins {
 // all targets are configured. Only a macOS host builds every target (Kotlin/Native cannot run
 // the macOS cinterop elsewhere, so other hosts skip macosArm64), so uploads to Maven Central
 // must also come from macOS; publishToMavenLocal is allowed anywhere, which is what CI runs.
-val selectedTargets: List<String> = KlyphTargets.selected(project)
-val missingTargets: List<String> = KlyphTargets.all - selectedTargets.toSet()
+// The targets come from the klyph plugin, which klyph.native applies; it resolves them once the
+// build script has run, so they are read when the task graph is ready.
+val configuredTargets: Provider<List<String>> = klyph.configuredTargets
+val supportedTargets: List<String> = klyph.supportedTargets
 val projectPath: String = path
-val configuredTargets: String = selectedTargets.joinToString()
-val hostTarget: String = KlyphTargets.host
+val hostTarget: String = klyph.hostTarget.get()
 gradle.taskGraph.whenReady {
     val publishTasks = allTasks.filter { it.project.path == projectPath && it.name.startsWith("publish") }
+    val configured = configuredTargets.get()
+    val missingTargets = supportedTargets - configured.toSet()
     if (publishTasks.isNotEmpty() && missingTargets.isNotEmpty()) {
         throw GradleException(
             "Publishing $projectPath needs every target; run with -Pklyph.targets=all " +
-                "(configured: $configuredTargets; missing: ${missingTargets.joinToString()}).",
+                "(configured: ${configured.joinToString()}; missing: ${missingTargets.joinToString()}).",
         )
     }
     if (hostTarget != "macosArm64" && publishTasks.any { it.name.contains("MavenCentral") }) {

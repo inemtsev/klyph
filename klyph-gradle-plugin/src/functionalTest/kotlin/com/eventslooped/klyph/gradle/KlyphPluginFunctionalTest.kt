@@ -103,6 +103,38 @@ class KlyphPluginFunctionalTest {
         assertContains(output, "Set klyph { entryPoint = \"my.game.main\" }.")
     }
 
+    @Test
+    fun libraryHasNoExecutableOrItsTasks() {
+        writeProject("klyph { sdl3Prefix = \"${sdl3Prefix.invariantSeparatorsPath}\" }")
+        val buildFile = File(projectDir, "build.gradle.kts")
+        buildFile.writeText(
+            buildFile.readText().replace("com.eventslooped.klyph\")", "com.eventslooped.klyph.library\")") + """
+
+            tasks.register("describe") {
+                val host = klyph.hostTarget
+                val configured = klyph.configuredTargets
+                val include = klyph.sdl3IncludeDir.map { it.asFile.invariantSeparatorsPath }
+                doLast { println("host: " + host.get() + ", targets: " + configured.get() + ", include: " + include.get()) }
+            }
+            """.trimIndent(),
+        )
+        val output = runner("tasks", "--all").build().output
+        assertTrue(hasTask(output, "linkDebugTest$hostTargetTitle"), "The test binary's link task is missing:\n$output")
+        for (task in listOf("run", "runRelease", "copyAssets", "distribute", "linkDebugExecutable$hostTargetTitle")) {
+            assertFalse(hasTask(output, task), "A library registers $task:\n$output")
+        }
+        val described = runner("describe").build().output
+        assertContains(described, "host: $hostTarget, targets: [$hostTarget], include: ${sdl3Prefix.invariantSeparatorsPath}/include")
+        assertContains(runner("describe").build().output, "Configuration cache entry reused.")
+    }
+
+    @Test
+    fun noDownloadPropertyStopsWithoutSdl3() {
+        writeProject("klyph { entryPoint = \"hello.main\" }")
+        val output = runner("help", "-Pklyph.sdl3.ignoreSystem=true", "-Pklyph.sdl3.download=false").buildAndFail().output
+        assertContains(output, "Cannot find SDL3: no include/SDL3/SDL.h under")
+    }
+
     /** A target other than the host's, whose executables cannot link against the host's SDL3. */
     private val foreignTarget = if (hostTarget == "mingwX64") "linuxX64" else "mingwX64"
     private val foreignTargetTitle = foreignTarget.replaceFirstChar { it.uppercase() }

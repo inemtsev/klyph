@@ -1,17 +1,23 @@
 package com.eventslooped.klyph.gradle
 
+import org.gradle.api.file.Directory
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
+import java.io.File
 import javax.inject.Inject
 
 /**
- * Configures a klyph game build, registered as `klyph { }` by [KlyphPlugin].
+ * Configures a klyph game build, registered as `klyph { }` by [KlyphPlugin] and by
+ * [KlyphLibraryPlugin].
  *
- * Only [entryPoint] is required. The plugin reads every property after the build script has run,
- * so assignments may appear anywhere in the script.
+ * Only [entryPoint] is required, and only for a game. The plugin reads every property after the
+ * build script has run, so assignments may appear anywhere in the script. [hostTarget],
+ * [supportedTargets], [configuredTargets] and [sdl3IncludeDir] are read-only results for build
+ * logic of your own.
  */
 public abstract class KlyphExtension @Inject constructor(
     private val providers: ProviderFactory,
@@ -61,6 +67,46 @@ public abstract class KlyphExtension @Inject constructor(
      * overrides it.
      */
     public abstract val targets: ListProperty<String>
+
+    /**
+     * Target of the machine running the build: `macosArm64`, `linuxX64`, `linuxArm64` or
+     * `mingwX64`. Only its binaries run here, so it is the target for tasks of your own that run
+     * an executable. Reading it on any other machine fails the build.
+     */
+    public val hostTarget: Provider<String> = providers.systemProperty("os.name")
+        .zip(providers.systemProperty("os.arch")) { name, arch -> KlyphTargets.host(name, arch) }
+
+    /** Every target klyph builds for, in the order a build configures them. */
+    public val supportedTargets: List<String> = KlyphTargets.all
+
+    /**
+     * Targets this project configures: [targets], or the Gradle property `klyph.targets` or
+     * `klyph.target` that overrides it, in the order of [supportedTargets].
+     *
+     * It follows [targets], so read it after the build script has run, such as in a task action.
+     * Reading it fails the build when both properties are set, a name is unknown or none is given.
+     */
+    public val configuredTargets: Provider<List<String>> = providers.provider {
+        KlyphTargets.resolve(
+            targetsProperty = providers.gradleProperty("klyph.targets").orNull,
+            targetProperty = providers.gradleProperty("klyph.target").orNull,
+            extension = targets.get(),
+            host = hostTarget.get(),
+        )
+    }
+
+    /**
+     * The `include` folder of the SDL3 this project compiles and links against, for a cinterop
+     * of your own: `includeDirs(klyph.sdl3IncludeDir)`.
+     *
+     * It has no value until the plugin has located SDL3, right after the build script has run.
+     * When SDL3 is downloaded, the folder fills when `fetchSdl3` runs, which every cinterop task
+     * of the project runs after.
+     */
+    public val sdl3IncludeDir: Provider<Directory> = layout.dir(providers.provider { locatedSdl3?.resolve("include") })
+
+    /** The SDL3 prefix the plugin settled on, set once it has located SDL3. */
+    internal var locatedSdl3: File? = null
 
     /**
      * Returns the `KLYPH_*` environment for a run task: each variable comes from the Gradle

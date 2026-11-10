@@ -14,7 +14,9 @@ Kotlin/Native only, no JVM target. By default the build configures the host's ow
 below). SDL3 is located automatically (Homebrew, /usr/local, /usr); override with
 `-Psdl3.prefix=<path>`. The library is taken from the prefix's `lib/` or, on Linux, the first of
 `lib/`, `lib64/` (Fedora), `lib/x86_64-linux-gnu/` and `lib/aarch64-linux-gnu/` (Debian, Ubuntu)
-that holds it, in both `buildSrc` (`Sdl3.libDir`) and the plugin (`Sdl3Locator.libraryDir`).
+that holds it (`Sdl3Locator.libraryDir` in the klyph plugin, which every module applies). The
+root `gradle.properties` sets `klyph.sdl3.download=false`, so the engine build never downloads
+SDL3: without an install it stops and names the folders it searched.
 
 Modules: `klyph-platform` (SDL3 cinterop and the thin Kotlin API over it; the only module allowed
 to import `kotlinx.cinterop`, `sdl3`, `stb`, `vorbis`, `cnames` or `platform.*`; its engine-only
@@ -68,15 +70,20 @@ API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.T
 `klyph-gradle-plugin` (the `com.eventslooped.klyph` Gradle plugin games apply, with its own
 reference in `klyph-gradle-plugin/README.md`; an included build through `pluginManagement` in
 `settings.gradle.kts`, so `sandbox`, `games:shooter`, `games:squish`, `games:roller` and `benchmarks` apply it by id and take
-their targets, SDL3 link flags, asset sync, `run`, `runRelease` and `distribute` from it; it is a
-separate Gradle build, so its unit and TestKit tests run with `./gradlew -p klyph-gradle-plugin
-check`, not with the root `check`). `./gradlew check`
+their targets, SDL3 link flags, asset sync, `run`, `runRelease` and `distribute` from it; its
+library mode, `com.eventslooped.klyph.library`, does the same without executables or their tasks
+for the engine modules; it is a separate Gradle build, so its unit and TestKit tests run with
+`./gradlew -p klyph-gradle-plugin check`, not with the root `check`). `./gradlew check`
 runs every module's tests and samples plus the interop-import rule; a single module's tests run
 with `:<module>:macosArm64Test`. GPU, window, event and audio device functions, `runApp`, `App` and
 `Assets` have no samples because they need a display or a device; `Audio` has samples because it
 also mixes without a device. `buildSrc` serves the engine modules (`klyph-platform`, `klyph`,
-`samples`): `klyph.native` configures their targets and the SDL3 link flags their test binaries
-need, `klyph.publish` their Maven publications, `CompileShadersTask` the shaders, and
+`samples`) and depends on the plugin's classes through `buildSrc/settings.gradle.kts`, which
+includes `klyph-gradle-plugin` too (Gradle builds it once for both): `klyph.native` applies
+the plugin's library mode, which configures their targets, finds SDL3 (`klyph.sdl3IncludeDir`
+feeds the `sdl3` cinterop) and adds the SDL3 link flags their test binaries need, and keeps only
+the engine's extras (host-only tests, `check` compiling the other targets and the shared
+metadata), `klyph.publish` their Maven publications, `CompileShadersTask` the shaders, and
 `klyph.lint` registers the interop-import rule (`checkNoInteropImports`, part of `check`), which
 `klyph.native` applies and the executables apply next to the plugin. `klyph.docs`, applied through
 `klyph.publish`, configures Dokka for the two published modules: `@sample` bodies from
@@ -179,8 +186,9 @@ configured, only its binaries link, and the other targets' link tasks are skippe
 targets leave the host out, such as `-Pklyph.target=mingwX64 -Psdl3.prefix=<MinGW folder>`, is a
 cross build and links every executable. `all` counts only as the whole value; an unknown name or
 both properties at once stops the build, and targets are configured in the order above whatever
-the order given (`buildSrc/src/main/kotlin/KlyphTargets.kt` and the plugin's `KlyphTargets.kt`
-share these rules and error texts).
+the order given (the rules and their error texts live once, in the plugin's `KlyphTargets.kt`;
+`klyph.native`, `klyph.publish` and `benchmarks` read the result through `klyph.hostTarget`,
+`klyph.configuredTargets` and `klyph.supportedTargets`).
 Value classes in `nativeMain` carry no `@JvmInline`: the shared native metadata compilation
 rejects it. `klyph` and `klyph-platform` publish as `com.eventslooped.klyph:<module>:1.0.0`
 (`-Pklyph.version=<v>` overrides) through `com.vanniktech.maven.publish`, configured in

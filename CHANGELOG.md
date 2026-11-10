@@ -8,6 +8,15 @@ All notable changes to klyph are recorded here. The format follows
 
 ### Added
 
+- The Gradle plugin's library mode, `com.eventslooped.klyph.library`: the same targets, SDL3
+  lookup and test-binary link settings as `com.eventslooped.klyph`, without an `entryPoint`, an
+  executable or the run, asset and distribution tasks, for the shared module of a game split
+  into several.
+- Read-only `klyph { }` members for build logic of your own: `hostTarget`, `supportedTargets`,
+  `configuredTargets` and `sdl3IncludeDir`, the SDL3 headers for a cinterop of your own; when
+  SDL3 is downloaded, every cinterop task runs after `fetchSdl3`.
+- The Gradle property `klyph.sdl3.download=false`, which stops the build instead of downloading
+  SDL3 when none is installed.
 - `Collider.scalesWithTransform`, `true` by default. Set to `false`, the collider keeps its shape
   and offset at scale 1 whatever the entity's scale, so a squash or a spin animated through
   `Transform.scaleX` and `scaleY` leaves the hitbox as it is.
