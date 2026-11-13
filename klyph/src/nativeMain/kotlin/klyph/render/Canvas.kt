@@ -13,22 +13,24 @@ import klyph.text.addText
  *
  * Call it from [klyph.app.Phase.RENDER] systems only. The engine's sprite pass then draws the
  * queued items together with the world's sprites and `Text` components, sorted by [DrawSpace]
- * (every [DrawSpace.WORLD] item before every [DrawSpace.SCREEN] item), then by layer, lowest first,
+ * (every [DrawSpace.BACKGROUND] item before every [DrawSpace.WORLD] item, and every
+ * [DrawSpace.WORLD] item before every [DrawSpace.SCREEN] item), then by layer, lowest first,
  * then by texture, and empties the canvas, so each item is drawn in exactly one frame. Items of the
  * same space, layer and texture keep the order they were queued in; where items with different
  * textures overlap in one layer, which is on top is not specified, so give them different layers.
  *
  * Every draw call defaults to [DrawSpace.SCREEN], in points from the window's top-left corner;
- * pass `space = DrawSpace.WORLD` to draw in world units through `App.camera`. Rotations are in
- * radians, positive clockwise on screen. Several parameters share the type `Float`, so pass them
- * by name.
+ * pass `space = DrawSpace.WORLD` to draw in world units through `App.camera`, or
+ * `space = DrawSpace.BACKGROUND` for points drawn under the whole world, such as a one-call sky.
+ * Rotations are in radians, positive clockwise on screen. Several parameters share the type
+ * `Float`, so pass them by name.
  *
  * The calls anchor differently. [drawSprite] and [drawTiled] put the quad's origin, its center by
- * default, on (x, y), as an entity's `Sprite`, a `Collider` and `Shape.Box` are centered on their
- * transform. [drawRect] puts its top-left corner on (x, y), as `Rect` does. [drawText] puts the
- * top of the first line at y and aligns each line on x, as a `Text` component does. So a debug
- * outline of a box collider drawn with [drawRect] starts half the box's size up and left of the
- * entity.
+ * default, on (x, y), as an entity's `Sprite` puts its own origin on its transform; a `Collider`
+ * and `Shape.Box` are centered on theirs. [drawRect] puts its top-left corner on (x, y), as `Rect`
+ * does. [drawText] puts the top of the first line at y and aligns each line on x, as a `Text`
+ * component does. So a debug outline of a box collider drawn with [drawRect] starts half the box's
+ * size up and left of the entity.
  *
  * The canvas grows as needed and allocates nothing once it has held a frame's items.
  *

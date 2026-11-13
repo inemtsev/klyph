@@ -115,8 +115,9 @@ private fun QuadBuffer.addParticles(emitter: ParticleEmitter) {
         records[base + 3] = 0f
         records[base + 4] = width * size
         records[base + 5] = height * size
-        records[base + 6] = 0f
-        records[base + 7] = 0f
+        // The origin is the center, as QuadBuffer.add puts it.
+        records[base + 6] = 0.5f
+        records[base + 7] = 0.5f
         records[base + 8] = u0
         records[base + 9] = v0
         records[base + 10] = u1

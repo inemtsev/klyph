@@ -30,8 +30,8 @@ returns `null` instead, for files that may or may not be there.
 
 ## Sprites
 
-A `Sprite` draws a region of a texture as a quad centered on its entity's `Transform`. Its size
-starts as the region's size in texels, so at the camera's default zoom each texel covers one
+A `Sprite` draws a region of a texture as a quad placed on its entity's `Transform` by its origin,
+the center by default. Its size starts as the region's size in texels, so at the camera's default zoom each texel covers one
 point.
 
 <!-- snippet: sprite -->

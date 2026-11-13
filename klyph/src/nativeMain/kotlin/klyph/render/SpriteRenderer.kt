@@ -1,5 +1,6 @@
 package klyph.render
 
+import klyph.entity.Entity
 import klyph.entity.Interpolated
 import klyph.entity.PreviousTransform
 import klyph.entity.Transform
@@ -52,9 +53,10 @@ import klyph.render.generated.SpriteVertexShader
  * `src/shaders/sprite.*.hlsl`, compiled by the `compileShaders` task.
  *
  * Inside `runApp` the engine also feeds it the glyphs of `Text` components and the quads of
- * `App.canvas`, some of them in [DrawSpace.SCREEN]; those records sort after every
- * [DrawSpace.WORLD] record and are drawn with a projection in points. Entity sprites are always in
- * [DrawSpace.WORLD].
+ * `App.canvas`, some of them in [DrawSpace.BACKGROUND] or [DrawSpace.SCREEN]; the first sort
+ * before every [DrawSpace.WORLD] record, the second after it, and both are drawn with a
+ * projection in points. Entity sprites are always in [DrawSpace.WORLD], and a sprite with a
+ * [ParallaxLayer] is drawn once for each copy the view needs.
  *
  * Each texture is sampled with its own [Texture.filter] and [Texture.address]. The renderer holds
  * one sampler per combination of [SamplerFilter] and [SamplerAddress], four in all, and binds the
@@ -75,7 +77,7 @@ internal class SpriteRenderer(
         require(initialCapacity <= MAX_CAPACITY) { "Sprite capacity $initialCapacity is above the maximum of $MAX_CAPACITY." }
     }
 
-    /** Number of sprites [extract] writes at most. Grows through [ensureCapacity]. */
+    /** Number of sprites [extract] writes at most. Grows through [ensureCapacity], which [extract] calls for each frame. */
     public var capacity: Int = initialCapacity
         private set
 
@@ -97,6 +99,9 @@ internal class SpriteRenderer(
      */
     private val uniforms = FloatArray(UNIFORM_FLOATS)
     private val order = SpriteOrder()
+
+    /** The copies of the [ParallaxLayer] sprites of the frame being extracted, planned before any record is written. */
+    private val parallax = ParallaxPlan()
 
     /** Unsorted records of a frame whose guessed order was wrong; sized on first use. */
     private var scratch = FloatArray(0)
@@ -149,7 +154,8 @@ internal class SpriteRenderer(
      * Allocates nothing once its buffers have grown to the sprite count.
      *
      * Draw order is by [Sprite.layer], lowest first; within a layer, sprites are grouped by
-     * texture, and keep their storage order inside a group. Positions, rotations and scales come
+     * texture, and keep their storage order inside a group, after the sprites that have a
+     * [ParallaxLayer], which come first. Positions, rotations and scales come
      * from each entity's [WorldTransform] if it has one, which only entities with a parent do,
      * and from its [Transform] otherwise. Run [klyph.entity.propagateTransforms] first so the
      * world transforms are current; the engine does that before rendering.
@@ -163,20 +169,29 @@ internal class SpriteRenderer(
      * A sprite with a [Sprite.tileWidth] or [Sprite.tileHeight] gets texture coordinates that run
      * past 1, which its texture's repeating sampler wraps; see [Sprite].
      *
+     * A sprite with a [ParallaxLayer] is placed as that component says, from [camera] as it is now,
+     * clamped to its bounds and with its offset, and gets one record for each copy of it that
+     * touches the view; the copies sort with the sprite, in its layer. Their records are written
+     * before those of the ordinary sprites. Grows [capacity] first, to hold every sprite and copy,
+     * so none is skipped unless there are more than [MAX_CAPACITY].
+     *
      * @throws IllegalArgumentException if [fixedStepAlpha] is below 0 or above 1.
      * @throws IllegalStateException if a sprite with a tile size has a texture that does not repeat
-     *   or a region that does not cover its whole texture, or a tile size is negative. The message
-     *   names the entity.
+     *   or a region that does not cover its whole texture, or a tile size is negative, or if a
+     *   sprite's origin is infinite or not a number, or if a [ParallaxLayer] has a parent or a factor
+     *   or repeat that is negative, infinite or not a number. The message names the entity.
      */
-    public fun extract(world: World, fixedStepAlpha: Float = 1f): Int = extract(world, fixedStepAlpha, null, null)
+    public fun extract(world: World, camera: Camera, fixedStepAlpha: Float = 1f): Int =
+        extract(world, camera, fixedStepAlpha, null, null)
 
     /**
      * Writes the records of [world]'s sprites as the public [extract] does, followed by the quads
      * of [first] and then [second] when they are not `null`, all sorted together by space, layer
      * and texture, and returns how many were written in total.
      */
-    internal fun extract(world: World, fixedStepAlpha: Float, first: QuadBuffer?, second: QuadBuffer?): Int {
+    internal fun extract(world: World, camera: Camera, fixedStepAlpha: Float, first: QuadBuffer?, second: QuadBuffer?): Int {
         require(fixedStepAlpha >= 0f && fixedStepAlpha <= 1f) { "Fixed step alpha $fixedStepAlpha is not between 0 and 1." }
+        prepare(world, camera, fixedStepAlpha, first, second)
         // One walk over the world finds each sprite's group and writes its record, using a guess
         // from the previous frame. If that frame came out in draw order, this one most likely is
         // too: records are written in storage order and no group is stored per sprite. Otherwise
@@ -189,7 +204,10 @@ internal class SpriteRenderer(
         order.begin()
         var count = 0
         val records = device.map(staging, Cycle.CYCLE)
+        // The sprites with a ParallaxLayer go first, and only when there are some: a call here that found
+        // nothing to do still made the optimizer slow the walks below by about 40% at 100000 sprites.
         val guessHeld = if (expectSorted) {
+            if (parallax.layerCount > 0) count = appendLayers(world, records, count, limit)
             forEachSprite(world) { local, hierarchy, previous, sprite ->
                 if (count < limit) {
                     order.addWithoutPosition(sprite.layer, sprite.region.texture)
@@ -204,6 +222,7 @@ internal class SpriteRenderer(
             order.finish()
             order.isSorted
         } else {
+            if (parallax.layerCount > 0) count = placeLayers(world, records, count, limit)
             forEachSprite(world) { local, hierarchy, previous, sprite ->
                 if (count < limit) {
                     val position = order.place(sprite.layer, sprite.region.texture)
@@ -229,6 +248,92 @@ internal class SpriteRenderer(
         expectSorted = order.isSorted
         spriteCount = count
         return count
+    }
+
+    /**
+     * Plans the copies of the [ParallaxLayer] sprites seen through [camera] with sprites blended
+     * [alpha] of the way between fixed steps, then grows [capacity] to hold every record the frame
+     * writes: each sprite, each extra copy of a layer's sprite and the quads of [first] and [second].
+     */
+    private fun prepare(world: World, camera: Camera, alpha: Float, first: QuadBuffer?, second: QuadBuffer?) {
+        parallax.update(world, camera, alpha)
+        val wanted = world.count(Sprite).toLong() + parallax.extraRecords + (first?.count ?: 0) + (second?.count ?: 0)
+        ensureCapacity(wanted.coerceAtMost(MAX_CAPACITY.toLong()).toInt())
+    }
+
+    /**
+     * Adds the sprites of the [ParallaxLayer] entities, every copy, to the order as a frame
+     * expected to be sorted and writes them at the next positions of [records], from [count] up
+     * to [limit] records in all. Returns the new count. The ordinary sprites come after them.
+     */
+    private fun appendLayers(world: World, records: MappedFloats, count: Int, limit: Int): Int {
+        val plan = parallax
+        var written = count
+        for (slot in 0 until plan.layerCount) {
+            val copies = plan.copiesOf(slot)
+            if (copies == 0 || written >= limit) continue
+            val sprite = plan.fill(world, slot)
+            val group = order.groupFor(sprite.layer, sprite.region.texture)
+            for (copy in 0 until copies) {
+                if (written >= limit) break
+                order.addGroupWithoutPosition(group)
+                plan.placeCopy(slot, copy)
+                copyRecord(plan.template, 0, written * SPRITE_RECORD_FLOATS) { index, value -> records.set(index, value) }
+                written++
+            }
+        }
+        return written
+    }
+
+    /**
+     * Adds the sprites of the [ParallaxLayer] entities, every copy, to the order as a frame
+     * expected to repeat the last one's groups and writes each at its predicted position in
+     * [records], from [count] up to [limit] records in all. Returns the new count.
+     */
+    private fun placeLayers(world: World, records: MappedFloats, count: Int, limit: Int): Int {
+        val plan = parallax
+        var written = count
+        for (slot in 0 until plan.layerCount) {
+            val copies = plan.copiesOf(slot)
+            if (copies == 0 || written >= limit) continue
+            val sprite = plan.fill(world, slot)
+            val group = order.groupFor(sprite.layer, sprite.region.texture)
+            for (copy in 0 until copies) {
+                if (written >= limit) break
+                val position = order.placeGroup(group)
+                plan.placeCopy(slot, copy)
+                // Out of range only when the guess is wrong, and then every record is rewritten.
+                if (position < limit) {
+                    copyRecord(plan.template, 0, position * SPRITE_RECORD_FLOATS) { index, value -> records.set(index, value) }
+                }
+                written++
+            }
+        }
+        return written
+    }
+
+    /**
+     * Adds the sprites of the [ParallaxLayer] entities, every copy, to the order with positions and
+     * copies them into [scratch] from record [index] on, stopping at [count] records in all.
+     * Returns the next record index.
+     */
+    private fun scratchLayers(world: World, scratch: FloatArray, index: Int, count: Int): Int {
+        val plan = parallax
+        var next = index
+        for (slot in 0 until plan.layerCount) {
+            val copies = plan.copiesOf(slot)
+            if (copies == 0 || next >= count) continue
+            val sprite = plan.fill(world, slot)
+            val group = order.groupFor(sprite.layer, sprite.region.texture)
+            for (copy in 0 until copies) {
+                if (next >= count) break
+                order.addGroup(group)
+                plan.placeCopy(slot, copy)
+                plan.template.copyInto(scratch, next * SPRITE_RECORD_FLOATS)
+                next++
+            }
+        }
+        return next
     }
 
     /**
@@ -285,6 +390,7 @@ internal class SpriteRenderer(
         val order = order
         order.begin()
         var index = 0
+        if (parallax.layerCount > 0) index = scratchLayers(world, scratch, index, count)
         forEachSprite(world) { local, hierarchy, previous, sprite ->
             if (index < count) {
                 order.add(sprite.layer, sprite.region.texture)
@@ -333,25 +439,28 @@ internal class SpriteRenderer(
     }
 
     /**
-     * Calls [action] for every entity with a [Transform] and a visible [Sprite], in [Transform]
-     * storage order, with its [WorldTransform] or `null` if it has none, and, only when it has no
-     * world transform, its [PreviousTransform] or `null` if it has none. Each of the two lookups
-     * costs one sparse-array read per sprite, and none in a world with no component of that type.
+     * Calls [action] for every entity with a [Transform] and a visible [Sprite] that has no
+     * [ParallaxLayer], in [Transform] storage order, with its [WorldTransform] or `null` if it has
+     * none, and, only when it has no world transform, its [PreviousTransform] or `null` if it has
+     * none. [appendLayers] and its two siblings write the entities that have a layer. Each of the
+     * three lookups costs one sparse-array read per sprite, and none in a world with no component
+     * of that type.
      */
     private inline fun forEachSprite(world: World, action: (Transform, WorldTransform?, PreviousTransform?, Sprite) -> Unit) {
         val worlds = world.storeOrNull(WorldTransform)?.takeIf { it.size > 0 }
         val previous = world.storeOrNull(PreviousTransform)?.takeIf { it.size > 0 }
+        val layers = parallax.layerSlots
         if (previous == null) {
             if (worlds == null) {
-                world.forEach(Transform, Sprite) { _, local, sprite ->
-                    if (sprite.isVisible) action(local, null, null, sprite)
+                world.forEach(Transform, Sprite) { entity, local, sprite ->
+                    if (sprite.isVisible && !hasLayer(layers, entity)) action(local, null, null, sprite)
                 }
                 return
             }
             val worldSparse = worlds.sparse
             val worldItems = worlds.items
             world.forEach(Transform, Sprite) { entity, local, sprite ->
-                if (sprite.isVisible) {
+                if (sprite.isVisible && !hasLayer(layers, entity)) {
                     val slot = worldSparse[entity.index]
                     action(local, if (slot >= 0) worldItems.itemAt<WorldTransform>(slot) else null, null, sprite)
                 }
@@ -362,7 +471,7 @@ internal class SpriteRenderer(
         val previousItems = previous.items
         if (worlds == null) {
             world.forEach(Transform, Sprite) { entity, local, sprite ->
-                if (sprite.isVisible) {
+                if (sprite.isVisible && !hasLayer(layers, entity)) {
                     val slot = previousSparse[entity.index]
                     action(local, null, if (slot >= 0) previousItems.itemAt<PreviousTransform>(slot) else null, sprite)
                 }
@@ -372,7 +481,7 @@ internal class SpriteRenderer(
         val worldSparse = worlds.sparse
         val worldItems = worlds.items
         world.forEach(Transform, Sprite) { entity, local, sprite ->
-            if (sprite.isVisible) {
+            if (sprite.isVisible && !hasLayer(layers, entity)) {
                 val index = entity.index
                 val worldSlot = worldSparse[index]
                 if (worldSlot >= 0) {
@@ -384,6 +493,10 @@ internal class SpriteRenderer(
             }
         }
     }
+
+    /** Returns `true` if [entity] has a [ParallaxLayer], given the plan's map of them in [layers]; `null` means there are none. */
+    @Suppress("NOTHING_TO_INLINE")
+    private inline fun hasLayer(layers: IntArray?, entity: Entity): Boolean = layers != null && layers[entity.index] >= 0
 
     /**
      * Reads a store item without a type check. A non-reified cast is erased, so this skips the
@@ -404,11 +517,12 @@ internal class SpriteRenderer(
      * Draws the uploaded records into the current [pass]: one draw call per run of sprites that
      * share a texture, each with that texture bound with the sampler for its [Texture.filter] and
      * [Texture.address].
-     * The [DrawSpace.WORLD] runs go through [camera], then the [DrawSpace.SCREEN] runs through a
-     * projection that maps [screenWidth] by [screenHeight] points onto the target, origin
-     * top-left. Both projections end in clip space, so the pass's viewport, the whole target in
-     * pixels, turns points into pixels. Returns the number of draw calls issued, one per run, and
-     * draws nothing if the last [extract] found no sprites.
+     * The [DrawSpace.BACKGROUND] runs come first, through a projection that maps [screenWidth] by
+     * [screenHeight] points onto the target, origin top-left, then the [DrawSpace.WORLD] runs
+     * through [camera], then the [DrawSpace.SCREEN] runs through the screen projection again. All
+     * projections end in clip space, so the pass's viewport, the whole target in pixels, turns
+     * points into pixels. Returns the number of draw calls issued, one per run, and draws nothing
+     * if the last [extract] found no sprites.
      */
     internal fun draw(commands: CommandBuffer, pass: RenderPass, camera: Camera, screenWidth: Float, screenHeight: Float): Int {
         if (spriteCount == 0) return 0
@@ -416,10 +530,15 @@ internal class SpriteRenderer(
         val uniforms = uniforms
         pass.bind(pipeline)
         pass.bindVertexStorageBuffer(0, storage)
+        val firstWorld = order.firstWorldRun
         val firstScreen = order.firstScreenRun
-        if (firstScreen > 0) {
+        if (firstWorld > 0) {
+            writeScreenProjection(uniforms, screenWidth, screenHeight)
+            drawRuns(commands, pass, 0, firstWorld)
+        }
+        if (firstWorld < firstScreen) {
             camera.writeProjection(uniforms)
-            drawRuns(commands, pass, 0, firstScreen)
+            drawRuns(commands, pass, firstWorld, firstScreen)
         }
         if (firstScreen < order.runCount) {
             writeScreenProjection(uniforms, screenWidth, screenHeight)
@@ -481,7 +600,9 @@ internal class SpriteRenderer(
  * Writes the record of [sprite], a sprite of [world], through [set], starting at float [base], placed
  * where [drawnTransform] puts an entity with these [local], [hierarchy] and [previous] transforms at
  * [alpha]. A sprite with a tile size takes its texture coordinates from [tiledUv] through the
- * scratch [tiledCoordinates].
+ * scratch [tiledCoordinates]. The sprite's origin goes into the last two floats of the size row,
+ * mirrored on an axis the sprite flips, so that a flip mirrors the picture about the origin. An
+ * origin that is infinite or not a number fails through [checkOrigin].
  */
 internal inline fun writeRecord(
     world: World,
@@ -496,23 +617,34 @@ internal inline fun writeRecord(
 ) {
     drawnTransform(local, hierarchy, previous, alpha) { x, y, rotation, scaleX, scaleY ->
         val region = sprite.region
+        // Read once, before the first store: the compiler cannot keep a field in a register across a
+        // store through the mapped pointer, so each later use would read it again, which the
+        // 100000-sprite benchmark shows.
+        val isFlippedX = sprite.isFlippedX
+        val isFlippedY = sprite.isFlippedY
+        val originX = sprite.originX
+        val originY = sprite.originY
         set(base, x)
         set(base + 1, y)
         set(base + 2, rotation)
         set(base + 3, 0f)
         set(base + 4, sprite.width * scaleX)
         set(base + 5, sprite.height * scaleY)
-        set(base + 6, 0f)
-        set(base + 7, 0f)
+        if (!(originX.isFinite() && originY.isFinite())) sprite.checkOrigin(world)
+        // A flip swaps the texture coordinates of the corners, which mirrors the picture inside the quad.
+        // For it to mirror about the origin and not about the middle of the quad, the quad has to sit
+        // mirrored too, so a flipped axis records 1 minus its origin.
+        set(base + 6, if (isFlippedX) 1f - originX else originX)
+        set(base + 7, if (isFlippedY) 1f - originY else originY)
         if (sprite.tileWidth == 0f && sprite.tileHeight == 0f) {
-            if (sprite.isFlippedX) {
+            if (isFlippedX) {
                 set(base + 8, region.u1)
                 set(base + 10, region.u0)
             } else {
                 set(base + 8, region.u0)
                 set(base + 10, region.u1)
             }
-            if (sprite.isFlippedY) {
+            if (isFlippedY) {
                 set(base + 9, region.v1)
                 set(base + 11, region.v0)
             } else {

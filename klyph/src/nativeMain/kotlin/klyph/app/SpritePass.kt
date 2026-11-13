@@ -19,7 +19,6 @@ import klyph.render.Camera
 import klyph.render.Canvas
 import klyph.render.DrawSpace
 import klyph.render.QuadBuffer
-import klyph.render.Sprite
 import klyph.render.SpriteRenderer
 import klyph.particle.extractParticles
 import klyph.text.extractTexts
@@ -30,7 +29,7 @@ import kotlin.time.TimeSource
  * particle and [Canvas] quad through a [SpriteRenderer], world-space quads through the app's [Camera], then
  * submits the frame.
  *
- * Owns the renderer, whose capacity it grows when the world holds more sprites than fit, and,
+ * Owns the renderer, which grows its own capacity when a frame holds more quads than fit, and,
  * for [RenderTarget.OFFSCREEN], the texture frames are drawn into, which it recreates when the
  * window's pixel size changes.
  */
@@ -78,8 +77,10 @@ internal class SpritePass(
      * target to draw into (minimized), skips extraction and drawing and only submits the frame.
      * Empties and closes [canvas] in every case, also when drawing throws.
      *
-     * [DrawSpace.SCREEN] quads are drawn with a projection of the target's size in points: its
-     * pixel size divided by the window's pixel density.
+     * [DrawSpace.BACKGROUND] and [DrawSpace.SCREEN] quads are drawn with a projection of the
+     * target's size in points: its pixel size divided by the window's pixel density. [camera] is
+     * read as it is, so the engine clamps it to its bounds before it calls this; the renderer
+     * places the sprites with a [klyph.render.ParallaxLayer] from it.
      */
     fun render(world: World, camera: Camera, canvas: Canvas, clearColor: Color, fixedStepAlpha: Float, stats: FrameStats) {
         try {
@@ -104,9 +105,7 @@ internal class SpritePass(
         if (targetTexture != null) {
             world.extractTexts(fixedStepAlpha, textQuads)
             world.extractParticles(textQuads)
-            val wanted = world.count(Sprite).toLong() + textQuads.count + canvas.quads.count
-            renderer.ensureCapacity(wanted.coerceAtMost(SpriteRenderer.MAX_CAPACITY.toLong()).toInt())
-            count = renderer.extract(world, fixedStepAlpha, textQuads, canvas.quads)
+            count = renderer.extract(world, camera, fixedStepAlpha, textQuads, canvas.quads)
         }
         spriteCount = count
         now = clock.markNow()

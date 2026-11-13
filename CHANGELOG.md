@@ -14,6 +14,9 @@ All notable changes to klyph are recorded here. The format follows
 - `drawnPositionOf` on `World` and `App`: where an `Interpolated` entity is drawn this frame, for a camera to follow.
 - `World.snapInterpolation(entity)`: draws a teleported or respawned `Interpolated` entity at its new place, with no sweep from the old one.
 - `Scene.elapsed` and `elapsedSeconds`: how long a scene has been on top, standing still while another scene covers it.
+- `Sprite.originX` and `originY`: anchor a sprite to its `Transform` at any point, such as a character's feet, instead of the center.
+- `ParallaxLayer`: a sprite that follows the camera at a fraction of the world's speed and repeats to fill the view.
+- `DrawSpace.BACKGROUND`: canvas quads in points drawn under the whole world, such as a one-call sky.
 
 ## [1.1.0] - 2026-11-10
 

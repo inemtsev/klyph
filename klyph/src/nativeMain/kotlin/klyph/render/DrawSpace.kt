@@ -3,12 +3,23 @@ package klyph.render
 /**
  * Names the coordinate system a quad is drawn in.
  *
- * All [WORLD] quads of a frame are drawn before all [SCREEN] quads, so screen-space text and
- * panels always cover the world. Within a space, quads sort by layer, lowest first.
+ * A frame draws all [BACKGROUND] quads first, then all [WORLD] quads, then all [SCREEN] quads,
+ * whatever their layers, so a sky always lies under the world and screen-space text and panels
+ * always cover it. Within a space, quads sort by layer, lowest first.
  *
- * Samples live in the sandbox because drawing needs a display.
+ * Drawing needs a display, so the sandbox draws in every space; the order is a sample.
+ *
+ * @sample samples.render.DrawSpaces.drawOrder
  */
 public enum class DrawSpace {
+    /**
+     * Points from the window's top-left corner like [SCREEN], drawn before every [WORLD] quad, so
+     * the camera has no effect and the quad lies under all that the world draws: a one-call sky,
+     * a gradient or a picture that stays put. Entity sprites are never in this space. For a
+     * backdrop that moves with the camera, slower than the world, give a sprite a [ParallaxLayer].
+     */
+    BACKGROUND,
+
     /**
      * World units seen through `App.camera`: the quad moves, zooms and turns with the camera. Entity
      * sprites and `Text` components are always drawn in this space.
@@ -23,9 +34,9 @@ public enum class DrawSpace {
 }
 
 /**
- * Writes the orthographic projection of [DrawSpace.SCREEN] into the first 16 elements of
- * [destination], column-major: point (0, 0) maps to the top-left corner of clip space and
- * ([width], [height]) to the bottom-right. Allocates nothing.
+ * Writes the orthographic projection of [DrawSpace.SCREEN], which [DrawSpace.BACKGROUND] shares,
+ * into the first 16 elements of [destination], column-major: point (0, 0) maps to the top-left
+ * corner of clip space and ([width], [height]) to the bottom-right. Allocates nothing.
  */
 internal fun writeScreenProjection(destination: FloatArray, width: Float, height: Float) {
     require(destination.size >= 16) { "Projection destination size ${destination.size} is less than 16." }

@@ -1,8 +1,6 @@
 package klyph.render
 
 import klyph.platform.Color
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * A growable list of quads already in sprite record form, each with the texture, layer and
@@ -51,8 +49,9 @@ internal class QuadBuffer(initialCapacity: Int = 64) {
         records[base + 3] = 0f
         records[base + 4] = width
         records[base + 5] = height
-        records[base + 6] = 0f
-        records[base + 7] = 0f
+        // The origin is the center, the point the quad is turned about.
+        records[base + 6] = 0.5f
+        records[base + 7] = 0.5f
         records[base + 8] = region.u0
         records[base + 9] = region.v0
         records[base + 10] = region.u1
@@ -70,7 +69,8 @@ internal class QuadBuffer(initialCapacity: Int = 64) {
     /**
      * Appends a quad like [add], placed so that the point at ([originX], [originY]) of the quad,
      * as fractions of its size from its top-left corner, lands on ([x], [y]) and the quad turns by
-     * [rotation] about that point.
+     * [rotation] about that point. The origin goes into the record as it is, and the vertex shader
+     * places the quad by it.
      */
     fun addAt(
         region: TextureRegion,
@@ -85,16 +85,11 @@ internal class QuadBuffer(initialCapacity: Int = 64) {
         layer: Int,
         space: DrawSpace,
     ) {
-        // Offset from the origin to the center, turned the way the vertex shader turns corners.
-        val dx = (0.5f - originX) * width
-        val dy = (0.5f - originY) * height
-        if (rotation == 0f) {
-            add(region, x + dx, y + dy, width, height, 0f, color, layer, space)
-        } else {
-            val c = cos(rotation)
-            val s = sin(rotation)
-            add(region, x + dx * c - dy * s, y + dx * s + dy * c, width, height, rotation, color, layer, space)
-        }
+        add(region, x, y, width, height, rotation, color, layer, space)
+        // The quad just added has the center as its origin; replace it with the caller's.
+        val base = (count - 1) * SPRITE_RECORD_FLOATS
+        records[base + 6] = originX
+        records[base + 7] = originY
     }
 
     /**

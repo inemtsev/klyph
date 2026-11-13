@@ -49,7 +49,8 @@ public object Interpolated : ComponentType<Interpolated>("Interpolated")
  *
  * Pass `Time.fixedStepAlpha` as [alpha], which must be from 0 to 1, or call
  * `App.drawnPositionOf`, which does. The [entity] must be alive and have a [Transform]. Each call
- * allocates a [Vec2], which is fine for a camera system that calls it once a frame.
+ * allocates a [Vec2], which is fine for a camera system that calls it once a frame. The shift a
+ * `ParallaxLayer` adds to its sprite is not included.
  *
  * @throws IllegalArgumentException if [alpha] is not between 0 and 1.
  * @throws NoSuchElementException if [entity] is not alive or has no [Transform].

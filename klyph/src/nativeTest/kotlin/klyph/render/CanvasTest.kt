@@ -20,6 +20,9 @@ class CanvasTest {
     private fun Canvas.floats(index: Int, from: Int, until: Int): List<Float> =
         (from until until).map { quads.records[index * SPRITE_RECORD_FLOATS + it] }
 
+    /** Returns what the vertex shader makes of quad [index]'s record. */
+    private fun Canvas.quadAt(index: Int): ShaderQuad = ShaderQuad(floats(index, 0, SPRITE_RECORD_FLOATS))
+
     private fun assertNear(expected: List<Float>, actual: List<Float>) {
         assertEquals(expected.size, actual.size)
         for (i in expected.indices) assertTrue(abs(expected[i] - actual[i]) < 1e-4f, "Expected $expected, got $actual.")
@@ -64,7 +67,7 @@ class CanvasTest {
         val color = Color(red = 0f, green = 1f, blue = 0f, alpha = 0.5f)
         canvas.drawRect(x = 10f, y = 20f, width = 30f, height = 40f, color = color, layer = 2, space = DrawSpace.SCREEN)
         assertEquals(listOf(25f, 40f, 0f), canvas.floats(0, 0, 3))
-        assertEquals(listOf(30f, 40f), canvas.floats(0, 4, 6))
+        assertEquals(listOf(30f, 40f, 0.5f, 0.5f), canvas.floats(0, 4, 8))
         val white = builtIn.whitePixel
         assertEquals(listOf(white.u0, white.v0, white.u1, white.v1), canvas.floats(0, 8, 12))
         assertEquals(listOf(0f, 1f, 0f, color.alpha), canvas.floats(0, 12, 16))
@@ -80,13 +83,34 @@ class CanvasTest {
         canvas.drawSprite(region, x = 5f, y = 5f, space = DrawSpace.WORLD)
         canvas.drawSprite(region, x = 10f, y = 10f, originX = 0f, originY = 0f)
         canvas.drawSprite(region, x = 10f, y = 10f, rotation = (PI / 2).toFloat(), originX = 0f, originY = 0f)
+        // The record keeps the point as given and carries the origin next to the size, for the vertex shader to place the quad by.
+        assertEquals(listOf(5f, 5f, 0f, 0f, 20f, 10f, 0.5f, 0.5f), canvas.floats(0, 0, 8))
+        assertEquals(listOf(10f, 10f, 0f, 0f, 20f, 10f, 0f, 0f), canvas.floats(1, 0, 8))
+        assertNear(listOf(10f, 10f, (PI / 2).toFloat(), 0f, 20f, 10f, 0f, 0f), canvas.floats(2, 0, 8))
         // Centre origin: the quad is centred on the point, at the region's size.
-        assertEquals(listOf(5f, 5f, 0f, 0f, 20f, 10f), canvas.floats(0, 0, 6))
-        // Top-left origin: the centre is half the size further on.
-        assertEquals(listOf(20f, 15f), canvas.floats(1, 0, 2))
-        // A quarter turn clockwise about the top-left corner takes the centre offset (10, 5) to (-5, 10).
-        assertNear(listOf(5f, 20f, (PI / 2).toFloat()), canvas.floats(2, 0, 3))
+        assertNear(listOf(-5f, 0f, 15f, 0f, -5f, 10f, 15f, 10f), canvas.quadAt(0).corners)
+        // Top-left origin: the quad starts on the point and reaches right and down by its size.
+        assertNear(listOf(10f, 10f, 30f, 10f, 10f, 20f, 30f, 20f), canvas.quadAt(1).corners)
+        // A quarter turn clockwise about the top-left corner swings the quad down along the point's left.
+        assertNear(listOf(10f, 10f, 10f, 30f, 0f, 10f, 0f, 30f), canvas.quadAt(2).corners)
         assertSame(DrawSpace.WORLD, canvas.quads.spaceAt(0))
+    }
+
+    @Test
+    fun spriteOriginGoesIntoTheRecordAsGivenWhateverItsValue() {
+        val canvas = newCanvas()
+        canvas.open()
+        val region = Texture(16, 16, address = SamplerAddress.REPEAT).asRegion()
+        canvas.drawSprite(region, x = 3f, y = 4f)
+        canvas.drawSprite(region, x = 3f, y = 4f, originX = 0.5f, originY = 0.5f)
+        canvas.drawSprite(region, x = 3f, y = 4f, originX = -0.5f, originY = 2f)
+        canvas.drawTiled(region, x = 3f, y = 4f, width = 32f, height = 32f, originX = 1f, originY = 0.25f)
+        assertEquals(canvas.floats(0, 0, SPRITE_RECORD_FLOATS), canvas.floats(1, 0, SPRITE_RECORD_FLOATS), "The center is the default.")
+        assertEquals(listOf(-0.5f, 2f), canvas.floats(2, 6, 8))
+        assertEquals(listOf(1f, 0.25f), canvas.floats(3, 6, 8))
+        // The point is still where the caller put it, with the quad around it by the origin.
+        assertEquals(listOf(3f, 4f), canvas.floats(3, 0, 2))
+        assertNear(listOf(-29f, -4f, 3f, -4f, -29f, 28f, 3f, 28f), canvas.quadAt(3).corners)
     }
 
     @Test
@@ -102,13 +126,31 @@ class CanvasTest {
     }
 
     @Test
+    fun everyDrawCallAcceptsTheBackgroundSpace() {
+        val canvas = newCanvas()
+        canvas.open()
+        val sky = Texture(4, 4, address = SamplerAddress.REPEAT).asRegion()
+        canvas.drawSprite(sky, x = 0f, y = 0f, layer = 3, space = DrawSpace.BACKGROUND)
+        canvas.drawTiled(sky, x = 0f, y = 0f, width = 8f, height = 8f, layer = 4, space = DrawSpace.BACKGROUND)
+        canvas.drawRect(x = 0f, y = 0f, width = 1f, height = 1f, color = Color.WHITE, layer = 5, space = DrawSpace.BACKGROUND)
+        canvas.drawText(builtIn.font, "AB", x = 0f, y = 0f, layer = 6, space = DrawSpace.BACKGROUND)
+        // Three quads, then a glyph each for "A" and "B".
+        assertEquals(5, canvas.quadCount)
+        for (quad in 0 until 5) assertSame(DrawSpace.BACKGROUND, canvas.quads.spaceAt(quad))
+        assertEquals(listOf(3, 4, 5, 6, 6), (0 until 5).map { canvas.quads.layers[it] })
+        // The quad is where its point says, as in the screen space, with no camera involved.
+        assertEquals(listOf(0f, 0f, 0f, 0f, 4f, 4f), canvas.floats(0, 0, 6))
+        assertEquals(listOf(0.5f, 0.5f, 0f, 0f, 1f, 1f), canvas.floats(2, 0, 6))
+    }
+
+    @Test
     fun tiledSpriteRepeatsTheTextureAtItsOwnSizeByDefault() {
         val canvas = newCanvas()
         canvas.open()
         val region = Texture(16, 16, address = SamplerAddress.REPEAT).asRegion()
         canvas.drawTiled(region, x = 100f, y = 50f, width = 80f, height = 40f, space = DrawSpace.WORLD)
         // Centred on (100, 50) like drawSprite, 80 by 40 units of 16 by 16 tiles: 5 across, 2.5 down.
-        assertEquals(listOf(100f, 50f, 0f, 0f, 80f, 40f), canvas.floats(0, 0, 6))
+        assertEquals(listOf(100f, 50f, 0f, 0f, 80f, 40f, 0.5f, 0.5f), canvas.floats(0, 0, 8))
         assertEquals(listOf(0f, 0f, 5f, 2.5f), canvas.floats(0, 8, 12))
         assertEquals(listOf(1f, 1f, 1f, 1f), canvas.floats(0, 12, 16))
         assertEquals(1, canvas.quadCount)
@@ -135,13 +177,27 @@ class CanvasTest {
         val color = Color(red = 0.5f, green = 0.25f, blue = 1f, alpha = 0.5f)
         canvas.drawTiled(region, x = 10f, y = 10f, width = 20f, height = 10f, originX = 0f, originY = 0f, color = color, layer = 7)
         canvas.drawTiled(region, x = 10f, y = 10f, width = 20f, height = 10f, rotation = (PI / 2).toFloat(), originX = 0f, originY = 0f)
-        // Top-left origin: the centre is half the size further on, as for drawSprite.
-        assertEquals(listOf(20f, 15f, 0f, 0f, 20f, 10f), canvas.floats(0, 0, 6))
+        // Top-left origin: the point is the quad's corner and the record carries the origin, as for drawSprite.
+        assertEquals(listOf(10f, 10f, 0f, 0f, 20f, 10f, 0f, 0f), canvas.floats(0, 0, 8))
+        assertNear(listOf(10f, 10f, 30f, 10f, 10f, 20f, 30f, 20f), canvas.quadAt(0).corners)
         assertEquals(listOf(color.red, color.green, color.blue, color.alpha), canvas.floats(0, 12, 16))
         assertEquals(7, canvas.quads.layers[0])
-        // A quarter turn clockwise about the top-left corner takes the centre offset (10, 5) to (-5, 10).
-        assertNear(listOf(5f, 20f, (PI / 2).toFloat()), canvas.floats(1, 0, 3))
+        // A quarter turn clockwise about the top-left corner swings the quad down along the point's left.
+        assertNear(listOf(10f, 10f, (PI / 2).toFloat(), 0f, 20f, 10f, 0f, 0f), canvas.floats(1, 0, 8))
+        assertNear(listOf(10f, 10f, 10f, 30f, 0f, 10f, 0f, 30f), canvas.quadAt(1).corners)
         assertEquals(listOf(0f, 0f, 1.25f, 0.625f), canvas.floats(1, 8, 12))
+    }
+
+    @Test
+    fun aTiledQuadWithAnOriginStillRepeatsFromItsTopLeftCorner() {
+        val canvas = newCanvas()
+        canvas.open()
+        val region = Texture(16, 16, address = SamplerAddress.REPEAT).asRegion()
+        canvas.drawTiled(region, x = 100f, y = 50f, width = 80f, height = 48f, originX = 1f, originY = 1f)
+        // The point is the bottom-right corner, so the quad lies left of and above it; the repeats count from its top-left corner.
+        val quad = canvas.quadAt(0)
+        assertNear(listOf(20f, 2f, 100f, 2f, 20f, 50f, 100f, 50f), quad.corners)
+        assertEquals(listOf(0f, 0f, 5f, 0f, 0f, 3f, 5f, 3f), quad.cornerTexels)
     }
 
     @Test
@@ -250,7 +306,40 @@ class CanvasTest {
         val runs = (0 until order.runCount).map { Triple(order.runTexture(it), order.runFirst(it), order.runSize(it)) }
         // The world runs of b merge across layers; the screen run of b does not merge into them.
         assertEquals(listOf(Triple(a, 0, 1), Triple(b, 1, 3), Triple(b, 4, 1), Triple(a, 5, 1)), runs)
+        assertEquals(0, order.firstWorldRun)
         assertEquals(2, order.firstScreenRun)
         assertTrue(!order.isSorted)
+    }
+
+    @Test
+    fun recordsSortBackgroundBeforeWorldBeforeScreenThenByLayerThenTexture() {
+        val a = Texture(8, 8)
+        val b = Texture(8, 8)
+        val canvas = newCanvas()
+        canvas.open()
+        canvas.drawSprite(a.asRegion(), x = 0f, y = 0f, layer = 9, space = DrawSpace.SCREEN)
+        canvas.drawSprite(b.asRegion(), x = 0f, y = 0f, layer = 100, space = DrawSpace.BACKGROUND)
+        canvas.drawSprite(a.asRegion(), x = 0f, y = 0f, layer = -100, space = DrawSpace.WORLD)
+        canvas.drawSprite(a.asRegion(), x = 0f, y = 0f, layer = -5, space = DrawSpace.BACKGROUND)
+
+        // One world sprite first, as the renderer adds entity sprites before the canvas.
+        val order = SpriteOrder()
+        order.begin()
+        order.add(0, b)
+        val quads = canvas.quads
+        for (quad in 0 until quads.count) {
+            order.addGroup(order.groupFor(quads.layers[quad], quads.textureAt(quad), quads.spaceAt(quad)))
+        }
+        order.finish()
+        // Sorted: (BACKGROUND, -5, a) = quad 3, which is added fifth; (BACKGROUND, 100, b) = quad 1, added third;
+        // (WORLD, -100, a) = quad 2, added fourth; (WORLD, 0, b) = the sprite, added first; (SCREEN, 9, a) = quad 0.
+        assertEquals(listOf(3, 4, 1, 2, 0), (0 until 5).map { order.claimPosition(it) })
+        val runs = (0 until order.runCount).map { Triple(order.runTexture(it), order.runFirst(it), order.runSize(it)) }
+        assertEquals(
+            listOf(Triple(a, 0, 1), Triple(b, 1, 1), Triple(a, 2, 1), Triple(b, 3, 1), Triple(a, 4, 1)),
+            runs,
+        )
+        assertEquals(2, order.firstWorldRun)
+        assertEquals(4, order.firstScreenRun)
     }
 }

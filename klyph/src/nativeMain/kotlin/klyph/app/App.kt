@@ -157,10 +157,10 @@ public class App internal constructor(
 
     /**
      * Queues sprites, rectangles and text to draw this frame without entities, in world space
-     * through [camera] or in screen space in points from the window's top-left corner. Call it
-     * from [Phase.RENDER] systems only; anywhere else it throws [IllegalStateException]. The
-     * engine draws what was queued at the end of RENDER, with the world's sprites, and empties it.
-     * `assets.defaultFont` draws text with no font file.
+     * through [camera] or in screen space in points from the window's top-left corner, over the
+     * world or, for a backdrop, under it. Call it from [Phase.RENDER] systems only; anywhere else
+     * it throws [IllegalStateException]. The engine draws what was queued at the end of RENDER,
+     * with the world's sprites, and empties it. `assets.defaultFont` draws text with no font file.
      */
     public val canvas: Canvas = Canvas(assets.whitePixel)
 

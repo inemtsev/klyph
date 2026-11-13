@@ -70,6 +70,22 @@ internal fun Sprite.checkTiling(world: World) {
 }
 
 /**
+ * Checks that neither [Sprite.originX] nor [Sprite.originY] of this sprite is infinite or not a
+ * number. A value outside 0 to 1 passes: an origin outside the quad is meaningful. The message
+ * names the entity of [world] that has this sprite, as [checkTiling]'s does.
+ *
+ * [writeRecord] calls this only once its own test, a few instructions long, has found a bad
+ * origin, so that every other sprite pays for no call.
+ *
+ * @throws IllegalStateException if one of the two is.
+ */
+internal fun Sprite.checkOrigin(world: World) {
+    check(originX.isFinite() && originY.isFinite()) {
+        "${ownerIn(world)} has a Sprite with origin ${originX}x$originY, which is infinite or not a number."
+    }
+}
+
+/**
  * Returns the name of the first entity of [world] whose [Sprite] is this very instance, such as
  * `Entity(3:0)`, or `Unknown entity` if none has it. Walks every sprite, so call it only to build
  * a message.

@@ -9,7 +9,7 @@
 
 struct Sprite {
     float4 posRot;   // x, y, rotation, unused
-    float4 size;     // width, height, unused, unused
+    float4 size;     // width, height, originX, originY
     float4 uv;       // u0, v0, u1, v1
     float4 color;
 };
@@ -36,7 +36,9 @@ Output main(uint vertexId : SV_VertexID) {
         (corner == 2 || corner == 4 || corner == 5) ? 1.0 : 0.0
     );
     Sprite s = sprites[firstSprite + runIndex];
-    float2 local = (unit - 0.5) * s.size.xy;
+    // size.zw is the origin: the point of the quad, as fractions of its size from its top-left
+    // corner, that lands on (x, y) and that the rotation turns the quad about.
+    float2 local = (unit - s.size.zw) * s.size.xy;
     float c = cos(s.posRot.z);
     float sn = sin(s.posRot.z);
     float2 world = float2(local.x * c - local.y * sn, local.x * sn + local.y * c) + s.posRot.xy;

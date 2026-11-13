@@ -85,8 +85,10 @@ world's sprites at the end of RENDER and empties it. It suits a HUD, menus, debu
 anything else that changes every frame.
 
 Every call draws in `DrawSpace.SCREEN` by default: points from the window's top-left corner, y
-down, unaffected by the camera. All screen-space quads draw after all world-space ones, so a HUD
-always covers the world. Within a space, quads sort by layer, lowest first.
+down, unaffected by the camera. A frame draws all `DrawSpace.BACKGROUND` quads first, then all
+world-space ones, then all screen-space ones, so a HUD always covers the world and a sky always lies
+under it. `BACKGROUND` uses the same points as `SCREEN`. Within a space, quads sort by layer, lowest
+first.
 
 <!-- snippet: hud -->
 ```kotlin

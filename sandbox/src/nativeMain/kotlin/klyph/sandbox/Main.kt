@@ -31,14 +31,18 @@ import klyph.platform.Scancode
 import klyph.platform.WindowMode
 import klyph.particle.ParticleEmitter
 import klyph.render.DrawSpace
+import klyph.render.ParallaxLayer
+import klyph.render.Sprite
 import klyph.text.Text
 import klyph.text.TextAlign
 import klyph.text.TextShadow
+import kotlin.math.sin
 import kotlin.time.Duration.Companion.seconds
 
 /**
  * Sandbox entry point: a smoke test that runs a klyph app, which clears the window every frame
- * and draws a little world-space and screen-space text and shapes and a particle fountain, until the window closes, escape is pressed, `KLYPH_FRAMES` frames have run or
+ * and draws a little world-space and screen-space text and shapes, a sky under the world, two
+ * parallax layers that repeat across a camera that sways and a particle fountain, until the window closes, escape is pressed, `KLYPH_FRAMES` frames have run or
  * `KLYPH_SECONDS` seconds have passed. It prints a line for every mouse or gamepad button press,
  * gamepad connection and focus change it sees through `app.input` and the engine events, the manual
  * check of the engine's input path.
@@ -67,14 +71,19 @@ fun main() {
 
     runApp(config) {
         addWindowControls(this)
+        var swayCenter = 0f
         addSystem(Phase.STARTUP) { app ->
             println("${app.assets}, ${app.camera}, validation: ${config.validation}")
+            swayCenter = app.camera.x
             // A world-space label, drawn through the camera by the sprite pass.
             val label = app.world.create()
             app.world.add(label, Transform, Transform(x = 40f, y = 120f))
             app.world.add(label, Text, Text(app.assets.defaultFont, "world text\nsecond line", scale = 2f))
+            addBackdrop(app)
             addFountain(app)
         }
+        // The camera sways 100 units either way, so the layers of the backdrop scroll by their own factors.
+        addSystem(Phase.UPDATE) { app -> app.camera.x = swayCenter + 100f * sin(app.time.frameCount * 0.05f) }
         addSystem(Phase.RENDER) { app -> drawOverlay(app) }
         addSystem(Phase.INPUT) { app -> printInput(app) }
         addSystem(Phase.UPDATE) { app ->
@@ -132,17 +141,45 @@ private fun addWindowControls(app: App) {
 }
 
 /**
- * Draws a square in world space and, in screen space, a panel with the frame number in the
- * built-in font and a right-aligned line at the window's right edge, so a run covers both draw
- * spaces and the built-in font.
+ * Draws a sky in the background space, a square in world space and, in screen space, a panel with
+ * the frame number in the built-in font and a right-aligned line at the window's right edge, so a
+ * run covers all three draw spaces and the built-in font.
  */
 private fun drawOverlay(app: App) {
     val canvas = app.canvas
     val font = app.assets.defaultFont
+    val sky = Color(red = 0.1f, green = 0.12f, blue = 0.25f)
+    val windowWidth = app.window.width.toFloat()
+    val windowHeight = app.window.height.toFloat()
+    canvas.drawRect(x = 0f, y = 0f, width = windowWidth, height = windowHeight, color = sky, space = DrawSpace.BACKGROUND)
     canvas.drawRect(x = 40f, y = 200f, width = 64f, height = 64f, color = Color(red = 0.3f, green = 0.6f, blue = 1f), space = DrawSpace.WORLD)
     canvas.drawRect(x = 8f, y = 8f, width = 220f, height = 28f, color = Color(red = 0f, green = 0f, blue = 0f, alpha = 0.6f), space = DrawSpace.SCREEN)
     canvas.drawText(font, "frame ${app.time.frameCount}", x = 14f, y = 14f, scale = 2f, shadow = TextShadow())
     canvas.drawText(font, "klyph sandbox", x = app.window.width - 8f, y = 14f, scale = 2f, align = TextAlign.RIGHT)
+}
+
+/**
+ * Adds two [ParallaxLayer] sprites: a row of green blocks that scrolls at half the camera's speed
+ * and a seamless band of cloud at a quarter of it. Both repeat along x, so the view is covered
+ * whatever the camera does. At the starting camera, world and screen coordinates agree, so the
+ * blocks sit near the bottom of the window and the band near the top. A plain sprite, a crate on
+ * the blocks, moves with the world and sorts with the layers.
+ */
+private fun addBackdrop(app: App) {
+    val green = Color(red = 0.1f, green = 0.45f, blue = 0.25f)
+    val cloud = Color(red = 0.8f, green = 0.85f, blue = 1f, alpha = 0.6f)
+    val blocks = app.world.create()
+    app.world.add(blocks, Transform, Transform(x = 0f, y = 500f))
+    app.world.add(blocks, Sprite, Sprite(app.assets.whitePixel, width = 120f, height = 80f, color = green, layer = -2))
+    app.world.add(blocks, ParallaxLayer, ParallaxLayer(factorX = 0.5f, factorY = 1f, repeatX = 160f))
+    val clouds = app.world.create()
+    app.world.add(clouds, Transform, Transform(x = 0f, y = 60f))
+    app.world.add(clouds, Sprite, Sprite(app.assets.whitePixel, width = 128f, height = 24f, color = cloud, layer = -3))
+    app.world.add(clouds, ParallaxLayer, ParallaxLayer(factorX = 0.25f, factorY = 1f, repeatX = 128f))
+    val gold = Color(red = 1f, green = 0.8f, blue = 0.2f)
+    val crate = app.world.create()
+    app.world.add(crate, Transform, Transform(x = 640f, y = 436f))
+    app.world.add(crate, Sprite, Sprite(app.assets.whitePixel, width = 48f, height = 48f, color = gold))
 }
 
 /**

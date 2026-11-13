@@ -45,8 +45,8 @@ the engine in every fixed step and stopped `Collisions.CONTACT_GAP` short of sol
 are now (a thick-ray Amanatides and Woo walk shared with the body move), `floorBelowOrNull` probes
 for a floor under a line, and `slideBox`/`slideCollider` make the body's move into a reusable
 `BoxSlide` through the same internal `SolidGrid.slide` the body uses (gravity, coyote time and
-jump buffers stay game code), `app.canvas`, immediate quads and text in `WORLD` or
-`SCREEN` space queued during RENDER, and `app.overlay`, the debug overlay toggled with F3; the
+jump buffers stay game code), `app.canvas`, immediate quads and text in `BACKGROUND` (points, drawn under the
+whole world, for a sky), `WORLD` or `SCREEN` space queued during RENDER, and `app.overlay`, the debug overlay toggled with F3; the
 `Text` and `ParticleEmitter` components draw with the sprites, fonts load through
 `app.assets.font` or come built in as `app.assets.defaultFont`, a texture's `SamplerFilter`,
 chosen when it loads, picks linear or nearest sampling, its `SamplerAddress`, chosen the same way, picks
@@ -55,7 +55,12 @@ and a `Sprite` with `tileWidth` or `tileHeight` (world units before the entity's
 that axis) or `Canvas.drawTiled` repeats a texture loaded with `address = SamplerAddress.REPEAT`
 across a larger area, the region having to cover the whole texture (a `check` naming the entity when
 the sprite is drawn, a `require` in `drawTiled`), with the sprite renderer holding one sampler for
-each filter and address pair, and `app.window` has `cursor` (`CursorMode`,
+each filter and address pair, a `Sprite`'s `originX` and `originY` (fractions of the quad's size from its
+top-left corner, 0.5 by default, as `Canvas.drawSprite`'s) set where its `Transform` lies on the quad and
+are what rotation, scale and flips pivot about, carried in the last two floats of the record's size row
+(`Text`, particle and plain `QuadBuffer.add` quads write 0.5, a flipped axis records `1 - origin` so the
+picture mirrors about the origin, and a non-finite origin is a `check` failure naming the entity when the
+sprite is drawn), and `app.window` has `cursor` (`CursorMode`,
 hidden only while over the window), `setCursor(image, hotspotX, hotspotY)`, `mode` (`WindowMode`,
 fullscreen is borderless desktop fullscreen; `AppConfig.windowMode` and `AppConfig.cursor` set
 both at startup) and `capture(path)`, which reads the next drawn frame back and writes it as a PNG
@@ -73,7 +78,13 @@ left, `ParticleEmitter.burst(region, count, …)` makes such a one-shot emitter 
 toward a point, `Camera.bounds` keeps the view inside a `Rect`, and `Camera.offsetX`/`offsetY` shift
 the view on top of both for a shake (`worldToScreen`, `screenToWorld` and the projection add them;
 `follow`, `lookAt` and `clampToBounds` never read or change them, so the view can show past the
-bounds by the offset); `app.drawnPositionOf(entity)` (`World.drawnPositionOf(entity, alpha)`) returns
+bounds by the offset); a `ParallaxLayer(factorX, factorY = factorX, repeatX = 0f, repeatY = 0f)` on a root entity
+with a `Transform` and a `Sprite` is drawn at its transform plus `1 - factor` times the view (the camera after
+its bounds clamp plus `offsetX`/`offsetY`, so a factor-0 sky does not shake), and with a repeat once for each
+period the bounding box of the view touches, at most `ParallaxLayer.MAX_COPIES`; the internal `ParallaxPlan`
+plans the copies at the start of `SpriteRenderer.extract`, which also sizes the record buffers, layer sprites
+are written before the ordinary sprites of their group, and a `check` naming the entity rejects a layer on a
+child or with a negative or non-finite factor or repeat; `app.drawnPositionOf(entity)` (`World.drawnPositionOf(entity, alpha)`) returns
 where the renderer draws an entity this frame, through the internal `drawnTransform` that the sprite
 pass and the text pass share, so a camera that follows an `Interpolated` entity moves with its
 picture, and `World.snapInterpolation(entity)`, called after moving the `Transform`, copies it over
@@ -246,8 +257,9 @@ systems and their commands, by the fixed step length, then every `KinematicBody`
 solids through `app.collisions.moveBodies`), propagate transforms, detect collisions and publish `Overlap` events,
 UPDATE, count down `Lifetime` and advance `Fade`, advance particles, advance sprite animations
 (publishing `AnimationFinished`), LATE_UPDATE, propagate transforms, RENDER, queue the overlay on
-`app.canvas`, clamp `app.camera` to its bounds, draw sprites, `Text`, particles and `app.canvas`
-(WORLD runs, then SCREEN runs) and present, apply scene transitions, quit if `AppConfig.frameLimit`
+`app.canvas`, clamp `app.camera` to its bounds, plan the `ParallaxLayer` copies from it, draw sprites,
+`Text`, particles and `app.canvas` (BACKGROUND runs with the screen projection, WORLD runs with the
+camera's, then SCREEN runs with the screen projection again) and present, apply scene transitions, quit if `AppConfig.frameLimit`
 or `timeLimit` is reached. Inside FIXED_UPDATE, `isJustPressed` and `isJustReleased` count fixed
 steps instead of frames: `ButtonStates` stamps each change with the number of the step that will see
 it, from the `StepClock` the loop advances through `Input.beginFixedStep`, so the first step after a
