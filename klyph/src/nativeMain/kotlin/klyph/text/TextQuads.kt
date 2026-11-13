@@ -4,7 +4,7 @@ import klyph.entity.PreviousTransform
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.entity.WorldTransform
-import klyph.entity.blendRotation
+import klyph.entity.drawnTransform
 import klyph.platform.Color
 import klyph.platform.withAlpha
 import klyph.render.DrawSpace
@@ -100,7 +100,7 @@ private fun QuadBuffer.addGlyphs(
  * [destination], in [DrawSpace.WORLD], and returns how many were added. Each entity is placed at
  * its [WorldTransform] if it has one, else [alpha] of the way from its [PreviousTransform] to its
  * [Transform] if it has a previous transform from before its last step, else at its [Transform],
- * as sprites are.
+ * as sprites are, both through `drawnTransform`.
  */
 internal fun World.extractTexts(alpha: Float, destination: QuadBuffer): Int {
     if (count(Text) == 0) return 0
@@ -108,33 +108,11 @@ internal fun World.extractTexts(alpha: Float, destination: QuadBuffer): Int {
     forEach(Text, Transform) { entity, text, local ->
         val hierarchy = getOrNull(entity, WorldTransform)
         val previous = if (hierarchy == null) getOrNull(entity, PreviousTransform) else null
-        val x: Float
-        val y: Float
-        val rotation: Float
-        val scaleX: Float
-        val scaleY: Float
-        if (hierarchy != null) {
-            x = hierarchy.x
-            y = hierarchy.y
-            rotation = hierarchy.rotation
-            scaleX = hierarchy.scaleX
-            scaleY = hierarchy.scaleY
-        } else if (previous != null && !previous.isFirstStep) {
-            x = previous.x + alpha * (local.x - previous.x)
-            y = previous.y + alpha * (local.y - previous.y)
-            rotation = blendRotation(previous.rotation, local.rotation, alpha)
-            scaleX = previous.scaleX + alpha * (local.scaleX - previous.scaleX)
-            scaleY = previous.scaleY + alpha * (local.scaleY - previous.scaleY)
-        } else {
-            x = local.x
-            y = local.y
-            rotation = local.rotation
-            scaleX = local.scaleX
-            scaleY = local.scaleY
+        drawnTransform(local, hierarchy, previous, alpha) { x, y, rotation, scaleX, scaleY ->
+            destination.addText(
+                text.font, text.text, x, y, rotation, scaleX, scaleY, text.scale, text.align, text.color, text.layer, DrawSpace.WORLD, text.shadow,
+            )
         }
-        destination.addText(
-            text.font, text.text, x, y, rotation, scaleX, scaleY, text.scale, text.align, text.color, text.layer, DrawSpace.WORLD, text.shadow,
-        )
     }
     return destination.count - before
 }

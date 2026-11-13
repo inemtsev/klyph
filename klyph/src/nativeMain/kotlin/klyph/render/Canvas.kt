@@ -1,6 +1,7 @@
 package klyph.render
 
 import klyph.platform.Color
+import klyph.platform.SamplerAddress
 import klyph.text.Font
 import klyph.text.TextAlign
 import klyph.text.TextShadow
@@ -22,8 +23,8 @@ import klyph.text.addText
  * radians, positive clockwise on screen. Several parameters share the type `Float`, so pass them
  * by name.
  *
- * The three calls anchor differently. [drawSprite] puts the quad's origin, its center by default,
- * on (x, y), as an entity's `Sprite`, a `Collider` and `Shape.Box` are centered on their
+ * The calls anchor differently. [drawSprite] and [drawTiled] put the quad's origin, its center by
+ * default, on (x, y), as an entity's `Sprite`, a `Collider` and `Shape.Box` are centered on their
  * transform. [drawRect] puts its top-left corner on (x, y), as `Rect` does. [drawText] puts the
  * top of the first line at y and aligns each line on x, as a `Text` component does. So a debug
  * outline of a box collider drawn with [drawRect] starts half the box's size up and left of the
@@ -45,7 +46,7 @@ public class Canvas internal constructor(
     internal var isOpen: Boolean = false
         private set
 
-    /** Number of quads queued for this frame: one per sprite or rectangle, one per visible glyph of text. */
+    /** Number of quads queued for this frame: one per sprite, tiled area or rectangle, one per visible glyph of text. */
     public val quadCount: Int get() = quads.count
 
     /**
@@ -74,6 +75,53 @@ public class Canvas internal constructor(
     ) {
         checkOpen()
         quads.addAt(region, x, y, width, height, rotation, originX, originY, color, layer, space)
+    }
+
+    /**
+     * Queues [region] repeated across a quad of [width] by [height], tinted by [color], in [layer]
+     * of [space], placed so that its origin lies on ([x], [y]) and turned by [rotation] radians
+     * about it. It suits a floor, a wall or a backdrop that is larger than its art.
+     *
+     * One repeat is [tileWidth] by [tileHeight] units, by default the region's size in texels, so
+     * the texture is drawn over and over at the size [drawSprite] gives it. The quad shows
+     * `width / tileWidth` repeats across and `height / tileHeight` down, and a count that is not
+     * whole cuts the last repeat short at the right and bottom edges. A tile size equal to the
+     * quad's size on an axis shows the texture once along it. The origin works as it does for
+     * [drawSprite], and the space defaults to [DrawSpace.SCREEN].
+     *
+     * Repeating needs a texture created with [SamplerAddress.REPEAT], such as one loaded with
+     * `assets.texture(path, address = SamplerAddress.REPEAT)`, and a [region] that covers the whole
+     * of it, as `Texture.asRegion` makes it.
+     *
+     * @throws IllegalStateException if called outside [klyph.app.Phase.RENDER].
+     * @throws IllegalArgumentException if [region] does not cover its whole texture, the texture's
+     *   [Texture.address] is not [SamplerAddress.REPEAT], or [tileWidth] or [tileHeight] is not
+     *   positive.
+     */
+    public fun drawTiled(
+        region: TextureRegion,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        tileWidth: Float = region.width.toFloat(),
+        tileHeight: Float = region.height.toFloat(),
+        rotation: Float = 0f,
+        color: Color = Color.WHITE,
+        layer: Int = 0,
+        space: DrawSpace = DrawSpace.SCREEN,
+        originX: Float = 0.5f,
+        originY: Float = 0.5f,
+    ) {
+        checkOpen()
+        val texture = region.texture
+        require(texture.address == SamplerAddress.REPEAT) {
+            "Tiled drawing needs a texture created with SamplerAddress.REPEAT, but $texture uses ${texture.address}."
+        }
+        require(region.isWholeTexture) { "Tiled drawing needs a region that covers its whole texture, but the region is $region." }
+        require(tileWidth > 0f && tileWidth.isFinite()) { "Tile width $tileWidth is not positive and finite." }
+        require(tileHeight > 0f && tileHeight.isFinite()) { "Tile height $tileHeight is not positive and finite." }
+        quads.addTiledAt(region, x, y, width, height, tileWidth, tileHeight, rotation, originX, originY, color, layer, space)
     }
 
     /**

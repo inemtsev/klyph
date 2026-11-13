@@ -1,5 +1,6 @@
 package klyph.entity
 
+import klyph.math.Vec2
 import kotlin.math.PI
 import kotlin.math.floor
 
@@ -15,9 +16,11 @@ import kotlin.math.floor
  * At the start of every fixed step the engine copies the [Transform] of each marked entity. When
  * the frame is drawn, the sprite's position and scale are blended linearly from that copy toward
  * the current [Transform] by `Time.fixedStepAlpha`, and its rotation along the shorter way round
- * the circle. The picture therefore trails the simulation by up to one fixed step. Move marked
- * entities only in `Phase.FIXED_UPDATE`: a change made in another phase is drawn partly blended
- * until the next step, and a jump such as a teleport is drawn as fast motion across one step.
+ * the circle. The picture therefore trails the simulation by up to one fixed step, so a camera
+ * that follows the entity reads [drawnPositionOf], the place the picture is at, not the
+ * [Transform]. Move marked entities only in `Phase.FIXED_UPDATE`: a change made in another phase
+ * is drawn partly blended until the next step. A jump such as a teleport or a respawn is drawn as
+ * fast motion across one step unless [snapInterpolation] follows it.
  *
  * An entity is blended only from its second fixed step since it gained the marker on: until then
  * there is no earlier step to blend from, so it is drawn at its current [Transform], and an entity
@@ -31,6 +34,60 @@ import kotlin.math.floor
  * @sample samples.entity.Interpolations.interpolated
  */
 public object Interpolated : ComponentType<Interpolated>("Interpolated")
+
+/**
+ * Returns the position, in world units, at which the renderer draws [entity] this frame, so that a
+ * camera or an effect can follow what the player sees.
+ *
+ * For an [Interpolated] entity without a parent, from its second fixed step since it gained the
+ * marker on, this is [alpha] of the way from its position at the start of the last step to its
+ * current [Transform], where its sprite and text are drawn. For an entity with a parent it is the
+ * position of its [WorldTransform] as of the last [propagateTransforms]. The engine runs that
+ * after the fixed steps and again after `LATE_UPDATE`, so call it first if a system has moved the
+ * parent since. For every other entity, and for a marked one before its second step, it is the
+ * position of its [Transform].
+ *
+ * Pass `Time.fixedStepAlpha` as [alpha], which must be from 0 to 1, or call
+ * `App.drawnPositionOf`, which does. The [entity] must be alive and have a [Transform]. Each call
+ * allocates a [Vec2], which is fine for a camera system that calls it once a frame.
+ *
+ * @throws IllegalArgumentException if [alpha] is not between 0 and 1.
+ * @throws NoSuchElementException if [entity] is not alive or has no [Transform].
+ *
+ * @sample samples.entity.Interpolations.drawnPositionOf
+ */
+public fun World.drawnPositionOf(entity: Entity, alpha: Float): Vec2 {
+    require(alpha in 0f..1f) { "Alpha $alpha is not between 0 and 1." }
+    val local = get(entity, Transform)
+    val hierarchy = getOrNull(entity, WorldTransform)
+    val previous = if (hierarchy == null) getOrNull(entity, PreviousTransform) else null
+    return drawnTransform(local, hierarchy, previous, alpha) { x, y, _, _, _ -> Vec2(x, y) }
+}
+
+/**
+ * Makes the next frame draw [entity] exactly at its current [Transform], with no blend from where
+ * it was a step ago.
+ *
+ * An [Interpolated] entity is drawn between its last two fixed steps, so a jump such as a teleport
+ * or a respawn is drawn as fast motion across the screen over the next step. Move the [Transform]
+ * first and call this after. It copies the entity's current position, rotation and scale over the
+ * copy the engine saved at the start of the step, so called before the move it would copy the old
+ * place and the entity would still sweep. The entity blends again from the next fixed step on.
+ *
+ * Does nothing when there is no saved copy to change: for an entity that is not [Interpolated] or
+ * not alive, that has no [Transform], or that gained the marker after the last fixed step began.
+ * The last is drawn at its [Transform] anyway.
+ *
+ * Snapping also ends the entity's first step: from the next step on it is blended as usual, from
+ * the snapped place.
+ *
+ * @sample samples.entity.Interpolations.snapInterpolation
+ */
+public fun World.snapInterpolation(entity: Entity) {
+    val previous = getOrNull(entity, PreviousTransform) ?: return
+    val local = getOrNull(entity, Transform) ?: return
+    previous.copyFrom(local)
+}
 
 /**
  * The [Transform] of an [Interpolated] entity at the start of the last fixed step. [isFirstStep]
@@ -115,6 +172,48 @@ private fun World.dropStalePreviousTransforms(previous: ComponentStore<PreviousT
         if (marked.getOrNull(entity) == null || transforms?.getOrNull(entity) == null) previous.remove(entity)
         slot--
     }
+}
+
+/**
+ * Calls [use] with the position, rotation and scale an entity is drawn at and returns its result:
+ * those of [hierarchy] if it is not `null`, else [alpha] of the way from [previous] to [local] if
+ * [previous] is not `null` and is past its first step, else those of [local].
+ *
+ * The sprite pass, the text pass and [drawnPositionOf] all draw through this one function, so the
+ * place a camera reads is the place the picture is. It is inline and allocates nothing.
+ */
+internal inline fun <R> drawnTransform(
+    local: Transform,
+    hierarchy: WorldTransform?,
+    previous: PreviousTransform?,
+    alpha: Float,
+    use: (x: Float, y: Float, rotation: Float, scaleX: Float, scaleY: Float) -> R,
+): R {
+    val x: Float
+    val y: Float
+    val rotation: Float
+    val scaleX: Float
+    val scaleY: Float
+    if (hierarchy != null) {
+        x = hierarchy.x
+        y = hierarchy.y
+        rotation = hierarchy.rotation
+        scaleX = hierarchy.scaleX
+        scaleY = hierarchy.scaleY
+    } else if (previous != null && !previous.isFirstStep) {
+        x = previous.x + alpha * (local.x - previous.x)
+        y = previous.y + alpha * (local.y - previous.y)
+        rotation = blendRotation(previous.rotation, local.rotation, alpha)
+        scaleX = previous.scaleX + alpha * (local.scaleX - previous.scaleX)
+        scaleY = previous.scaleY + alpha * (local.scaleY - previous.scaleY)
+    } else {
+        x = local.x
+        y = local.y
+        rotation = local.rotation
+        scaleX = local.scaleX
+        scaleY = local.scaleY
+    }
+    return use(x, y, rotation, scaleX, scaleY)
 }
 
 /**

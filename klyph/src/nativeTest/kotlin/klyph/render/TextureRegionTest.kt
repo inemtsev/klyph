@@ -3,7 +3,9 @@ package klyph.render
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class TextureRegionTest {
     @Test
@@ -70,6 +72,17 @@ class TextureRegionTest {
         assertEquals(texture.region(x = 0, y = 0, width = 8, height = 8).hashCode(), texture.region(x = 0, y = 0, width = 8, height = 8).hashCode())
         assertNotEquals(texture.region(x = 0, y = 0, width = 8, height = 8), texture.region(x = 8, y = 0, width = 8, height = 8))
         assertNotEquals(texture.region(x = 0, y = 0, width = 8, height = 8), Texture(64, 32).region(x = 0, y = 0, width = 8, height = 8))
+    }
+
+    @Test
+    fun onlyTheWholeTextureIsTheWholeTexture() {
+        val texture = Texture(16, 8)
+        assertTrue(texture.asRegion().isWholeTexture)
+        assertTrue(texture.region(x = 0, y = 0, width = 16, height = 8).isWholeTexture)
+        assertFalse(texture.region(x = 0, y = 0, width = 16, height = 4).isWholeTexture, "Half the height.")
+        assertFalse(texture.region(x = 0, y = 0, width = 8, height = 8).isWholeTexture, "Half the width.")
+        assertFalse(texture.region(x = 8, y = 0, width = 8, height = 8).isWholeTexture, "The right half.")
+        assertFalse(texture.region(x = 0, y = 4, width = 16, height = 4).isWholeTexture, "The bottom half.")
     }
 
     @Test

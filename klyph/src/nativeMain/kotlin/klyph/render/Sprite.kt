@@ -19,6 +19,20 @@ import klyph.platform.Color
  * texture in a frame costs one draw call, so keep layers to a few draw-order groups such as
  * background, world and effects, not one per sprite.
  *
+ * Set [tileWidth] and [tileHeight] to repeat the texture across the quad instead of stretching
+ * it, for a floor, a wall or a backdrop that is larger than its art. Each is the size of one
+ * repeat in world units before the entity's scale, as [width] and [height] are, so the quad shows
+ * `width / tileWidth` repeats across and `height / tileHeight` down, and the entity's scale
+ * enlarges the repeats along with the rest of the quad. A count that is not whole cuts the last
+ * repeat short. A tile size of 0, the default, stretches the region across that dimension as
+ * usual, so setting only [tileWidth] repeats the texture along the quad and stretches it down.
+ *
+ * Repeating needs a texture created with [klyph.platform.SamplerAddress.REPEAT], such as one
+ * loaded with `App.assets.texture(path, address = SamplerAddress.REPEAT)`, and a [region] that
+ * covers the whole of it, as `Texture.asRegion` makes it. Drawing a sprite throws
+ * [IllegalStateException], naming its entity, when it has a tile size and its texture or region
+ * is not like that, or when a tile size is negative.
+ *
  * Has no sample because creating a [Texture] needs a GPU device, which samples cannot open.
  */
 public class Sprite(
@@ -38,14 +52,27 @@ public class Sprite(
     public var isFlippedY: Boolean = false,
     /** Whether the sprite is drawn. */
     public var isVisible: Boolean = true,
+    /**
+     * Width of one repeat of the texture in world units before the entity's scale, or 0 to stretch
+     * the region across [width]. Never negative.
+     */
+    public var tileWidth: Float = 0f,
+    /**
+     * Height of one repeat of the texture in world units before the entity's scale, or 0 to
+     * stretch the region across [height]. Never negative.
+     */
+    public var tileHeight: Float = 0f,
 ) {
     /**
      * Returns `Sprite(size=16.0x32.0, color=Color(#ffffffff), layer=0, flippedX=false,
-     * flippedY=false, visible=true, region=TextureRegion(...))`. The format may change.
+     * flippedY=false, visible=true, region=TextureRegion(...))`, with `tile=8.0x8.0` after the
+     * size when a tile size is set. The format may change.
      */
-    override fun toString(): String =
-        "Sprite(size=${width}x$height, color=$color, layer=$layer, flippedX=$isFlippedX, flippedY=$isFlippedY, " +
-            "visible=$isVisible, region=$region)"
+    override fun toString(): String {
+        val tile = if (tileWidth != 0f || tileHeight != 0f) ", tile=${tileWidth}x$tileHeight" else ""
+        return "Sprite(size=${width}x$height$tile, color=$color, layer=$layer, flippedX=$isFlippedX, " +
+            "flippedY=$isFlippedY, visible=$isVisible, region=$region)"
+    }
 
     /** Component key for [Sprite]. */
     public companion object : ComponentType<Sprite>("Sprite")

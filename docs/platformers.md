@@ -269,10 +269,10 @@ ledges.
   place bodies outside solids.
 - A scene frozen under a pushed scene keeps its bodies still, and its solids stop nothing.
 - A body moved by setting its `Transform`, such as a respawn, is drawn sliding from its old place
-  to the new one during the next step when it is `Interpolated`, a dash across the screen. Hide it
-  for that step. The drawn, blended position is not public either, so a camera that follows an
-  interpolated body keeps the body's last position and blends it with `time.fixedStepAlpha`
-  itself. Both are issue #17, planned for 1.2.
+  to the new one during the next step when it is `Interpolated`, a dash across the screen. Call
+  `world.snapInterpolation(entity)` right after the move to draw it at the new place at once. A
+  camera that follows an interpolated body follows `app.drawnPositionOf(body)`, the blended
+  position the renderer uses this frame, not the `Transform`, or it jitters against the picture.
 
 ## See also
 

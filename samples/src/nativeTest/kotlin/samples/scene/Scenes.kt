@@ -1,10 +1,13 @@
 package samples.scene
 
 import klyph.app.Phase
+import klyph.scene.Scene
 import klyph.scene.buildScene
+import klyph.scene.elapsedSeconds
 import samples.Sample
 import samples.assertPrints
 import kotlin.test.assertFailsWith
+import kotlin.time.Duration.Companion.seconds
 
 class Lives(var count: Int) {
     override fun toString(): String = "Lives($count)"
@@ -31,5 +34,20 @@ class Scenes {
                 onEnter {}
             }
         }
+    }
+
+    @Sample
+    fun elapsed() {
+        val gameOver = buildScene("gameOver") {}
+        lateinit var play: Scene
+        play = buildScene("play") {
+            addSystem(Phase.UPDATE) { app ->
+                // The round ends after one minute of play. The clock stands still while a pause scene is on top.
+                if (play.elapsed >= 60.seconds) app.scenes.replace(gameOver)
+            }
+        }
+        // The engine runs the clock while the scene is on top of the stack, so a new scene reads zero.
+        assertPrints(play.elapsed, "0s")
+        assertPrints(play.elapsedSeconds, "0.0")
     }
 }

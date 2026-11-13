@@ -30,8 +30,13 @@ import kotlin.time.DurationUnit
  * [bounds] keeps the view inside a rectangle of the world, such as a level's edges; see
  * [clampToBounds].
  *
+ * [offsetX] and [offsetY] shift the view without moving the camera, such as one frame of a screen
+ * shake: the view is centered on ([x] + [offsetX], [y] + [offsetY]). They are added after [follow]
+ * and the clamp to [bounds], so the view can show past the bounds by the offset.
+ *
  * [toString] prints the position, zoom, rotation, viewport and bounds, for example
- * `Camera(x=0.0, y=0.0, zoom=1.0, rotation=0.0, viewport=800.0x600.0, bounds=null)`.
+ * `Camera(x=0.0, y=0.0, zoom=1.0, rotation=0.0, viewport=800.0x600.0, bounds=null)`, with
+ * `, offsetX=6.0, offsetY=-4.0` before the closing parenthesis while either offset is not 0.
  *
  * @throws IllegalArgumentException if [zoom] is not a positive finite number, or if
  * [viewportWidth] or [viewportHeight] is not a positive finite number.
@@ -90,14 +95,38 @@ public class Camera(
      */
     public var bounds: Rect? = null
 
+    /**
+     * Horizontal shift of the view in world units, 0 by default. The view is centered on
+     * ([x] + [offsetX], [y] + [offsetY]), and [worldToScreen], [screenToWorld] and the renderer
+     * all use that point. The shift sits on top of the camera's position, never in it: [lookAt],
+     * [follow] and [clampToBounds] read and write [x] and [y] alone, and nothing clamps the offset
+     * to [bounds], so the view can show past the bounds by the offset. It is measured along the
+     * world's axes whatever the [rotation].
+     *
+     * To shake the view, set [offsetX] and [offsetY] to a new small value every frame while the
+     * shake lasts, and back to 0 when it ends. [follow] keeps easing toward its target meanwhile,
+     * and nothing has to be taken out of [x] and [y] first. Any system may set the offset, because
+     * the engine reads it when it draws the frame. `Mouse.worldPosition`, computed at INPUT through
+     * [screenToWorld], includes the offset too, so during a shake the cursor points at the world
+     * point it is really over, which moves with the view.
+     *
+     * @sample samples.render.Cameras.offset
+     */
+    public var offsetX: Float = 0f
+
+    /** Vertical shift of the view in world units, 0 by default; see [offsetX]. */
+    public var offsetY: Float = 0f
+
     init {
         requireZoom(zoom)
         requireViewport(viewportWidth, "width")
         requireViewport(viewportHeight, "height")
     }
 
-    override fun toString(): String =
-        "Camera(x=$x, y=$y, zoom=$zoom, rotation=$rotation, viewport=${viewportWidth}x$viewportHeight, bounds=$bounds)"
+    override fun toString(): String {
+        val state = "Camera(x=$x, y=$y, zoom=$zoom, rotation=$rotation, viewport=${viewportWidth}x$viewportHeight, bounds=$bounds"
+        return if (offsetX == 0f && offsetY == 0f) "$state)" else "$state, offsetX=$offsetX, offsetY=$offsetY)"
+    }
 }
 
 private fun requireZoom(zoom: Float) {
@@ -110,7 +139,7 @@ private fun requireViewport(size: Float, axis: String) {
 
 /**
  * Returns the screen position in points, origin top-left and +y down, at which the [world]
- * point appears through this camera.
+ * point appears through this camera, its [Camera.offsetX] and [Camera.offsetY] included.
  *
  * [screenToWorld] is the inverse.
  *
@@ -119,8 +148,8 @@ private fun requireViewport(size: Float, axis: String) {
 public fun Camera.worldToScreen(world: Vec2): Vec2 {
     val c = cos(rotation)
     val s = sin(rotation)
-    val dx = world.x - x
-    val dy = world.y - y
+    val dx = world.x - (x + offsetX)
+    val dy = world.y - (y + offsetY)
     return Vec2(
         viewportWidth * 0.5f + zoom * (c * dx + s * dy),
         viewportHeight * 0.5f + zoom * (c * dy - s * dx),
@@ -129,7 +158,7 @@ public fun Camera.worldToScreen(world: Vec2): Vec2 {
 
 /**
  * Returns the world point that appears at the [screen] position in points, origin top-left and
- * +y down, through this camera.
+ * +y down, through this camera, its [Camera.offsetX] and [Camera.offsetY] included.
  *
  * [worldToScreen] is the inverse.
  *
@@ -140,7 +169,7 @@ public fun Camera.screenToWorld(screen: Vec2): Vec2 {
     val s = sin(rotation)
     val vx = (screen.x - viewportWidth * 0.5f) / zoom
     val vy = (screen.y - viewportHeight * 0.5f) / zoom
-    return Vec2(x + c * vx - s * vy, y + s * vx + c * vy)
+    return Vec2(x + offsetX + c * vx - s * vy, y + offsetY + s * vx + c * vy)
 }
 
 /**
@@ -168,6 +197,12 @@ public fun Camera.lookAt(x: Float, y: Float) {
  * [lookAt] does. The camera then clamps to [Camera.bounds]. Pass `App.time.delta` as [delta] from
  * a `LATE_UPDATE` system, after the target has moved. Pass [smoothing] and [delta] by name; ([x],
  * [y]) may go by position, as in `follow(ship.x, ship.y, smoothing = 5f, delta = app.time.delta)`.
+ *
+ * The camera follows the point it is given, not an entity. An `Interpolated` entity is drawn
+ * between its last two fixed steps rather than at its `Transform`, so follow its
+ * [klyph.entity.drawnPositionOf], the place its picture is at, or it judders against the scenery on
+ * a display faster than the fixed rate. [Camera.offsetX] and [Camera.offsetY] play no part in the
+ * move.
  *
  * @throws IllegalArgumentException if [smoothing] is negative or `NaN`, or [delta] is negative.
  *
@@ -248,11 +283,11 @@ public val Camera.visibleHeight: Float
  * Writes the camera's view-projection matrix into the first 16 elements of [destination],
  * column-major, mapping world positions to clip space.
  *
- * The matrix translates by the negated position, rotates by the negated rotation, scales by the
- * zoom and then applies the orthographic projection of the viewport in points, centered with +y
- * down, so it agrees with [worldToScreen]. Clip space has no unit, so the pixel density cancels:
- * the render pass's viewport covers the target in pixels and the same matrix fills it on every
- * display. Allocates nothing.
+ * The matrix translates by the negated position plus offset, rotates by the negated rotation,
+ * scales by the zoom and then applies the orthographic projection of the viewport in points,
+ * centered with +y down, so it agrees with [worldToScreen]. Clip space has no unit, so the pixel
+ * density cancels: the render pass's viewport covers the target in pixels and the same matrix
+ * fills it on every display. Allocates nothing.
  */
 internal fun Camera.writeProjection(destination: FloatArray) {
     require(destination.size >= 16) { "Projection destination size ${destination.size} is less than 16." }
@@ -260,14 +295,16 @@ internal fun Camera.writeProjection(destination: FloatArray) {
     val s = sin(rotation)
     val a = 2f * zoom / viewportWidth
     val b = 2f * zoom / viewportHeight
-    // clipX = a * (c * dx + s * dy), clipY = -b * (c * dy - s * dx), with d = world - position.
+    val centerX = x + offsetX
+    val centerY = y + offsetY
+    // clipX = a * (c * dx + s * dy), clipY = -b * (c * dy - s * dx), with d = world - center.
     destination.fill(0f, 0, 16)
     destination[0] = a * c
     destination[1] = b * s
     destination[4] = a * s
     destination[5] = -b * c
     destination[10] = 1f
-    destination[12] = -a * (c * x + s * y)
-    destination[13] = -b * (s * x - c * y)
+    destination[12] = -a * (c * centerX + s * centerY)
+    destination[13] = -b * (s * centerX - c * centerY)
     destination[15] = 1f
 }

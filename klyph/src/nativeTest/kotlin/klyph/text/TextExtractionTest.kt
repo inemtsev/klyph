@@ -4,6 +4,8 @@ import klyph.entity.Interpolated
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.entity.WorldTransform
+import klyph.entity.drawnPositionOf
+import klyph.entity.propagateTransforms
 import klyph.entity.recordPreviousTransforms
 import klyph.platform.Color
 import klyph.platform.withAlpha
@@ -49,6 +51,57 @@ class TextExtractionTest {
         val second = QuadBuffer()
         world.extractTexts(0.5f, second)
         assertEquals(listOf(110f, 7f), second.floats(0, 0, 2), "From the second step on, it blends halfway from 100 to 110.")
+    }
+
+    @Test
+    fun textIsDrawnWhereDrawnPositionOfSaysForEveryKindOfEntity() {
+        val font = testFont()
+        val world = World()
+        val alpha = 0.25f
+
+        // A root past its first step: it blends from 130 to 160, so a quarter of the way is 137.5.
+        val blended = world.create()
+        val blendedTransform = Transform(x = 100f, y = 40f)
+        world.add(blended, Transform, blendedTransform)
+        world.add(blended, Interpolated, Interpolated)
+        world.add(blended, Text, Text(font, "A"))
+        world.recordPreviousTransforms()
+
+        // A root in its first step, which is drawn where it is, at 50.
+        val fresh = world.create()
+        val freshTransform = Transform(x = 10f, y = 10f)
+        world.add(fresh, Transform, freshTransform)
+        world.add(fresh, Interpolated, Interpolated)
+        world.add(fresh, Text, Text(font, "A"))
+        blendedTransform.x = 130f
+        world.recordPreviousTransforms()
+        blendedTransform.x = 160f
+        freshTransform.x = 50f
+
+        val plain = world.create()
+        world.add(plain, Transform, Transform(x = 70f, y = 20f))
+        world.add(plain, Text, Text(font, "A"))
+
+        // A child is drawn at its world transform, which a propagation computes from the parent's Transform.
+        val parent = world.create()
+        world.add(parent, Transform, Transform(x = 200f, y = 80f))
+        val child = world.create()
+        world.add(child, Transform, Transform(x = 10f))
+        world.add(child, Text, Text(font, "A"))
+        world.setParent(child, parent)
+        world.propagateTransforms()
+
+        val quads = QuadBuffer()
+        val entities = listOf(blended, fresh, plain, child)
+        assertEquals(entities.size, world.extractTexts(alpha, quads))
+
+        // Glyph A at scale 1 is centred (+5, +7) from the anchor, as above.
+        for ((index, entity) in entities.withIndex()) {
+            val drawn = world.drawnPositionOf(entity, alpha)
+            assertEquals(listOf(drawn.x + 5f, drawn.y + 7f), quads.floats(index, 0, 2), "Quad $index, entity $entity")
+        }
+        // The anchors are 137.5, 50, 70 and 210, so the loop above is checking real places and not the function against itself.
+        assertEquals(listOf(142.5f, 55f, 75f, 215f), entities.indices.map { quads.floats(it, 0, 1).single() })
     }
 
     @Test

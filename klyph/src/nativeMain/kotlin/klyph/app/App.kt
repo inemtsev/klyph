@@ -3,9 +3,12 @@ package klyph.app
 import klyph.audio.Audio
 import klyph.collision.Collisions
 import klyph.entity.Commands
+import klyph.entity.Entity
 import klyph.entity.World
+import klyph.entity.drawnPositionOf
 import klyph.event.Events
 import klyph.input.Input
+import klyph.math.Vec2
 import klyph.platform.Color
 import klyph.platform.PresentMode
 import klyph.platform.Window
@@ -57,7 +60,8 @@ public class App internal constructor(
      * to 2. The renderer turns points into pixels, so a change of density leaves the zoom alone.
      *
      * The engine keeps its viewport equal to the window's size in points and never moves it; move,
-     * zoom or rotate it from a system, such as a [Phase.LATE_UPDATE] system that follows the player.
+     * zoom or rotate it from a system, such as a [Phase.LATE_UPDATE] system that follows the player,
+     * and shake it with its `offsetX` and `offsetY`.
      */
     public val camera: Camera,
     /**
@@ -125,7 +129,8 @@ public class App internal constructor(
     /**
      * The stack of scenes, such as a title screen, a level and a pause menu over it. Only the scene
      * on top runs its systems, after the App-level systems of each phase; the scenes below it are
-     * frozen, and their particle emitters, sprite animations, lifetimes, fades and colliders stand still. The
+     * frozen, and their particle emitters, sprite animations, lifetimes, fades, colliders and
+     * [Scene.elapsed] clocks stand still. The
      * entities a scene spawns are destroyed when it leaves the stack. Changes queue and apply at the end of the
      * frame. It starts empty, and the app runs only its App-level systems while it is.
      */
@@ -220,3 +225,18 @@ public class App internal constructor(
     /** Returns `App(title=klyph, frame=12, entities=100)`. The format may change. */
     override fun toString(): String = "App(title=${config.title}, frame=${time.frameCount}, entities=${world.entityCount})"
 }
+
+/**
+ * Returns the position, in world units, at which the renderer draws [entity] this frame, as
+ * [World.drawnPositionOf] does at `time.fixedStepAlpha`.
+ *
+ * Call it from a [Phase.LATE_UPDATE] system, after the entity has moved, to point the camera at
+ * what the player sees, as in
+ * `app.camera.follow(app.drawnPositionOf(hero), smoothing = 5f, delta = app.time.delta)`. For an
+ * entity marked `Interpolated` that is the place between its last two fixed steps its picture is
+ * at, and not its `Transform`. The [entity] must be alive and have a `Transform`. Each call
+ * allocates one [Vec2], which a camera system that calls it once a frame can afford.
+ *
+ * @throws NoSuchElementException if [entity] is not alive or has no `Transform`.
+ */
+public fun App.drawnPositionOf(entity: Entity): Vec2 = world.drawnPositionOf(entity, time.fixedStepAlpha)

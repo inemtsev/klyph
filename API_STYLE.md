@@ -57,6 +57,7 @@ in the same PR rather than inventing a one-off.
 | `x(path)` on `Assets` | Returns the asset at `path`, loading it on the first call and returning the cached instance after. Named after the type it returns. | `assets.texture("ship.png")`, `assets.musicTrack("music.ogg")` |
 | `createX(...)` | Makes a new `X` on every call, never cached; the caller owns it. | `assets.createTexture(image)` |
 | `xCount` | Property holding how many of `x` there are. Containers use `size` instead. | `spriteCount`, `drawCallCount`, `Time.frameCount` |
+| `xSeconds` | Extension property returning the `Duration` `x` as a `Float` in seconds, for arithmetic done every frame. The `Duration` stays the primary API. | `time.deltaSeconds`, `scene.elapsedSeconds` |
 | `SubjectVerbed` event | An event that reports a change is a past participle. An event that reports a state every frame, such as an overlap, is a noun. | `KeyPressed`, `MouseWheelScrolled`, `WindowResized`; `Overlap` |
 | `xOf(argument)` | Member or extension that returns the `x` associated with [argument]. Not a factory. | `neighborsOf(node)`, `childrenOf(parent)`, `durationOf(phase)` |
 | `xOrElse { }` | Same as `x()` but calls the lambda instead of throwing. | `getOrElse { default }` |
@@ -135,8 +136,8 @@ public fun <N> buildGraph(directed: Boolean = false, builder: GraphBuilder<N>.()
   a new array the caller owns, such as `Files.readBytes` and `Image.decode`.
   Their KDoc says the array is not kept.
 - Time is a `Duration`: frame durations, fades, lifetimes, delays and limits.
-  `Time.deltaSeconds` is the one `Float` in seconds, a convenience for the
-  arithmetic of a frame. Rates stay `Float` per second.
+  `Time.deltaSeconds` and `Scene.elapsedSeconds` are the `Float`s in seconds,
+  conveniences for the arithmetic of a frame. Rates stay `Float` per second.
 - Mutable component fields and parameters of calls made every frame take
   separate `Float`s, such as `Camera.lookAt(x, y)`, so they allocate nothing.
   Computed results and read-only state return a `Vec2`, such as

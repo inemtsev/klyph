@@ -32,6 +32,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -238,5 +239,52 @@ class FrozenSceneTest {
         h.playUnderPause(playEnter = { h.world.emitterAt(0f, frozen) }, pauseEnter = {})
         h.world.advanceParticles(1f, h.stack, h.commands)
         assertTrue(h.commands.isEmpty())
+    }
+
+    @Test
+    fun clockOfAFrozenSceneStandsStillUntilTheSceneAboveIsPopped() {
+        val h = SceneHarness()
+        val play = h.scene("play")
+        val pause = h.scene("pause")
+        val tick = 50.milliseconds
+        h.stack.push(play)
+        h.applyTransitions()
+        h.frame(tick)
+        h.frame(tick)
+        assertEquals(tick * 2, play.elapsed)
+
+        // The frame that queues the push still counts for play, and pause enters at the end of it.
+        h.stack.push(pause)
+        h.frame(tick)
+        assertEquals(tick * 3, play.elapsed)
+        assertEquals(Duration.ZERO, pause.elapsed, "A pushed scene starts at zero.")
+
+        h.frame(tick)
+        h.frame(tick)
+        assertEquals(tick * 3, play.elapsed, "The clock of a frozen scene stands still.")
+        assertEquals(tick * 2, pause.elapsed)
+
+        // The frame that queues the pop still counts for pause, and play goes on in the next one.
+        h.stack.pop()
+        h.frame(tick)
+        assertEquals(tick * 3, play.elapsed)
+        assertEquals(tick * 3, pause.elapsed)
+        h.frame(tick)
+        assertEquals(tick * 4, play.elapsed, "The clock goes on from where it stood.")
+        assertEquals(tick * 3, pause.elapsed, "A popped scene keeps its last value.")
+    }
+
+    @Test
+    fun onlyTheTopOfSeveralScenesAdvancesItsClock() {
+        val h = SceneHarness()
+        val a = h.scene("a")
+        val b = h.scene("b")
+        val c = h.scene("c")
+        h.stack.push(a)
+        h.stack.push(b)
+        h.stack.push(c)
+        h.applyTransitions()
+        h.frame(50.milliseconds)
+        assertEquals(listOf(Duration.ZERO, Duration.ZERO, 50.milliseconds), listOf(a, b, c).map { it.elapsed })
     }
 }

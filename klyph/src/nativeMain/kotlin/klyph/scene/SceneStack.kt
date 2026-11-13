@@ -4,16 +4,18 @@ import klyph.app.App
 import klyph.app.Phase
 import klyph.entity.Commands
 import klyph.entity.World
+import kotlin.time.Duration
 
 /**
- * Holds the scenes of an app as a stack. Only the scene on top, [currentOrNull], runs its systems.
- * A pushed scene freezes the one below: its systems do not run, its particle emitters, sprite
- * animations and colliders stand still, its entities keep rendering. Frozen emitters neither
- * advance nor emit, so their particles stay where they are; frozen animations keep their current
- * frame; frozen colliders are left out of collision detection, so they are in no `Overlap` event
- * and no collision query finds them. An entity a scene owns is frozen whatever its parent is, and
- * an entity of no scene is never frozen. App-level systems added with [App.addSystem] run whatever
- * the stack holds, before the top scene's systems of the same phase.
+ * Holds the scenes of an app as a stack. Only the scene on top, [currentOrNull], runs its systems
+ * and advances its [Scene.elapsed] clock. A pushed scene freezes the one below: its systems do not
+ * run, its clock stops, its particle emitters, sprite animations and colliders stand still, its
+ * entities keep rendering. Frozen emitters neither advance nor emit, so their particles stay where
+ * they are; frozen animations keep their current frame; frozen colliders are left out of collision
+ * detection, so they are in no `Overlap` event and no collision query finds them. An entity a scene
+ * owns is frozen whatever its parent is, and an entity of no scene is never frozen. App-level
+ * systems added with [App.addSystem] run whatever the stack holds, before the top scene's systems
+ * of the same phase.
  *
  * [replace], [push] and [pop] do not change the stack right away. They queue a transition, and the
  * engine applies the queued transitions in the order they were queued at the end of the frame,
@@ -34,7 +36,7 @@ import klyph.entity.World
  *   Moving an entity to another parent does not change its owner, but an entity of no scene that
  *   is a child of an owned entity is destroyed with its parent.
  * - A scene enters the stack by being pushed, so it is [currentOrNull] when its `onEnter` action
- *   runs, then [App.commands] is applied.
+ *   runs, then [App.commands] is applied. Its [Scene.elapsed] is set to zero before the action runs.
  *
  * A transition queued by an `onEnter` or `onExit` action applies in the same pass, after the
  * transitions already queued.
@@ -42,9 +44,9 @@ import klyph.entity.World
  * When an action throws, the transitions queued after the one it belongs to are dropped, the
  * commands it queued but did not get applied are dropped, and the exception propagates:
  * - If an `onEnter` action throws, its scene is removed from the stack again and the entities it
- *   created are destroyed, so the stack and the world are as they were just before it entered.
- *   What the action did to anything else, such as resources, audio or entities it changed or
- *   destroyed directly through the world, is not undone.
+ *   created are destroyed, so the stack and the world are as they were just before it entered, and
+ *   [Scene.elapsed] has the value it had then. What the action did to anything else, such as
+ *   resources, audio or entities it changed or destroyed directly through the world, is not undone.
  * - If an `onExit` action throws, its scene and every other scene that was leaving in the same
  *   transition are still removed from the stack and lose their entities, as if they had left
  *   normally. The scenes still below it that had yet to leave on [replace] or at the end of the app
@@ -112,7 +114,8 @@ public class SceneStack internal constructor() {
 
     /**
      * Queues removing the scene on top of the stack. The scene below it, if any, becomes the top
-     * again and its systems run from the next frame on; its `onEnter` action does not run again.
+     * again; its systems run and its [Scene.elapsed] goes on from the next frame on, and its
+     * `onEnter` action does not run again.
      *
      * @throws IllegalStateException if the stack is empty, or will be once the queued transitions
      *   apply.
@@ -142,6 +145,19 @@ public class SceneStack internal constructor() {
         val owners = owners
         for (k in 0 until scenes.size - 1) if (owners[k] == owner) return true
         return false
+    }
+
+    /**
+     * Adds [delta] to [Scene.elapsed] of the scene on top. The scenes below it stand still, and an
+     * empty stack has nothing to advance. The engine calls it once per frame with the frame's
+     * duration, never with a fixed step's, right after `Time.beginFrame` and before [Phase.INPUT].
+     *
+     * @throws IllegalArgumentException if [delta] is negative.
+     */
+    internal fun advanceClock(delta: Duration) {
+        require(!delta.isNegative()) { "Delta $delta is negative." }
+        if (scenes.isEmpty()) return
+        scenes[scenes.lastIndex].elapsed += delta
     }
 
     /**
@@ -236,9 +252,11 @@ public class SceneStack internal constructor() {
     }
 
     /**
-     * Pushes [scene] with a new owner id and runs its `onEnter` action as that owner. If the action
-     * or its commands throw, the commands still queued are dropped, the scene is removed and the
-     * entities it created are destroyed before the exception propagates.
+     * Pushes [scene] with a new owner id, starts its [Scene.elapsed] over and runs its `onEnter`
+     * action as that owner. Every entry goes through here, a push and a replace alike. If the action
+     * or its commands throw, the commands still queued are dropped, the scene is removed, the
+     * entities it created are destroyed and its [Scene.elapsed] gets its old value back before the
+     * exception propagates.
      */
     private fun enter(scene: Scene, host: SceneHost) {
         val world = host.world
@@ -246,6 +264,8 @@ public class SceneStack internal constructor() {
         if (scenes.size == owners.size) owners = owners.copyOf(owners.size * 2)
         owners[scenes.size] = owner
         scenes += scene
+        val previousElapsed = scene.elapsed
+        scene.elapsed = Duration.ZERO
         world.currentOwner = owner
         var entered = false
         try {
@@ -258,6 +278,7 @@ public class SceneStack internal constructor() {
                 host.commands.discard()
                 scenes.removeAt(scenes.lastIndex)
                 world.destroyOwnedBy(owner)
+                scene.elapsed = previousElapsed
             }
         }
     }

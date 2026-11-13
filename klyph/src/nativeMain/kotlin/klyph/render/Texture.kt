@@ -2,6 +2,7 @@ package klyph.render
 
 import klyph.platform.GpuDevice
 import klyph.platform.GpuTexture
+import klyph.platform.SamplerAddress
 import klyph.platform.SamplerFilter
 import klyph.platform.release
 
@@ -14,6 +15,12 @@ import klyph.platform.release
  * [filter] is fixed at creation and decides how the renderer samples the texture when a sprite
  * draws it larger or smaller than its texels: [SamplerFilter.LINEAR] blends neighboring texels,
  * [SamplerFilter.NEAREST] keeps pixel art and bitmap fonts crisp.
+ *
+ * [address] is fixed at creation too and decides what the renderer reads outside the texture.
+ * [SamplerAddress.CLAMP], the default, reads the nearest edge texel, so a sprite shows the
+ * texture once. [SamplerAddress.REPEAT] wraps around, which lets a [Sprite] with a tile size or
+ * [Canvas.drawTiled] repeat the whole texture across a larger area. A texture has one address, so
+ * an image used both clamped and tiled is loaded twice, as two textures.
  *
  * Has no sample because creating a texture needs a GPU device, which samples cannot open.
  *
@@ -37,10 +44,13 @@ public class Texture : AutoCloseable {
     /** How the renderer samples this texture when it draws it scaled. */
     public val filter: SamplerFilter
 
+    /** What the renderer reads outside this texture; only [SamplerAddress.REPEAT] lets a sprite tile it. */
+    public val address: SamplerAddress
+
     /**
      * Creates a texture that takes ownership of [handle], a texture of [width] by [height] texels
-     * created on [device], sampled with [filter]. The sizes are not checked against [handle], so
-     * they must be the ones it was created with.
+     * created on [device], sampled with [filter] and [address]. The sizes are not checked against
+     * [handle], so they must be the ones it was created with.
      *
      * @throws IllegalArgumentException if [width] or [height] is not positive.
      */
@@ -50,6 +60,7 @@ public class Texture : AutoCloseable {
         width: Int,
         height: Int,
         filter: SamplerFilter = SamplerFilter.LINEAR,
+        address: SamplerAddress = SamplerAddress.CLAMP,
     ) {
         require(width > 0) { "Texture width $width is not positive." }
         require(height > 0) { "Texture height $height is not positive." }
@@ -58,6 +69,7 @@ public class Texture : AutoCloseable {
         this.width = width
         this.height = height
         this.filter = filter
+        this.address = address
     }
 
     /**
@@ -65,7 +77,12 @@ public class Texture : AutoCloseable {
      * check region math and draw order without a device. Its internal GPU handle throws and [close]
      * does nothing. Tests only: [GpuTexture] has no public constructor, so no other code can make one.
      */
-    internal constructor(width: Int, height: Int, filter: SamplerFilter = SamplerFilter.LINEAR) {
+    internal constructor(
+        width: Int,
+        height: Int,
+        filter: SamplerFilter = SamplerFilter.LINEAR,
+        address: SamplerAddress = SamplerAddress.CLAMP,
+    ) {
         require(width > 0) { "Texture width $width is not positive." }
         require(height > 0) { "Texture height $height is not positive." }
         this.device = null
@@ -73,6 +90,7 @@ public class Texture : AutoCloseable {
         this.width = width
         this.height = height
         this.filter = filter
+        this.address = address
     }
 
     /**
@@ -100,10 +118,15 @@ public class Texture : AutoCloseable {
 
     /**
      * Returns `Texture(256x256)`: the size in texels, followed by the filter when it is not the
-     * default, as in `Texture(160x60, NEAREST)`.
+     * default and then the address when it is not the default, as in `Texture(160x60, NEAREST)`,
+     * `Texture(32x32, REPEAT)` and `Texture(32x32, NEAREST, REPEAT)`.
      */
-    override fun toString(): String =
-        if (filter == SamplerFilter.LINEAR) "Texture(${width}x$height)" else "Texture(${width}x$height, $filter)"
+    override fun toString(): String = buildString {
+        append("Texture(").append(width).append('x').append(height)
+        if (filter != SamplerFilter.LINEAR) append(", ").append(filter)
+        if (address != SamplerAddress.CLAMP) append(", ").append(address)
+        append(')')
+    }
 
     private companion object {
         /**

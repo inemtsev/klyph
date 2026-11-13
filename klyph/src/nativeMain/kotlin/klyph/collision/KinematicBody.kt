@@ -40,11 +40,10 @@ import kotlin.math.min
  * [Solid], has no `Transform` or [Collider], has a collider that is not a box, has a parent or has a
  * speed that is not finite makes the next move throw [IllegalStateException] naming the entity.
  *
- * Interpolated bodies are drawn blended between their last two steps, as with `Velocity`. Two
- * limits follow, both planned for 1.2 (issue #17): a body moved by setting its `Transform`, such
- * as a respawn, is drawn sliding from the old place to the new one during the next step, a dash
- * across the screen, unless the game hides it for that step; and the drawn, blended position is
- * not public, so a camera that follows the body blends the last two positions itself.
+ * Interpolated bodies are drawn blended between their last two steps, as with `Velocity`. A body
+ * moved by setting its `Transform`, such as a respawn, is drawn sliding from the old place to the
+ * new one during the next step unless [klyph.entity.snapInterpolation] follows the move, and a
+ * camera that follows the body reads the place it is drawn at from [klyph.entity.drawnPositionOf].
  *
  * [toString] gives
  * `KinematicBody(dx=0.0, dy=0.0, isOnFloor=true, isOnWall=false, wallNormalX=0.0, isOnCeiling=false)`,

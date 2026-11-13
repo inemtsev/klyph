@@ -42,7 +42,8 @@ public class Time internal constructor(fixedRate: Int) {
 
     /**
      * Returns the sum of the clamped frame durations since the first frame, including the current
-     * one.
+     * one. It runs whatever scene is on top. [klyph.scene.Scene.elapsed] is the clock of one scene:
+     * it stands still while another scene covers it.
      */
     public var elapsed: Duration = Duration.ZERO
         private set
@@ -55,7 +56,8 @@ public class Time internal constructor(fixedRate: Int) {
      * runs them, so every phase of a frame, [Phase.FIXED_UPDATE] included, reads the same value.
      * Rendering uses it to draw entities marked `Interpolated` between their last two fixed steps:
      * 0 shows the state before the last step, and values near 1 come close to the current state.
-     * It is 0 until the first frame's steps are counted.
+     * It is 0 until the first frame's steps are counted. `App.drawnPositionOf` applies it to find
+     * where an entity is drawn.
      */
     public var fixedStepAlpha: Float = 0f
         internal set(value) {

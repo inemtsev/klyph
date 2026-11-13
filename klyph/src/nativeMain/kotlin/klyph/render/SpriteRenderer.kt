@@ -5,7 +5,7 @@ import klyph.entity.PreviousTransform
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.entity.WorldTransform
-import klyph.entity.blendRotation
+import klyph.entity.drawnTransform
 import klyph.platform.BlendMode
 import klyph.platform.BufferUsage
 import klyph.platform.CommandBuffer
@@ -17,6 +17,7 @@ import klyph.platform.GraphicsPipeline
 import klyph.platform.MappedFloats
 import klyph.platform.RenderPass
 import klyph.platform.Sampler
+import klyph.platform.SamplerAddress
 import klyph.platform.SamplerFilter
 import klyph.platform.TextureFormat
 import klyph.platform.TransferBuffer
@@ -55,8 +56,9 @@ import klyph.render.generated.SpriteVertexShader
  * [DrawSpace.WORLD] record and are drawn with a projection in points. Entity sprites are always in
  * [DrawSpace.WORLD].
  *
- * Each texture is sampled with its own [Texture.filter]. The renderer holds one sampler per
- * [SamplerFilter] and binds the matching one with each run's texture.
+ * Each texture is sampled with its own [Texture.filter] and [Texture.address]. The renderer holds
+ * one sampler per combination of [SamplerFilter] and [SamplerAddress], four in all, and binds the
+ * matching one with each run's texture.
  *
  * At most [capacity] sprites are drawn per frame; extra sprites are skipped. [ensureCapacity]
  * grows it. The renderer starts with room for [initialCapacity] sprites.
@@ -83,8 +85,10 @@ internal class SpriteRenderer(
     private val fragmentShader: GpuShader = device.createShader(SpriteFragmentShader)
     private val pipeline: GraphicsPipeline =
         device.createGraphicsPipeline(vertexShader, fragmentShader, colorFormat, BlendMode.ALPHA)
-    private val linearSampler: Sampler = device.createSampler(SamplerFilter.LINEAR)
-    private val nearestSampler: Sampler = device.createSampler(SamplerFilter.NEAREST)
+    private val linearClampSampler: Sampler = device.createSampler(SamplerFilter.LINEAR, SamplerAddress.CLAMP)
+    private val nearestClampSampler: Sampler = device.createSampler(SamplerFilter.NEAREST, SamplerAddress.CLAMP)
+    private val linearRepeatSampler: Sampler = device.createSampler(SamplerFilter.LINEAR, SamplerAddress.REPEAT)
+    private val nearestRepeatSampler: Sampler = device.createSampler(SamplerFilter.NEAREST, SamplerAddress.REPEAT)
 
     /**
      * The vertex uniform block of `sprite.vert.hlsl`: the view-projection matrix in floats 0-15,
@@ -96,6 +100,9 @@ internal class SpriteRenderer(
 
     /** Unsorted records of a frame whose guessed order was wrong; sized on first use. */
     private var scratch = FloatArray(0)
+
+    /** The texture coordinates [tiledUv] computes for one sprite with a tile size, which [writeRecord] copies out. */
+    private val tiledCoordinates = FloatArray(4)
 
     /**
      * Whether the last frame's sprites were already in draw order. If so, this frame is guessed
@@ -153,7 +160,13 @@ internal class SpriteRenderer(
      * way round the circle. [fixedStepAlpha] is normally `Time.fixedStepAlpha`; the default of 1
      * draws the current transforms. It must be between 0 and 1.
      *
+     * A sprite with a [Sprite.tileWidth] or [Sprite.tileHeight] gets texture coordinates that run
+     * past 1, which its texture's repeating sampler wraps; see [Sprite].
+     *
      * @throws IllegalArgumentException if [fixedStepAlpha] is below 0 or above 1.
+     * @throws IllegalStateException if a sprite with a tile size has a texture that does not repeat
+     *   or a region that does not cover its whole texture, or a tile size is negative. The message
+     *   names the entity.
      */
     public fun extract(world: World, fixedStepAlpha: Float = 1f): Int = extract(world, fixedStepAlpha, null, null)
 
@@ -180,7 +193,9 @@ internal class SpriteRenderer(
             forEachSprite(world) { local, hierarchy, previous, sprite ->
                 if (count < limit) {
                     order.addWithoutPosition(sprite.layer, sprite.region.texture)
-                    writeRecord(count * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { index, value -> records.set(index, value) }
+                    writeRecord(
+                        world, tiledCoordinates, count * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite,
+                    ) { index, value -> records.set(index, value) }
                     count++
                 }
             }
@@ -194,7 +209,9 @@ internal class SpriteRenderer(
                     val position = order.place(sprite.layer, sprite.region.texture)
                     // Out of range only when the guess is wrong, and then every record is rewritten.
                     if (position < limit) {
-                        writeRecord(position * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { index, value -> records.set(index, value) }
+                        writeRecord(
+                            world, tiledCoordinates, position * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite,
+                        ) { index, value -> records.set(index, value) }
                     }
                     count++
                 }
@@ -271,7 +288,9 @@ internal class SpriteRenderer(
         forEachSprite(world) { local, hierarchy, previous, sprite ->
             if (index < count) {
                 order.add(sprite.layer, sprite.region.texture)
-                writeRecord(index * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { i, value -> scratch[i] = value }
+                writeRecord(world, tiledCoordinates, index * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { i, value ->
+                    scratch[i] = value
+                }
                 index++
             }
         }
@@ -373,74 +392,6 @@ internal class SpriteRenderer(
     @Suppress("UNCHECKED_CAST", "NOTHING_TO_INLINE")
     private inline fun <T> Array<Any?>.itemAt(slot: Int): T = this[slot] as T
 
-    /**
-     * Writes the record of [sprite] through [set], starting at float [base], placed at [hierarchy]
-     * if it is not `null`, [alpha] of the way from [previous] to [local] if [previous] is not
-     * `null`, and at [local] otherwise.
-     */
-    private inline fun writeRecord(
-        base: Int,
-        local: Transform,
-        hierarchy: WorldTransform?,
-        previous: PreviousTransform?,
-        alpha: Float,
-        sprite: Sprite,
-        set: (Int, Float) -> Unit,
-    ) {
-        val x: Float
-        val y: Float
-        val rotation: Float
-        val scaleX: Float
-        val scaleY: Float
-        if (hierarchy != null) {
-            x = hierarchy.x
-            y = hierarchy.y
-            rotation = hierarchy.rotation
-            scaleX = hierarchy.scaleX
-            scaleY = hierarchy.scaleY
-        } else if (previous != null && !previous.isFirstStep) {
-            x = previous.x + alpha * (local.x - previous.x)
-            y = previous.y + alpha * (local.y - previous.y)
-            rotation = blendRotation(previous.rotation, local.rotation, alpha)
-            scaleX = previous.scaleX + alpha * (local.scaleX - previous.scaleX)
-            scaleY = previous.scaleY + alpha * (local.scaleY - previous.scaleY)
-        } else {
-            x = local.x
-            y = local.y
-            rotation = local.rotation
-            scaleX = local.scaleX
-            scaleY = local.scaleY
-        }
-        val region = sprite.region
-        set(base, x)
-        set(base + 1, y)
-        set(base + 2, rotation)
-        set(base + 3, 0f)
-        set(base + 4, sprite.width * scaleX)
-        set(base + 5, sprite.height * scaleY)
-        set(base + 6, 0f)
-        set(base + 7, 0f)
-        if (sprite.isFlippedX) {
-            set(base + 8, region.u1)
-            set(base + 10, region.u0)
-        } else {
-            set(base + 8, region.u0)
-            set(base + 10, region.u1)
-        }
-        if (sprite.isFlippedY) {
-            set(base + 9, region.v1)
-            set(base + 11, region.v0)
-        } else {
-            set(base + 9, region.v0)
-            set(base + 11, region.v1)
-        }
-        val color = sprite.color
-        set(base + 12, color.red)
-        set(base + 13, color.green)
-        set(base + 14, color.blue)
-        set(base + 15, color.alpha)
-    }
-
     /** Records the copy of the extracted records into GPU memory. Call before any render pass. */
     public fun upload(commands: CommandBuffer) {
         if (spriteCount == 0) return
@@ -451,7 +402,8 @@ internal class SpriteRenderer(
 
     /**
      * Draws the uploaded records into the current [pass]: one draw call per run of sprites that
-     * share a texture, each with that texture bound with the sampler for its [Texture.filter].
+     * share a texture, each with that texture bound with the sampler for its [Texture.filter] and
+     * [Texture.address].
      * The [DrawSpace.WORLD] runs go through [camera], then the [DrawSpace.SCREEN] runs through a
      * projection that maps [screenWidth] by [screenHeight] points onto the target, origin
      * top-left. Both projections end in clip space, so the pass's viewport, the whole target in
@@ -486,18 +438,25 @@ internal class SpriteRenderer(
             uniforms[FIRST_SPRITE_FLOAT] = Float.fromBits(order.runFirst(run))
             commands.pushVertexUniforms(0, uniforms)
             val texture = order.runTexture(run)
-            val sampler = if (texture.filter == SamplerFilter.NEAREST) nearestSampler else linearSampler
-            pass.bindFragmentSampler(0, texture.handle, sampler)
+            pass.bindFragmentSampler(0, texture.handle, samplerFor(texture))
             pass.draw(order.runSize(run) * 6)
         }
+    }
+
+    /** Returns the sampler for [texture]'s [Texture.filter] and [Texture.address]. */
+    private fun samplerFor(texture: Texture): Sampler = when (texture.address) {
+        SamplerAddress.CLAMP -> if (texture.filter == SamplerFilter.NEAREST) nearestClampSampler else linearClampSampler
+        SamplerAddress.REPEAT -> if (texture.filter == SamplerFilter.NEAREST) nearestRepeatSampler else linearRepeatSampler
     }
 
     override fun close() {
         device.release(pipeline)
         device.release(vertexShader)
         device.release(fragmentShader)
-        device.release(linearSampler)
-        device.release(nearestSampler)
+        device.release(linearClampSampler)
+        device.release(nearestClampSampler)
+        device.release(linearRepeatSampler)
+        device.release(nearestRepeatSampler)
         device.release(staging)
         device.release(storage)
     }
@@ -515,5 +474,60 @@ internal class SpriteRenderer(
 
         /** Index of the run's first sprite in the vertex uniform block. */
         private const val FIRST_SPRITE_FLOAT = 16
+    }
+}
+
+/**
+ * Writes the record of [sprite], a sprite of [world], through [set], starting at float [base], placed
+ * where [drawnTransform] puts an entity with these [local], [hierarchy] and [previous] transforms at
+ * [alpha]. A sprite with a tile size takes its texture coordinates from [tiledUv] through the
+ * scratch [tiledCoordinates].
+ */
+internal inline fun writeRecord(
+    world: World,
+    tiledCoordinates: FloatArray,
+    base: Int,
+    local: Transform,
+    hierarchy: WorldTransform?,
+    previous: PreviousTransform?,
+    alpha: Float,
+    sprite: Sprite,
+    set: (Int, Float) -> Unit,
+) {
+    drawnTransform(local, hierarchy, previous, alpha) { x, y, rotation, scaleX, scaleY ->
+        val region = sprite.region
+        set(base, x)
+        set(base + 1, y)
+        set(base + 2, rotation)
+        set(base + 3, 0f)
+        set(base + 4, sprite.width * scaleX)
+        set(base + 5, sprite.height * scaleY)
+        set(base + 6, 0f)
+        set(base + 7, 0f)
+        if (sprite.tileWidth == 0f && sprite.tileHeight == 0f) {
+            if (sprite.isFlippedX) {
+                set(base + 8, region.u1)
+                set(base + 10, region.u0)
+            } else {
+                set(base + 8, region.u0)
+                set(base + 10, region.u1)
+            }
+            if (sprite.isFlippedY) {
+                set(base + 9, region.v1)
+                set(base + 11, region.v0)
+            } else {
+                set(base + 9, region.v0)
+                set(base + 11, region.v1)
+            }
+        } else {
+            // A sprite with a tile size is rare, so its coordinates come from a call and the path above stays as it was.
+            sprite.tiledUv(world, tiledCoordinates)
+            for (k in 0 until 4) set(base + 8 + k, tiledCoordinates[k])
+        }
+        val color = sprite.color
+        set(base + 12, color.red)
+        set(base + 13, color.green)
+        set(base + 14, color.blue)
+        set(base + 15, color.alpha)
     }
 }

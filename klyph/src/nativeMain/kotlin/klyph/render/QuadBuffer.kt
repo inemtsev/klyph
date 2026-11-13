@@ -98,6 +98,35 @@ internal class QuadBuffer(initialCapacity: Int = 64) {
     }
 
     /**
+     * Appends a quad like [addAt] that repeats the texture of [region] instead of showing the
+     * region once: its texture coordinates run from the region's start up to `width / tileWidth`
+     * across and `height / tileHeight` down, which a repeating sampler wraps. The caller checks
+     * that [region] is the whole of its texture, with a repeating address, and that both tile
+     * sizes are positive.
+     */
+    fun addTiledAt(
+        region: TextureRegion,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        tileWidth: Float,
+        tileHeight: Float,
+        rotation: Float,
+        originX: Float,
+        originY: Float,
+        color: Color,
+        layer: Int,
+        space: DrawSpace,
+    ) {
+        addAt(region, x, y, width, height, rotation, originX, originY, color, layer, space)
+        // The quad just added has the region's own far corner; replace it with the wrapped one.
+        val base = (count - 1) * SPRITE_RECORD_FLOATS
+        records[base + 10] = region.u0 + width / tileWidth
+        records[base + 11] = region.v0 + height / tileHeight
+    }
+
+    /**
      * Appends [amount] quads of [texture] in [layer] of [space] and returns the index of the first.
      * Their records are left as they were; the caller writes all [SPRITE_RECORD_FLOATS] floats of
      * each into [records], read after this call because growing replaces the array.

@@ -233,4 +233,81 @@ class CameraTest {
         camera.lookAt(-5f, -5f)
         assertNear(Vec2(-5f, -5f), Vec2(camera.x, camera.y))
     }
+
+    @Test
+    fun offsetIsZeroByDefault() {
+        val camera = Camera()
+        assertEquals(0f, camera.offsetX)
+        assertEquals(0f, camera.offsetY)
+    }
+
+    @Test
+    fun offsetShiftsTheViewAfterTheBoundsClampAndIsNeverClamped() {
+        val camera = Camera(viewportWidth = 800f, viewportHeight = 600f)
+        camera.bounds = Rect(0f, 0f, 2000f, 1000f)
+        camera.lookAt(0f, 0f)
+        camera.offsetX = -50f
+        camera.offsetY = 30f
+        camera.clampToBounds()
+
+        // The clamp leaves the camera at the edge of the bounds, and the offset as it was.
+        assertNear(Vec2(400f, 300f), Vec2(camera.x, camera.y))
+        assertEquals(-50f, camera.offsetX)
+        assertEquals(30f, camera.offsetY)
+        // The view is centred on (350, 330), so its left edge is 50 units past the bounds.
+        assertNear(Vec2(450f, 270f), camera.worldToScreen(Vec2(400f, 300f)))
+        assertNear(Vec2(-50f, 330f), camera.screenToWorld(Vec2(0f, 300f)))
+    }
+
+    @Test
+    fun lookAtAndFollowNeverReadOrChangeTheOffset() {
+        val camera = Camera(viewportWidth = 800f, viewportHeight = 600f)
+        camera.offsetX = 25f
+        camera.offsetY = -25f
+
+        camera.lookAt(100f, 200f)
+        assertEquals(Vec2(100f, 200f), Vec2(camera.x, camera.y))
+        repeat(100) { camera.follow(Vec2(300f, 400f), smoothing = 5f, delta = 100.milliseconds) }
+        assertNear(Vec2(300f, 400f), Vec2(camera.x, camera.y))
+        assertEquals(25f, camera.offsetX)
+        assertEquals(-25f, camera.offsetY)
+    }
+
+    @Test
+    fun aCameraWithAnOffsetSeesWhatAMovedCameraSees() {
+        val shaken = Camera(x = 100f, y = 50f, zoom = 2f, rotation = 0.7f, viewportWidth = 800f, viewportHeight = 600f)
+        shaken.offsetX = 10f
+        shaken.offsetY = -5f
+        val moved = Camera(x = 110f, y = 45f, zoom = 2f, rotation = 0.7f, viewportWidth = 800f, viewportHeight = 600f)
+        val shakenMatrix = FloatArray(16)
+        val movedMatrix = FloatArray(16)
+        shaken.writeProjection(shakenMatrix)
+        moved.writeProjection(movedMatrix)
+
+        for (index in 0 until 16) assertEquals(movedMatrix[index], shakenMatrix[index], TOLERANCE, "matrix[$index]")
+        for (world in listOf(Vec2(0f, 0f), Vec2(123f, -456f), Vec2(110f, 45f))) {
+            assertNear(moved.worldToScreen(world), shaken.worldToScreen(world))
+            assertNear(shaken.worldToScreen(world), throughMatrix(shakenMatrix, world, 800f, 600f))
+        }
+        for (screen in listOf(Vec2(0f, 0f), Vec2(800f, 600f), Vec2(17f, 321f))) {
+            assertNear(moved.screenToWorld(screen), shaken.screenToWorld(screen))
+            assertNear(screen, shaken.worldToScreen(shaken.screenToWorld(screen)))
+        }
+    }
+
+    @Test
+    fun toStringShowsTheOffsetOnlyWhileItIsNotZero() {
+        val camera = Camera(x = 1f, y = 2f, zoom = 3f, rotation = 0.5f, viewportWidth = 800f, viewportHeight = 600f)
+        val plain = "Camera(x=1.0, y=2.0, zoom=3.0, rotation=0.5, viewport=800.0x600.0, bounds=null"
+        assertEquals("$plain)", camera.toString())
+
+        camera.offsetX = 6f
+        assertEquals("$plain, offsetX=6.0, offsetY=0.0)", camera.toString())
+        camera.offsetY = -4f
+        assertEquals("$plain, offsetX=6.0, offsetY=-4.0)", camera.toString())
+
+        camera.offsetX = 0f
+        camera.offsetY = 0f
+        assertEquals("$plain)", camera.toString())
+    }
 }

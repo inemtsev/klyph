@@ -128,7 +128,24 @@ public enum class SamplerFilter(internal val raw: SDL_GPUFilter) {
 }
 
 /**
- * Sampling state for textures: filtering and clamped addressing.
+ * How a sampler reads a texture at texture coordinates outside the range from 0 to 1, where 0 is
+ * the texture's left or top edge and 1 its right or bottom edge, on both axes. A sprite meets such
+ * coordinates when it repeats one texture across an area larger than the texture.
+ */
+public enum class SamplerAddress(internal val raw: SDL_GPUSamplerAddressMode) {
+    /** Reads the texel at the nearest edge, so the texture never repeats. Right for images and atlases. */
+    CLAMP(SDL_GPUSamplerAddressMode.SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE),
+
+    /**
+     * Wraps around, so a coordinate of 2.25 reads where 0.25 does and the texture tiles. With
+     * [SamplerFilter.LINEAR] the texels at one edge blend with those at the opposite edge, which
+     * keeps repeats seamless and tints the border of a texture that is drawn only once.
+     */
+    REPEAT(SDL_GPUSamplerAddressMode.SDL_GPU_SAMPLERADDRESSMODE_REPEAT),
+}
+
+/**
+ * Sampling state for textures: filtering and addressing.
  */
 @KlyphPlatformApi
 public value class Sampler internal constructor(internal val handle: CPointer<SDL_GPUSampler>) {
@@ -354,19 +371,19 @@ public fun GpuDevice.release(texture: GpuTexture) {
 }
 
 /**
- * Creates a sampler using [filter] for both minification and magnification, with coordinates
- * clamped to the texture edge.
+ * Creates a sampler using [filter] for both minification and magnification, with texture
+ * coordinates outside the texture handled as [address] says, on both axes of a 2D texture.
  *
  * @throws SdlException if the sampler cannot be created.
  */
 @KlyphPlatformApi
-public fun GpuDevice.createSampler(filter: SamplerFilter): Sampler = memScoped {
+public fun GpuDevice.createSampler(filter: SamplerFilter, address: SamplerAddress = SamplerAddress.CLAMP): Sampler = memScoped {
     val info = alloc<SDL_GPUSamplerCreateInfo>().zeroed()
     info.min_filter = filter.raw
     info.mag_filter = filter.raw
     info.mipmap_mode = SDL_GPUSamplerMipmapMode.SDL_GPU_SAMPLERMIPMAPMODE_NEAREST
-    info.address_mode_u = SDL_GPUSamplerAddressMode.SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
-    info.address_mode_v = SDL_GPUSamplerAddressMode.SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
+    info.address_mode_u = address.raw
+    info.address_mode_v = address.raw
     info.address_mode_w = SDL_GPUSamplerAddressMode.SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
     Sampler(SDL_CreateGPUSampler(handle, info.ptr) ?: sdlFailure("SDL_CreateGPUSampler"))
 }

@@ -5,6 +5,9 @@ import klyph.app.System
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class SceneTest {
     @Test
@@ -60,5 +63,31 @@ class SceneTest {
     fun startupAndShutdownSystemsAreRejected() {
         assertFailsWith<IllegalArgumentException> { buildScene("play") { addSystem(Phase.STARTUP) {} } }
         assertFailsWith<IllegalArgumentException> { buildScene("play") { addSystem(Phase.SHUTDOWN) {} } }
+    }
+
+    @Test
+    fun aNewSceneHasRunForNoTime() {
+        val scene = buildScene("play") {}
+        assertEquals(Duration.ZERO, scene.elapsed)
+        assertEquals(0f, scene.elapsedSeconds)
+    }
+
+    @Test
+    fun elapsedSecondsIsElapsedInSeconds() {
+        val scene = buildScene("play") {}
+        scene.elapsed = 1500.milliseconds
+        assertEquals(1.5f, scene.elapsedSeconds)
+        scene.elapsed = 90.seconds
+        assertEquals(90f, scene.elapsedSeconds)
+    }
+
+    @Test
+    fun toStringAddsElapsedOnceItIsNotZero() {
+        val scene = buildScene("play") { addSystem(Phase.UPDATE) {} }
+        assertEquals("Scene(name=play, systems=1)", scene.toString())
+        scene.elapsed = 12.5.seconds
+        assertEquals("Scene(name=play, systems=1, elapsed=12.5s)", scene.toString())
+        scene.elapsed = Duration.ZERO
+        assertEquals("Scene(name=play, systems=1)", scene.toString())
     }
 }

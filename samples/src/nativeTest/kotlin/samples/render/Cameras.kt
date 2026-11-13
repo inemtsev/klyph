@@ -1,5 +1,9 @@
 package samples.render
 
+import klyph.entity.Interpolated
+import klyph.entity.Transform
+import klyph.entity.World
+import klyph.entity.drawnPositionOf
 import klyph.math.Rect
 import klyph.math.Vec2
 import klyph.render.Camera
@@ -51,6 +55,15 @@ class Cameras {
         // Called every frame, the camera eases after the player.
         repeat(60) { camera.follow(player, smoothing = 5f, delta = 16.milliseconds) }
         assertPrints(camera.x > 99f && camera.x < 100f, "true")
+
+        // An Interpolated entity is drawn between its last two fixed steps, so follow the place it is
+        // drawn at, not its Transform. In an app, app.drawnPositionOf(hero) passes the frame's own alpha.
+        val world = World()
+        val hero = world.create()
+        world.add(hero, Transform, Transform(x = 300f, y = 40f))
+        world.add(hero, Interpolated, Interpolated)
+        repeat(120) { camera.follow(world.drawnPositionOf(hero, alpha = 0.5f), smoothing = 5f, delta = 16.milliseconds) }
+        assertPrints(camera.x > 299f && camera.x < 300f, "true")
     }
 
     @Sample
@@ -63,5 +76,27 @@ class Cameras {
         camera.x = 5000f
         camera.clampToBounds()
         assertPrints(camera.x, "1600.0")
+    }
+
+    @Sample
+    fun offset() {
+        val camera = Camera(viewportWidth = 800f, viewportHeight = 600f)
+        camera.bounds = Rect(x = 0f, y = 0f, width = 2000f, height = 1000f)
+        camera.lookAt(0f, 0f)
+        assertPrints(camera.worldToScreen(Vec2(400f, 300f)), "Vec2(400.0, 300.0)")
+
+        // One frame of a shake: the picture moves, the camera does not.
+        camera.offsetX = -12f
+        camera.offsetY = 5f
+        assertPrints(camera.worldToScreen(Vec2(400f, 300f)), "Vec2(412.0, 295.0)")
+        assertPrints(camera.x, "400.0")
+
+        // Nothing clamps the offset, so the left edge of the screen is now 12 units past the bounds.
+        assertPrints(camera.screenToWorld(Vec2(0f, 300f)), "Vec2(-12.0, 305.0)")
+
+        // When the shake ends, the offset goes back to 0.
+        camera.offsetX = 0f
+        camera.offsetY = 0f
+        assertPrints(camera.worldToScreen(Vec2(400f, 300f)), "Vec2(400.0, 300.0)")
     }
 }

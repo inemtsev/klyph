@@ -10,6 +10,7 @@ import klyph.platform.Files
 import klyph.platform.GpuDevice
 import klyph.platform.Image
 import klyph.platform.ImageException
+import klyph.platform.SamplerAddress
 import klyph.platform.SamplerFilter
 import klyph.platform.createTexture
 import klyph.render.SpriteSheet
@@ -29,9 +30,11 @@ import klyph.text.parseBmFont
  * the `assets/` directory next to the executable and is set through [AppConfig.assetRoot]. A relative [root] resolves against [Files.basePath].
  *
  * Textures, fonts, sounds and music tracks loaded from a file are cached by resolved path, so
- * loading the same file twice returns the same object. Textures and fonts are cached by path and
- * [SamplerFilter], so a file loaded with both filters is uploaded twice, as two textures. [runApp] creates the one instance, available as [App.assets], and closes it
- * after every [Phase.SHUTDOWN] system has run. Do not close the textures it returns yourself.
+ * loading the same file twice returns the same object. Textures are cached by path, [SamplerFilter]
+ * and [SamplerAddress], and fonts by path and filter, so a file loaded with both filters, or both
+ * clamped and repeating, is uploaded twice, as two textures. [runApp] creates the one instance,
+ * available as [App.assets], and closes it after every [Phase.SHUTDOWN] system has run. Do not
+ * close the textures it returns yourself.
  *
  * [toString] gives the root and the number of textures, fonts, sounds and music tracks held, for
  * example `Assets(root=/games/shooter/assets/, textures=3, fonts=1, sounds=4, music=1)`. The
@@ -125,31 +128,40 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
     }
 
     /**
-     * Returns the texture of the PNG or JPEG file at [path], sampled with [filter], loading and
-     * uploading it on the first call for that file and filter and returning the same [Texture] on
-     * every later call with both. Use [SamplerFilter.NEAREST] for pixel art.
+     * Returns the texture of the PNG or JPEG file at [path], sampled with [filter] and [address],
+     * loading and uploading it on the first call for that file, filter and address and returning
+     * the same [Texture] on every later call with all three. Use [SamplerFilter.NEAREST] for pixel
+     * art, and [SamplerAddress.REPEAT] for a texture that a `Sprite` with a tile size or
+     * `Canvas.drawTiled` repeats across a larger area.
+     *
+     * A texture has one address, fixed when it loads, so a file used both clamped and repeating is
+     * loaded twice, as two textures, and the cache keeps both.
      *
      * @throws FileException if the file does not exist or cannot be read.
      * @throws ImageException if the file is not a PNG or JPEG image, or is corrupt.
      * @throws klyph.platform.SdlException if the GPU texture cannot be created.
      * @throws IllegalStateException if these assets are closed.
      */
-    public fun texture(path: String, filter: SamplerFilter = SamplerFilter.LINEAR): Texture {
+    public fun texture(
+        path: String,
+        filter: SamplerFilter = SamplerFilter.LINEAR,
+        address: SamplerAddress = SamplerAddress.CLAMP,
+    ): Texture {
         checkOpen()
-        return textureAt(resolve(path), filter)
+        return textureAt(resolve(path), filter, address)
     }
 
-    /** Returns the texture of the file at the already [resolved] path with [filter], loading it on first use. */
-    private fun textureAt(resolved: String, filter: SamplerFilter): Texture {
-        cached.getOrNull(resolved, filter)?.let { return it }
-        val texture = upload(decodeFile(resolved), filter)
-        cached.put(resolved, filter, texture)
+    /** Returns the texture of the file at the already [resolved] path with [filter] and [address], loading it on first use. */
+    private fun textureAt(resolved: String, filter: SamplerFilter, address: SamplerAddress): Texture {
+        cached.getOrNull(resolved, filter, address)?.let { return it }
+        val texture = upload(decodeFile(resolved), filter, address)
+        cached.put(resolved, filter, address, texture)
         return texture
     }
 
     /**
-     * Uploads [image], such as one drawn in code, into a new texture sampled with [filter], and
-     * returns it.
+     * Uploads [image], such as one drawn in code, into a new texture sampled with [filter] and
+     * [address], and returns it.
      *
      * Every call uploads a new texture; nothing is cached, so call it once per image, at startup,
      * not every frame. The caller owns the texture: it may close it whenever it is done with it,
@@ -160,34 +172,42 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
      * @throws klyph.platform.SdlException if the GPU texture cannot be created.
      * @throws IllegalStateException if these assets are closed.
      */
-    public fun createTexture(image: Image, filter: SamplerFilter = SamplerFilter.LINEAR): Texture {
+    public fun createTexture(
+        image: Image,
+        filter: SamplerFilter = SamplerFilter.LINEAR,
+        address: SamplerAddress = SamplerAddress.CLAMP,
+    ): Texture {
         checkOpen()
-        val texture = upload(image, filter)
+        val texture = upload(image, filter, address)
         uploaded.removeAll { it.isClosed }
         uploaded.add(texture)
         return texture
     }
 
     /**
-     * Returns the texture of the PNG or JPEG file at [path] sampled with [filter] as [texture]
-     * does, or `null` if the
+     * Returns the texture of the PNG or JPEG file at [path] sampled with [filter] and [address] as
+     * [texture] does, or `null` if the
      * file does not exist, cannot be read, or is not a decodable image. A failed load is not
      * cached, so a later call tries the file again.
      *
      * @throws klyph.platform.SdlException if the GPU texture cannot be created.
      * @throws IllegalStateException if these assets are closed.
      */
-    public fun textureOrNull(path: String, filter: SamplerFilter = SamplerFilter.LINEAR): Texture? {
+    public fun textureOrNull(
+        path: String,
+        filter: SamplerFilter = SamplerFilter.LINEAR,
+        address: SamplerAddress = SamplerAddress.CLAMP,
+    ): Texture? {
         checkOpen()
-        return textureOrNullAt(resolve(path), filter)
+        return textureOrNullAt(resolve(path), filter, address)
     }
 
-    /** Returns the texture of the file at the already [resolved] path with [filter], or `null` if it cannot be loaded. */
-    private fun textureOrNullAt(resolved: String, filter: SamplerFilter): Texture? {
-        cached.getOrNull(resolved, filter)?.let { return it }
+    /** Returns the texture of the file at the already [resolved] path with [filter] and [address], or `null` if it cannot be loaded. */
+    private fun textureOrNullAt(resolved: String, filter: SamplerFilter, address: SamplerAddress): Texture? {
+        cached.getOrNull(resolved, filter, address)?.let { return it }
         val image = decodeFileOrNull(resolved) ?: return null
-        val texture = upload(image, filter)
-        cached.put(resolved, filter, texture)
+        val texture = upload(image, filter, address)
+        cached.put(resolved, filter, address, texture)
         return texture
     }
 
@@ -228,8 +248,8 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
      * drawn at whole scales.
      *
      * The file's `page` lines name the PNG or JPEG pages relative to the folder the font file is
-     * in; they load as [texture] does with [filter], so a page shared with other code is uploaded
-     * once per filter. The file
+     * in; they load as [texture] does with [filter] and [SamplerAddress.CLAMP], so a page shared
+     * with other code is uploaded once per filter. The file
      * is checked fully before any page loads. BMFont's binary format is not supported; export
      * the text format from the generator instead.
      *
@@ -246,7 +266,7 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
         checkOpen()
         val resolved = resolve(path)
         cachedFonts.getOrNull(resolved, filter)?.let { return it }
-        val font = parseFont(Files.readBytes(resolved), resolved) { page -> textureAt(page, filter) }
+        val font = parseFont(Files.readBytes(resolved), resolved) { page -> textureAt(page, filter, SamplerAddress.CLAMP) }
         cachedFonts.put(resolved, filter, font)
         return font
     }
@@ -270,7 +290,7 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
         val bytes = Files.readBytesOrNull(resolved) ?: return null
         val font = try {
             parseFont(bytes, resolved) { page ->
-                textureOrNullAt(page, filter) ?: throw FontException("Font page '$page' could not be loaded.")
+                textureOrNullAt(page, filter, SamplerAddress.CLAMP) ?: throw FontException("Font page '$page' could not be loaded.")
             }
         } catch (e: FontException) {
             return null
@@ -422,9 +442,9 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
         return Image.decodeOrNull(bytes)
     }
 
-    private fun upload(image: Image, filter: SamplerFilter): Texture {
+    private fun upload(image: Image, filter: SamplerFilter, address: SamplerAddress): Texture {
         val handle = device.createTexture(image)
-        return Texture(device, handle, image.width, image.height, filter)
+        return Texture(device, handle, image.width, image.height, filter, address)
     }
 
     /** Returns [path] under [root], or [path] itself if it is absolute. */
@@ -481,8 +501,8 @@ internal class DiscCache(private val upload: (Image) -> Texture) {
 }
 
 /**
- * Objects loaded from files, keyed by resolved path and [SamplerFilter], so one file loaded with
- * both filters is held as two objects.
+ * Objects loaded from files, keyed by resolved path, [SamplerFilter] and [SamplerAddress], so one
+ * file loaded with both filters, or with both address modes, is held as separate objects.
  */
 internal class FileCache<T : Any> {
     private val items = HashMap<Key, T>()
@@ -493,12 +513,15 @@ internal class FileCache<T : Any> {
     /** The objects held, in no particular order. */
     val values: Collection<T> get() = items.values
 
-    /** Returns the object loaded from [path] with [filter], or `null` if there is none. */
-    fun getOrNull(path: String, filter: SamplerFilter): T? = items[Key(path, filter)]
+    /** Returns the object loaded from [path] with [filter] and [address], or `null` if there is none. */
+    fun getOrNull(path: String, filter: SamplerFilter, address: SamplerAddress = SamplerAddress.CLAMP): T? =
+        items[Key(path, filter, address)]
 
-    /** Holds [value] as the object loaded from [path] with [filter], replacing any earlier one. */
-    fun put(path: String, filter: SamplerFilter, value: T) {
-        items[Key(path, filter)] = value
+    /** Holds [value] as the object loaded from [path] with [filter] and [address], replacing any earlier one. */
+    fun put(path: String, filter: SamplerFilter, value: T) = put(path, filter, SamplerAddress.CLAMP, value)
+
+    fun put(path: String, filter: SamplerFilter, address: SamplerAddress, value: T) {
+        items[Key(path, filter, address)] = value
     }
 
     /** Forgets every object held. */
@@ -508,9 +531,10 @@ internal class FileCache<T : Any> {
 
     override fun toString(): String = "FileCache(size=$size)"
 
-    private class Key(val path: String, val filter: SamplerFilter) {
-        override fun equals(other: Any?): Boolean = other is Key && other.path == path && other.filter == filter
+    private class Key(val path: String, val filter: SamplerFilter, val address: SamplerAddress) {
+        override fun equals(other: Any?): Boolean =
+            other is Key && other.path == path && other.filter == filter && other.address == address
 
-        override fun hashCode(): Int = 31 * path.hashCode() + filter.hashCode()
+        override fun hashCode(): Int = 31 * (31 * path.hashCode() + filter.hashCode()) + address.hashCode()
     }
 }

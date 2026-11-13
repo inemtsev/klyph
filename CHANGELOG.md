@@ -6,6 +6,15 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `Sprite.tileWidth` and `tileHeight`, and `Canvas.drawTiled`: repeat a texture across a larger area instead of stretching it.
+- `SamplerAddress` (`CLAMP`, `REPEAT`), `Texture.address` and an `address` argument on `Assets.texture`, `textureOrNull` and `createTexture`: load a texture that repeats, which tiling needs.
+- `Camera.offsetX` and `offsetY`: shift the view after `follow` and the bounds clamp, such as for a screen shake.
+- `drawnPositionOf` on `World` and `App`: where an `Interpolated` entity is drawn this frame, for a camera to follow.
+- `World.snapInterpolation(entity)`: draws a teleported or respawned `Interpolated` entity at its new place, with no sweep from the old one.
+- `Scene.elapsed` and `elapsedSeconds`: how long a scene has been on top, standing still while another scene covers it.
+
 ## [1.1.0] - 2026-11-10
 
 Movement, jumps and floors: the engine moves your entities and stops them at walls and floors,

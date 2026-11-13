@@ -31,7 +31,8 @@ keyboard, mouse and gamepad state updated at the start of INPUT, `app.commands`,
 queue applied after every system, `app.resources`, shared state keyed by class, `app.audio`,
 sound effects and music, with sounds and tracks loaded through `app.assets.sound` and
 `app.assets.musicTrack`, `app.scenes`, a scene stack whose top scene's systems run and whose scenes own
-the entities they spawn, `app.collisions`, overlap detection after FIXED_UPDATE that publishes
+the entities they spawn and each keep a clock, `Scene.elapsed` (`elapsedSeconds` as a `Float`), that
+counts only the time the scene is on top, `app.collisions`, overlap detection after FIXED_UPDATE that publishes
 `Overlap` events and answers shape queries (overlap only for ordinary colliders), plus solid
 response: a `Solid` next to a box `Collider` is a wall or floor (`Passable.FROM_BELOW` a one-way
 ledge) kept in a second grid inside `Collisions` (`SolidGrid`, rescanned at every body move and
@@ -48,7 +49,13 @@ jump buffers stay game code), `app.canvas`, immediate quads and text in `WORLD` 
 `SCREEN` space queued during RENDER, and `app.overlay`, the debug overlay toggled with F3; the
 `Text` and `ParticleEmitter` components draw with the sprites, fonts load through
 `app.assets.font` or come built in as `app.assets.defaultFont`, a texture's `SamplerFilter`,
-chosen when it loads, picks linear or nearest sampling, and `app.window` has `cursor` (`CursorMode`,
+chosen when it loads, picks linear or nearest sampling, its `SamplerAddress`, chosen the same way, picks
+clamped (the default) or repeating addressing, `Assets` caches a texture by path, filter and address,
+and a `Sprite` with `tileWidth` or `tileHeight` (world units before the entity's scale, 0 stretches
+that axis) or `Canvas.drawTiled` repeats a texture loaded with `address = SamplerAddress.REPEAT`
+across a larger area, the region having to cover the whole texture (a `check` naming the entity when
+the sprite is drawn, a `require` in `drawTiled`), with the sprite renderer holding one sampler for
+each filter and address pair, and `app.window` has `cursor` (`CursorMode`,
 hidden only while over the window), `setCursor(image, hotspotX, hotspotY)`, `mode` (`WindowMode`,
 fullscreen is borderless desktop fullscreen; `AppConfig.windowMode` and `AppConfig.cursor` set
 both at startup) and `capture(path)`, which reads the next drawn frame back and writes it as a PNG
@@ -63,7 +70,14 @@ a `ParticleEmitter` with `whenEmpty = EmitterEnd.DESTROY` destroys its entity on
 left, `ParticleEmitter.burst(region, count, …)` makes such a one-shot emitter and
 `Commands.spawnBurst(x, y, emitter)` spawns the entity carrying it, and
 `space = EmitterSpace.LOCAL` turns its direction with the entity; `Camera.follow` eases
-toward a point and `Camera.bounds` keeps the view inside a `Rect`; `TextShadow` draws under text
+toward a point, `Camera.bounds` keeps the view inside a `Rect`, and `Camera.offsetX`/`offsetY` shift
+the view on top of both for a shake (`worldToScreen`, `screenToWorld` and the projection add them;
+`follow`, `lookAt` and `clampToBounds` never read or change them, so the view can show past the
+bounds by the offset); `app.drawnPositionOf(entity)` (`World.drawnPositionOf(entity, alpha)`) returns
+where the renderer draws an entity this frame, through the internal `drawnTransform` that the sprite
+pass and the text pass share, so a camera that follows an `Interpolated` entity moves with its
+picture, and `World.snapInterpolation(entity)`, called after moving the `Transform`, copies it over
+the saved previous transform so a respawn is drawn at the new place at once; `TextShadow` draws under text
 through `Text.shadow` or `drawText(shadow = …)`; `app.assets.whitePixel` and `app.assets.disc(d)`
 are ready-made regions; `AppConfig.fromEnvironment()` reads the `KLYPH_*` limits and switches,
 including `KLYPH_SCREENSHOT` and `KLYPH_FULLSCREEN`;
@@ -224,7 +238,8 @@ to `mavenLocal`.
 ## Frame order
 
 `runApp` runs STARTUP once and applies the scene transitions queued so far. Each frame then runs:
-drop last frame's events, refresh audio, translate platform events into `app.input` and
+drop last frame's events, advance the top scene's `Scene.elapsed` by the frame's clamped delta
+(`SceneStack.advanceClock`, never by a fixed step), refresh audio, translate platform events into `app.input` and
 `app.events`, toggle the overlay, INPUT, FIXED_UPDATE zero or more times (interpolated transforms
 recorded before each step, then every `Velocity` applied to its `Transform` after the step's
 systems and their commands, by the fixed step length, then every `KinematicBody` moved against the
@@ -239,9 +254,11 @@ it, from the `StepClock` the loop advances through `Input.beginFixedStep`, so th
 press sees it once, even when the frame of the press ran no step. Commands apply after every system,
 after each of the lifetime/fade, particle and animation steps (so what they destroy is gone before
 the next step) and after the second propagation. Scene systems run after the App-level systems of
-the same phase. A pushed scene freezes the one below: its systems do not run, its velocities, kinematic bodies, lifetimes, fades,
+the same phase. A pushed scene freezes the one below: its systems do not run, its `Scene.elapsed` stops, its velocities, kinematic bodies, lifetimes, fades,
 particle emitters, sprite animations and colliders stand still (its solids stop nothing) (the engine steps skip them and
-collision detection leaves them out), its entities keep rendering. The engine steps ask the internal
+collision detection leaves them out), its entities keep rendering. `SceneStack.enter` sets `elapsed`
+to zero for every push and replace and restores the old value if `onEnter` throws; a scene that left
+keeps its last value until it enters again. The engine steps ask the internal
 `SceneStack.isFrozen(owner)` for an entity's owner id, and entities of no scene are never frozen;
 games cannot ask, so a game keeps its game logic in scene systems, which leaves frozen entities
 untouched. After the last frame every scene leaves the stack, top first, and SHUTDOWN runs.

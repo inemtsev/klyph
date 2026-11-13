@@ -83,7 +83,11 @@ import kotlin.time.TimeSource
  * velocities, kinematic bodies, particle emitters, sprite animations, lifetimes, fades and colliders stand still, its entities keep rendering. The
  * engine skips the velocities, bodies, emitters and animations of entities a frozen scene owns when it advances them,
  * and leaves their colliders out of overlap detection, so they are in no `Overlap` event and no
- * [App.collisions] query finds them. Entities of no scene are never frozen. The scene transitions queued during a frame apply at its end, after
+ * [App.collisions] query finds them. Entities of no scene are never frozen. Once per frame, as soon
+ * as the frame's duration is known and before INPUT, the engine adds that duration to
+ * [klyph.scene.Scene.elapsed] of the scene on top, so the clock of a frozen scene stands still and
+ * every phase of the frame, FIXED_UPDATE included, reads the same value. The scene transitions
+ * queued during a frame apply at its end, after
  * drawing, and those queued in `setup` or STARTUP apply after STARTUP, before the first frame.
  * After the last frame every scene leaves the stack, top first, running its `onExit` action and
  * losing its entities, and then SHUTDOWN runs.
@@ -257,6 +261,8 @@ private class FrameLoop(
         val stats = app.stats
         app.events.endFrame()
         time.beginFrame(delta)
+        // Outside a fixed step, so delta is the frame's duration and the scene clock counts frames, not steps.
+        app.scenes.advanceClock(time.delta)
         updateAudio()
 
         app.input.beginFrame()

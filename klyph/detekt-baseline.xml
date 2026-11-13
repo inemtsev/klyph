@@ -84,8 +84,6 @@
     <ID>MaxLineLength:SlideTest.kt:SlideTest$val rising = collisions.slideBox(x = 50f, y = 90f, width = 20f, height = 20f, dx = 0f, dy = -1f, floorSnap = Collisions.FLOOR_SNAP_DISTANCE)</ID>
     <ID>MaxLineLength:SlideTest.kt:SlideTest$val snapped = collisions.slideBox(x = 50f, y = 90f, width = 20f, height = 20f, dx = 10f, dy = 0f, floorSnap = Collisions.FLOOR_SNAP_DISTANCE)</ID>
     <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$copyRecord(source, quad * SPRITE_RECORD_FLOATS, position * SPRITE_RECORD_FLOATS) { index, value -> records.set(index, value) }</ID>
-    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$writeRecord(count * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { index, value -> records.set(index, value) }</ID>
-    <ID>MaxLineLength:SpriteRenderer.kt:SpriteRenderer$writeRecord(position * SPRITE_RECORD_FLOATS, local, hierarchy, previous, alpha, sprite) { index, value -> records.set(index, value) }</ID>
     <ID>MaxLineLength:SweepTest.kt:SweepTest$assertEquals(stone, collisions.sweepBox(x = 50f, y = 0f, width = 10f, height = 10f, dx = 0f, dy = 100f, mask = CollisionLayers.DEFAULT)?.entity)</ID>
     <ID>MaxLineLength:TextQuads.kt:addGlyphs(font, text, x + dx * c - dy * s, y + dx * s + dy * c, rotation, scaleX, scaleY, scale, align, shadowColor, layer, space)</ID>
     <ID>MaxLineLength:TextQuads.kt:text.font</ID>

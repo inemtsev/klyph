@@ -1,6 +1,7 @@
 package klyph.render
 
 import klyph.platform.Color
+import klyph.platform.SamplerAddress
 import klyph.text.BuiltInFont
 import kotlin.math.PI
 import kotlin.math.abs
@@ -29,6 +30,7 @@ class CanvasTest {
         val canvas = newCanvas()
         val region = Texture(4, 4).asRegion()
         assertFailsWith<IllegalStateException> { canvas.drawSprite(region, x = 0f, y = 0f) }
+        assertFailsWith<IllegalStateException> { canvas.drawTiled(region, x = 0f, y = 0f, width = 8f, height = 8f) }
         assertFailsWith<IllegalStateException> { canvas.drawRect(x = 0f, y = 0f, width = 1f, height = 1f, color = Color.WHITE) }
         assertFailsWith<IllegalStateException> { canvas.drawText(builtIn.font, "hi", x = 0f, y = 0f) }
         assertEquals(0, canvas.quadCount)
@@ -93,9 +95,102 @@ class CanvasTest {
         canvas.open()
         val region = Texture(4, 4).asRegion()
         canvas.drawSprite(region, x = 0f, y = 0f)
+        canvas.drawTiled(Texture(4, 4, address = SamplerAddress.REPEAT).asRegion(), x = 0f, y = 0f, width = 8f, height = 8f)
         canvas.drawRect(x = 0f, y = 0f, width = 1f, height = 1f, color = Color.WHITE)
         canvas.drawText(builtIn.font, "A", x = 0f, y = 0f)
-        for (quad in 0 until 3) assertSame(DrawSpace.SCREEN, canvas.quads.spaceAt(quad))
+        for (quad in 0 until 4) assertSame(DrawSpace.SCREEN, canvas.quads.spaceAt(quad))
+    }
+
+    @Test
+    fun tiledSpriteRepeatsTheTextureAtItsOwnSizeByDefault() {
+        val canvas = newCanvas()
+        canvas.open()
+        val region = Texture(16, 16, address = SamplerAddress.REPEAT).asRegion()
+        canvas.drawTiled(region, x = 100f, y = 50f, width = 80f, height = 40f, space = DrawSpace.WORLD)
+        // Centred on (100, 50) like drawSprite, 80 by 40 units of 16 by 16 tiles: 5 across, 2.5 down.
+        assertEquals(listOf(100f, 50f, 0f, 0f, 80f, 40f), canvas.floats(0, 0, 6))
+        assertEquals(listOf(0f, 0f, 5f, 2.5f), canvas.floats(0, 8, 12))
+        assertEquals(listOf(1f, 1f, 1f, 1f), canvas.floats(0, 12, 16))
+        assertEquals(1, canvas.quadCount)
+        assertSame(DrawSpace.WORLD, canvas.quads.spaceAt(0))
+        assertSame(region.texture, canvas.quads.textureAt(0))
+    }
+
+    @Test
+    fun tiledSpriteTakesTheTileSizeInItsOwnUnits() {
+        val canvas = newCanvas()
+        canvas.open()
+        val region = Texture(16, 16, address = SamplerAddress.REPEAT).asRegion()
+        canvas.drawTiled(region, x = 0f, y = 0f, width = 64f, height = 64f, tileWidth = 32f, tileHeight = 8f)
+        canvas.drawTiled(region, x = 0f, y = 0f, width = 10f, height = 10f, tileWidth = 20f, tileHeight = 20f)
+        assertEquals(listOf(0f, 0f, 2f, 8f), canvas.floats(0, 8, 12))
+        assertEquals(listOf(0f, 0f, 0.5f, 0.5f), canvas.floats(1, 8, 12), "A tile larger than the quad shows part of one tile.")
+    }
+
+    @Test
+    fun tiledSpriteKeepsTheOriginRotationColorAndLayerOfADrawSprite() {
+        val canvas = newCanvas()
+        canvas.open()
+        val region = Texture(16, 16, address = SamplerAddress.REPEAT).asRegion()
+        val color = Color(red = 0.5f, green = 0.25f, blue = 1f, alpha = 0.5f)
+        canvas.drawTiled(region, x = 10f, y = 10f, width = 20f, height = 10f, originX = 0f, originY = 0f, color = color, layer = 7)
+        canvas.drawTiled(region, x = 10f, y = 10f, width = 20f, height = 10f, rotation = (PI / 2).toFloat(), originX = 0f, originY = 0f)
+        // Top-left origin: the centre is half the size further on, as for drawSprite.
+        assertEquals(listOf(20f, 15f, 0f, 0f, 20f, 10f), canvas.floats(0, 0, 6))
+        assertEquals(listOf(color.red, color.green, color.blue, color.alpha), canvas.floats(0, 12, 16))
+        assertEquals(7, canvas.quads.layers[0])
+        // A quarter turn clockwise about the top-left corner takes the centre offset (10, 5) to (-5, 10).
+        assertNear(listOf(5f, 20f, (PI / 2).toFloat()), canvas.floats(1, 0, 3))
+        assertEquals(listOf(0f, 0f, 1.25f, 0.625f), canvas.floats(1, 8, 12))
+    }
+
+    @Test
+    fun tiledQuadsKeepTheirCoordinatesWhenTheBufferGrows() {
+        val canvas = newCanvas()
+        canvas.open()
+        val region = Texture(16, 16, address = SamplerAddress.REPEAT).asRegion()
+        // The quad buffer starts with room for 64 quads and replaces its arrays when it grows past them.
+        for (i in 0 until 100) canvas.drawTiled(region, x = i.toFloat(), y = 0f, width = 16f * (i + 1), height = 16f)
+        assertEquals(100, canvas.quadCount)
+        assertEquals(listOf(0f, 0f, 1f, 1f), canvas.floats(0, 8, 12))
+        assertEquals(listOf(0f, 0f, 65f, 1f), canvas.floats(64, 8, 12))
+        assertEquals(listOf(0f, 0f, 100f, 1f), canvas.floats(99, 8, 12))
+    }
+
+    @Test
+    fun tiledSpriteNeedsARepeatingTextureAWholeRegionAndPositiveTiles() {
+        val canvas = newCanvas()
+        canvas.open()
+        val clamped = Texture(16, 16).asRegion()
+        val repeating = Texture(16, 16, address = SamplerAddress.REPEAT)
+        val address = assertFailsWith<IllegalArgumentException> { canvas.drawTiled(clamped, x = 0f, y = 0f, width = 32f, height = 32f) }
+        assertEquals(
+            "Tiled drawing needs a texture created with SamplerAddress.REPEAT, but Texture(16x16) uses CLAMP.",
+            address.message,
+        )
+        val part = repeating.region(x = 0, y = 0, width = 8, height = 16)
+        val region = assertFailsWith<IllegalArgumentException> { canvas.drawTiled(part, x = 0f, y = 0f, width = 32f, height = 32f) }
+        assertEquals(
+            "Tiled drawing needs a region that covers its whole texture, but the region is " +
+                "TextureRegion(x=0, y=0, size=8x16, texture=Texture(16x16, REPEAT)).",
+            region.message,
+        )
+        val whole = repeating.asRegion()
+        val tileWidth = assertFailsWith<IllegalArgumentException> {
+            canvas.drawTiled(whole, x = 0f, y = 0f, width = 32f, height = 32f, tileWidth = 0f)
+        }
+        assertEquals("Tile width 0.0 is not positive and finite.", tileWidth.message)
+        val tileHeight = assertFailsWith<IllegalArgumentException> {
+            canvas.drawTiled(whole, x = 0f, y = 0f, width = 32f, height = 32f, tileHeight = -4f)
+        }
+        assertEquals("Tile height -4.0 is not positive and finite.", tileHeight.message)
+        assertFailsWith<IllegalArgumentException> {
+            canvas.drawTiled(whole, x = 0f, y = 0f, width = 32f, height = 32f, tileWidth = Float.POSITIVE_INFINITY)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            canvas.drawTiled(whole, x = 0f, y = 0f, width = 32f, height = 32f, tileWidth = Float.NaN)
+        }
+        assertEquals(0, canvas.quadCount, "A rejected call queues nothing.")
     }
 
     @Test

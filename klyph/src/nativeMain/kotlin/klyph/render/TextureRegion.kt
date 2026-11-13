@@ -49,6 +49,10 @@ public class TextureRegion(
     /** Bottom edge as a texture coordinate: `y + height` divided by the texture height. */
     internal val v1: Float = (y + height).toFloat() / texture.height
 
+    /** Whether the region is the whole of [texture], as `Texture.asRegion` makes it. Tiled draws accept only such regions. */
+    internal val isWholeTexture: Boolean
+        get() = x == 0 && y == 0 && width == texture.width && height == texture.height
+
     override fun equals(other: Any?): Boolean =
         other is TextureRegion && texture === other.texture &&
             x == other.x && y == other.y && width == other.width && height == other.height
