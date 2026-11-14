@@ -2,6 +2,7 @@ package klyph.roller
 
 import klyph.app.App
 import klyph.platform.Color
+import klyph.scene.elapsedSeconds
 import klyph.text.TextAlign
 import klyph.text.TextShadow
 import kotlin.math.min
@@ -52,6 +53,8 @@ fun Run.drawHud(app: App) {
 
 /** Draws the game's name, the hero, how to start, the best score so far and the controls. */
 fun drawTitle(app: App) {
+    // A scene's systems run only while it is on top, so there is always a scene here.
+    val seconds = app.scenes.currentOrNull?.elapsedSeconds ?: return
     val game = app.game
     val width = app.window.width.toFloat()
     val height = app.window.height.toFloat()
@@ -59,7 +62,6 @@ fun drawTitle(app: App) {
     drawCentred(app, "ROOFTOP ROLLER", height * 0.12f, scale = Tuning.TITLE_TEXT_SCALE, color = Tuning.TITLE_COLOR)
     drawCentred(app, SUBTITLE, height * 0.12f + 2.1f * Tuning.LINE_SPACING, scale = Tuning.SMALL_TEXT_SCALE)
     // The hero rolls on the spot, bobbing, between the title and the prompt.
-    val seconds = app.time.elapsed.inWholeMilliseconds / 1000f
     val frame = game.art.skate[((seconds * 4f).toInt()) % game.art.skate.size]
     val heroHeight = 128f
     app.canvas.drawSprite(
@@ -99,6 +101,7 @@ fun drawPause(app: App) {
  * and the total, which counts up from the score, then the best score and the way on.
  */
 fun drawComplete(app: App) {
+    val scene = app.scenes.currentOrNull ?: return
     val game = app.game
     val run = app.run
     val text = game.text
@@ -118,21 +121,21 @@ fun drawComplete(app: App) {
     text.clear()
     text.append("Time  ").append(run.elapsed.toInt()).append(" s   bonus ").append(run.timeBonus)
     drawCentred(app, text, middle + 0.2f * spacing, scale = Tuning.SMALL_TEXT_SCALE)
-    val waited = (app.time.elapsed - game.endedAt).inWholeMilliseconds / 1000f
-    val shown = run.score + ((run.finalScore - run.score) * min(1f, waited / Tuning.TALLY_SECONDS)).toInt()
+    val shown = run.score + ((run.finalScore - run.score) * min(1f, scene.elapsedSeconds / Tuning.TALLY_SECONDS)).toInt()
     text.clear()
     text.append("Total  ").append(shown)
     drawCentred(app, text, middle + 1.3f * spacing, scale = Tuning.TEXT_SCALE, color = Tuning.TITLE_COLOR)
     text.clear()
     text.append("Best ").append(game.bestScore)
     drawCentred(app, text, middle + 2.6f * spacing, scale = Tuning.SMALL_TEXT_SCALE)
-    if (app.time.elapsed - game.endedAt >= Tuning.END_INPUT_DELAY) {
+    if (scene.elapsed >= Tuning.END_INPUT_DELAY) {
         drawCentred(app, "Space or A: roll again    Esc: title", middle + 4f * spacing, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)
     }
 }
 
 /** Draws the game over screen over the frozen level: the score, the best score and the way on. */
 fun drawGameOver(app: App) {
+    val scene = app.scenes.currentOrNull ?: return
     val game = app.game
     val run = app.run
     val text = game.text
@@ -146,7 +149,7 @@ fun drawGameOver(app: App) {
     text.clear()
     text.append("Best ").append(game.bestScore)
     drawCentred(app, text, middle + 0.8f * spacing, scale = Tuning.SMALL_TEXT_SCALE)
-    if (app.time.elapsed - game.endedAt >= Tuning.END_INPUT_DELAY) {
+    if (scene.elapsed >= Tuning.END_INPUT_DELAY) {
         drawCentred(app, "Space or A: try again    Esc: title", middle + 2.5f * spacing, scale = Tuning.SMALL_TEXT_SCALE, color = Tuning.HINT_COLOR)
     }
 }

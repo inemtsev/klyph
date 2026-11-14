@@ -46,10 +46,12 @@ val compileShaders = tasks.register<CompileShadersTask>("compileShaders") {
 }
 
 // Everything that reads src/nativeMain runs after the shaders are generated into it: the Kotlin
-// compilations of every target, the shared metadata compilation and the published sources jars.
+// compilations of every target, the shared metadata compilation, the published sources jars and
+// Dokka (which otherwise fails Gradle's dependency validation when `check` and `dokkaGenerate`
+// run in one invocation).
 tasks.matching {
     it.name.startsWith("compileKotlin") || it.name.endsWith("KotlinMetadata") ||
-        it.name == "sourcesJar" || it.name.endsWith("SourcesJar")
+        it.name == "sourcesJar" || it.name.endsWith("SourcesJar") || it.name.startsWith("dokkaGenerate")
 }.configureEach {
     dependsOn(compileShaders)
 }

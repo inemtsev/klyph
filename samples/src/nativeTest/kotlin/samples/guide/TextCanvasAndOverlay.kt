@@ -101,6 +101,23 @@ class TextCanvasAndOverlay {
         // end snippet
     }
 
+    fun App.paintSky() {
+        // snippet: background
+        val sky = Color(red = 0.35f, green = 0.6f, blue = 0.9f)
+        addSystem(Phase.RENDER) { app ->
+            // The whole window, from its top-left corner, under everything the world draws.
+            app.canvas.drawRect(
+                x = 0f,
+                y = 0f,
+                width = app.window.width.toFloat(),
+                height = app.window.height.toFloat(),
+                color = sky,
+                space = DrawSpace.BACKGROUND,
+            )
+        }
+        // end snippet
+    }
+
     fun App.debugColliders() {
         // snippet: world-space
         val outline = Color(0f, 1f, 0f, 0.35f)

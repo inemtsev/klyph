@@ -106,11 +106,12 @@ addSystem(Phase.RENDER) { app ->
 }
 ```
 
-The three calls anchor differently, each like the thing it resembles:
+The calls anchor differently, each like the thing it resembles:
 
 | Call | (x, y) is |
 |---|---|
 | `drawSprite(region, x, y, ...)` | The quad's origin, its center by default, like an entity's `Sprite`. `originX` and `originY` move it, as fractions of the size. |
+| `drawTiled(region, x, y, width, height, ...)` | The quad's origin, as for `drawSprite`. It repeats the texture instead of stretching it; see [Scrolling worlds](scrolling.md). |
 | `drawRect(x, y, width, height, color, ...)` | The top-left corner, like a `Rect`. |
 | `drawText(font, text, x, y, ...)` | The top of the first line, aligned on x by `align`, like a `Text` component. |
 
@@ -142,6 +143,32 @@ addSystem(Phase.RENDER) { app ->
 
 Many parameters share the type `Float`, so pass them by name. Rectangles and the built-in font
 are drawn from the same texture, so a panel and its text in one layer share a draw call.
+
+## A sky under the world
+
+`DrawSpace.BACKGROUND` is the space for a sky: one canvas call a frame and no entity, drawn under
+everything the world draws. The camera has no effect on it, so the sky stays put as the world
+scrolls past. Entity sprites are never in this space.
+
+<!-- snippet: background -->
+```kotlin
+val sky = Color(red = 0.35f, green = 0.6f, blue = 0.9f)
+addSystem(Phase.RENDER) { app ->
+    // The whole window, from its top-left corner, under everything the world draws.
+    app.canvas.drawRect(
+        x = 0f,
+        y = 0f,
+        width = app.window.width.toFloat(),
+        height = app.window.height.toFloat(),
+        color = sky,
+        space = DrawSpace.BACKGROUND,
+    )
+}
+```
+
+The call runs every frame and reads the window's size, so the sky follows a resize. Scenery that
+moves with the camera, only slower than the world, is a sprite with a `ParallaxLayer`; see
+[Scrolling worlds](scrolling.md).
 
 ## Drawing in the world
 

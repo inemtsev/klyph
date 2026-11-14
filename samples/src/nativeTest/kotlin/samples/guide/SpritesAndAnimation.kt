@@ -51,6 +51,17 @@ class SpritesAndAnimation {
         // end snippet
     }
 
+    fun App.spawnStandingHero() {
+        // snippet: origin
+        val hero = assets.texture("hero.png").asRegion()
+        commands.spawn {
+            // The origin (0.5, 1) is the middle of the bottom edge, so the Transform is at the hero's feet.
+            add(Transform, Transform(x = 640f, y = 500f))
+            add(Sprite, Sprite(hero, originX = 0.5f, originY = 1f))
+        }
+        // end snippet
+    }
+
     fun App.cutRegions() {
         // snippet: region
         val tiles = assets.texture("tiles.png")

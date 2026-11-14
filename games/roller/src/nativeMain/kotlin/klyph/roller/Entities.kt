@@ -1,6 +1,5 @@
 package klyph.roller
 
-import klyph.app.Assets
 import klyph.collision.Collider
 import klyph.collision.CollisionLayers
 import klyph.collision.Collisions
@@ -18,17 +17,16 @@ import klyph.math.degrees
 import klyph.particle.ParticleEmitter
 import klyph.particle.spawnBurst
 import klyph.platform.Color
-import klyph.platform.SamplerFilter
 import klyph.render.Fade
 import klyph.render.FadeEnd
 import klyph.render.Sprite
 import klyph.render.TextureRegion
-import klyph.render.asRegion
 import klyph.text.Font
 import klyph.text.Text
 import klyph.text.TextAlign
 import klyph.text.TextShadow
 import kotlin.math.ceil
+import kotlin.math.max
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -39,27 +37,15 @@ import kotlin.time.Duration.Companion.milliseconds
 // it and vanish when it leaves the stack.
 
 /**
- * Builds the level's scenery: a solid for every building and ledge, a painted texture for each,
- * the billboards on their pylons, the potted plants, the air conditioners and the arrow sign at
- * the end.
+ * Builds the level's scenery: a solid for every building and ledge, the tiled sprites that show
+ * them, the billboards on their pylons, the potted plants, the air conditioners and the arrow sign
+ * at the end.
  */
-fun Commands.spawnScenery(assets: Assets, art: Art) {
+fun Commands.spawnScenery(art: Art) {
     val level = RooftopRun
-    val pixel = Tuning.PIXEL
     for (block in level.blocks) spawnSolid(block)
-    for (index in level.buildings.indices) {
-        val building = level.buildings[index]
-        val texelsWide = ceil((building.right - building.left) / pixel).toInt()
-        // A little past the bottom of the world, so a falling camera never sees the end.
-        val texelsHigh = ceil((Tuning.WORLD_HEIGHT - building.top + 20f) / pixel).toInt()
-        val face = assets.createTexture(paintBuilding(texelsWide, texelsHigh, index), SamplerFilter.NEAREST).asRegion()
-        spawnBlock(face, left = building.left, top = building.top, width = texelsWide * pixel, height = texelsHigh * pixel)
-    }
-    for (ledge in level.ledges) {
-        val texelsWide = ceil((ledge.right - ledge.left) / pixel).toInt()
-        val girder = assets.createTexture(paintLedge(texelsWide), SamplerFilter.NEAREST).asRegion()
-        spawnBlock(girder, left = ledge.left, top = ledge.top, width = texelsWide * pixel, height = Tuning.LEDGE_HEIGHT)
-    }
+    for (index in level.buildings.indices) spawnBuilding(art, level.buildings[index], art.bricks[index % art.bricks.size])
+    for (ledge in level.ledges) spawnLedge(art, ledge)
     for (billboard in level.billboards) spawnBillboard(art, billboard)
     for (plant in level.plants) {
         val height = PLANT_HEIGHT
@@ -92,19 +78,103 @@ private fun Commands.spawnSolid(block: Block) {
     }
 }
 
-/** Spawns a static sprite of [width] by [height] whose top-left corner is at ([left], [top]). */
-private fun Commands.spawnBlock(region: TextureRegion, left: Float, top: Float, width: Float, height: Float) {
+/**
+ * Spawns a static sprite of [width] by [height] whose top-left corner is at ([left], [top]),
+ * showing [region] stretched, or repeated every [tileWidth] by [tileHeight] units when given, and tinted by [color].
+ */
+private fun Commands.spawnBlock(
+    region: TextureRegion,
+    left: Float,
+    top: Float,
+    width: Float,
+    height: Float,
+    layer: Int,
+    color: Color = Color.WHITE,
+    tileWidth: Float = 0f,
+    tileHeight: Float = 0f,
+) {
     spawn {
-        add(Transform, Transform(left + width / 2, top + height / 2))
-        add(Sprite, Sprite(region, width, height, layer = Tuning.LAYER_BUILDINGS))
+        add(Transform, Transform(left, top))
+        add(
+            Sprite,
+            Sprite(
+                region, width, height, color = color, layer = layer,
+                tileWidth = tileWidth, tileHeight = tileHeight, originX = 0f, originY = 0f,
+            ),
+        )
+    }
+}
+
+/**
+ * Spawns a static sprite of [width] by [height] whose top-left corner is at ([left], [top]) and
+ * which repeats [region], a texture made to repeat, at its own size in texels times [Tuning.PIXEL],
+ * starting from that corner. A repeat that does not fit whole is cut short at the right and the bottom.
+ */
+private fun Commands.spawnTiled(region: TextureRegion, left: Float, top: Float, width: Float, height: Float, layer: Int) =
+    spawnBlock(region, left, top, width, height, layer, tileWidth = region.width * Tuning.PIXEL, tileHeight = region.height * Tuning.PIXEL)
+
+/**
+ * Spawns the picture of [building] from its roof down past the bottom of the world: a face of
+ * [bricks], a dark column at each side, the stone cap along the roof and rows of windows, a second
+ * row when it is tall.
+ */
+private fun Commands.spawnBuilding(art: Art, building: Block, bricks: TextureRegion) {
+    val pixel = Tuning.PIXEL
+    val width = building.right - building.left
+    // A little past the bottom of the world, so a falling camera never sees the end.
+    val height = Tuning.WORLD_HEIGHT + FACE_OVERHANG - building.top
+    val capHeight = art.cap.height * pixel
+    spawnTiled(bricks, building.left, building.top, width, height, Tuning.LAYER_BUILDINGS)
+    // The walls' edges, so neighbouring buildings and the sky do not run into the bricks.
+    for (x in listOf(building.left, building.right - pixel)) {
+        spawnBlock(art.whitePixel, x, building.top + capHeight, pixel, height - capHeight, Tuning.LAYER_BUILDING_DETAILS, WALL_EDGE)
+    }
+    spawnTiled(art.cap, building.left, building.top, width, capHeight, Tuning.LAYER_BUILDING_DETAILS)
+    spawnWindowRow(art, building, WINDOWS_FIRST_ROW_TEXELS * pixel)
+    if (height > TALL_BUILDING_TEXELS * pixel) spawnWindowRow(art, building, WINDOWS_SECOND_ROW_TEXELS * pixel)
+}
+
+/** How far a building's face reaches past the bottom of the world. */
+private const val FACE_OVERHANG = 20f
+
+/** A building taller than this many texels has a second row of windows. */
+private const val TALL_BUILDING_TEXELS = 80
+
+/** The rows of windows start this many texels below the roof, and keep this many texels clear of the walls' edges. */
+private const val WINDOWS_FIRST_ROW_TEXELS = 13
+private const val WINDOWS_SECOND_ROW_TEXELS = 45
+private const val WINDOWS_MARGIN_TEXELS = 8
+
+/**
+ * Spawns a row of as many windows as fit across [building], with their tops [top] units below its
+ * roof, centered on it; a face too narrow for one gets none.
+ */
+private fun Commands.spawnWindowRow(art: Art, building: Block, top: Float) {
+    val pixel = Tuning.PIXEL
+    val texelsWide = ceil((building.right - building.left) / pixel).toInt()
+    val count = max(0, (texelsWide - 2 * WINDOWS_MARGIN_TEXELS + WINDOW_GAP_TEXELS) / (WINDOW_TEXELS + WINDOW_GAP_TEXELS))
+    if (count == 0) return
+    val used = count * WINDOW_TEXELS + (count - 1) * WINDOW_GAP_TEXELS
+    // The tile starts a texel left of its window, for the sill that sticks out.
+    val left = building.left + ((texelsWide - used) / 2 - 1) * pixel
+    val rowWidth = count * art.windows.width * pixel
+    spawnTiled(art.windows, left, building.top + top, rowWidth, art.windows.height * pixel, Tuning.LAYER_BUILDING_DETAILS)
+}
+
+/** Spawns the picture of [ledge]: a steel girder with a dark plate at each end. */
+private fun Commands.spawnLedge(art: Art, ledge: Block) {
+    val pixel = Tuning.PIXEL
+    spawnTiled(art.girder, ledge.left, ledge.top, ledge.right - ledge.left, Tuning.LEDGE_HEIGHT, Tuning.LAYER_BUILDINGS)
+    for (x in listOf(ledge.left, ledge.right - pixel)) {
+        spawnBlock(art.whitePixel, x, ledge.top, pixel, Tuning.LEDGE_HEIGHT, Tuning.LAYER_BUILDING_DETAILS, STEEL_OUTLINE)
     }
 }
 
 /** Spawns a decoration standing with its bottom on [floor], centered on [x]. */
 private fun Commands.spawnProp(region: TextureRegion, x: Float, floor: Float, width: Float, height: Float) {
     spawn {
-        add(Transform, Transform(x, floor - height / 2))
-        add(Sprite, Sprite(region, width, height, layer = Tuning.LAYER_DECOR))
+        add(Transform, Transform(x, floor))
+        add(Sprite, Sprite(region, width, height, layer = Tuning.LAYER_DECOR, originY = 1f))
     }
 }
 
@@ -119,26 +189,30 @@ private fun Commands.spawnBillboard(art: Art, billboard: Billboard) {
     val pylonHeight = 64f
     val catwalk = 6f
     val posterBottom = billboard.roof - pylonHeight - catwalk
-    val centerY = posterBottom - posterHeight / 2
+    val frameMargin = 6f
+    val frameBottom = posterBottom + frameMargin
+    val frameWidth = posterWidth + 2 * frameMargin
+    val frameHeight = posterHeight + 2 * frameMargin
     val x = billboard.x
+    val white = art.whitePixel
     spawn {
-        add(Transform, Transform(x, centerY))
-        add(Sprite, Sprite(poster, posterWidth, posterHeight, layer = Tuning.LAYER_POSTERS))
+        add(Transform, Transform(x, posterBottom))
+        add(Sprite, Sprite(poster, posterWidth, posterHeight, layer = Tuning.LAYER_POSTERS, originY = 1f))
     }
     spawn {
-        add(Transform, Transform(x, centerY))
-        add(Sprite, Sprite(art.whitePixel, posterWidth + 12f, posterHeight + 12f, color = FRAME_COLOR, layer = Tuning.LAYER_BILLBOARDS))
+        add(Transform, Transform(x, frameBottom))
+        add(Sprite, Sprite(white, frameWidth, frameHeight, color = FRAME_COLOR, layer = Tuning.LAYER_BILLBOARDS, originY = 1f))
     }
     spawn {
-        add(Transform, Transform(x, posterBottom + 6f + catwalk / 2))
-        add(Sprite, Sprite(art.whitePixel, posterWidth + 30f, catwalk, color = CATWALK_COLOR, layer = Tuning.LAYER_BILLBOARDS))
+        add(Transform, Transform(x, frameBottom))
+        add(Sprite, Sprite(white, posterWidth + 30f, catwalk, color = CATWALK_COLOR, layer = Tuning.LAYER_BILLBOARDS, originY = 0f))
     }
-    val legHeight = billboard.roof - (posterBottom + 6f)
+    val legHeight = billboard.roof - frameBottom
     val leg = art.pylon((legHeight / Tuning.PIXEL).toInt())
     for (side in -1..1 step 2) {
         spawn {
-            add(Transform, Transform(x + side * posterWidth * 0.3f, billboard.roof - legHeight / 2))
-            add(Sprite, Sprite(leg, leg.width * Tuning.PIXEL, legHeight, layer = Tuning.LAYER_PYLONS))
+            add(Transform, Transform(x + side * posterWidth * 0.3f, billboard.roof))
+            add(Sprite, Sprite(leg, leg.width * Tuning.PIXEL, legHeight, layer = Tuning.LAYER_PYLONS, originY = 1f))
         }
     }
 }

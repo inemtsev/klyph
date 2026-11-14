@@ -2,6 +2,7 @@ package klyph.roller
 
 import klyph.app.App
 import klyph.app.deltaSeconds
+import klyph.app.drawnPositionOf
 import klyph.collision.Collider
 import klyph.collision.Collisions
 import klyph.collision.KinematicBody
@@ -10,13 +11,14 @@ import klyph.collision.otherThan
 import klyph.entity.Entity
 import klyph.entity.Transform
 import klyph.entity.Velocity
+import klyph.entity.snapInterpolation
 import klyph.math.Rect
 import klyph.platform.Color
 import klyph.render.Sprite
-import klyph.render.clampToBounds
 import klyph.render.follow
 import klyph.render.lookAt
 import klyph.render.visibleWidth
+import klyph.scene.elapsedSeconds
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
@@ -31,13 +33,15 @@ import kotlin.math.sin
 
 // STARTUP and every frame, whatever the screen
 
-/** Loads the art and sounds, shares the [Game] and builds the level's scenery, which every screen shows. */
+/** Loads the art and sounds, shares the [Game] and builds the level's scenery and its backdrop, which every screen shows. */
 fun startGame(app: App, isAutopilot: Boolean) {
     val game = Game(Art.load(app.assets), Sounds.load(app.assets), isAutopilot)
     app.resources.insert(game)
-    app.commands.spawnScenery(app.assets, game.art)
+    app.commands.spawnScenery(game.art)
     app.camera.bounds = Rect(0f, 0f, RooftopRun.WIDTH, Tuning.WORLD_HEIGHT)
     fitCamera(app)
+    // The bounds hold the camera half a view from the level's left edge, whatever the window's shape.
+    app.commands.spawnBackdrop(game.art, startX = app.camera.visibleWidth / 2)
 }
 
 /**
@@ -91,8 +95,6 @@ fun Run.movePlayer(app: App) {
     val transform = world.get(player, Transform)
     val controls = game.controls
     val isGrounded = body.isOnFloor
-    hero.isHiddenForStep = false
-    hero.previousX = transform.x
     hero.previousFeet = transform.feet
     when (state) {
         RunState.PLAYING -> {
@@ -130,7 +132,7 @@ fun Run.movePlayer(app: App) {
             body.dy = 0f
             stateTimer -= dt
             if (stateTimer <= 0f) {
-                if (hearts == 0) outcomeOrNull = RunOutcome.GAME_OVER else respawn(hero, body, transform)
+                if (hearts == 0) outcomeOrNull = RunOutcome.GAME_OVER else respawn(app, hero, body, transform)
             }
         }
         RunState.DYING -> {
@@ -202,24 +204,23 @@ private const val FALL_SECONDS = 0.8f
 
 /**
  * Puts the hero back on the last roof he stood on, a little behind where he left it, blinking.
- * He jumps there in one step, which the engine would draw as a dash across the screen between
- * two steps (klyph issue #17), so he stays hidden until the next step has recorded the new place.
+ * His Transform jumps there in one step, which the engine would draw as a dash across the screen
+ * from the pit, so the move is followed by [snapInterpolation], which draws him at the new place at once.
  */
-private fun Run.respawn(hero: Player, body: KinematicBody, transform: Transform) {
+private fun Run.respawn(app: App, hero: Player, body: KinematicBody, transform: Transform) {
     val roof = hero.safeRoof
     val x = (hero.safeX - Tuning.RESPAWN_BACKSET).coerceIn(roof.left + Tuning.RESPAWN_EDGE_MARGIN, roof.right - Tuning.RESPAWN_EDGE_MARGIN)
     transform.x = x
     transform.y = roof.top - Collisions.CONTACT_GAP - Tuning.PLAYER_SPRITE_HEIGHT / 2
+    app.world.snapInterpolation(player)
     body.dx = 0f
     body.dy = 0f
-    hero.previousX = x
     hero.previousFeet = transform.feet
     hero.facing = 1f
     hero.coyote = 0f
     hero.jumpBuffer = 0f
     hero.invulnerable = Tuning.INVULNERABLE_SECONDS * 1.5f
     hero.hurtLock = 0f
-    hero.isHiddenForStep = true
     state = RunState.PLAYING
 }
 
@@ -264,9 +265,11 @@ fun tumble(app: App) {
 
 // UPDATE
 
-/** Spins the rings, bobs the hearts, and turns the enemies the way they go. */
+/** Spins the rings, bobs the hearts, and turns the enemies the way they go, by the play scene's clock. */
 fun animatePickups(app: App) {
-    val seconds = app.time.elapsed.inWholeMilliseconds / 1000f
+    // A scene's systems run only while it is on top, so there is always a scene here.
+    val scene = app.scenes.currentOrNull ?: return
+    val seconds = scene.elapsedSeconds
     val world = app.world
     world.forEach(Ring, Transform) { _, ring, transform ->
         transform.scaleX = max(0.15f, abs(cos(seconds * Tuning.RING_SPIN_RATE + ring.phase)))
@@ -429,34 +432,30 @@ fun Run.animatePlayer(app: App) {
     sprite.width = sprite.height * region.width / region.height
     sprite.isFlippedX = hero.facing < 0f
     val isBlinkedOut = hero.invulnerable > 0f && (hero.invulnerable / Tuning.BLINK_SECONDS).toInt() % 2 == 1
-    sprite.isVisible = state != RunState.FALLING && !hero.isHiddenForStep && !isBlinkedOut
+    sprite.isVisible = state != RunState.FALLING && !isBlinkedOut
 }
 
 // LATE_UPDATE
 
 /**
  * Eases the camera after the hero, looking ahead the way he rolls, and shakes it after a hit. The
- * hero is drawn between his last two fixed steps, so the camera follows that drawn place, not his
- * Transform, or he would judder against the scenery on a fast display.
+ * hero is drawn between his last two fixed steps, so the camera follows where he is drawn, not his
+ * Transform, or he would judder against the scenery on a fast display. The shake is the camera's
+ * offset, which sits on top of its position, so easing never has to take it out.
  */
 fun Run.followCamera(app: App) {
     val hero = app.world.getOrNull(player, Player) ?: return
-    val x = app.world.get(player, Transform).x
     val speed = app.world.get(player, KinematicBody).dx
     val camera = app.camera
     val dt = app.time.deltaSeconds
-    val alpha = app.time.fixedStepAlpha
-    val drawnX = hero.previousX + (x - hero.previousX) * alpha
+    val drawn = app.drawnPositionOf(player)
     val ahead = hero.facing * Tuning.CAMERA_LOOK_AHEAD * min(1f, abs(speed) / Tuning.MAX_SPEED)
     lookAhead += (ahead - lookAhead) * (1f - exp(-Tuning.CAMERA_LOOK_AHEAD_SMOOTHING * dt))
-    // Take last frame's shake out before easing, so it does not build up in the camera's position.
-    camera.x -= shakeOffset
-    camera.follow(drawnX + lookAhead, Tuning.WORLD_HEIGHT / 2, smoothing = Tuning.CAMERA_SMOOTHING, delta = app.time.delta)
-    shakeOffset = 0f
+    camera.follow(drawn.x + lookAhead, Tuning.WORLD_HEIGHT / 2, smoothing = Tuning.CAMERA_SMOOTHING, delta = app.time.delta)
     if (shake > 0f) {
         shake -= dt
-        shakeOffset = (game.random.nextFloat() * 2f - 1f) * Tuning.CAMERA_SHAKE * (shake / Tuning.CAMERA_SHAKE_SECONDS)
-        camera.x += shakeOffset
-        camera.clampToBounds()
+        // The strength fades to 0 with the shake, so the frame it ends in puts the offset back to 0.
+        val strength = Tuning.CAMERA_SHAKE * max(0f, shake) / Tuning.CAMERA_SHAKE_SECONDS
+        camera.offsetX = (game.random.nextFloat() * 2f - 1f) * strength
     }
 }

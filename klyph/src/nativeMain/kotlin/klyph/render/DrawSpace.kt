@@ -16,7 +16,9 @@ public enum class DrawSpace {
      * Points from the window's top-left corner like [SCREEN], drawn before every [WORLD] quad, so
      * the camera has no effect and the quad lies under all that the world draws: a one-call sky,
      * a gradient or a picture that stays put. Entity sprites are never in this space. For a
-     * backdrop that moves with the camera, slower than the world, give a sprite a [ParallaxLayer].
+     * backdrop that moves with the camera, slower than the world, give a sprite a [ParallaxLayer];
+     * unlike a quad here, a layer with a factor of 0 zooms with the camera and sorts by its
+     * [Sprite.layer] among the world's sprites.
      */
     BACKGROUND,
 

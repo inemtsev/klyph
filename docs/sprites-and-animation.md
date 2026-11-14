@@ -18,10 +18,10 @@ calls return the same object.
 
 | Call | Returns |
 |---|---|
-| `assets.texture(path, filter)` | A `Texture` from a PNG or JPEG file. |
+| `assets.texture(path, filter, address)` | A `Texture` from a PNG or JPEG file. |
 | `assets.spriteSheet(path, columns, rows, filter)` | The texture cut into a grid of equal cells. |
 | `assets.image(path)` | An `Image` you can read and change, not cached and not uploaded. |
-| `assets.createTexture(image, filter)` | A new texture from an `Image`, every call. |
+| `assets.createTexture(image, filter, address)` | A new texture from an `Image`, every call. |
 | `assets.font(path, filter)`, `assets.sound(path)`, `assets.musicTrack(path)` | Fonts, sounds and music, covered on their pages. |
 
 Each loader that reads a file throws `FileException` when the file is missing and `ImageException`
@@ -55,6 +55,28 @@ commands.spawn {
     add(Sprite, Sprite(ship, color = Color.BLACK.withAlpha(0.4f), layer = -1, isFlippedX = true))
 }
 ```
+
+The origin is the point of the picture that lies on the `Transform`. `originX` and `originY` are
+fractions of the sprite's size from its top-left corner, and the default, (0.5, 0.5), is the
+center. For a character that stands on the ground, (0.5, 1) is the middle of the bottom edge,
+which puts the `Transform` at his feet. Rotation, scale and flips pivot about the origin, so a hero
+squashed on landing keeps his feet on the floor. A `Collider` does not follow the origin, as
+[Scrolling worlds](scrolling.md) shows.
+
+<!-- snippet: origin -->
+```kotlin
+val hero = assets.texture("hero.png").asRegion()
+commands.spawn {
+    // The origin (0.5, 1) is the middle of the bottom edge, so the Transform is at the hero's feet.
+    add(Transform, Transform(x = 640f, y = 500f))
+    add(Sprite, Sprite(hero, originX = 0.5f, originY = 1f))
+}
+```
+
+To cover an area with one small texture, give the sprite a `tileWidth` or `tileHeight`, the size in
+world units of one repeat. The texture then repeats across the sprite instead of stretching. It
+must be loaded with `address = SamplerAddress.REPEAT`; [Scrolling worlds](scrolling.md) has the
+rules for tiling.
 
 Within one layer, sprites are grouped by texture, so where two sprites with different textures
 overlap in the same layer, which one is on top is not defined. Give them different layers. Each
@@ -213,7 +235,8 @@ addSystem(Phase.LATE_UPDATE) { app ->
 ```
 
 Follow from `LATE_UPDATE`, after the systems of `UPDATE` have moved the target, so the camera
-never lags a frame behind it.
+never lags a frame behind it. [Scrolling worlds](scrolling.md) covers following an `Interpolated`
+entity and shaking the view.
 
 `camera.worldToScreen` and `camera.screenToWorld` convert between world units and screen points,
 with (0, 0) at the window's top-left corner. Screen points are also what `app.canvas` draws in by
@@ -248,8 +271,9 @@ commands.spawn {
 }
 ```
 
-The cache key is the path and the filter together, so the same file loaded with both filters
-becomes two textures.
+The cache key is the path, the filter and the address together, so the same file loaded with both
+filters becomes two textures. The address, `SamplerAddress.CLAMP` by default, matters only for
+tiling, which [Scrolling worlds](scrolling.md) covers.
 
 ## Textures without files
 

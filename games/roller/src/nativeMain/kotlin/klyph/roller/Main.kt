@@ -18,8 +18,8 @@ import klyph.platform.Sdl
  * and back, F3 shows the engine's debug overlay, and Escape on the title screen quits.
  *
  * The screens are the scenes of [GameScenes]. Only what runs on every screen is added to the app
- * here: loading and the scenery, the controls, the camera's zoom, the sky and the line printed at
- * exit.
+ * here: loading, the scenery and the backdrop behind it, the controls, the camera's zoom, the sky
+ * and the line printed at exit.
  *
  * Environment: the `KLYPH_*` variables `AppConfig.fromEnvironment` reads, among them
  * `KLYPH_FRAMES=<n>`, `KLYPH_SECONDS=<s>`, `KLYPH_VALIDATION=1` and
@@ -50,7 +50,7 @@ fun main() {
 
         addSystem(Phase.LATE_UPDATE) { app -> fitCamera(app) }
 
-        addSystem(Phase.RENDER) { app -> drawBackdrop(app) }
+        addSystem(Phase.RENDER) { app -> drawSky(app) }
 
         addSystem(Phase.SHUTDOWN) { app ->
             val game = app.game

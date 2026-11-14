@@ -21,8 +21,8 @@ object Layers {
 }
 
 /**
- * The hero: which way he faces, the timers of the jump and of being hit, and what the camera,
- * the stomps and the respawn need to remember. The engine moves him by his `KinematicBody`.
+ * The hero: which way he faces, the timers of the jump and of being hit, and what the stomps and
+ * the respawn need to remember. The engine moves him by his `KinematicBody`.
  */
 class Player {
     /** 1 facing right, -1 facing left. */
@@ -43,20 +43,12 @@ class Player {
     /** How far through the skating stride he is; each whole stride swaps the skating frame. */
     var stride = 0f
 
-    /**
-     * Where he was before the last fixed step. The camera follows him where he is drawn, between his
-     * last two steps, which the engine does not tell (klyph issue #17), and a stomp needs his feet
-     * above the enemy before the step that touched it.
-     */
-    var previousX = RooftopRun.start.x
+    /** Where his feet were before the last fixed step: a stomp needs them above the enemy before the step that touched it. */
     var previousFeet = RooftopRun.start.y
 
     /** The last roof he stood on, and where, for the respawn. */
     var safeRoof: Block = RooftopRun.buildings[0]
     var safeX = RooftopRun.start.x
-
-    /** Set by a respawn and cleared by the next fixed step: he stays hidden until then. */
-    var isHiddenForStep = false
 
     override fun toString(): String = "Player(facing=$facing, invulnerable=$invulnerable, safe=$safeRoof)"
 

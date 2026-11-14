@@ -10,7 +10,6 @@
     <ID>MatchingDeclarationName:Input.kt:Controls</ID>
     <ID>MatchingDeclarationName:Scenes.kt:GameScenes</ID>
     <ID>MaxLineLength:Autopilot.kt:private</ID>
-    <ID>MaxLineLength:Backdrop.kt:private</ID>
     <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Box(Tuning.BLOB_WIDTH - 8f, Tuning.BLOB_HEIGHT - 8f), offsetY = 4f, layers = Layers.ENEMY, mask = CollisionLayers.NONE))</ID>
     <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Box(Tuning.HELI_WIDTH - 12f, Tuning.HELI_HEIGHT - 16f), layers = Layers.ENEMY, mask = CollisionLayers.NONE))</ID>
     <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Circle(Tuning.RING_RADIUS), layers = Layers.RING, mask = CollisionLayers.NONE).apply { scalesWithTransform = false })</ID>

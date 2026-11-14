@@ -16,6 +16,8 @@ import klyph.entity.ComponentType
  * The sprite is drawn at its transform's position plus `1 - factor` times the point the camera
  * looks at, on each axis, which the camera then takes away again. At a factor of 1 the sprite is
  * where its transform says, and at 0 the transform is an offset from the center of the screen.
+ * To start a layer at a chosen place in the world, subtract `1 - factor` times the point the
+ * camera looks at when the game starts from that place, and give the rest as the transform.
  * The point the camera looks at is [Camera.x] and [Camera.y] after the clamp to [Camera.bounds],
  * plus [Camera.offsetX] and [Camera.offsetY], so a sprite with a factor of 0 does not shake with
  * the screen and one with a factor of 1 does. An `Interpolated` entity is blended between its last
@@ -57,9 +59,17 @@ public class ParallaxLayer(
     public var factorX: Float,
     /** The factor along y, as [factorX] is along x; the same as [factorX] unless given. */
     public var factorY: Float = factorX,
-    /** Distance in world units between copies along x, or 0 for no repeat. Never negative. */
+    /**
+     * Distance in world units between copies along x, or 0 for no repeat. For copies that meet edge
+     * to edge, the sprite's [Sprite.width] times the entity's scale; nothing keeps the two in step.
+     * Never negative.
+     */
     public var repeatX: Float = 0f,
-    /** Distance in world units between copies along y, or 0 for no repeat. Never negative. */
+    /**
+     * Distance in world units between copies along y, or 0 for no repeat. For copies that meet edge
+     * to edge, the sprite's [Sprite.height] times the entity's scale; nothing keeps the two in step.
+     * Never negative.
+     */
     public var repeatY: Float = 0f,
 ) {
     /** Returns `ParallaxLayer(factor=0.5x0.5, repeat=1024.0x0.0)`. The format may change. */

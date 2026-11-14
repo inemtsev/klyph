@@ -21,8 +21,8 @@ object Tuning {
     /** Falling this far below the world's bottom edge counts as falling into a gap. */
     const val PIT_MARGIN = 60f
 
-    // Draw order of world sprites and canvas items, lowest first.
-    const val LAYER_SKY = -100
+    // Draw order of world sprites and canvas items, lowest first. The sky is drawn in the
+    // background space, which lies under every layer.
     const val LAYER_FAR_CLOUDS = -90
     const val LAYER_SKYLINE = -80
     const val LAYER_NEAR_CLOUDS = -70
@@ -30,6 +30,8 @@ object Tuning {
     const val LAYER_BILLBOARDS = -29
     const val LAYER_POSTERS = -28
     const val LAYER_BUILDINGS = -10
+    /** The caps, windows and edges of the buildings, over their faces. */
+    const val LAYER_BUILDING_DETAILS = -9
     const val LAYER_DECOR = -5
     const val LAYER_PICKUPS = 0
     const val LAYER_ENEMIES = 5

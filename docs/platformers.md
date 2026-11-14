@@ -273,6 +273,7 @@ ledges.
   `world.snapInterpolation(entity)` right after the move to draw it at the new place at once. A
   camera that follows an interpolated body follows `app.drawnPositionOf(body)`, the blended
   position the renderer uses this frame, not the `Transform`, or it jitters against the picture.
+  [Scrolling worlds](scrolling.md) shows both.
 
 ## See also
 
@@ -283,4 +284,4 @@ ledges.
   [SweepHit](../klyph/klyph.collision/-sweep-hit/index.html) and
   [BoxSlide](../klyph/klyph.collision/-box-slide/index.html)
 - [Input](input.md) for `isJustPressed` in `FIXED_UPDATE`
-- Next: [Text, canvas and overlay](text-canvas-and-overlay.md)
+- Next: [Scrolling worlds](scrolling.md)

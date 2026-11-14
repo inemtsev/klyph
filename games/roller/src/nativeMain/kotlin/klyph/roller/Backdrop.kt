@@ -1,17 +1,17 @@
 package klyph.roller
 
 import klyph.app.App
+import klyph.entity.Commands
+import klyph.entity.Transform
 import klyph.platform.Color
 import klyph.render.DrawSpace
+import klyph.render.ParallaxLayer
+import klyph.render.Sprite
 import klyph.render.TextureRegion
-import klyph.render.visibleHeight
-import klyph.render.visibleWidth
 
-// The sky behind the level: a gradient, far clouds, the distant city and near clouds, each layer
-// moving at its own share of the camera's speed. klyph has no parallax layers, and the canvas
-// draws every WORLD item before every SCREEN item, so a backdrop drawn in screen space would
-// cover the level. Everything here is drawn in world space instead, placed relative to the
-// camera each frame, so it sorts by layer under the buildings.
+// The sky behind the level: a gradient drawn in the background space, which lies under everything the
+// world draws, then the far clouds, the distant city and the near clouds, each a sprite with a
+// ParallaxLayer that follows the camera at its own share of its speed and repeats to fill the view.
 
 /** A cloud: where it sits along its layer's repeating strip and how high, which shape, how big. */
 private class CloudSpot(val x: Float, val y: Float, val variant: Int, val scale: Float)
@@ -35,65 +35,54 @@ private val NEAR_CLOUDS = listOf(
 
 private val FAR_CLOUD_TINT = Color(0xF4F0FFC8u)
 
-/** App-level RENDER system: draws the sky, the clouds and the distant city behind every screen. */
-fun drawBackdrop(app: App) {
-    val camera = app.camera
-    val art = app.game.art
-    val width = camera.visibleWidth
-    val height = camera.visibleHeight
-    val left = camera.x - width / 2
-    val top = camera.y - height / 2
-    // A little larger than the view, so no edge shows while the camera shakes.
+/**
+ * Returns the transform x that puts a layer with [factor] at [x] while the camera is at [startX],
+ * where the level's left edge holds it at the start. A [ParallaxLayer] draws its sprite at its
+ * transform plus `1 - factor` times the camera's x.
+ */
+private fun layerX(x: Float, factor: Float, startX: Float): Float = x - (1f - factor) * startX
+
+/** App-level RENDER system: draws the sky across the whole window, under everything else. */
+fun drawSky(app: App) {
     app.canvas.drawSprite(
-        art.sky, x = camera.x, y = camera.y, width = width + 40f, height = height + 2f,
-        layer = Tuning.LAYER_SKY, space = DrawSpace.WORLD,
+        app.game.art.sky, x = 0f, y = 0f, width = app.window.width.toFloat(), height = app.window.height.toFloat(),
+        space = DrawSpace.BACKGROUND, originX = 0f, originY = 0f,
     )
-    drawClouds(app, FAR_CLOUDS, Tuning.FAR_CLOUD_PARALLAX, FAR_CLOUD_TINT, Tuning.LAYER_FAR_CLOUDS, left, top, width)
-    drawSkyline(app, art.skyline, left, width)
-    drawClouds(app, NEAR_CLOUDS, Tuning.NEAR_CLOUD_PARALLAX, Color.WHITE, Tuning.LAYER_NEAR_CLOUDS, left, top, width)
 }
 
 /**
- * Draws a layer of clouds that moves at [parallax] of the camera's speed and repeats every
- * [Tuning.CLOUD_PERIOD] units, with the view's left edge at [left].
+ * Spawns the far clouds, the distant city and the near clouds, placed for a camera that starts at
+ * [startX]. They belong to no scene when this runs at startup, so every screen shows them.
  */
-private fun drawClouds(app: App, clouds: List<CloudSpot>, parallax: Float, color: Color, layer: Int, left: Float, top: Float, width: Float) {
-    val art = app.game.art
-    val period = Tuning.CLOUD_PERIOD
-    for (index in clouds.indices) {
-        val cloud = clouds[index]
-        val region = art.clouds[cloud.variant]
-        val cloudWidth = region.width * cloud.scale
-        // Where the cloud is across the screen, wrapped onto the repeating strip.
-        val across = positiveRemainder(cloud.x - left * parallax, period)
-        for (copy in 0..1) {
-            val x = across - copy * period
-            if (x > width || x + cloudWidth < 0f) continue
-            app.canvas.drawSprite(
-                region, x = left + x, y = top + cloud.y, width = cloudWidth, height = region.height * cloud.scale,
-                color = color, layer = layer, space = DrawSpace.WORLD, originX = 0f, originY = 0f,
-            )
+fun Commands.spawnBackdrop(art: Art, startX: Float) {
+    spawnClouds(art, FAR_CLOUDS, Tuning.FAR_CLOUD_PARALLAX, FAR_CLOUD_TINT, Tuning.LAYER_FAR_CLOUDS, startX)
+    spawnSkyline(art.skyline, startX)
+    spawnClouds(art, NEAR_CLOUDS, Tuning.NEAR_CLOUD_PARALLAX, Color.WHITE, Tuning.LAYER_NEAR_CLOUDS, startX)
+}
+
+/**
+ * Spawns a layer of clouds that moves at [parallax] of the camera's speed along x and repeats every
+ * [Tuning.CLOUD_PERIOD] units. A cloud stays at its height on the screen, which its spot counts from
+ * the top of the view, so its y is that height less half the view's.
+ */
+private fun Commands.spawnClouds(art: Art, clouds: List<CloudSpot>, parallax: Float, color: Color, layer: Int, startX: Float) {
+    for (cloud in clouds) {
+        spawn {
+            val y = cloud.y - Tuning.WORLD_HEIGHT / 2
+            add(Transform, Transform(layerX(cloud.x, parallax, startX), y, scaleX = cloud.scale, scaleY = cloud.scale))
+            add(Sprite, Sprite(art.clouds[cloud.variant], color = color, layer = layer, originX = 0f, originY = 0f))
+            add(ParallaxLayer, ParallaxLayer(factorX = parallax, factorY = 0f, repeatX = Tuning.CLOUD_PERIOD))
         }
     }
 }
 
-/** Draws the distant city along the bottom of the view, repeated across it, at its parallax. */
-private fun drawSkyline(app: App, skyline: TextureRegion, left: Float, width: Float) {
-    val scale = Tuning.SKYLINE_SCALE
-    val tileWidth = skyline.width * scale
-    val tileHeight = skyline.height * scale
-    var x = -positiveRemainder(left * Tuning.SKYLINE_PARALLAX, tileWidth)
-    while (x < width) {
-        app.canvas.drawSprite(
-            skyline, x = left + x, y = Tuning.WORLD_HEIGHT - tileHeight, width = tileWidth, height = tileHeight,
-            layer = Tuning.LAYER_SKYLINE, space = DrawSpace.WORLD, originX = 0f, originY = 0f,
-        )
-        x += tileWidth
+/** Spawns the distant city, standing on the bottom of the world and repeating along x at its parallax. */
+private fun Commands.spawnSkyline(skyline: TextureRegion, startX: Float) {
+    val width = skyline.width * Tuning.SKYLINE_SCALE
+    val height = skyline.height * Tuning.SKYLINE_SCALE
+    spawn {
+        add(Transform, Transform(layerX(0f, Tuning.SKYLINE_PARALLAX, startX), Tuning.WORLD_HEIGHT))
+        add(Sprite, Sprite(skyline, width, height, layer = Tuning.LAYER_SKYLINE, originX = 0f, originY = 1f))
+        add(ParallaxLayer, ParallaxLayer(factorX = Tuning.SKYLINE_PARALLAX, factorY = 1f, repeatX = width))
     }
-}
-
-/** Returns [value] modulo [period], from 0 up to [period]. */
-private fun positiveRemainder(value: Float, period: Float): Float {
-    val remainder = value % period
-    return if (remainder < 0f) remainder + period else remainder
 }

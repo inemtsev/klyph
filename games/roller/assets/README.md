@@ -25,11 +25,12 @@ was edited.
 | plant.png | 67x96 | Potted plants on the roofs | 16-bit pixel art video game decoration, side view, a small potted plant, a round leafy green bush in an orange terracotta clay pot, bold dark outline, bright colors. |
 
 The rest of the art is painted in code into an `Image` at startup (`Painting.kt`) and drawn with
-nearest sampling: the brick buildings with their stone caps and windows, the steel ledges, the
-billboards' lattice pylons, the air conditioners, the blocky clouds, the distant skyline, the sky
-gradient and the impact star. The billboards' frames and catwalks are the engine's
-`Assets.whitePixel`, tinted, and the dust and slime drops are `Assets.disc`. None of them is
-loaded from a file.
+nearest sampling: the tiles that repeat across the brick buildings (bricks, stone cap, a row of
+windows) and the steel ledges (a girder), the billboards' lattice pylons, the air conditioners,
+the blocky clouds, the distant skyline, the sky gradient and the impact star. The billboards'
+frames and catwalks, the dark edges of the walls and the end plates of the ledges are the
+engine's `Assets.whitePixel`, tinted, and the dust and slime drops are `Assets.disc`. None of
+them is loaded from a file.
 
 ## Sounds
 

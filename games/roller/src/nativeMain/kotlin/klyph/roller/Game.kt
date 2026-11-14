@@ -5,13 +5,13 @@ import klyph.app.Assets
 import klyph.audio.MusicTrack
 import klyph.audio.Sound
 import klyph.entity.Entity
+import klyph.platform.SamplerAddress
 import klyph.platform.SamplerFilter
 import klyph.render.Texture
 import klyph.render.TextureRegion
 import klyph.render.asRegion
 import klyph.render.region
 import kotlin.random.Random
-import kotlin.time.Duration
 
 /** The textures the game draws, loaded or painted once at startup. */
 class Art(
@@ -24,6 +24,12 @@ class Art(
     val sign: TextureRegion,
     val plant: TextureRegion,
     val airConditioner: TextureRegion,
+    /** One repeating tile of brick wall for each palette; a building takes the one its index picks. */
+    val bricks: List<TextureRegion>,
+    /** Repeating tiles: the stone cap along a roof, a row of windows and a steel girder. */
+    val cap: TextureRegion,
+    val windows: TextureRegion,
+    val girder: TextureRegion,
     val posterFace: TextureRegion,
     val posterCity: TextureRegion,
     val sky: TextureRegion,
@@ -45,8 +51,10 @@ class Art(
     companion object {
         fun load(assets: Assets): Art {
             // The generated sprites are downscaled pixel art, so they keep linear sampling; the
-            // painted art is drawn at whole texels and wants nearest sampling to stay blocky.
+            // painted art is drawn at whole texels and wants nearest sampling to stay blocky. The
+            // tiles are the painted art that a Sprite with a tile size repeats, so they also repeat.
             val pixel = SamplerFilter.NEAREST
+            val repeat = SamplerAddress.REPEAT
             return Art(
                 skate = listOf(assets.texture("ninja_skate1.png").asRegion(), assets.texture("ninja_skate2.png").asRegion()),
                 jump = assets.texture("ninja_jump.png").asRegion(),
@@ -57,6 +65,10 @@ class Art(
                 sign = assets.texture("sign.png").asRegion(),
                 plant = assets.texture("plant.png").asRegion(),
                 airConditioner = assets.createTexture(paintAirConditioner(), pixel).asRegion(),
+                bricks = List(BRICK_STYLE_COUNT) { assets.createTexture(paintBrickTile(it), pixel, repeat).asRegion() },
+                cap = assets.createTexture(paintCapTile(), pixel, repeat).asRegion(),
+                windows = assets.createTexture(paintWindowTile(), pixel, repeat).asRegion(),
+                girder = assets.createTexture(paintGirderTile(), pixel, repeat).asRegion(),
                 posterFace = assets.texture("poster_face.png").asRegion(),
                 posterCity = assets.texture("poster_city.png").asRegion(),
                 sky = assets.createTexture(paintGradient(64, Tuning.SKY_TOP, Tuning.SKY_BOTTOM)).asRegion(),
@@ -119,9 +131,6 @@ class Game(val art: Art, val sounds: Sounds, val isAutopilot: Boolean) {
     var levelsCompleted = 0
     var gameOvers = 0
 
-    /** When the last end screen appeared, so it can ignore early presses and the autopilot can play again. */
-    var endedAt: Duration = Duration.ZERO
-
     /** Where the title screen's camera has drifted to along the level. */
     var titleCameraX = 0f
 
@@ -178,7 +187,7 @@ class Run(
     var stomps = 0
     var hearts = Tuning.MAX_HEARTS
 
-    /** Seconds played; the clock stops while paused because the play scene's systems do. */
+    /** Seconds spent [RunState.PLAYING], for the time bonus; the play scene's own clock also runs while he falls or glides. */
     var elapsed = 0f
 
     var state = RunState.PLAYING
@@ -189,9 +198,8 @@ class Run(
     /** Set once the run is over; the play scene then shows the end screen. */
     var outcomeOrNull: RunOutcome? = null
 
-    /** Seconds of camera shake left, and the offset the shake added last frame. */
+    /** Seconds of camera shake left. */
     var shake = 0f
-    var shakeOffset = 0f
 
     /** How far ahead of the hero the camera looks, eased as he speeds up and turns. */
     var lookAhead = 0f

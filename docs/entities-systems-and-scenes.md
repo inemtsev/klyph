@@ -83,7 +83,8 @@ What each phase is for:
 
 Each frame runs these steps, in this order:
 
-1. Drop the previous frame's events and refresh the audio state.
+1. Drop the previous frame's events, advance the top scene's `elapsed` clock and refresh the audio
+   state.
 2. Update `app.input` from the platform's events and publish them as `klyph.event` events.
 3. Show or hide the debug overlay if its key went down.
 4. INPUT.
@@ -249,8 +250,9 @@ destroyed with their children. Entities created by the setup block, by App-level
 `onExit` action belong to no scene and stay, which suits a starfield behind every screen.
 
 **Freezing.** While a scene is pushed over another, the one below is frozen: its systems do not
-run, and its velocities, kinematic bodies, lifetimes, fades, particle emitters, sprite
-animations and colliders stand still.
+run, its `elapsed` clock stops, and its velocities, kinematic bodies, lifetimes, fades, particle
+emitters, sprite animations and colliders stand still. The clock goes on from the same value when
+the scene on top is popped; [Scrolling worlds](scrolling.md) shows what to drive with it.
 Its entities keep rendering, so the pause menu draws over the stopped game without a paused flag.
 App-level systems still run and still see frozen entities, so keep game logic in scene systems.
 

@@ -18,10 +18,12 @@ import klyph.scene.buildScene
  *
  * Only the top scene's systems run, and the engine freezes the particles, fades and colliders of
  * the entities [play] owns while a screen is over it, so the run stands still with no paused flag,
- * and its clock, which [play]'s systems run, stops too. The hero, enemies, pickups and effects
- * are spawned by [play] and its systems, so they belong to it and vanish when it leaves the
- * stack; the buildings and billboards belong to no scene and stay for the title screen. The
- * scenes refer to each other, so they are built together.
+ * and its clocks stop too: the run's, which [play]'s systems run, and the scene's own `elapsed`,
+ * which the ring spin reads; each screen's own `elapsed` drives the title's bobbing hero and the
+ * end screens' wait.
+ * The hero, enemies, pickups and effects are spawned by [play] and its systems, so they belong to
+ * it and vanish when it leaves the stack; the buildings, billboards and backdrop belong to no
+ * scene and stay for the title screen. The scenes refer to each other, so they are built together.
  */
 class GameScenes {
     val title: Scene = buildScene("title") {
@@ -72,6 +74,8 @@ class GameScenes {
         onEnter { app ->
             // The music ducks instead of stopping, so resuming does not restart it.
             app.audio.music.volume = Tuning.PAUSED_MUSIC_VOLUME
+            // A shake in progress would hold the view off-centre for the whole pause.
+            app.camera.offsetX = 0f
             println("Paused.")
         }
         onExit { app ->
@@ -83,7 +87,7 @@ class GameScenes {
     }
 
     val complete: Scene = buildScene("complete") {
-        onEnter { app -> app.game.endedAt = app.time.elapsed }
+        onEnter { app -> app.camera.offsetX = 0f }
         addSystem(Phase.INPUT) { app -> leaveEndScreen(app) }
         addSystem(Phase.RENDER) { app -> drawComplete(app) }
     }
@@ -91,9 +95,10 @@ class GameScenes {
     val gameOver: Scene = buildScene("gameOver") {
         onEnter { app ->
             val game = app.game
-            game.endedAt = app.time.elapsed
             game.gameOvers++
             game.bestScore = maxOf(game.bestScore, app.run.score)
+            // The fatal hit started a shake that would otherwise hold the view off-centre.
+            app.camera.offsetX = 0f
             app.audio.music.volume = Tuning.END_MUSIC_VOLUME
             app.audio.play(game.sounds.gameOver)
             println("Game over: score ${app.run.score}, ${app.run.rings} rings, ${app.run.stomps} stomps.")
@@ -102,10 +107,13 @@ class GameScenes {
         addSystem(Phase.RENDER) { app -> drawGameOver(app) }
     }
 
-    /** End screen INPUT: after a moment, a jump plays again and Escape goes back to the title. */
+    /**
+     * End screen INPUT: after a moment, which the end screen's own clock counts from its entry, a
+     * jump plays again and Escape goes back to the title.
+     */
     private fun leaveEndScreen(app: klyph.app.App) {
         val game = app.game
-        val waited = app.time.elapsed - game.endedAt
+        val waited = app.scenes.currentOrNull?.elapsed ?: return
         when {
             waited < Tuning.END_INPUT_DELAY -> {}
             isEscapePressed(app.input) -> app.scenes.replace(title)
