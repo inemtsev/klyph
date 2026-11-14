@@ -13,8 +13,11 @@ import kotlin.random.Random
 // texel at a time, and uploaded as a texture that is drawn with nearest sampling at Tuning.PIXEL
 // points per texel (or more), so it looks like the generated pixel-art sprites. A tile is uploaded
 // with SamplerAddress.REPEAT, and a Sprite with a tile size repeats it across a building, so the
-// level needs a few small textures instead of one for every building. Every painting is seeded, so
-// every run looks the same.
+// level needs a few small textures instead of one for every building. A sprite repeats a whole
+// texture, so each tile keeps a texture of its own, and so does the sky gradient, which is sampled
+// linearly. The rest are each drawn once as they are: a SheetLayout sets them in a row, Image.draw
+// paints them into one sheet Image and the sheet is uploaded as one texture. Every painting is
+// seeded, so every run looks the same.
 
 /** The three brick colors and the mortar of one wall's palette. */
 private class BrickPalette(val bricks: List<Color>, val mortar: Color)
@@ -271,4 +274,69 @@ fun paintStar(size: Int): Image {
         }
     }
     return image
+}
+
+/**
+ * Texels of padding around every painting on a sheet. Each painting owns its padding, which
+ * [SheetLayout.paintSheet] fills with copies of the painting's own edge texels, so neighbours lie
+ * two texels apart.
+ */
+private const val SHEET_PADDING = 1
+
+/** Where a painting lies on a sheet: the column and row of its top-left texel and its size, all in texels. */
+class Placement(val x: Int, val y: Int, val width: Int, val height: Int) {
+    override fun toString(): String = "Placement(x=$x, y=$y, size=${width}x$height)"
+}
+
+/**
+ * Paintings set side by side in one row, to be drawn into one image and uploaded as one texture.
+ * [add] puts a painting to the right of the last one and returns where it lies, which is where
+ * [paintSheet] draws it. Every painting has [SHEET_PADDING] texel of padding of its own all round,
+ * so nearest sampling at the edge of a painting's region never reads a neighbour.
+ */
+class SheetLayout {
+    private val placed = ArrayList<Pair<Image, Placement>>()
+
+    /** Texels across the row so far, every painting and its padding included. */
+    private var rowWidth = 0
+
+    /** Height of the tallest painting added so far. */
+    private var tallest = 0
+
+    /** Sets [painting] to the right of the last one and returns where it lies on the sheet. */
+    fun add(painting: Image): Placement {
+        val placement = Placement(rowWidth + SHEET_PADDING, SHEET_PADDING, painting.width, painting.height)
+        placed.add(painting to placement)
+        rowWidth += painting.width + 2 * SHEET_PADDING
+        tallest = maxOf(tallest, painting.height)
+        return placement
+    }
+
+    /** Draws every painting added so far into a new image, each at its [Placement] with its padding filled in. */
+    fun paintSheet(): Image {
+        val sheet = Image(rowWidth, tallest + 2 * SHEET_PADDING)
+        for ((painting, placement) in placed) {
+            sheet.draw(painting, placement.x, placement.y)
+            sheet.extrudeEdges(placement)
+        }
+        return sheet
+    }
+
+    override fun toString(): String = "SheetLayout(paintings=${placed.size})"
+}
+
+/**
+ * Fills the [SHEET_PADDING] texels around [placement] with copies of the painting's nearest edge
+ * texel, corners included. A nearest-sampled read that lands just outside the painting, as a pixel
+ * centre exactly on a texel boundary can, then gets the painting's own edge, as clamped addressing
+ * gave on a texture of its own, and never a neighbour's texel or a clear one.
+ */
+private fun Image.extrudeEdges(placement: Placement) {
+    val columns = placement.x until placement.x + placement.width
+    val rows = placement.y until placement.y + placement.height
+    for (y in rows.first - SHEET_PADDING..rows.last + SHEET_PADDING) {
+        for (x in columns.first - SHEET_PADDING..columns.last + SHEET_PADDING) {
+            if (x !in columns || y !in rows) this[x, y] = this[x.coerceIn(columns), y.coerceIn(rows)]
+        }
+    }
 }
