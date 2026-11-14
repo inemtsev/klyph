@@ -32,9 +32,11 @@ import klyph.text.parseBmFont
  * Textures, fonts, sounds and music tracks loaded from a file are cached by resolved path, so
  * loading the same file twice returns the same object. Textures are cached by path, [SamplerFilter]
  * and [SamplerAddress], and fonts by path and filter, so a file loaded with both filters, or both
- * clamped and repeating, is uploaded twice, as two textures. [runApp] creates the one instance,
- * available as [App.assets], and closes it after every [Phase.SHUTDOWN] system has run. Do not
- * close the textures it returns yourself.
+ * clamped and repeating, is uploaded twice, as two textures. A loading function whose call passes
+ * no `filter` uses [textureFilter], which [AppConfig.textureFilter] sets, so a game of pixel art
+ * names [SamplerFilter.NEAREST] once in its config and not in every call. [runApp] creates the
+ * one instance, available as [App.assets], and closes it after every [Phase.SHUTDOWN] system has
+ * run. Do not close the textures it returns yourself.
  *
  * [toString] gives the root and the number of textures, fonts, sounds and music tracks held, for
  * example `Assets(root=/games/shooter/assets/, textures=3, fonts=1, sounds=4, music=1)`. The
@@ -44,12 +46,23 @@ import klyph.text.parseBmFont
  *
  * Samples live in the sandbox because they need a display.
  */
-public class Assets internal constructor(private val device: GpuDevice, root: String) : AutoCloseable {
+public class Assets internal constructor(
+    private val device: GpuDevice,
+    root: String,
+    textureFilter: SamplerFilter = SamplerFilter.LINEAR,
+) : AutoCloseable {
     /**
      * The directory relative paths resolve under. A separator is appended when the configured
      * directory lacks one; an empty root means [Files.basePath] itself.
      */
     public val root: String = if (root.isEmpty() || root.endsWith('/') || root.endsWith('\\')) root else "$root/"
+
+    /**
+     * The sampling filter that [texture], [textureOrNull], [createTexture], [spriteSheet],
+     * [spriteSheetOrNull], [font] and [fontOrNull] use when their call passes no `filter`. It is
+     * [AppConfig.textureFilter], [SamplerFilter.LINEAR] unless the app sets another.
+     */
+    public val textureFilter: SamplerFilter = textureFilter
 
     private val cached = FileCache<Texture>()
     private val uploaded = ArrayList<Texture>()
@@ -130,8 +143,9 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
     /**
      * Returns the texture of the PNG or JPEG file at [path], sampled with [filter] and [address],
      * loading and uploading it on the first call for that file, filter and address and returning
-     * the same [Texture] on every later call with all three. Use [SamplerFilter.NEAREST] for pixel
-     * art, and [SamplerAddress.REPEAT] for a texture that a `Sprite` with a tile size or
+     * the same [Texture] on every later call with all three. [filter] defaults to [textureFilter],
+     * which [AppConfig.textureFilter] sets; use [SamplerFilter.NEAREST] for pixel art. Use
+     * [SamplerAddress.REPEAT] for a texture that a `Sprite` with a tile size or
      * `Canvas.drawTiled` repeats across a larger area.
      *
      * A texture has one address, fixed when it loads, so a file used both clamped and repeating is
@@ -144,7 +158,7 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
      */
     public fun texture(
         path: String,
-        filter: SamplerFilter = SamplerFilter.LINEAR,
+        filter: SamplerFilter = textureFilter,
         address: SamplerAddress = SamplerAddress.CLAMP,
     ): Texture {
         checkOpen()
@@ -161,7 +175,7 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
 
     /**
      * Uploads [image], such as one drawn in code, into a new texture sampled with [filter] and
-     * [address], and returns it.
+     * [address], and returns it. [filter] defaults to [textureFilter], as in [texture].
      *
      * Every call uploads a new texture; nothing is cached, so call it once per image, at startup,
      * not every frame. The caller owns the texture: it may close it whenever it is done with it,
@@ -174,7 +188,7 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
      */
     public fun createTexture(
         image: Image,
-        filter: SamplerFilter = SamplerFilter.LINEAR,
+        filter: SamplerFilter = textureFilter,
         address: SamplerAddress = SamplerAddress.CLAMP,
     ): Texture {
         checkOpen()
@@ -186,16 +200,15 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
 
     /**
      * Returns the texture of the PNG or JPEG file at [path] sampled with [filter] and [address] as
-     * [texture] does, or `null` if the
-     * file does not exist, cannot be read, or is not a decodable image. A failed load is not
-     * cached, so a later call tries the file again.
+     * [texture] does, defaults included, or `null` if the file does not exist, cannot be read, or
+     * is not a decodable image. A failed load is not cached, so a later call tries the file again.
      *
      * @throws klyph.platform.SdlException if the GPU texture cannot be created.
      * @throws IllegalStateException if these assets are closed.
      */
     public fun textureOrNull(
         path: String,
-        filter: SamplerFilter = SamplerFilter.LINEAR,
+        filter: SamplerFilter = textureFilter,
         address: SamplerAddress = SamplerAddress.CLAMP,
     ): Texture? {
         checkOpen()
@@ -214,7 +227,8 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
     /**
      * Returns a sprite sheet that cuts the texture of the file at [path], loaded with [filter] as
      * [texture] does, into a grid of [columns] by [rows] equal cells, indexed row by row from the top-left
-     * cell. See [SpriteSheet.Companion.fromGrid] for margins, spacing and explicit cell sizes.
+     * cell. [filter] defaults to [textureFilter]. See [SpriteSheet.Companion.fromGrid] for margins,
+     * spacing and explicit cell sizes.
      *
      * @throws FileException if the file does not exist or cannot be read.
      * @throws ImageException if the file is not a PNG or JPEG image, or is corrupt.
@@ -223,20 +237,20 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
      * @throws klyph.platform.SdlException if the GPU texture cannot be created.
      * @throws IllegalStateException if these assets are closed.
      */
-    public fun spriteSheet(path: String, columns: Int, rows: Int, filter: SamplerFilter = SamplerFilter.LINEAR): SpriteSheet =
+    public fun spriteSheet(path: String, columns: Int, rows: Int, filter: SamplerFilter = textureFilter): SpriteSheet =
         SpriteSheet.fromGrid(texture(path, filter), columns, rows)
 
     /**
-     * Returns a sprite sheet cut from the file at [path] as [spriteSheet] does, or `null` if the
-     * file does not exist, cannot be read, or is not a decodable image. A grid that does not fit
-     * the texture is still an error.
+     * Returns a sprite sheet cut from the file at [path] as [spriteSheet] does, defaults included,
+     * or `null` if the file does not exist, cannot be read, or is not a decodable image. A grid
+     * that does not fit the texture is still an error.
      *
      * @throws IllegalArgumentException if [columns] or [rows] is not positive, or the texture is
      *   smaller than the grid.
      * @throws klyph.platform.SdlException if the GPU texture cannot be created.
      * @throws IllegalStateException if these assets are closed.
      */
-    public fun spriteSheetOrNull(path: String, columns: Int, rows: Int, filter: SamplerFilter = SamplerFilter.LINEAR): SpriteSheet? {
+    public fun spriteSheetOrNull(path: String, columns: Int, rows: Int, filter: SamplerFilter = textureFilter): SpriteSheet? {
         val texture = textureOrNull(path, filter) ?: return null
         return SpriteSheet.fromGrid(texture, columns, rows)
     }
@@ -244,8 +258,8 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
     /**
      * Returns the font in the BMFont text file at [path] (usually a `.fnt` file), with its pages
      * sampled with [filter], reading it on the first call for that file and filter and returning
-     * the same [Font] on every later call with both. Use [SamplerFilter.NEAREST] for a pixel font
-     * drawn at whole scales.
+     * the same [Font] on every later call with both. [filter] defaults to [textureFilter]; use
+     * [SamplerFilter.NEAREST] for a pixel font drawn at whole scales.
      *
      * The file's `page` lines name the PNG or JPEG pages relative to the folder the font file is
      * in; they load as [texture] does with [filter] and [SamplerAddress.CLAMP], so a page shared
@@ -262,7 +276,7 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
      * @throws klyph.platform.SdlException if a page's GPU texture cannot be created.
      * @throws IllegalStateException if these assets are closed.
      */
-    public fun font(path: String, filter: SamplerFilter = SamplerFilter.LINEAR): Font {
+    public fun font(path: String, filter: SamplerFilter = textureFilter): Font {
         checkOpen()
         val resolved = resolve(path)
         cachedFonts.getOrNull(resolved, filter)?.let { return it }
@@ -273,7 +287,7 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
 
     /**
      * Returns the font in the BMFont text file at [path] with its pages sampled with [filter] as
-     * [font] does, or `null` if the file or
+     * [font] does, defaults included, or `null` if the file or
      * one of its pages does not exist, cannot be read or decoded, or the file is not a well-formed
      * BMFont text file. A failed load is not cached, so a later call tries the file again; pages
      * loaded before the failure stay loaded.
@@ -283,7 +297,7 @@ public class Assets internal constructor(private val device: GpuDevice, root: St
      * @throws klyph.platform.SdlException if a page's GPU texture cannot be created.
      * @throws IllegalStateException if these assets are closed.
      */
-    public fun fontOrNull(path: String, filter: SamplerFilter = SamplerFilter.LINEAR): Font? {
+    public fun fontOrNull(path: String, filter: SamplerFilter = textureFilter): Font? {
         checkOpen()
         val resolved = resolve(path)
         cachedFonts.getOrNull(resolved, filter)?.let { return it }

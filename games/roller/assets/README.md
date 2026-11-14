@@ -25,12 +25,15 @@ was edited.
 | plant.png | 67x96 | Potted plants on the roofs | 16-bit pixel art video game decoration, side view, a small potted plant, a round leafy green bush in an orange terracotta clay pot, bold dark outline, bright colors. |
 
 The rest of the art is painted in code into an `Image` at startup (`Painting.kt`) and drawn with
-nearest sampling: the tiles that repeat across the brick buildings (bricks, stone cap, a row of
-windows) and the steel ledges (a girder), the billboards' lattice pylons, the air conditioners,
-the blocky clouds, the distant skyline, the sky gradient and the impact star. The billboards'
-frames and catwalks, the dark edges of the walls and the end plates of the ledges are the
-engine's `Assets.whitePixel`, tinted, and the dust and slime drops are `Assets.disc`. None of
-them is loaded from a file.
+nearest sampling, except the sky gradient, which is sampled linearly. The gradient and the tiles
+that repeat across the brick buildings (bricks, stone cap, a row of windows) and the steel ledges
+(a girder) are a texture each, because a tiled sprite repeats a whole texture and the gradient is
+sampled differently. The one-off pieces, the billboards' lattice pylons, the air conditioners, the
+blocky clouds, the distant skyline and the impact star, are drawn into one sheet image with
+`Image.draw`, each with its edge texels repeated one texel outwards so that sampling never reads a
+neighbour, and uploaded as one texture. The billboards' frames and catwalks, the dark edges of the
+walls and the end plates of the ledges are the engine's `Assets.whitePixel`, tinted, and the dust
+and slime drops are `Assets.disc`. None of them is loaded from a file.
 
 ## Sounds
 

@@ -4,8 +4,6 @@ import klyph.platform.Color
 import klyph.platform.Image
 import klyph.platform.lerp
 import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sqrt
 import kotlin.random.Random
 
@@ -15,16 +13,11 @@ import kotlin.random.Random
 // texel at a time, and uploaded as a texture that is drawn with nearest sampling at Tuning.PIXEL
 // points per texel (or more), so it looks like the generated pixel-art sprites. A tile is uploaded
 // with SamplerAddress.REPEAT, and a Sprite with a tile size repeats it across a building, so the
-// level needs a few small textures instead of one for every building. Every painting is seeded, so
-// every run looks the same. Image has fill, fillCircle and set, so the rectangle helper below is
-// the game's own.
-
-/** Fills the rectangle of [width] by [height] texels whose top-left corner is ([x], [y]) with [color], clipped to the image. */
-fun Image.fillRect(x: Int, y: Int, width: Int, height: Int, color: Color) {
-    for (row in max(0, y) until min(this.height, y + height)) {
-        for (column in max(0, x) until min(this.width, x + width)) set(column, row, color)
-    }
-}
+// level needs a few small textures instead of one for every building. A sprite repeats a whole
+// texture, so each tile keeps a texture of its own, and so does the sky gradient, which is sampled
+// linearly. The rest are each drawn once as they are: a SheetLayout sets them in a row, Image.draw
+// paints them into one sheet Image and the sheet is uploaded as one texture. Every painting is
+// seeded, so every run looks the same.
 
 /** The three brick colors and the mortar of one wall's palette. */
 private class BrickPalette(val bricks: List<Color>, val mortar: Color)
@@ -86,12 +79,12 @@ private const val BRICK_ROWS = 4
  */
 fun paintCapTile(): Image {
     val image = Image(CAP_TILE_TEXELS_WIDE, CAP_TILE_TEXELS_HIGH)
-    image.fillRect(0, 0, CAP_TILE_TEXELS_WIDE, 1, CAP_OUTLINE)
-    image.fillRect(0, 1, CAP_TILE_TEXELS_WIDE, 2, CAP_LIGHT)
-    image.fillRect(0, 3, CAP_TILE_TEXELS_WIDE, 1, CAP_MID)
-    image.fillRect(0, 4, CAP_TILE_TEXELS_WIDE, 1, CAP_SHADE)
-    image.fillRect(0, 5, CAP_TILE_TEXELS_WIDE, 1, UNDER_CAP)
-    image.fillRect(3, 3, 1, 2, CAP_SHADE)
+    image.fillRect(0, 0, width = CAP_TILE_TEXELS_WIDE, height = 1, color = CAP_OUTLINE)
+    image.fillRect(0, 1, width = CAP_TILE_TEXELS_WIDE, height = 2, color = CAP_LIGHT)
+    image.fillRect(0, 3, width = CAP_TILE_TEXELS_WIDE, height = 1, color = CAP_MID)
+    image.fillRect(0, 4, width = CAP_TILE_TEXELS_WIDE, height = 1, color = CAP_SHADE)
+    image.fillRect(0, 5, width = CAP_TILE_TEXELS_WIDE, height = 1, color = UNDER_CAP)
+    image.fillRect(3, 3, width = 1, height = 2, color = CAP_SHADE)
     return image
 }
 
@@ -111,15 +104,15 @@ fun paintWindowTile(): Image {
     val windowHeight = 14
     val image = Image(WINDOW_TEXELS + WINDOW_GAP_TEXELS, windowHeight + 1)
     val x = 1
-    image.fillRect(x - 1, windowHeight - 1, WINDOW_TEXELS + 2, 2, WINDOW_SILL)
-    image.fillRect(x, 0, WINDOW_TEXELS, windowHeight - 1, WINDOW_FRAME)
-    image.fillRect(x + 1, 1, WINDOW_TEXELS - 2, windowHeight - 3, GLASS)
-    image.fillRect(x + 1, 1, WINDOW_TEXELS - 2, 3, GLASS_LIGHT)
+    image.fillRect(x - 1, windowHeight - 1, width = WINDOW_TEXELS + 2, height = 2, color = WINDOW_SILL)
+    image.fillRect(x, 0, width = WINDOW_TEXELS, height = windowHeight - 1, color = WINDOW_FRAME)
+    image.fillRect(x + 1, 1, width = WINDOW_TEXELS - 2, height = windowHeight - 3, color = GLASS)
+    image.fillRect(x + 1, 1, width = WINDOW_TEXELS - 2, height = 3, color = GLASS_LIGHT)
     // A diagonal shine across the lower panes.
     for (k in 0 until 4) {
         image[x + 2 + k, 9 - k] = GLASS_SHINE
     }
-    image.fillRect(x + WINDOW_TEXELS / 2 - 1, 1, 1, windowHeight - 3, WINDOW_FRAME)
+    image.fillRect(x + WINDOW_TEXELS / 2 - 1, 1, width = 1, height = windowHeight - 3, color = WINDOW_FRAME)
     return image
 }
 
@@ -143,10 +136,10 @@ fun paintGirderTile(): Image {
             if ((x + y) % 8 == 0 || (x - y + 64) % 8 == 0) image[x, y] = STEEL_BRACE
         }
     }
-    image.fillRect(0, 0, 8, 1, STEEL_OUTLINE)
-    image.fillRect(0, 1, 8, 1, STEEL_LIGHT)
-    image.fillRect(0, 2, 8, 1, STEEL_MID)
-    image.fillRect(0, 7, 8, 1, STEEL_OUTLINE)
+    image.fillRect(0, 0, width = 8, height = 1, color = STEEL_OUTLINE)
+    image.fillRect(0, 1, width = 8, height = 1, color = STEEL_LIGHT)
+    image.fillRect(0, 2, width = 8, height = 1, color = STEEL_MID)
+    image.fillRect(0, 7, width = 8, height = 1, color = STEEL_OUTLINE)
     image[4, 1] = RIVET
     return image
 }
@@ -164,12 +157,12 @@ fun paintPylon(height: Int): Image {
         val up = 5 - step / 2
         image[down, y] = STEEL_MID
         image[up, y] = STEEL_MID
-        if (step == 0) image.fillRect(2, y, 4, 1, STEEL_DARK)
+        if (step == 0) image.fillRect(2, y, width = 4, height = 1, color = STEEL_DARK)
     }
-    image.fillRect(0, 0, 1, height, STEEL_OUTLINE)
-    image.fillRect(1, 0, 1, height, STEEL_MID)
-    image.fillRect(6, 0, 1, height, STEEL_MID)
-    image.fillRect(7, 0, 1, height, STEEL_OUTLINE)
+    image.fillRect(0, 0, width = 1, height = height, color = STEEL_OUTLINE)
+    image.fillRect(1, 0, width = 1, height = height, color = STEEL_MID)
+    image.fillRect(6, 0, width = 1, height = height, color = STEEL_MID)
+    image.fillRect(7, 0, width = 1, height = height, color = STEEL_OUTLINE)
     return image
 }
 
@@ -181,14 +174,14 @@ private val UNIT_GRILLE = Color(0x5A6276FFu)
 fun paintAirConditioner(): Image {
     val image = Image(20, 13)
     image.fill(UNIT_BODY)
-    image.fillRect(0, 10, 20, 3, UNIT_SHADE)
+    image.fillRect(0, 10, width = 20, height = 3, color = UNIT_SHADE)
     image.fillCircle(centerX = 6f, centerY = 5.5f, radius = 4f, color = UNIT_GRILLE)
     image.fillCircle(centerX = 6f, centerY = 5.5f, radius = 1.5f, color = UNIT_BODY)
-    for (y in 2..8 step 2) image.fillRect(12, y, 6, 1, UNIT_GRILLE)
-    image.fillRect(0, 0, 20, 1, STEEL_OUTLINE)
-    image.fillRect(0, 0, 1, 13, STEEL_OUTLINE)
-    image.fillRect(19, 0, 1, 13, STEEL_OUTLINE)
-    image.fillRect(0, 12, 20, 1, STEEL_OUTLINE)
+    for (y in 2..8 step 2) image.fillRect(12, y, width = 6, height = 1, color = UNIT_GRILLE)
+    image.fillRect(0, 0, width = 20, height = 1, color = STEEL_OUTLINE)
+    image.fillRect(0, 0, width = 1, height = 13, color = STEEL_OUTLINE)
+    image.fillRect(19, 0, width = 1, height = 13, color = STEEL_OUTLINE)
+    image.fillRect(0, 12, width = 20, height = 1, color = STEEL_OUTLINE)
     return image
 }
 
@@ -210,7 +203,7 @@ fun paintCloud(variant: Int): Image {
         val radius = 5f + random.nextFloat() * 4f + if (i == puffs / 2) 2f else 0f
         soft.fillCircle(centerX = centerX, centerY = height - radius * 0.8f - 1f, radius = radius, color = CLOUD)
     }
-    soft.fillRect(5, height - 5, width - 10, 4, CLOUD)
+    soft.fillRect(5, height - 5, width = width - 10, height = 4, color = CLOUD)
     // Hard edges: a texel is either cloud or sky.
     val image = Image(width, height)
     for (y in 0 until height) {
@@ -281,4 +274,69 @@ fun paintStar(size: Int): Image {
         }
     }
     return image
+}
+
+/**
+ * Texels of padding around every painting on a sheet. Each painting owns its padding, which
+ * [SheetLayout.paintSheet] fills with copies of the painting's own edge texels, so neighbours lie
+ * two texels apart.
+ */
+private const val SHEET_PADDING = 1
+
+/** Where a painting lies on a sheet: the column and row of its top-left texel and its size, all in texels. */
+class Placement(val x: Int, val y: Int, val width: Int, val height: Int) {
+    override fun toString(): String = "Placement(x=$x, y=$y, size=${width}x$height)"
+}
+
+/**
+ * Paintings set side by side in one row, to be drawn into one image and uploaded as one texture.
+ * [add] puts a painting to the right of the last one and returns where it lies, which is where
+ * [paintSheet] draws it. Every painting has [SHEET_PADDING] texel of padding of its own all round,
+ * so nearest sampling at the edge of a painting's region never reads a neighbour.
+ */
+class SheetLayout {
+    private val placed = ArrayList<Pair<Image, Placement>>()
+
+    /** Texels across the row so far, every painting and its padding included. */
+    private var rowWidth = 0
+
+    /** Height of the tallest painting added so far. */
+    private var tallest = 0
+
+    /** Sets [painting] to the right of the last one and returns where it lies on the sheet. */
+    fun add(painting: Image): Placement {
+        val placement = Placement(rowWidth + SHEET_PADDING, SHEET_PADDING, painting.width, painting.height)
+        placed.add(painting to placement)
+        rowWidth += painting.width + 2 * SHEET_PADDING
+        tallest = maxOf(tallest, painting.height)
+        return placement
+    }
+
+    /** Draws every painting added so far into a new image, each at its [Placement] with its padding filled in. */
+    fun paintSheet(): Image {
+        val sheet = Image(rowWidth, tallest + 2 * SHEET_PADDING)
+        for ((painting, placement) in placed) {
+            sheet.draw(painting, placement.x, placement.y)
+            sheet.extrudeEdges(placement)
+        }
+        return sheet
+    }
+
+    override fun toString(): String = "SheetLayout(paintings=${placed.size})"
+}
+
+/**
+ * Fills the [SHEET_PADDING] texels around [placement] with copies of the painting's nearest edge
+ * texel, corners included. A nearest-sampled read that lands just outside the painting, as a pixel
+ * centre exactly on a texel boundary can, then gets the painting's own edge, as clamped addressing
+ * gave on a texture of its own, and never a neighbour's texel or a clear one.
+ */
+private fun Image.extrudeEdges(placement: Placement) {
+    val columns = placement.x until placement.x + placement.width
+    val rows = placement.y until placement.y + placement.height
+    for (y in rows.first - SHEET_PADDING..rows.last + SHEET_PADDING) {
+        for (x in columns.first - SHEET_PADDING..columns.last + SHEET_PADDING) {
+            if (x !in columns || y !in rows) this[x, y] = this[x.coerceIn(columns), y.coerceIn(rows)]
+        }
+    }
 }

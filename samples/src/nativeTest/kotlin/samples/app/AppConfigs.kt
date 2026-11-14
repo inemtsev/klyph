@@ -3,6 +3,7 @@ package samples.app
 import klyph.app.AppConfig
 import klyph.app.GpuSync
 import klyph.app.RenderTarget
+import klyph.platform.SamplerFilter
 import klyph.platform.Scancode
 import samples.Sample
 import samples.assertPrints
@@ -18,6 +19,9 @@ class AppConfigs {
         assertPrints(config.overlayKey == Scancode.F3, "true")
         // No key toggles the debug overlay; the game sets app.overlay.isVisible itself.
         assertPrints(AppConfig(overlayKey = null).overlayKey, "null")
+        // Textures load with linear sampling; a pixel-art game sets nearest sampling once for all of them.
+        assertPrints(config.textureFilter, "LINEAR")
+        assertPrints(AppConfig(textureFilter = SamplerFilter.NEAREST).textureFilter, "NEAREST")
         assertFailsWith<IllegalArgumentException> { AppConfig(width = 0) }
     }
 

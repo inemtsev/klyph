@@ -171,9 +171,11 @@ FIXED_UPDATE runs at `AppConfig.fixedRate` steps per second of game time, 60 by 
 fast frames come. At 144 frames a second fewer than half the frames run a step; at 30 each
 frame runs two.
 Inside a step `time.delta` is the fixed step, so `position += velocity * time.deltaSeconds`
-works the same in either phase. After a stall the loop runs at most `maxFixedStepsPerFrame`
-steps and drops the rest, so a slow frame does not make the next one slower. A single frame is
-also clamped to 250 milliseconds, so a breakpoint shows up as one long frame.
+works the same in either phase. `time.fixedDeltaSeconds` is the step's length in every phase and
+`time.elapsedSeconds` the game time so far, both as `Float`s. After a stall the loop runs at most
+`maxFixedStepsPerFrame` steps and drops the rest, so a slow frame does not make the next one
+slower. A single frame is also clamped to 250 milliseconds, so a breakpoint shows up as one long
+frame.
 
 Movement in fixed steps looks jerky when the display's rate is not a multiple of the step rate.
 Mark the entity `Interpolated` and the engine draws it between its last two steps by

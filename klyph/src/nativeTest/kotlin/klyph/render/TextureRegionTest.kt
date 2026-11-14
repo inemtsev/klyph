@@ -66,6 +66,30 @@ class TextureRegionTest {
     }
 
     @Test
+    fun aspectRatioIsWidthOverHeight() {
+        val texture = Texture(256, 128)
+        assertEquals(2f, texture.asRegion().aspectRatio)
+        assertEquals(0.5f, texture.region(x = 0, y = 0, width = 32, height = 64).aspectRatio)
+        assertEquals(1f, texture.region(x = 8, y = 8, width = 24, height = 24).aspectRatio)
+    }
+
+    @Test
+    fun aspectRatioGivesTheWidthAtAHeight() {
+        val region = Texture(64, 64).region(x = 0, y = 0, width = 24, height = 16)
+        assertEquals(36f, 24f * region.aspectRatio)
+        assertEquals(16f, 24f / region.aspectRatio)
+    }
+
+    @Test
+    fun aspectRatioStaysPositiveAndFiniteForOneTexelStrips() {
+        val wide = Texture(4096, 1).asRegion().aspectRatio
+        val tall = Texture(1, 4096).asRegion().aspectRatio
+        assertEquals(4096f, wide)
+        assertEquals(1f / 4096f, tall)
+        assertTrue(wide.isFinite() && tall > 0f)
+    }
+
+    @Test
     fun equalityNeedsTheSameTextureInstance() {
         val texture = Texture(64, 32)
         assertEquals(texture.region(x = 0, y = 0, width = 8, height = 8), texture.region(x = 0, y = 0, width = 8, height = 8))

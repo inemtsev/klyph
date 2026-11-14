@@ -4,6 +4,7 @@ package samples.guide
 
 import klyph.app.App
 import klyph.app.Phase
+import klyph.app.elapsedSeconds
 import klyph.collision.Collider
 import klyph.collision.CollisionLayers
 import klyph.collision.Overlap
@@ -71,7 +72,7 @@ class CollisionsAndParticles {
             add(Collider, Collider(Shape.Circle(12f)).apply { scalesWithTransform = false })
         }
         addSystem(Phase.UPDATE) { app ->
-            val seconds = app.time.elapsed.inWholeMilliseconds / 1000f
+            val seconds = app.time.elapsedSeconds
             app.world.get(coin, Transform).scaleX = cos(seconds * 4f)
         }
         // end snippet

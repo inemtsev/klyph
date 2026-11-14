@@ -32,8 +32,11 @@ queue applied after every system, `app.resources`, shared state keyed by class, 
 sound effects and music, with sounds and tracks loaded through `app.assets.sound` and
 `app.assets.musicTrack`, `app.scenes`, a scene stack whose top scene's systems run and whose scenes own
 the entities they spawn and each keep a clock, `Scene.elapsed` (`elapsedSeconds` as a `Float`), that
-counts only the time the scene is on top, `app.collisions`, overlap detection after FIXED_UPDATE that publishes
-`Overlap` events and answers shape queries (overlap only for ordinary colliders), plus solid
+counts only the time the scene is on top (`Time.elapsed` runs whatever scene is on top, and `Time.elapsedSeconds` and
+`fixedDeltaSeconds` are the `Float` seconds of `elapsed` and `fixedDelta`, as `deltaSeconds` is of `delta`), `app.collisions`,
+overlap detection after FIXED_UPDATE that publishes `Overlap` events (`entity in overlap` asks whether an entity is in the
+pair, `otherThan` returns the other one and `otherOrNull` returns `null` for an entity in neither slot)
+and answers shape queries (overlap only for ordinary colliders), plus solid
 response: a `Solid` next to a box `Collider` is a wall or floor (`Passable.FROM_BELOW` a one-way
 ledge) kept in a second grid inside `Collisions` (`SolidGrid`, rescanned at every body move and
 detection and rebuilt only when a solid changed, or before a sweep when the `Solid` or `Collider`
@@ -49,7 +52,8 @@ jump buffers stay game code), `app.canvas`, immediate quads and text in `BACKGRO
 whole world, for a sky), `WORLD` or `SCREEN` space queued during RENDER, and `app.overlay`, the debug overlay toggled with F3; the
 `Text` and `ParticleEmitter` components draw with the sprites, fonts load through
 `app.assets.font` or come built in as `app.assets.defaultFont`, a texture's `SamplerFilter`,
-chosen when it loads, picks linear or nearest sampling, its `SamplerAddress`, chosen the same way, picks
+chosen when it loads (`AppConfig.textureFilter`, LINEAR unless set and read back as `Assets.textureFilter`, is what every
+texture, sprite sheet and font gets when its call passes none), picks linear or nearest sampling, its `SamplerAddress`, chosen the same way, picks
 clamped (the default) or repeating addressing, `Assets` caches a texture by path, filter and address,
 and a `Sprite` with `tileWidth` or `tileHeight` (world units before the entity's scale, 0 stretches
 that axis) or `Canvas.drawTiled` repeats a texture loaded with `address = SamplerAddress.REPEAT`
@@ -90,7 +94,8 @@ pass and the text pass share, so a camera that follows an `Interpolated` entity 
 picture, and `World.snapInterpolation(entity)`, called after moving the `Transform`, copies it over
 the saved previous transform so a respawn is drawn at the new place at once; `TextShadow` draws under text
 through `Text.shadow` or `drawText(shadow = …)`; `app.assets.whitePixel` and `app.assets.disc(d)`
-are ready-made regions; `AppConfig.fromEnvironment()` reads the `KLYPH_*` limits and switches,
+are ready-made regions, and a region's `aspectRatio`, its width over its height, sizes a `Sprite` by one side
+without distorting it; `AppConfig.fromEnvironment()` reads the `KLYPH_*` limits and switches,
 including `KLYPH_SCREENSHOT` and `KLYPH_FULLSCREEN`;
 every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` beside `Vec2` and
 `Rect`),
@@ -100,7 +105,7 @@ every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` 
 `Wave` resource and shown in the HUD, drifters and divers that swoop at the ship, and every fifth
 wave is a boss with 12 hit points, a health bar drawn in world space and bullets on the
 `ENEMY_BULLET` layer; `KLYPH_AUTOPILOT=1` plays itself, with 4 enemies a wave so a 90 second run
-reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the brick, cap, window and girder tiles, the clouds and the skyline are painted into `Image`s at startup, each building being `Sprite`s that repeat the tiles (`SamplerAddress.REPEAT` textures, `tileWidth`/`tileHeight`) with props standing on `originY = 1f`, the sky is one `DrawSpace.BACKGROUND` quad, the clouds and skyline are `ParallaxLayer` sprites, the camera follows `app.drawnPositionOf(hero)` and shakes through `Camera.offsetX`, a respawn calls `snapInterpolation`, and the title's hero, the pickups and the end screens read their scene's `elapsed`; the autopilot plans again every fixed step, probing for the roof's end with `floorBelowOrNull` and for walls ahead with `sweepCollider` and following jump arcs with `slideCollider`, and fails at exit if it took no ring and stomped no enemy), `benchmarks`
+reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the brick, cap, window and girder tiles and the one-off art are painted into `Image`s at startup with `Image.fillRect`, `fillCircle` and `set`; the one-off art (air conditioner, skyline, clouds, pylon, star) is then drawn into one sheet image with `Image.draw` (alpha blending, clipped like the shapes) and uploaded as one texture, a `SheetLayout` setting the pieces in a row with their edge texels repeated one texel outwards, each building being `Sprite`s that repeat the tiles (`SamplerAddress.REPEAT` textures, one each because a tiled sprite repeats a whole texture, `tileWidth`/`tileHeight`) with props standing on `originY = 1f`, the sky is one `DrawSpace.BACKGROUND` quad, the clouds and skyline are `ParallaxLayer` sprites, the camera follows `app.drawnPositionOf(hero)` and shakes through `Camera.offsetX`, a respawn calls `snapInterpolation`, and the title's hero, the pickups and the end screens read their scene's `elapsed`; the autopilot plans again every fixed step, probing for the roof's end with `floorBelowOrNull` and for walls ahead with `sweepCollider` and following jump arcs with `slideCollider`, and fails at exit if it took no ring and stomped no enemy), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`), and

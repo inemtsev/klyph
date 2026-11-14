@@ -1,7 +1,9 @@
 package klyph.platform
 
 import sdl3.SDL_RemovePath
+import kotlin.math.abs
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
@@ -194,4 +196,233 @@ class ImageTest {
         assertFailsWith<IllegalArgumentException> { image.fillCircle(centerX = 0f, centerY = 0f, radius = -1f, color = Color.WHITE) }
         assertFailsWith<IllegalArgumentException> { image.fillCircle(centerX = Float.NaN, centerY = 0f, radius = 1f, color = Color.WHITE) }
     }
+
+    @Test
+    fun fillRectSetsExactlyTheRectangle() {
+        val image = Image(6, 5)
+        image.fillRect(x = 1, y = 2, width = 3, height = 2, color = Color(0x11223344u))
+        for (y in 0 until 5) {
+            for (x in 0 until 6) {
+                val expected = if (x in 1..3 && y in 2..3) Color(0x11223344u) else Color.TRANSPARENT
+                assertEquals(expected, image[x, y], "Pixel ($x, $y).")
+            }
+        }
+    }
+
+    @Test
+    fun fillRectSetsPixelsWithoutBlending() {
+        val image = Image(2, 1)
+        image.fill(Color.WHITE)
+        image.fillRect(x = 0, y = 0, width = 1, height = 1, color = Color(0x10203040u))
+        assertEquals(Color(0x10203040u), image[0, 0], "Alpha is stored as it is, not blended.")
+        image.fillRect(x = 1, y = 0, width = 1, height = 1, color = Color.TRANSPARENT)
+        assertEquals(Color.TRANSPARENT, image[1, 0], "A transparent color clears the rectangle.")
+    }
+
+    @Test
+    fun fillRectMatchesSettingEachPixelInsideTheImage() {
+        val rectangles = listOf(
+            Rectangle(0, 0, 6, 5), Rectangle(1, 2, 3, 2), Rectangle(-2, -1, 4, 3), Rectangle(4, 3, 10, 10), Rectangle(-3, -3, 20, 20),
+            Rectangle(6, 0, 3, 3), Rectangle(0, 5, 3, 3), Rectangle(-5, 0, 5, 5), Rectangle(2, 2, 0, 3), Rectangle(2, 2, 3, 0),
+            Rectangle(-1, -1, 1, 1), Rectangle(5, 4, 1, 1), Rectangle(-1, 4, 8, 1),
+        )
+        for (rectangle in rectangles) {
+            val expected = Image(6, 5)
+            for (row in rectangle.y until rectangle.y + rectangle.height) {
+                for (column in rectangle.x until rectangle.x + rectangle.width) {
+                    if (column in 0 until 6 && row in 0 until 5) expected[column, row] = Color(0xAABBCCDDu)
+                }
+            }
+            val actual = Image(6, 5)
+            actual.fillRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height, Color(0xAABBCCDDu))
+            assertContentEquals(expected.pixels, actual.pixels, "Rectangle $rectangle.")
+        }
+    }
+
+    @Test
+    fun fillRectWithHugeValuesDoesNotOverflow() {
+        val image = Image(4, 3)
+        image.fillRect(x = Int.MAX_VALUE, y = 0, width = Int.MAX_VALUE, height = 1, color = Color.WHITE)
+        image.fillRect(x = 0, y = Int.MAX_VALUE, width = 1, height = Int.MAX_VALUE, color = Color.WHITE)
+        image.fillRect(x = Int.MIN_VALUE, y = Int.MIN_VALUE, width = Int.MAX_VALUE, height = Int.MAX_VALUE, color = Color.WHITE)
+        assertContentEquals(ByteArray(4 * 3 * 4), image.pixels, "Rectangles far outside paint nothing.")
+        image.fillRect(x = -1, y = -1, width = Int.MAX_VALUE, height = Int.MAX_VALUE, color = Color.WHITE)
+        for (y in 0 until 3) for (x in 0 until 4) assertEquals(Color.WHITE, image[x, y], "Pixel ($x, $y).")
+    }
+
+    @Test
+    fun fillRectWithZeroSizePaintsNothingAndNegativeSizeThrows() {
+        val image = Image(3, 3)
+        image.fillRect(x = 1, y = 1, width = 0, height = 2, color = Color.WHITE)
+        image.fillRect(x = 1, y = 1, width = 2, height = 0, color = Color.WHITE)
+        assertContentEquals(ByteArray(3 * 3 * 4), image.pixels)
+        val width = assertFailsWith<IllegalArgumentException> { image.fillRect(x = 0, y = 0, width = -1, height = 1, color = Color.WHITE) }
+        assertEquals("Rectangle width -1 is negative.", width.message)
+        val height = assertFailsWith<IllegalArgumentException> { image.fillRect(x = 0, y = 0, width = 1, height = -2, color = Color.WHITE) }
+        assertEquals("Rectangle height -2 is negative.", height.message)
+        assertContentEquals(ByteArray(3 * 3 * 4), image.pixels, "A rejected rectangle paints nothing.")
+    }
+
+    @Test
+    fun drawCopiesOpaquePixelsToTheOffset() {
+        val source = patterned(2, 2)
+        val target = Image(4, 4)
+        target.draw(source, x = 1, y = 2)
+        for (y in 0 until 2) for (x in 0 until 2) assertEquals(source[x, y], target[x + 1, y + 2], "Source pixel ($x, $y).")
+        assertEquals(Color.TRANSPARENT, target[0, 0])
+        assertEquals(Color.TRANSPARENT, target[0, 2])
+        assertEquals(Color.TRANSPARENT, target[3, 3])
+        assertEquals(Color.TRANSPARENT, target[1, 1])
+    }
+
+    @Test
+    fun drawLeavesWhatIsUnderTransparentPixels() {
+        val source = Image(1, 1)
+        source[0, 0] = Color(0xFF000000u)
+        val white = Image(1, 1)
+        white.fill(Color.WHITE)
+        white.draw(source, x = 0, y = 0)
+        assertEquals(Color.WHITE, white[0, 0])
+        val clear = Image(1, 1)
+        clear.draw(source, x = 0, y = 0)
+        assertEquals(Color.TRANSPARENT, clear[0, 0], "The color of a fully transparent pixel is not copied.")
+    }
+
+    @Test
+    fun drawBlendsPartlyTransparentPixelsOverAnOpaqueOne() {
+        val source = Image(1, 1)
+        source[0, 0] = Color(0xFF000080u)
+        val target = Image(1, 1)
+        target.fill(Color(0x0000FFFFu))
+        target.draw(source, x = 0, y = 0)
+        val result = target[0, 0].rgba
+        // Half red over blue: about half of each, and still opaque.
+        assertTrue(channelsWithin(result, 0x80007FFFu, 1), "Result #${result.toString(16)} is not about #80007fff.")
+    }
+
+    @Test
+    fun drawCountsBothAlphasInTheResult() {
+        val source = Image(1, 1)
+        source[0, 0] = Color(0x0000FF80u)
+        val target = Image(1, 1)
+        target[0, 0] = Color(0xFF000080u)
+        target.draw(source, x = 0, y = 0)
+        val result = target[0, 0].rgba
+        // Alpha 0.5 over alpha 0.5 leaves 0.75, two thirds of it from the blue on top.
+        assertTrue(channelsWithin(result, 0x5500AAC0u, 1), "Result #${result.toString(16)} is not about #5500aac0.")
+    }
+
+    @Test
+    fun drawOverATransparentPixelKeepsEveryAlphaExactly() {
+        for (alpha in 1..255) {
+            val color = Color(0xC86432_00u or alpha.toUInt())
+            val source = Image(1, 1)
+            source[0, 0] = color
+            val target = Image(1, 1)
+            target.draw(source, x = 0, y = 0)
+            assertEquals(color, target[0, 0], "Alpha $alpha.")
+        }
+    }
+
+    @Test
+    fun drawClipsToTheImage() {
+        val source = patterned(3, 3)
+        val offsets = listOf(
+            0 to 0, 1 to 1, -1 to -2, -2 to 0, 2 to 2, 3 to 3, 4 to 0, 0 to 4, -3 to -3, 5 to -5, -2 to 3, 2 to -1,
+        )
+        for ((x, y) in offsets) {
+            val expected = patterned(4, 3)
+            val actual = patterned(4, 3)
+            for (row in 0 until 3) {
+                for (column in 0 until 3) {
+                    if (x + column in 0 until 4 && y + row in 0 until 3) expected[x + column, y + row] = source[column, row]
+                }
+            }
+            actual.draw(source, x, y)
+            assertContentEquals(expected.pixels, actual.pixels, "Drawn at ($x, $y).")
+        }
+    }
+
+    @Test
+    fun drawAnImageLargerThanTheTargetFillsItWithTheTopLeftOfTheSource() {
+        val source = patterned(5, 5)
+        val target = Image(2, 2)
+        target.draw(source, x = 0, y = 0)
+        for (y in 0 until 2) for (x in 0 until 2) assertEquals(source[x, y], target[x, y], "Pixel ($x, $y).")
+    }
+
+    @Test
+    fun drawWithHugeOffsetsDoesNotOverflow() {
+        val source = patterned(2, 2)
+        val target = Image(3, 3)
+        for (x in listOf(Int.MAX_VALUE, Int.MIN_VALUE, Int.MAX_VALUE - 1, Int.MIN_VALUE + 1)) {
+            target.draw(source, x = x, y = 0)
+            target.draw(source, x = 0, y = x)
+        }
+        assertContentEquals(ByteArray(3 * 3 * 4), target.pixels, "Nothing of the source lies inside the target.")
+    }
+
+    @Test
+    fun drawLeavesTheSourceUnchanged() {
+        val source = patterned(3, 3)
+        source[1, 1] = Color(0x12345680u)
+        val before = source.pixels.copyOf()
+        val target = Image(2, 2)
+        target.fill(Color.WHITE)
+        target.draw(source, x = -1, y = -1)
+        assertContentEquals(before, source.pixels)
+    }
+
+    @Test
+    fun drawAnImageIntoItselfReadsItAsItWas() {
+        for ((x, y) in listOf(1 to 0, -1 to 0, 0 to 1, 0 to -1, 1 to 1, -1 to -1)) {
+            val image = patterned(4, 4)
+            val before = patterned(4, 4)
+            val expected = patterned(4, 4)
+            for (row in 0 until 4) {
+                for (column in 0 until 4) {
+                    if (x + column in 0 until 4 && y + row in 0 until 4) expected[x + column, y + row] = before[column, row]
+                }
+            }
+            image.draw(image, x, y)
+            assertContentEquals(expected.pixels, image.pixels, "Drawn into itself at ($x, $y).")
+        }
+    }
+
+    @Test
+    fun drawAnImageIntoItselfMatchesDrawingACopyWhenTheSourceStartsAboveOrOverlapsOnlyTheBottom() {
+        for (y in listOf(-3, 3)) {
+            val image = patterned(4, 4)
+            val expected = patterned(4, 4)
+            expected.draw(patterned(4, 4), x = 1, y = y)
+            image.draw(image, x = 1, y = y)
+            assertContentEquals(expected.pixels, image.pixels, "Drawn into itself at (1, $y).")
+        }
+    }
+
+    /** The rectangle of [width] by [height] pixels whose top-left corner is at ([x], [y]). */
+    private class Rectangle(val x: Int, val y: Int, val width: Int, val height: Int) {
+        override fun toString(): String = "${width}x$height at ($x, $y)"
+    }
+
+    /** Returns a [width] by [height] image of opaque pixels that all differ, for sizes up to 6 by 6. */
+    private fun patterned(width: Int, height: Int): Image {
+        val image = Image(width, height)
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val red = (x * 40 + 10).toUInt()
+                val green = (y * 40 + 10).toUInt()
+                val blue = ((x + y) * 20 + 5).toUInt()
+                image[x, y] = Color((red shl 24) or (green shl 16) or (blue shl 8) or 0xFFu)
+            }
+        }
+        return image
+    }
+
+    /** Returns whether each of the four bytes of [actual] is at most [tolerance] away from the same byte of [expected]. */
+    private fun channelsWithin(actual: UInt, expected: UInt, tolerance: Int): Boolean =
+        (0 until 4).all { index ->
+            val shift = index * 8
+            abs(((actual shr shift) and 0xFFu).toInt() - ((expected shr shift) and 0xFFu).toInt()) <= tolerance
+        }
 }

@@ -13,7 +13,6 @@
     <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Box(Tuning.BLOB_WIDTH - 8f, Tuning.BLOB_HEIGHT - 8f), offsetY = 4f, layers = Layers.ENEMY, mask = CollisionLayers.NONE))</ID>
     <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Box(Tuning.HELI_WIDTH - 12f, Tuning.HELI_HEIGHT - 16f), layers = Layers.ENEMY, mask = CollisionLayers.NONE))</ID>
     <ID>MaxLineLength:Entities.kt:add(Collider, Collider(Shape.Circle(Tuning.RING_RADIUS), layers = Layers.RING, mask = CollisionLayers.NONE).apply { scalesWithTransform = false })</ID>
-    <ID>MaxLineLength:Entities.kt:add(Sprite, Sprite(art.heart, Tuning.HEART_SIZE, Tuning.HEART_SIZE * art.heart.height / art.heart.width, layer = Tuning.LAYER_PICKUPS))</ID>
     <ID>MaxLineLength:Entities.kt:add(Text, Text(font, text, Tuning.POPUP_COLOR, Tuning.POPUP_SCALE, TextAlign.CENTER, layer = Tuning.LAYER_EFFECTS, shadow = POPUP_SHADOW))</ID>
     <ID>MaxLineLength:Entities.kt:add(Transform, Transform(x, roof - height * Tuning.SQUASHED_SCALE_Y / 2, scaleX = Tuning.SQUASHED_SCALE_X, scaleY = Tuning.SQUASHED_SCALE_Y))</ID>
     <ID>MaxLineLength:Screens.kt:app.canvas.drawText(app.assets.defaultFont, text, x = x, y = y, color = color, scale = scale, align = align, layer = 2, shadow = TEXT_SHADOW)</ID>

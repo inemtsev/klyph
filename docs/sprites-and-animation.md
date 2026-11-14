@@ -32,7 +32,8 @@ returns `null` instead, for files that may or may not be there.
 
 A `Sprite` draws a region of a texture as a quad placed on its entity's `Transform` by its origin,
 the center by default. Its size starts as the region's size in texels, so at the camera's default zoom each texel covers one
-point.
+point. To size a sprite by one side and keep its shape, use the region's `aspectRatio`, its width
+over its height: `Sprite(region, width = height * region.aspectRatio, height = height)`.
 
 <!-- snippet: sprite -->
 ```kotlin
@@ -271,17 +272,24 @@ commands.spawn {
 }
 ```
 
+A game made of pixel art sets the filter once instead of in every call:
+`AppConfig(textureFilter = SamplerFilter.NEAREST)` becomes the default of every texture, sprite
+sheet and font that is loaded without a `filter` argument, and a call that passes one still wins.
+The built-in font keeps its nearest sampling and `assets.disc` its linear one.
+
 The cache key is the path, the filter and the address together, so the same file loaded with both
 filters becomes two textures. The address, `SamplerAddress.CLAMP` by default, matters only for
 tiling, which [Scrolling worlds](scrolling.md) covers.
 
 ## Textures without files
 
-Some art is easier to make in code. `Image` is a grid of pixels you can set and fill, and
-`assets.createTexture(image)` uploads it. Two regions come ready-made: `assets.whitePixel`, one
-white texel to stretch into bars and backgrounds, and `assets.disc(diameter)`, a white disc with
-a soft edge for particles, bullets and shadows, cached by diameter. Tint both with the sprite's
-color.
+Some art is easier to make in code. `Image` is a grid of pixels you can set one at a time or paint
+in bulk: `fill` sets every pixel to a color, `fillRect` a rectangle of them, `fillCircle` paints a
+soft-edged disc, and `draw(image, x, y)` lays another image over it, blending by alpha. The shapes
+and `draw` leave out whatever falls outside the image. `assets.createTexture(image)` uploads the
+result. Two regions come ready-made: `assets.whitePixel`, one white texel to stretch into bars and
+backgrounds, and `assets.disc(diameter)`, a white disc with a soft edge for particles, bullets and
+shadows, cached by diameter. Tint both with the sprite's color.
 
 <!-- snippet: generated -->
 ```kotlin

@@ -18,6 +18,12 @@ All notable changes to klyph are recorded here. The format follows
 - `ParallaxLayer`: a sprite that follows the camera at a fraction of the world's speed and repeats to fill the view;
   see the [Scrolling worlds guide](https://inemtsev.github.io/klyph/guide/scrolling.html).
 - `DrawSpace.BACKGROUND`: canvas quads in points drawn under the whole world, such as a one-call sky.
+- `Overlap.otherOrNull(entity)`: the other entity of a pair, or `null` for an entity in neither slot.
+- `Time.fixedDeltaSeconds` and `elapsedSeconds`: the fixed step's length and the game time as `Float` seconds, beside `deltaSeconds`.
+- `TextureRegion.aspectRatio`: a region's width over its height, to size a sprite by one side without distorting it.
+- `AppConfig.textureFilter` and `Assets.textureFilter`: the filter that textures, sprite sheets and fonts load with
+  unless the call passes one, so a pixel-art game sets `NEAREST` once.
+- `Image.fillRect` and `Image.draw`: paint a rectangle, or lay one image over another with alpha blending, before `createTexture`.
 
 ## [1.1.0] - 2026-11-10
 

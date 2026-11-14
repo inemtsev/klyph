@@ -27,6 +27,8 @@ public class Time internal constructor(fixedRate: Int) {
 
     /**
      * Returns the duration of one [Phase.FIXED_UPDATE] step: one second divided by the fixed rate.
+     *
+     * @see fixedDeltaSeconds
      */
     public val fixedDelta: Duration = 1.seconds / fixedRate
 
@@ -44,6 +46,8 @@ public class Time internal constructor(fixedRate: Int) {
      * Returns the sum of the clamped frame durations since the first frame, including the current
      * one. It runs whatever scene is on top. [klyph.scene.Scene.elapsed] is the clock of one scene:
      * it stands still while another scene covers it.
+     *
+     * @see elapsedSeconds
      */
     public var elapsed: Duration = Duration.ZERO
         private set
@@ -120,3 +124,25 @@ public class Time internal constructor(fixedRate: Int) {
  */
 public val Time.deltaSeconds: Float
     get() = delta.toDouble(DurationUnit.SECONDS).toFloat()
+
+/**
+ * Returns [Time.fixedDelta] in seconds, the length of one [Phase.FIXED_UPDATE] step as a `Float`.
+ * Unlike [deltaSeconds] it is the same in every phase, so code outside the fixed step, such as
+ * a guess of where a body will be one step on, can use it too.
+ *
+ * Has no sample because a [Time] is made by the running app.
+ */
+public val Time.fixedDeltaSeconds: Float
+    get() = fixedDelta.toDouble(DurationUnit.SECONDS).toFloat()
+
+/**
+ * Returns [Time.elapsed] in seconds, the value to feed to formulas that take seconds, such as a
+ * wave or a blink. Like [Time.elapsed], it runs whatever scene is on top, where
+ * [klyph.scene.Scene.elapsed] stands still while another scene covers its scene. It resolves a
+ * millisecond for the first four hours of a run and less after that, so compare [Time.elapsed]
+ * durations for a timer that must stay exact.
+ *
+ * Has no sample because a [Time] is made by the running app.
+ */
+public val Time.elapsedSeconds: Float
+    get() = elapsed.toDouble(DurationUnit.SECONDS).toFloat()

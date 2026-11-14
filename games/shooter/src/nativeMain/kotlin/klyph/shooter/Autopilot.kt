@@ -1,11 +1,11 @@
 package klyph.shooter
 
 import klyph.app.App
+import klyph.app.elapsedSeconds
 import klyph.entity.Transform
 import klyph.entity.Velocity
 import kotlin.math.abs
 import kotlin.math.sin
-import kotlin.time.DurationUnit
 
 // The autopilot (KLYPH_AUTOPILOT=1) plays the game for demos and smoke runs: it leaves the title
 // screen at once and the game over screen after a second (GameScenes does that), and in play it
@@ -23,7 +23,7 @@ private const val MIN_TARGET_GAP = 80f
 fun Round.steerAutopilot(app: App) {
     val controls = game.controls
     val ship = app.world.get(player, Transform)
-    val seconds = app.time.elapsed.toDouble(DurationUnit.SECONDS).toFloat()
+    val seconds = app.time.elapsedSeconds
     val enemyX = nextEnemyXOrNaN(app, ship)
     val targetX = if (enemyX.isNaN()) Tuning.ARENA_WIDTH * (0.5f + 0.35f * sin(seconds * SWEEP_RATE)) else enemyX
     val targetY = Tuning.ARENA_HEIGHT * 0.5f + PATROL_HEIGHT * sin(seconds * PATROL_RATE)

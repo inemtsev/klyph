@@ -35,16 +35,17 @@ class Art(
     val sky: TextureRegion,
     val skyline: TextureRegion,
     val clouds: List<TextureRegion>,
-    /** A tall lattice pylon; [pylon] cuts the height a billboard needs from its top. */
-    private val pylonTexture: Texture,
+    /** A tall lattice pylon on the sheet; [pylon] cuts the height a billboard needs from its top. */
+    private val tallPylon: TextureRegion,
     val star: TextureRegion,
     val dust: TextureRegion,
     val whitePixel: TextureRegion,
 ) {
     fun poster(poster: Poster): TextureRegion = if (poster == Poster.FACE) posterFace else posterCity
 
-    /** Returns the top [texels] rows of the pylon texture. */
-    fun pylon(texels: Int): TextureRegion = pylonTexture.region(0, 0, pylonTexture.width, texels.coerceIn(1, pylonTexture.height))
+    /** Returns the top [texels] rows of the pylon, kept between 1 and its height. */
+    fun pylon(texels: Int): TextureRegion =
+        tallPylon.texture.region(tallPylon.x, tallPylon.y, tallPylon.width, texels.coerceIn(1, tallPylon.height))
 
     override fun toString(): String = "Art(clouds=${clouds.size})"
 
@@ -55,6 +56,16 @@ class Art(
             // tiles are the painted art that a Sprite with a tile size repeats, so they also repeat.
             val pixel = SamplerFilter.NEAREST
             val repeat = SamplerAddress.REPEAT
+            // The painted pieces that are drawn once as they are share a sheet, so they are one
+            // texture. A tile cannot join it, because a Sprite repeats a whole texture, and neither
+            // can the sky gradient, which is sampled linearly.
+            val layout = SheetLayout()
+            val airConditioner = layout.add(paintAirConditioner())
+            val skyline = layout.add(paintSkyline(Tuning.SKYLINE_TEXELS_WIDE, Tuning.SKYLINE_TEXELS_HIGH))
+            val clouds = List(3) { layout.add(paintCloud(it)) }
+            val pylon = layout.add(paintPylon(PYLON_TEXELS))
+            val star = layout.add(paintStar(16))
+            val sheet = assets.createTexture(layout.paintSheet(), pixel)
             return Art(
                 skate = listOf(assets.texture("ninja_skate1.png").asRegion(), assets.texture("ninja_skate2.png").asRegion()),
                 jump = assets.texture("ninja_jump.png").asRegion(),
@@ -64,7 +75,7 @@ class Art(
                 heart = assets.texture("heart.png").asRegion(),
                 sign = assets.texture("sign.png").asRegion(),
                 plant = assets.texture("plant.png").asRegion(),
-                airConditioner = assets.createTexture(paintAirConditioner(), pixel).asRegion(),
+                airConditioner = sheet.region(airConditioner),
                 bricks = List(BRICK_STYLE_COUNT) { assets.createTexture(paintBrickTile(it), pixel, repeat).asRegion() },
                 cap = assets.createTexture(paintCapTile(), pixel, repeat).asRegion(),
                 windows = assets.createTexture(paintWindowTile(), pixel, repeat).asRegion(),
@@ -72,14 +83,18 @@ class Art(
                 posterFace = assets.texture("poster_face.png").asRegion(),
                 posterCity = assets.texture("poster_city.png").asRegion(),
                 sky = assets.createTexture(paintGradient(64, Tuning.SKY_TOP, Tuning.SKY_BOTTOM)).asRegion(),
-                skyline = assets.createTexture(paintSkyline(Tuning.SKYLINE_TEXELS_WIDE, Tuning.SKYLINE_TEXELS_HIGH), pixel).asRegion(),
-                clouds = List(3) { assets.createTexture(paintCloud(it), pixel).asRegion() },
-                pylonTexture = assets.createTexture(paintPylon(PYLON_TEXELS), pixel),
-                star = assets.createTexture(paintStar(16), pixel).asRegion(),
+                skyline = sheet.region(skyline),
+                clouds = clouds.map { sheet.region(it) },
+                tallPylon = sheet.region(pylon),
+                star = sheet.region(star),
                 dust = assets.disc(8),
                 whitePixel = assets.whitePixel,
             )
         }
+
+        /** Returns the region of this texture that [placement] names. */
+        private fun Texture.region(placement: Placement): TextureRegion =
+            region(placement.x, placement.y, placement.width, placement.height)
 
         /** Height of the painted pylon in texels, enough for the tallest billboard. */
         private const val PYLON_TEXELS = 64

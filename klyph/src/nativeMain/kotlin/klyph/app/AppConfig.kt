@@ -5,6 +5,7 @@ import klyph.platform.Color
 import klyph.platform.CursorMode
 import klyph.platform.GpuValidation
 import klyph.platform.PresentMode
+import klyph.platform.SamplerFilter
 import klyph.platform.Scancode
 import klyph.platform.Sdl
 import klyph.platform.WindowMode
@@ -104,6 +105,15 @@ public class AppConfig(
      * save a frame, offscreen too.
      */
     public val screenshot: Screenshot? = null,
+    /**
+     * The sampling filter [App.assets] gives a texture, sprite sheet or font that is loaded
+     * without one. [SamplerFilter.LINEAR], the default, blends neighboring texels and suits
+     * painted art. [SamplerFilter.NEAREST] keeps the hard edges of pixel art, so a pixel-art game
+     * sets it here once instead of on every loading call. A `filter` argument of a loading call
+     * still overrides it for that call. The built-in font, [Assets.whitePixel] and [Assets.disc]
+     * keep the filters they document.
+     */
+    public val textureFilter: SamplerFilter = SamplerFilter.LINEAR,
 ) {
     init {
         require(width > 0) { "Window width $width is not positive." }
@@ -138,7 +148,8 @@ public class AppConfig(
             timeLimit == other.timeLimit &&
             windowMode == other.windowMode &&
             cursor == other.cursor &&
-            screenshot == other.screenshot
+            screenshot == other.screenshot &&
+            textureFilter == other.textureFilter
 
     override fun hashCode(): Int {
         var result = title.hashCode()
@@ -161,6 +172,7 @@ public class AppConfig(
         result = 31 * result + windowMode.hashCode()
         result = 31 * result + cursor.hashCode()
         result = 31 * result + screenshot.hashCode()
+        result = 31 * result + textureFilter.hashCode()
         return result
     }
 
@@ -173,7 +185,8 @@ public class AppConfig(
             "maxFixedStepsPerFrame=$maxFixedStepsPerFrame, presentMode=$presentMode, target=$target, " +
             "gpuSync=$gpuSync, validation=$validation, clearColor=$clearColor, assetRoot=$assetRoot, audio=$audio, " +
             "collisionCellSize=$collisionCellSize, overlayKey=$overlayKey, overlay=$overlay, frameLimit=$frameLimit, " +
-            "timeLimit=$timeLimit, windowMode=$windowMode, cursor=$cursor, screenshot=$screenshot)"
+            "timeLimit=$timeLimit, windowMode=$windowMode, cursor=$cursor, screenshot=$screenshot, " +
+            "textureFilter=$textureFilter)"
 
     /** Creates configs from the process environment. */
     public companion object {
@@ -272,6 +285,7 @@ public class AppConfig(
                 },
                 cursor = base.cursor,
                 screenshot = screenshot ?: base.screenshot,
+                textureFilter = base.textureFilter,
             )
         }
     }
