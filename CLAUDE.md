@@ -52,7 +52,8 @@ jump buffers stay game code), `app.canvas`, immediate quads and text in `BACKGRO
 whole world, for a sky), `WORLD` or `SCREEN` space queued during RENDER, and `app.overlay`, the debug overlay toggled with F3; the
 `Text` and `ParticleEmitter` components draw with the sprites, fonts load through
 `app.assets.font` or come built in as `app.assets.defaultFont`, a texture's `SamplerFilter`,
-chosen when it loads, picks linear or nearest sampling, its `SamplerAddress`, chosen the same way, picks
+chosen when it loads (`AppConfig.textureFilter`, LINEAR unless set and read back as `Assets.textureFilter`, is what every
+texture, sprite sheet and font gets when its call passes none), picks linear or nearest sampling, its `SamplerAddress`, chosen the same way, picks
 clamped (the default) or repeating addressing, `Assets` caches a texture by path, filter and address,
 and a `Sprite` with `tileWidth` or `tileHeight` (world units before the entity's scale, 0 stretches
 that axis) or `Canvas.drawTiled` repeats a texture loaded with `address = SamplerAddress.REPEAT`

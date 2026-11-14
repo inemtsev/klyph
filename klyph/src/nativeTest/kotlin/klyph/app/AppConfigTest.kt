@@ -6,6 +6,7 @@ import klyph.platform.Color
 import klyph.platform.CursorMode
 import klyph.platform.GpuValidation
 import klyph.platform.PresentMode
+import klyph.platform.SamplerFilter
 import klyph.platform.Scancode
 import klyph.platform.WindowMode
 import kotlin.test.Test
@@ -36,6 +37,13 @@ class AppConfigTest {
         assertEquals(WindowMode.WINDOWED, config.windowMode)
         assertEquals(CursorMode.VISIBLE, config.cursor)
         assertEquals(null, config.screenshot)
+        assertEquals(SamplerFilter.LINEAR, config.textureFilter)
+    }
+
+    @Test
+    fun textureFilterIsSetByName() {
+        assertEquals(SamplerFilter.NEAREST, AppConfig(textureFilter = SamplerFilter.NEAREST).textureFilter)
+        assertEquals(SamplerFilter.LINEAR, AppConfig(textureFilter = SamplerFilter.LINEAR).textureFilter)
     }
 
     @Test
@@ -90,6 +98,12 @@ class AppConfigTest {
         assertEquals(AppConfig(overlayKey = null).hashCode(), AppConfig(overlayKey = null).hashCode())
         assertNotEquals(AppConfig(), AppConfig(windowMode = WindowMode.FULLSCREEN))
         assertNotEquals(AppConfig(), AppConfig(cursor = CursorMode.HIDDEN))
+        assertNotEquals(AppConfig(), AppConfig(textureFilter = SamplerFilter.NEAREST))
+        assertEquals(AppConfig(textureFilter = SamplerFilter.NEAREST), AppConfig(textureFilter = SamplerFilter.NEAREST))
+        assertEquals(
+            AppConfig(textureFilter = SamplerFilter.NEAREST).hashCode(),
+            AppConfig(textureFilter = SamplerFilter.NEAREST).hashCode(),
+        )
         assertNotEquals(AppConfig(), AppConfig(screenshot = Screenshot(20, "shot.png")))
         assertNotEquals(AppConfig(screenshot = Screenshot(20, "shot.png")), AppConfig(screenshot = Screenshot(21, "shot.png")))
         assertEquals(AppConfig(screenshot = Screenshot(20, "shot.png")), AppConfig(screenshot = Screenshot(20, "shot.png")))
@@ -105,11 +119,12 @@ class AppConfigTest {
             "AppConfig(title=klyph, width=1280, height=720, fixedRate=60, maxFixedStepsPerFrame=4, " +
                 "presentMode=VSYNC, target=WINDOW, gpuSync=NONE, validation=DISABLED, clearColor=Color(#1a1f2eff), assetRoot=null, " +
                 "audio=AudioConfig(output=DEVICE, maxVoices=32, sampleRate=48000, bufferFrames=1024), collisionCellSize=64.0, overlayKey=${Scancode.F3}, " +
-                "overlay=HIDDEN, frameLimit=null, timeLimit=null, windowMode=WINDOWED, cursor=VISIBLE, screenshot=null)",
+                "overlay=HIDDEN, frameLimit=null, timeLimit=null, windowMode=WINDOWED, cursor=VISIBLE, screenshot=null, " +
+                "textureFilter=LINEAR)",
             AppConfig().toString(),
         )
-        val shot = AppConfig(screenshot = Screenshot(20, "/tmp/shot.png")).toString()
-        assertTrue(shot.endsWith("screenshot=Screenshot(frame=20, path=/tmp/shot.png))"), shot)
+        val shot = AppConfig(screenshot = Screenshot(20, "/tmp/shot.png"), textureFilter = SamplerFilter.NEAREST).toString()
+        assertTrue(shot.endsWith("screenshot=Screenshot(frame=20, path=/tmp/shot.png), textureFilter=NEAREST)"), shot)
     }
 
     private fun environment(vararg pairs: Pair<String, String>): (String) -> String? {
@@ -126,6 +141,7 @@ class AppConfigTest {
             windowMode = WindowMode.FULLSCREEN,
             cursor = CursorMode.HIDDEN,
             screenshot = Screenshot(5, "base.png"),
+            textureFilter = SamplerFilter.NEAREST,
         )
         assertEquals(base, AppConfig.fromEnvironment(base, environment()))
         assertEquals(base, AppConfig.fromEnvironment(base, environment("KLYPH_FRAMES" to "", "KLYPH_VSYNC" to "")), "An empty value counts as unset.")
@@ -183,6 +199,8 @@ class AppConfigTest {
         assertEquals(Screenshot(20, "C:/shots/a.png"), config.screenshot)
         assertEquals(WindowMode.FULLSCREEN, config.windowMode)
         assertEquals(CursorMode.HIDDEN, config.cursor, "The cursor has no variable, so it comes from the base.")
+        val pixelArt = AppConfig.fromEnvironment(AppConfig(textureFilter = SamplerFilter.NEAREST), environment("KLYPH_FRAMES" to "1"))
+        assertEquals(SamplerFilter.NEAREST, pixelArt.textureFilter, "The texture filter has no variable, so it comes from the base.")
         val windowed = AppConfig.fromEnvironment(AppConfig(windowMode = WindowMode.FULLSCREEN), environment("KLYPH_FULLSCREEN" to "0"))
         assertEquals(WindowMode.WINDOWED, windowed.windowMode)
         assertFailsWith<IllegalArgumentException> { AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_FULLSCREEN" to "yes")) }

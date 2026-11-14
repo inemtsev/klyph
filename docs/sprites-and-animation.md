@@ -272,6 +272,11 @@ commands.spawn {
 }
 ```
 
+A game made of pixel art sets the filter once instead of in every call:
+`AppConfig(textureFilter = SamplerFilter.NEAREST)` becomes the default of every texture, sprite
+sheet and font that is loaded without a `filter` argument, and a call that passes one still wins.
+The built-in font keeps its nearest sampling and `assets.disc` its linear one.
+
 The cache key is the path, the filter and the address together, so the same file loaded with both
 filters becomes two textures. The address, `SamplerAddress.CLAMP` by default, matters only for
 tiling, which [Scrolling worlds](scrolling.md) covers.
