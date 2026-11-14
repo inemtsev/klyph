@@ -283,11 +283,13 @@ tiling, which [Scrolling worlds](scrolling.md) covers.
 
 ## Textures without files
 
-Some art is easier to make in code. `Image` is a grid of pixels you can set and fill, and
-`assets.createTexture(image)` uploads it. Two regions come ready-made: `assets.whitePixel`, one
-white texel to stretch into bars and backgrounds, and `assets.disc(diameter)`, a white disc with
-a soft edge for particles, bullets and shadows, cached by diameter. Tint both with the sprite's
-color.
+Some art is easier to make in code. `Image` is a grid of pixels you can set one at a time or paint
+in bulk: `fill` sets every pixel to a color, `fillRect` a rectangle of them, `fillCircle` paints a
+soft-edged disc, and `draw(image, x, y)` lays another image over it, blending by alpha. The shapes
+and `draw` leave out whatever falls outside the image. `assets.createTexture(image)` uploads the
+result. Two regions come ready-made: `assets.whitePixel`, one white texel to stretch into bars and
+backgrounds, and `assets.disc(diameter)`, a white disc with a soft edge for particles, bullets and
+shadows, cached by diameter. Tint both with the sprite's color.
 
 <!-- snippet: generated -->
 ```kotlin

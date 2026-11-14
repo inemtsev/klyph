@@ -23,6 +23,7 @@ All notable changes to klyph are recorded here. The format follows
 - `TextureRegion.aspectRatio`: a region's width over its height, to size a sprite by one side without distorting it.
 - `AppConfig.textureFilter` and `Assets.textureFilter`: the filter that textures, sprite sheets and fonts load with
   unless the call passes one, so a pixel-art game sets `NEAREST` once.
+- `Image.fillRect` and `Image.draw`: paint a rectangle, or lay one image over another with alpha blending, before `createTexture`.
 
 ## [1.1.0] - 2026-11-10
 

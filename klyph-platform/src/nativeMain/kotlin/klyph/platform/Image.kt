@@ -29,7 +29,9 @@ import kotlin.math.sqrt
  * top-left corner. Every pixel starts as transparent black.
  *
  * Read and write pixels with [get] and [set], or decode a PNG or JPEG file with [Image.decode].
- * A game turns an image into a texture it can draw with `klyph.app.Assets.createTexture`.
+ * [fill], [fillRect] and [fillCircle] paint shapes and [draw] lays another image over this one, all
+ * on the CPU and clipped to the image. A game turns an image into a texture it can draw with
+ * `klyph.app.Assets.createTexture`.
  *
  * @throws IllegalArgumentException if [width] or [height] is not positive, or the image would
  *   need more than [Int.MAX_VALUE] bytes.
@@ -54,15 +56,7 @@ public class Image(public val width: Int, public val height: Int) {
      *
      * @sample samples.platform.Images.get
      */
-    public operator fun get(x: Int, y: Int): Color {
-        val i = offsetOf(x, y)
-        return Color(
-            (pixels[i].toUByte().toUInt() shl 24) or
-                (pixels[i + 1].toUByte().toUInt() shl 16) or
-                (pixels[i + 2].toUByte().toUInt() shl 8) or
-                pixels[i + 3].toUByte().toUInt(),
-        )
-    }
+    public operator fun get(x: Int, y: Int): Color = colorAt(pixels, offsetOf(x, y))
 
     /**
      * Sets the pixel at column [x] and row [y], counted from the top-left corner, to [color].
@@ -87,16 +81,88 @@ public class Image(public val width: Int, public val height: Int) {
      * @sample samples.platform.Images.fill
      */
     public fun fill(color: Color) {
+        fillRect(x = 0, y = 0, width = width, height = height, color = color)
+    }
+
+    /**
+     * Sets every pixel of the rectangle [width] pixels wide and [height] pixels tall whose top-left
+     * corner is at column [x] and row [y] to [color], alpha included, as [set] does. Nothing is
+     * blended, so a transparent [color] clears the rectangle; [draw] is the call that blends.
+     *
+     * Coordinates are in pixels from the image's top-left corner. The parts of the rectangle
+     * outside the image are left out, so a rectangle that lies wholly outside, or has a [width] or
+     * [height] of 0, paints nothing. Pass [width], [height] and [color] by name; [x] and [y] are a
+     * conventional pair.
+     *
+     * @throws IllegalArgumentException if [width] or [height] is negative.
+     *
+     * @sample samples.platform.Images.fillRect
+     */
+    public fun fillRect(x: Int, y: Int, width: Int, height: Int, color: Color) {
+        require(width >= 0) { "Rectangle width $width is negative." }
+        require(height >= 0) { "Rectangle height $height is negative." }
+        val left = maxOf(x, 0)
+        val top = maxOf(y, 0)
+        val right = minOf(x.toLong() + width, this.width.toLong()).toInt()
+        val bottom = minOf(y.toLong() + height, this.height.toLong()).toInt()
+        if (left >= right || top >= bottom) return
         val rgba = color.rgba
         val red = (rgba shr 24).toByte()
         val green = (rgba shr 16).toByte()
         val blue = (rgba shr 8).toByte()
         val alpha = rgba.toByte()
-        for (i in pixels.indices step BYTES_PER_PIXEL) {
-            pixels[i] = red
-            pixels[i + 1] = green
-            pixels[i + 2] = blue
-            pixels[i + 3] = alpha
+        for (row in top until bottom) {
+            val start = (row * this.width + left) * BYTES_PER_PIXEL
+            val end = (row * this.width + right) * BYTES_PER_PIXEL
+            for (i in start until end step BYTES_PER_PIXEL) {
+                pixels[i] = red
+                pixels[i + 1] = green
+                pixels[i + 2] = blue
+                pixels[i + 3] = alpha
+            }
+        }
+    }
+
+    /**
+     * Draws [image] over this image with its top-left corner at column [x] and row [y], blending
+     * each of its pixels by its alpha.
+     *
+     * A fully opaque pixel of [image] replaces the pixel under it and a fully transparent one
+     * leaves it as it is. Any other is blended over it with the "over" rule for colors whose alpha
+     * is not premultiplied, as the rim of [fillCircle] is: the result's alpha counts both pixels,
+     * and a pixel drawn over a transparent one keeps its own color and alpha. The parts of [image]
+     * outside this image are left out. [image] is never changed, and may be this image, which is
+     * then read as it was before the call.
+     *
+     * @sample samples.platform.Images.draw
+     */
+    public fun draw(image: Image, x: Int, y: Int) {
+        val left = maxOf(x, 0)
+        val top = maxOf(y, 0)
+        val right = minOf(x.toLong() + image.width, width.toLong()).toInt()
+        val bottom = minOf(y.toLong() + image.height, height.toLong()).toInt()
+        if (left >= right || top >= bottom) return
+        // Reading a copy makes drawing an image into itself independent of the order the rows are visited in.
+        // Only the source rows that are read are copied.
+        val base = if (image === this) (top - y) * image.width * BYTES_PER_PIXEL else 0
+        val source = if (image === this) pixels.copyOfRange(base, (bottom - y) * image.width * BYTES_PER_PIXEL) else image.pixels
+        for (row in top until bottom) {
+            val sourceStart = ((row - y) * image.width + (left - x)) * BYTES_PER_PIXEL
+            val start = (row * width + left) * BYTES_PER_PIXEL
+            for (offset in 0 until (right - left) * BYTES_PER_PIXEL step BYTES_PER_PIXEL) {
+                val from = sourceStart + offset - base
+                val to = start + offset
+                val alpha = source[from + 3].toInt() and 0xFF
+                if (alpha == 0) continue
+                if (alpha == 0xFF) {
+                    pixels[to] = source[from]
+                    pixels[to + 1] = source[from + 1]
+                    pixels[to + 2] = source[from + 2]
+                    pixels[to + 3] = source[from + 3]
+                } else {
+                    blendOver(to, colorAt(source, from), weight = alpha / 255f)
+                }
+            }
         }
     }
 
@@ -237,6 +303,14 @@ public class Image(public val width: Int, public val height: Int) {
         }
     }
 }
+
+/** Returns the color of the pixel whose RGBA bytes start at byte [i] of [bytes]. */
+private fun colorAt(bytes: ByteArray, i: Int): Color = Color(
+    (bytes[i].toUByte().toUInt() shl 24) or
+        (bytes[i + 1].toUByte().toUInt() shl 16) or
+        (bytes[i + 2].toUByte().toUInt() shl 8) or
+        bytes[i + 3].toUByte().toUInt(),
+)
 
 /**
  * Returns one color channel of an `Image.blendOver` result: the [destination] byte kept by [keep] plus
