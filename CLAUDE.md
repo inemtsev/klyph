@@ -32,8 +32,11 @@ queue applied after every system, `app.resources`, shared state keyed by class, 
 sound effects and music, with sounds and tracks loaded through `app.assets.sound` and
 `app.assets.musicTrack`, `app.scenes`, a scene stack whose top scene's systems run and whose scenes own
 the entities they spawn and each keep a clock, `Scene.elapsed` (`elapsedSeconds` as a `Float`), that
-counts only the time the scene is on top, `app.collisions`, overlap detection after FIXED_UPDATE that publishes
-`Overlap` events and answers shape queries (overlap only for ordinary colliders), plus solid
+counts only the time the scene is on top (`Time.elapsed` runs whatever scene is on top, and `Time.elapsedSeconds` and
+`fixedDeltaSeconds` are the `Float` seconds of `elapsed` and `fixedDelta`, as `deltaSeconds` is of `delta`), `app.collisions`,
+overlap detection after FIXED_UPDATE that publishes `Overlap` events (`entity in overlap` asks whether an entity is in the
+pair, `otherThan` returns the other one and `otherOrNull` returns `null` for an entity in neither slot)
+and answers shape queries (overlap only for ordinary colliders), plus solid
 response: a `Solid` next to a box `Collider` is a wall or floor (`Passable.FROM_BELOW` a one-way
 ledge) kept in a second grid inside `Collisions` (`SolidGrid`, rescanned at every body move and
 detection and rebuilt only when a solid changed, or before a sweep when the `Solid` or `Collider`
@@ -90,7 +93,8 @@ pass and the text pass share, so a camera that follows an `Interpolated` entity 
 picture, and `World.snapInterpolation(entity)`, called after moving the `Transform`, copies it over
 the saved previous transform so a respawn is drawn at the new place at once; `TextShadow` draws under text
 through `Text.shadow` or `drawText(shadow = …)`; `app.assets.whitePixel` and `app.assets.disc(d)`
-are ready-made regions; `AppConfig.fromEnvironment()` reads the `KLYPH_*` limits and switches,
+are ready-made regions, and a region's `aspectRatio`, its width over its height, sizes a `Sprite` by one side
+without distorting it; `AppConfig.fromEnvironment()` reads the `KLYPH_*` limits and switches,
 including `KLYPH_SCREENSHOT` and `KLYPH_FULLSCREEN`;
 every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` beside `Vec2` and
 `Rect`),

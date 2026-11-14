@@ -69,3 +69,15 @@ public class TextureRegion(
     /** Returns `TextureRegion(x=0, y=0, size=32x32, texture=Texture(256x256))`. */
     override fun toString(): String = "TextureRegion(x=$x, y=$y, size=${width}x$height, texture=$texture)"
 }
+
+/**
+ * Returns this region's [TextureRegion.width] divided by its [TextureRegion.height], so
+ * `height * region.aspectRatio` is the width that keeps the picture's shape at that height, and
+ * `width / region.aspectRatio` the height at that width. A square region gives 1.
+ *
+ * A region is never empty, so the ratio is always positive and finite.
+ *
+ * Has no sample because a region needs a [Texture], which needs a GPU device.
+ */
+public val TextureRegion.aspectRatio: Float
+    get() = width.toFloat() / height

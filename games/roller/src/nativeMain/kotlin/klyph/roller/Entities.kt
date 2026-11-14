@@ -21,6 +21,7 @@ import klyph.render.Fade
 import klyph.render.FadeEnd
 import klyph.render.Sprite
 import klyph.render.TextureRegion
+import klyph.render.aspectRatio
 import klyph.text.Font
 import klyph.text.Text
 import klyph.text.TextAlign
@@ -49,7 +50,7 @@ fun Commands.spawnScenery(art: Art) {
     for (billboard in level.billboards) spawnBillboard(art, billboard)
     for (plant in level.plants) {
         val height = PLANT_HEIGHT
-        val width = height * art.plant.width / art.plant.height
+        val width = height * art.plant.aspectRatio
         spawnProp(art.plant, plant.x, plant.y, width, height)
     }
     for (unit in level.airConditioners) {
@@ -57,7 +58,7 @@ fun Commands.spawnScenery(art: Art) {
         spawnProp(region, unit.x, unit.y, region.width * Tuning.PIXEL, region.height * Tuning.PIXEL)
     }
     val signHeight = SIGN_HEIGHT
-    spawnProp(art.sign, RooftopRun.SIGN_X, RooftopRun.signRoof, signHeight * art.sign.width / art.sign.height, signHeight)
+    spawnProp(art.sign, RooftopRun.SIGN_X, RooftopRun.signRoof, signHeight * art.sign.aspectRatio, signHeight)
 }
 
 private const val PLANT_HEIGHT = 44f
@@ -185,7 +186,7 @@ private fun Commands.spawnProp(region: TextureRegion, x: Float, floor: Float, wi
 private fun Commands.spawnBillboard(art: Art, billboard: Billboard) {
     val poster = art.poster(billboard.poster)
     val posterHeight = 120f
-    val posterWidth = posterHeight * poster.width / poster.height
+    val posterWidth = posterHeight * poster.aspectRatio
     val pylonHeight = 64f
     val catwalk = 6f
     val posterBottom = billboard.roof - pylonHeight - catwalk
@@ -226,7 +227,7 @@ fun Commands.spawnPlayer(art: Art): Entity = spawn {
     val height = Tuning.PLAYER_SPRITE_HEIGHT
     val region = art.skate[0]
     add(Transform, Transform(start.x, start.y - Collisions.CONTACT_GAP - height / 2))
-    add(Sprite, Sprite(region, height * region.width / region.height, height, layer = Tuning.LAYER_PLAYER))
+    add(Sprite, Sprite(region, height * region.aspectRatio, height, layer = Tuning.LAYER_PLAYER))
     // The box's bottom is the feet, at the bottom of the sprite.
     add(
         Collider,
@@ -259,7 +260,7 @@ fun Commands.spawnPickupsAndEnemies(art: Art, random: Random) {
     for (heart in level.hearts) {
         spawn {
             add(Transform, Transform(heart.x, heart.y))
-            add(Sprite, Sprite(art.heart, Tuning.HEART_SIZE, Tuning.HEART_SIZE * art.heart.height / art.heart.width, layer = Tuning.LAYER_PICKUPS))
+            add(Sprite, Sprite(art.heart, Tuning.HEART_SIZE, Tuning.HEART_SIZE / art.heart.aspectRatio, layer = Tuning.LAYER_PICKUPS))
             add(Collider, Collider(Shape.Circle(Tuning.HEART_SIZE / 2), layers = Layers.HEART, mask = CollisionLayers.NONE))
             add(HeartPickup, HeartPickup(heart.y))
         }

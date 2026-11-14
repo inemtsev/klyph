@@ -2,6 +2,7 @@ package klyph.roller
 
 import klyph.app.App
 import klyph.platform.Color
+import klyph.render.aspectRatio
 import klyph.scene.elapsedSeconds
 import klyph.text.TextAlign
 import klyph.text.TextShadow
@@ -30,7 +31,7 @@ fun Run.drawHud(app: App) {
             x = margin + heartSize / 2 + index * (heartSize + 6f),
             y = margin + heartSize / 2,
             width = heartSize,
-            height = heartSize * art.heart.height / art.heart.width,
+            height = heartSize / art.heart.aspectRatio,
             color = if (index < hearts) Color.WHITE else Tuning.LOST_HEART_TINT,
             layer = 1,
         )
@@ -66,7 +67,7 @@ fun drawTitle(app: App) {
     val heroHeight = 128f
     app.canvas.drawSprite(
         frame, x = width / 2, y = height * 0.5f + 3f * sin(seconds * 8f),
-        width = heroHeight * frame.width / frame.height, height = heroHeight, layer = 1,
+        width = heroHeight * frame.aspectRatio, height = heroHeight, layer = 1,
     )
     drawCentred(app, "Press Space or A to roll", height * 0.72f, scale = Tuning.TEXT_SCALE)
     if (game.bestScore > 0) {

@@ -73,7 +73,7 @@ val coin = commands.spawn {
     add(Collider, Collider(Shape.Circle(12f)).apply { scalesWithTransform = false })
 }
 addSystem(Phase.UPDATE) { app ->
-    val seconds = app.time.elapsed.inWholeMilliseconds / 1000f
+    val seconds = app.time.elapsedSeconds
     app.world.get(coin, Transform).scaleX = cos(seconds * 4f)
 }
 ```
@@ -99,7 +99,9 @@ smaller index, so a pair arrives in the same order every frame it lasts.
 
 `entity in overlap` tells whether an entity is in the pair, and `overlap.otherThan(entity)`
 returns the other one without checking which slot is which. `otherThan` throws
-`IllegalArgumentException` when the entity is in neither slot.
+`IllegalArgumentException` when the entity is in neither slot; `overlap.otherOrNull(entity)`
+returns `null` instead, so a handler for one entity's overlaps can start with
+`val other = overlap.otherOrNull(player) ?: return@forEach`.
 
 <!-- snippet: overlaps -->
 ```kotlin

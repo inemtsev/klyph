@@ -7,7 +7,7 @@ import klyph.collision.Collider
 import klyph.collision.Collisions
 import klyph.collision.KinematicBody
 import klyph.collision.Overlap
-import klyph.collision.otherThan
+import klyph.collision.otherOrNull
 import klyph.entity.Entity
 import klyph.entity.Transform
 import klyph.entity.Velocity
@@ -15,6 +15,7 @@ import klyph.entity.snapInterpolation
 import klyph.math.Rect
 import klyph.platform.Color
 import klyph.render.Sprite
+import klyph.render.aspectRatio
 import klyph.render.follow
 import klyph.render.lookAt
 import klyph.render.visibleWidth
@@ -292,8 +293,7 @@ fun Run.resolveOverlaps(app: App) {
     val hero = world.getOrNull(player, Player) ?: return
     if (state != RunState.PLAYING) return
     app.events.forEach<Overlap> { overlap ->
-        if (overlap.a != player && overlap.b != player) return@forEach
-        val other = overlap.otherThan(player)
+        val other = overlap.otherOrNull(player) ?: return@forEach
         val ring = world.getOrNull(other, Ring)
         if (ring != null) {
             if (!ring.isTaken) takeRing(app, other, ring)
@@ -429,7 +429,7 @@ fun Run.animatePlayer(app: App) {
         else -> art.skate[0]
     }
     sprite.region = region
-    sprite.width = sprite.height * region.width / region.height
+    sprite.width = sprite.height * region.aspectRatio
     sprite.isFlippedX = hero.facing < 0f
     val isBlinkedOut = hero.invulnerable > 0f && (hero.invulnerable / Tuning.BLINK_SECONDS).toInt() % 2 == 1
     sprite.isVisible = state != RunState.FALLING && !isBlinkedOut

@@ -38,7 +38,8 @@ public operator fun Overlap.contains(entity: Entity): Boolean = entity == a || e
 /**
  * Returns the entity of the pair that is not [entity]: [Overlap.b] when [entity] is [Overlap.a]
  * and [Overlap.a] when it is [Overlap.b], so a handler that found its bullet in the pair gets the
- * thing it hit without checking which slot is which.
+ * thing it hit without checking which slot is which. [otherOrNull] returns `null` instead of
+ * throwing.
  *
  * @throws IllegalArgumentException if [entity] is in neither slot.
  *
@@ -48,4 +49,17 @@ public fun Overlap.otherThan(entity: Entity): Entity = when (entity) {
     a -> b
     b -> a
     else -> throw IllegalArgumentException("Entity $entity is in neither slot of $this.")
+}
+
+/**
+ * Returns the entity of the pair that is not [entity], as [otherThan] does, or `null` if [entity]
+ * is in neither slot, so a handler for one entity's overlaps skips the pairs it is not in with
+ * `val other = overlap.otherOrNull(player) ?: return@forEach`.
+ *
+ * @sample samples.collision.Overlaps.otherOrNull
+ */
+public fun Overlap.otherOrNull(entity: Entity): Entity? = when (entity) {
+    a -> b
+    b -> a
+    else -> null
 }

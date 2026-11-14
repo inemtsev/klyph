@@ -124,6 +124,31 @@ class TimeTest {
     }
 
     @Test
+    fun fixedDeltaSecondsIsTheStepLengthInEveryPhase() {
+        val time = Time(50)
+        assertEquals(0.02f, time.fixedDeltaSeconds)
+        time.beginFrame(33.milliseconds)
+        assertEquals(0.02f, time.fixedDeltaSeconds, "Outside a fixed step, where deltaSeconds is the frame.")
+        time.beginFixedStep()
+        assertEquals(0.02f, time.fixedDeltaSeconds)
+        time.endFixedStep()
+        assertEquals(0.02f, time.fixedDeltaSeconds)
+    }
+
+    @Test
+    fun elapsedSecondsIsElapsedInSeconds() {
+        val time = Time(60)
+        assertEquals(0f, time.elapsedSeconds)
+        time.beginFrame(100.milliseconds)
+        time.endFrame()
+        time.beginFrame(150.milliseconds)
+        assertEquals(0.25f, time.elapsedSeconds)
+        time.endFrame()
+        time.beginFrame(2.seconds)
+        assertEquals(0.5f, time.elapsedSeconds, "A long frame counts for its clamped 250 milliseconds.")
+    }
+
+    @Test
     fun fixedStepCallsMustPair() {
         val time = Time(60)
         assertFailsWith<IllegalStateException> { time.endFixedStep() }
