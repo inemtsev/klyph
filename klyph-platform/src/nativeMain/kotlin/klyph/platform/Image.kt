@@ -20,6 +20,7 @@ import stb.stbi_failure_reason
 import stb.stbi_image_free
 import stb.stbi_load_from_memory
 import stb.stbi_write_png_to_func
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.sqrt
@@ -29,9 +30,9 @@ import kotlin.math.sqrt
  * top-left corner. Every pixel starts as transparent black.
  *
  * Read and write pixels with [get] and [set], or decode a PNG or JPEG file with [Image.decode].
- * [fill], [fillRect] and [fillCircle] paint shapes and [draw] lays another image over this one, all
- * on the CPU and clipped to the image. A game turns an image into a texture it can draw with
- * `klyph.app.Assets.createTexture`.
+ * [fill], [fillRect], [fillCircle] and [Image.drawLine] paint shapes and [draw] lays another
+ * image, or a rectangle of one, over this one, all on the CPU and clipped to the image. A game
+ * turns an image into a texture it can draw with `klyph.app.Assets.createTexture`.
  *
  * @throws IllegalArgumentException if [width] or [height] is not positive, or the image would
  *   need more than [Int.MAX_VALUE] bytes.
@@ -137,17 +138,48 @@ public class Image(public val width: Int, public val height: Int) {
      * @sample samples.platform.Images.draw
      */
     public fun draw(image: Image, x: Int, y: Int) {
+        draw(image, x, y, sourceX = 0, sourceY = 0, sourceWidth = image.width, sourceHeight = image.height)
+    }
+
+    /**
+     * Draws the rectangle of [image] [sourceWidth] pixels wide and [sourceHeight] pixels tall whose
+     * top-left corner is at column [sourceX] and row [sourceY] over this image, with that corner at
+     * column [x] and row [y], blending each of its pixels by its alpha as the [draw] without a
+     * source rectangle does. This is how a sprite is cut out of a sheet image.
+     *
+     * Only the pixels inside the source rectangle are read, and the parts of it that fall outside
+     * this image are left out, so a source rectangle with a [sourceWidth] or [sourceHeight] of 0
+     * paints nothing. [image] is never changed, and may be this image, which is then read as it
+     * was before the call. Pass the source arguments by name; [x] and [y] are a conventional pair.
+     *
+     * @throws IllegalArgumentException if [sourceWidth] or [sourceHeight] is negative, or the
+     *   source rectangle does not lie wholly inside [image].
+     *
+     * @sample samples.platform.Images.draw
+     */
+    public fun draw(image: Image, x: Int, y: Int, sourceX: Int, sourceY: Int, sourceWidth: Int, sourceHeight: Int) {
+        require(sourceWidth >= 0) { "Source rectangle width $sourceWidth is negative." }
+        require(sourceHeight >= 0) { "Source rectangle height $sourceHeight is negative." }
+        require(
+            sourceX >= 0 && sourceY >= 0 &&
+                sourceX.toLong() + sourceWidth <= image.width && sourceY.toLong() + sourceHeight <= image.height,
+        ) {
+            "Source rectangle ${sourceWidth}x$sourceHeight at ($sourceX, $sourceY) is outside image size ${image.width}x${image.height}."
+        }
         val left = maxOf(x, 0)
         val top = maxOf(y, 0)
-        val right = minOf(x.toLong() + image.width, width.toLong()).toInt()
-        val bottom = minOf(y.toLong() + image.height, height.toLong()).toInt()
+        val right = minOf(x.toLong() + sourceWidth, width.toLong()).toInt()
+        val bottom = minOf(y.toLong() + sourceHeight, height.toLong()).toInt()
         if (left >= right || top >= bottom) return
+        // The source pixel under target pixel (column, row) is (column + shiftX, row + shiftY).
+        val shiftX = sourceX - x
+        val shiftY = sourceY - y
         // Reading a copy makes drawing an image into itself independent of the order the rows are visited in.
         // Only the source rows that are read are copied.
-        val base = if (image === this) (top - y) * image.width * BYTES_PER_PIXEL else 0
-        val source = if (image === this) pixels.copyOfRange(base, (bottom - y) * image.width * BYTES_PER_PIXEL) else image.pixels
+        val base = if (image === this) (top + shiftY) * image.width * BYTES_PER_PIXEL else 0
+        val source = if (image === this) pixels.copyOfRange(base, (bottom + shiftY) * image.width * BYTES_PER_PIXEL) else image.pixels
         for (row in top until bottom) {
-            val sourceStart = ((row - y) * image.width + (left - x)) * BYTES_PER_PIXEL
+            val sourceStart = ((row + shiftY) * image.width + left + shiftX) * BYTES_PER_PIXEL
             val start = (row * width + left) * BYTES_PER_PIXEL
             for (offset in 0 until (right - left) * BYTES_PER_PIXEL step BYTES_PER_PIXEL) {
                 val from = sourceStart + offset - base
@@ -320,6 +352,69 @@ private fun colorAt(bytes: ByteArray, i: Int): Color = Color(
 private fun mixChannel(destination: Byte, source: Float, weight: Float, keep: Float, alpha: Float): Byte {
     val old = (destination.toInt() and 0xFF) / 255f
     return (((source * weight + old * keep) / alpha) * 255f + 0.5f).toInt().coerceIn(0, 255).toByte()
+}
+
+/**
+ * Sets the pixels of the straight line from column [x1] and row [y1] to column [x2] and row
+ * [y2], both ends included, to [color], alpha included, as [Image.set] does. Nothing is blended, so a
+ * transparent [color] clears the line.
+ *
+ * The line is one pixel wide with no antialiasing: it sets one pixel in each column, or in each
+ * row when it is steeper than 45 degrees, the one nearest to the exact line, with a pixel halfway
+ * between two always taking the same one, so the same pixels are set whichever end comes first.
+ * The parts of the line outside the image are left out, and the time a line takes grows with the
+ * image's size, not the line's length, so ends far outside the image cost nothing. Pass [color] by
+ * name; ([x1], [y1]) and ([x2], [y2]) are conventional pairs.
+ *
+ * @sample samples.platform.Images.drawLine
+ */
+public fun Image.drawLine(x1: Int, y1: Int, x2: Int, y2: Int, color: Color) {
+    val isSteep = abs(y2.toLong() - y1) > abs(x2.toLong() - x1)
+    when {
+        !isSteep && x1 <= x2 -> drawShallowLine(x1, y1, x2, y2, color, isTransposed = false)
+        !isSteep -> drawShallowLine(x2, y2, x1, y1, color, isTransposed = false)
+        y1 <= y2 -> drawShallowLine(y1, x1, y2, x2, color, isTransposed = true)
+        else -> drawShallowLine(y2, x2, y1, x1, color, isTransposed = true)
+    }
+}
+
+/**
+ * Sets the pixels of the line from ([u1], [v1]) to ([u2], [v2]) to [color], where [u1] is at most
+ * [u2] and the line rises or falls by at most as much as it runs: one pixel for each `u`, at the
+ * `v` nearest to the line, a half rounded away from [v1]. `u` counts columns and `v` rows, or the
+ * other way round when [isTransposed]. Only the `u` inside the image are visited.
+ */
+private fun Image.drawShallowLine(u1: Int, v1: Int, u2: Int, v2: Int, color: Color, isTransposed: Boolean) {
+    val uSize = if (isTransposed) height else width
+    val vSize = if (isTransposed) width else height
+    val run = u2.toLong() - u1
+    val rise = abs(v2.toLong() - v1)
+    val direction = if (v2 >= v1) 1L else -1L
+    val first = maxOf(0L, -u1.toLong())
+    val last = minOf(run, uSize - 1L - u1)
+    if (first > last) return
+    if (run == 0L) {
+        if (v1 in 0 until vSize) set(if (isTransposed) v1 else u1, if (isTransposed) u1 else v1, color)
+        return
+    }
+    // At step i the line has risen i * rise / run pixels, held as whole + remainder / run. Both
+    // factors are below 2^32, so their product fits in a ULong.
+    val product = first.toULong() * rise.toULong()
+    var whole = (product / run.toULong()).toLong()
+    var remainder = (product % run.toULong()).toLong()
+    for (step in first..last) {
+        val rounded = if (2 * remainder >= run) whole + 1 else whole
+        val v = v1 + direction * rounded
+        if (v in 0L until vSize) {
+            val u = (u1 + step).toInt()
+            if (isTransposed) set(v.toInt(), u, color) else set(u, v.toInt(), color)
+        }
+        remainder += rise
+        if (remainder >= run) {
+            remainder -= run
+            whole++
+        }
+    }
 }
 
 /**

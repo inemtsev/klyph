@@ -142,6 +142,15 @@ class ImageTest {
     }
 
     private companion object {
+        /** Lines for a 6 by 5 image: inside it, crossing each edge and corner, and wholly outside each side. */
+        val LINES = listOf(
+            (0 to 0) to (5 to 4), (1 to 3) to (4 to 1), (2 to 0) to (3 to 4), (0 to 2) to (5 to 2), (3 to 0) to (3 to 4),
+            (-3 to 1) to (4 to 3), (2 to -4) to (4 to 3), (1 to 2) to (9 to 4), (3 to 1) to (5 to 8), (-2 to -3) to (8 to 7),
+            (-4 to 6) to (7 to -2), (-5 to 2) to (10 to 3), (2 to -6) to (3 to 9), (-3 to -1) to (2 to 6), (8 to -2) to (1 to 7),
+            (-6 to 0) to (-1 to 4), (7 to 0) to (9 to 4), (0 to -5) to (5 to -1), (1 to 6) to (4 to 9), (-3 to 2) to (2 to -3),
+            (-1 to -1) to (-1 to -1), (6 to 5) to (6 to 5), (5 to 4) to (5 to 4), (-8 to -1) to (8 to 1), (0 to 7) to (5 to -7),
+        )
+
         /** A 2x2 RGBA PNG: red, green on the top row; blue, half-transparent white below. */
         val TWO_BY_TWO_PNG = byteArrayOf(
             -119, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 2, 0, 0, 0, 2,
@@ -397,6 +406,215 @@ class ImageTest {
             expected.draw(patterned(4, 4), x = 1, y = y)
             image.draw(image, x = 1, y = y)
             assertContentEquals(expected.pixels, image.pixels, "Drawn into itself at (1, $y).")
+        }
+    }
+
+    @Test
+    fun drawWithASourceRectangleCopiesOnlyThatRectangle() {
+        val source = patterned(5, 4)
+        val target = Image(6, 6)
+        target.draw(source, x = 2, y = 1, sourceX = 1, sourceY = 2, sourceWidth = 3, sourceHeight = 2)
+        for (y in 0 until 6) {
+            for (x in 0 until 6) {
+                val expected = if (x in 2..4 && y in 1..2) source[x - 1, y + 1] else Color.TRANSPARENT
+                assertEquals(expected, target[x, y], "Pixel ($x, $y).")
+            }
+        }
+    }
+
+    @Test
+    fun drawWithASourceRectangleClipsToTheImageOnEveryEdge() {
+        val source = patterned(6, 6)
+        val offsets = listOf(
+            0 to 0, 1 to 1, -1 to -2, -2 to 0, 2 to 2, 3 to 3, 4 to 0, 0 to 4, -3 to -3, 5 to -5, -2 to 3, 2 to -1, 3 to 2, -1 to 1,
+        )
+        for ((x, y) in offsets) {
+            val expected = patterned(4, 3)
+            val actual = patterned(4, 3)
+            for (row in 0 until 3) {
+                for (column in 0 until 3) {
+                    if (x + column in 0 until 4 && y + row in 0 until 3) expected[x + column, y + row] = source[column + 2, row + 1]
+                }
+            }
+            actual.draw(source, x, y, sourceX = 2, sourceY = 1, sourceWidth = 3, sourceHeight = 3)
+            assertContentEquals(expected.pixels, actual.pixels, "Drawn at ($x, $y).")
+        }
+    }
+
+    @Test
+    fun drawWithTheWholeImageAsSourceMatchesDrawWithout() {
+        val source = patterned(3, 3)
+        source[1, 1] = Color(0x12345680u)
+        for ((x, y) in listOf(0 to 0, -1 to 2, 2 to -1, 1 to 1)) {
+            val expected = patterned(4, 4)
+            val actual = patterned(4, 4)
+            expected.draw(source, x, y)
+            actual.draw(source, x, y, sourceX = 0, sourceY = 0, sourceWidth = 3, sourceHeight = 3)
+            assertContentEquals(expected.pixels, actual.pixels, "Drawn at ($x, $y).")
+        }
+    }
+
+    @Test
+    fun drawWithAnEmptySourceRectanglePaintsNothing() {
+        val source = patterned(3, 3)
+        val target = Image(3, 3)
+        target.draw(source, x = 0, y = 0, sourceX = 1, sourceY = 1, sourceWidth = 0, sourceHeight = 2)
+        target.draw(source, x = 0, y = 0, sourceX = 3, sourceY = 3, sourceWidth = 0, sourceHeight = 0)
+        assertContentEquals(ByteArray(3 * 3 * 4), target.pixels)
+    }
+
+    @Test
+    fun drawWithASourceRectangleOutsideTheSourceThrows() {
+        val source = patterned(4, 3)
+        val target = Image(3, 3)
+        val width = assertFailsWith<IllegalArgumentException> {
+            target.draw(source, x = 0, y = 0, sourceX = 0, sourceY = 0, sourceWidth = -1, sourceHeight = 1)
+        }
+        assertEquals("Source rectangle width -1 is negative.", width.message)
+        val height = assertFailsWith<IllegalArgumentException> {
+            target.draw(source, x = 0, y = 0, sourceX = 0, sourceY = 0, sourceWidth = 1, sourceHeight = -2)
+        }
+        assertEquals("Source rectangle height -2 is negative.", height.message)
+        val outside = assertFailsWith<IllegalArgumentException> {
+            target.draw(source, x = 0, y = 0, sourceX = 2, sourceY = 1, sourceWidth = 3, sourceHeight = 2)
+        }
+        assertEquals("Source rectangle 3x2 at (2, 1) is outside image size 4x3.", outside.message)
+        val rectangles = listOf(
+            Rectangle(-1, 0, 2, 2), Rectangle(0, -1, 2, 2), Rectangle(3, 0, 2, 1), Rectangle(0, 2, 1, 2), Rectangle(5, 0, 0, 0),
+            Rectangle(Int.MAX_VALUE, 0, Int.MAX_VALUE, 1), Rectangle(0, Int.MAX_VALUE, 1, Int.MAX_VALUE), Rectangle(Int.MIN_VALUE, 0, 1, 1),
+        )
+        for (rectangle in rectangles) {
+            assertFailsWith<IllegalArgumentException>("Rectangle $rectangle.") {
+                target.draw(source, x = 0, y = 0, rectangle.x, rectangle.y, rectangle.width, rectangle.height)
+            }
+        }
+        assertContentEquals(ByteArray(3 * 3 * 4), target.pixels, "A rejected rectangle paints nothing.")
+    }
+
+    @Test
+    fun drawWithASourceRectangleAndHugeOffsetsDoesNotOverflow() {
+        val source = patterned(4, 4)
+        val target = Image(3, 3)
+        for (x in listOf(Int.MAX_VALUE, Int.MIN_VALUE, Int.MAX_VALUE - 1, Int.MIN_VALUE + 1)) {
+            target.draw(source, x = x, y = 0, sourceX = 1, sourceY = 1, sourceWidth = 3, sourceHeight = 3)
+            target.draw(source, x = 0, y = x, sourceX = 1, sourceY = 1, sourceWidth = 3, sourceHeight = 3)
+        }
+        assertContentEquals(ByteArray(3 * 3 * 4), target.pixels, "Nothing of the source lies inside the target.")
+    }
+
+    @Test
+    fun drawAPartOfAnImageIntoItselfReadsItAsItWas() {
+        for ((x, y) in listOf(0 to 0, 1 to 0, 0 to 3, 2 to 2, -1 to 1, 3 to -1)) {
+            val image = patterned(5, 5)
+            val expected = patterned(5, 5)
+            expected.draw(patterned(5, 5), x, y, sourceX = 1, sourceY = 2, sourceWidth = 3, sourceHeight = 2)
+            image.draw(image, x, y, sourceX = 1, sourceY = 2, sourceWidth = 3, sourceHeight = 2)
+            assertContentEquals(expected.pixels, image.pixels, "Drawn into itself at ($x, $y).")
+        }
+    }
+
+    @Test
+    fun drawLineSetsOnePixelPerColumnNearestTheLine() {
+        val image = Image(8, 4)
+        image.drawLine(x1 = 0, y1 = 0, x2 = 7, y2 = 3, color = Color.WHITE)
+        val rows = listOf(0, 0, 1, 1, 2, 2, 3, 3)
+        for (y in 0 until 4) {
+            for (x in 0 until 8) {
+                val expected = if (rows[x] == y) Color.WHITE else Color.TRANSPARENT
+                assertEquals(expected, image[x, y], "Pixel ($x, $y).")
+            }
+        }
+    }
+
+    @Test
+    fun drawLineDrawsHorizontalVerticalDiagonalAndSinglePixelLines() {
+        val image = Image(5, 5)
+        image.drawLine(x1 = 4, y1 = 0, x2 = 0, y2 = 0, color = Color.RED)
+        image.drawLine(x1 = 0, y1 = 1, x2 = 0, y2 = 4, color = Color.WHITE)
+        image.drawLine(x1 = 1, y1 = 1, x2 = 4, y2 = 4, color = Color.BLUE)
+        image.drawLine(x1 = 4, y1 = 1, x2 = 4, y2 = 1, color = Color.GREEN)
+        for (y in 0 until 5) {
+            for (x in 0 until 5) {
+                val expected = when {
+                    y == 0 -> Color.RED
+                    x == 0 -> Color.WHITE
+                    x == y -> Color.BLUE
+                    x == 4 && y == 1 -> Color.GREEN
+                    else -> Color.TRANSPARENT
+                }
+                assertEquals(expected, image[x, y], "Pixel ($x, $y).")
+            }
+        }
+    }
+
+    @Test
+    fun drawLineSetsTheSamePixelsWhicheverEndComesFirst() {
+        for ((from, to) in LINES) {
+            val forward = Image(6, 5)
+            val backward = Image(6, 5)
+            forward.drawLine(from.first, from.second, to.first, to.second, color = Color.WHITE)
+            backward.drawLine(to.first, to.second, from.first, from.second, color = Color.WHITE)
+            assertContentEquals(forward.pixels, backward.pixels, "Line from $from to $to.")
+        }
+    }
+
+    @Test
+    fun drawLineSetsPixelsWithoutBlending() {
+        val image = Image(3, 1)
+        image.fill(Color.WHITE)
+        image.drawLine(x1 = 0, y1 = 0, x2 = 1, y2 = 0, color = Color(0x10203040u))
+        assertEquals(Color(0x10203040u), image[0, 0], "Alpha is stored as it is, not blended.")
+        image.drawLine(x1 = 1, y1 = 0, x2 = 2, y2 = 0, color = Color.TRANSPARENT)
+        assertEquals(Color.TRANSPARENT, image[2, 0], "A transparent color clears the line.")
+    }
+
+    @Test
+    fun drawLineClipsToTheImageOnEveryEdge() {
+        for ((from, to) in LINES) {
+            val expected = Image(6, 5)
+            for ((x, y) in linePixels(from.first, from.second, to.first, to.second)) {
+                if (x in 0 until 6 && y in 0 until 5) expected[x, y] = Color.WHITE
+            }
+            val actual = Image(6, 5)
+            actual.drawLine(from.first, from.second, to.first, to.second, color = Color.WHITE)
+            assertContentEquals(expected.pixels, actual.pixels, "Line from $from to $to.")
+        }
+    }
+
+    @Test
+    fun drawLineWithFarOffEndsDoesNotOverflow() {
+        val image = Image(4, 3)
+        image.drawLine(x1 = Int.MIN_VALUE, y1 = 1, x2 = Int.MAX_VALUE, y2 = 1, color = Color.WHITE)
+        for (x in 0 until 4) assertEquals(Color.WHITE, image[x, 1], "Pixel ($x, 1).")
+        val diagonal = Image(4, 3)
+        diagonal.drawLine(x1 = Int.MIN_VALUE, y1 = Int.MIN_VALUE, x2 = Int.MAX_VALUE, y2 = Int.MAX_VALUE, color = Color.WHITE)
+        for (y in 0 until 3) {
+            for (x in 0 until 4) assertEquals(if (x == y) Color.WHITE else Color.TRANSPARENT, diagonal[x, y], "Pixel ($x, $y).")
+        }
+        val outside = Image(4, 3)
+        outside.drawLine(x1 = Int.MIN_VALUE, y1 = -1, x2 = Int.MAX_VALUE, y2 = -1, color = Color.WHITE)
+        outside.drawLine(x1 = Int.MAX_VALUE, y1 = Int.MIN_VALUE, x2 = Int.MAX_VALUE, y2 = Int.MAX_VALUE, color = Color.WHITE)
+        outside.drawLine(x1 = Int.MIN_VALUE, y1 = Int.MAX_VALUE, x2 = Int.MAX_VALUE, y2 = Int.MAX_VALUE, color = Color.WHITE)
+        outside.drawLine(x1 = Int.MAX_VALUE, y1 = Int.MAX_VALUE, x2 = Int.MIN_VALUE, y2 = Int.MIN_VALUE + 7, color = Color.WHITE)
+        assertContentEquals(ByteArray(4 * 3 * 4), outside.pixels, "Nothing of these lines lies inside the image.")
+    }
+
+    /**
+     * Returns every pixel of the line from ([x1], [y1]) to ([x2], [y2]) as [Image.drawLine] defines
+     * it, inside the image or not: one per column, or per row when steeper, at the nearest row or
+     * column, halves rounded away from the end with the smaller column, or row when steeper.
+     */
+    private fun linePixels(x1: Int, y1: Int, x2: Int, y2: Int): List<Pair<Int, Int>> {
+        val isSteep = abs(y2 - y1) > abs(x2 - x1)
+        val ends = listOf(x1 to y1, x2 to y2).map { (x, y) -> if (isSteep) y to x else x to y }.sortedBy { it.first }
+        val (startU, startV) = ends[0]
+        val (endU, endV) = ends[1]
+        val run = endU - startU
+        return (0..run).map { step ->
+            // Rounds step * (endV - startV) / run to the nearest whole number, halves away from zero.
+            val rise = step * (endV - startV)
+            val offset = if (run == 0) 0 else (2 * abs(rise) + run) / (2 * run) * (if (rise < 0) -1 else 1)
+            if (isSteep) (startV + offset) to (startU + step) else (startU + step) to (startV + offset)
         }
     }
 

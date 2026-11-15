@@ -6,6 +6,11 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `Image.drawLine`: set the pixels of a line one pixel wide, clipped to the image, before `createTexture`.
+- `Image.draw` with a source rectangle: lay only a part of another image, such as one sprite cut out of a sheet.
+
 ## [1.2.0] - 2026-11-15
 
 Scrolling worlds: layers that move at their own speed, textures that repeat, a sky under the

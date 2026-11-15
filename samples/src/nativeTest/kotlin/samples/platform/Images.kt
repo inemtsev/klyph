@@ -2,6 +2,7 @@ package samples.platform
 
 import klyph.platform.Color
 import klyph.platform.Image
+import klyph.platform.drawLine
 import klyph.platform.withAlpha
 import samples.Sample
 import samples.assertPrints
@@ -66,5 +67,27 @@ class Images {
         // The part of the stamp outside the sheet is left out.
         sheet.draw(stamp, x = 3, y = 3)
         assertPrints(sheet[3, 3], "Color(#ff0000ff)")
+        // A source rectangle draws only that part of the stamp: here its bottom row.
+        val target = Image(2, 2)
+        target.draw(stamp, x = 0, y = 0, sourceX = 0, sourceY = 1, sourceWidth = 2, sourceHeight = 1)
+        assertPrints(target[0, 0], "Color(#ff000080)")
+        assertPrints(target[0, 1], "Color(#00000000)")
+        assertFailsWith<IllegalArgumentException> {
+            target.draw(stamp, x = 0, y = 0, sourceX = 1, sourceY = 0, sourceWidth = 2, sourceHeight = 2)
+        }
+    }
+
+    @Sample
+    fun drawLine() {
+        val image = Image(8, 4)
+        image.drawLine(x1 = 0, y1 = 0, x2 = 7, y2 = 3, color = Color.WHITE)
+        // One pixel in each column, the one nearest the line.
+        assertPrints(image[0, 0], "Color(#ffffffff)")
+        assertPrints(image[3, 1], "Color(#ffffffff)")
+        assertPrints(image[3, 2], "Color(#00000000)")
+        assertPrints(image[7, 3], "Color(#ffffffff)")
+        // The part of a line outside the image is left out.
+        image.drawLine(x1 = -100, y1 = 2, x2 = 100, y2 = 2, color = Color.RED)
+        assertPrints(image[5, 2], "Color(#ff0000ff)")
     }
 }
