@@ -6,24 +6,34 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-15
+
+Scrolling worlds: layers that move at their own speed, textures that repeat, a sky under the
+world, and a camera that follows what is drawn.
+
 ### Added
 
-- `Sprite.tileWidth` and `tileHeight`, and `Canvas.drawTiled`: repeat a texture across a larger area instead of stretching it.
-- `SamplerAddress` (`CLAMP`, `REPEAT`), `Texture.address` and an `address` argument on `Assets.texture`, `textureOrNull` and `createTexture`: load a texture that repeats, which tiling needs.
+- `ParallaxLayer`: a sprite that follows the camera at a fraction of the world's speed and repeats to fill the view;
+  see the [Scrolling worlds guide](https://inemtsev.github.io/klyph/guide/scrolling.html).
+- `DrawSpace.BACKGROUND`: canvas quads in points drawn under the whole world, such as a one-call sky.
+- Repeating textures: `SamplerAddress.REPEAT` on `Assets.texture`, `textureOrNull` and `createTexture`, then
+  `Sprite.tileWidth` and `tileHeight` or `Canvas.drawTiled` to repeat the texture across a larger area instead of stretching it.
+- `Sprite.originX` and `originY`: anchor a sprite to its `Transform` at any point, such as a character's feet, instead of the center.
 - `Camera.offsetX` and `offsetY`: shift the view after `follow` and the bounds clamp, such as for a screen shake.
 - `drawnPositionOf` on `World` and `App`: where an `Interpolated` entity is drawn this frame, for a camera to follow.
 - `World.snapInterpolation(entity)`: draws a teleported or respawned `Interpolated` entity at its new place, with no sweep from the old one.
 - `Scene.elapsed` and `elapsedSeconds`: how long a scene has been on top, standing still while another scene covers it.
-- `Sprite.originX` and `originY`: anchor a sprite to its `Transform` at any point, such as a character's feet, instead of the center.
-- `ParallaxLayer`: a sprite that follows the camera at a fraction of the world's speed and repeats to fill the view;
-  see the [Scrolling worlds guide](https://inemtsev.github.io/klyph/guide/scrolling.html).
-- `DrawSpace.BACKGROUND`: canvas quads in points drawn under the whole world, such as a one-call sky.
-- `Overlap.otherOrNull(entity)`: the other entity of a pair, or `null` for an entity in neither slot.
-- `Time.fixedDeltaSeconds` and `elapsedSeconds`: the fixed step's length and the game time as `Float` seconds, beside `deltaSeconds`.
-- `TextureRegion.aspectRatio`: a region's width over its height, to size a sprite by one side without distorting it.
 - `AppConfig.textureFilter` and `Assets.textureFilter`: the filter that textures, sprite sheets and fonts load with
   unless the call passes one, so a pixel-art game sets `NEAREST` once.
 - `Image.fillRect` and `Image.draw`: paint a rectangle, or lay one image over another with alpha blending, before `createTexture`.
+- `Overlap.otherOrNull(entity)`: the other entity of a pair, or `null` for an entity in neither slot.
+- `Time.fixedDeltaSeconds` and `elapsedSeconds`: the fixed step's length and the game time as `Float` seconds, beside `deltaSeconds`.
+- `TextureRegion.aspectRatio`: a region's width over its height, to size a sprite by one side without distorting it.
+
+### Changed
+
+- `DrawSpace.BACKGROUND` is the enum's first entry, before `WORLD` and `SCREEN`: an exhaustive `when` over
+  the two needs a branch for it, and the ordinals moved.
 
 ## [1.1.0] - 2026-11-10
 
@@ -160,7 +170,8 @@ First release, on Maven Central as `com.eventslooped.klyph:klyph` and
 - Sample games: a top-down shooter and a bug-squishing game for young children.
 - Benchmarks: `sprites`, `hierarchy`, `collisions`, `particles` and `mixer`.
 
-[Unreleased]: https://github.com/inemtsev/klyph/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/inemtsev/klyph/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/inemtsev/klyph/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/inemtsev/klyph/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/inemtsev/klyph/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/inemtsev/klyph/releases/tag/v0.1.0

@@ -236,8 +236,8 @@ the order given (the rules and their error texts live once, in the plugin's `Kly
 `klyph.native`, `klyph.publish` and `benchmarks` read the result through `klyph.hostTarget`,
 `klyph.configuredTargets` and `klyph.supportedTargets`).
 Value classes in `nativeMain` carry no `@JvmInline`: the shared native metadata compilation
-rejects it. `klyph` and `klyph-platform` publish as `com.eventslooped.klyph:<module>:1.0.0`
-(`-Pklyph.version=<v>` overrides) through `com.vanniktech.maven.publish`, configured in
+rejects it. `klyph` and `klyph-platform` publish as `com.eventslooped.klyph:<module>:<version>`, the
+root build file's default (`-Pklyph.version=<v>` overrides), through `com.vanniktech.maven.publish`, configured in
 `buildSrc/src/main/kotlin/klyph.publish.gradle.kts`. The plugin publishes as
 `com.eventslooped.klyph:klyph-gradle-plugin` with the same version and override; the root
 `publishToMavenLocal` leaves it out, so publish it with `./gradlew -p klyph-gradle-plugin
