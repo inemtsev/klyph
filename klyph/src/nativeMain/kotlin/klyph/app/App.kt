@@ -117,7 +117,7 @@ public class App internal constructor(
     /**
      * The keyboard, mouse and gamepad state as of this frame. The engine updates it at the start of
      * [Phase.INPUT], before any system runs, and computes `input.mouse.worldPosition` through
-     * [camera] as it stands then.
+     * [camera] as the last frame drew it, offset included, before it clears the offset.
      */
     public val input: Input = Input()
 

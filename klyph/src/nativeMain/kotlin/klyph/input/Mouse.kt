@@ -52,8 +52,10 @@ public class Mouse internal constructor(clock: StepClock) {
         private set
 
     /**
-     * The world point under the mouse, [position] seen through `App.camera` as the camera stood at
-     * the start of this frame's `Phase.INPUT`.
+     * The world point under the mouse, [position] seen through `App.camera` as the last frame drew
+     * it, `Camera.offsetX` and `offsetY` included, so during a shake it is the point the cursor is
+     * over on screen. The engine computes it at the start of the frame and only then sets the
+     * offset back to 0, before the first `Phase.INPUT` system runs.
      *
      * A system that moves the camera later in the frame, such as a camera that follows the player
      * in `Phase.LATE_UPDATE`, makes this value one frame behind the picture. A game that needs the

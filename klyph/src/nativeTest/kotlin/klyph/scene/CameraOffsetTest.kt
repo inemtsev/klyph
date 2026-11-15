@@ -1,6 +1,8 @@
 package klyph.scene
 
 import klyph.app.Phase
+import klyph.math.Vec2
+import klyph.platform.PlatformEvent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.milliseconds
@@ -29,6 +31,22 @@ class CameraOffsetTest {
         assertEquals(listOf("input 0.0x0.0", "render 6.0x-4.0", "input 0.0x0.0", "render 0.0x0.0"), seen)
         assertEquals(120f, h.camera.x, "Clearing the offset leaves the camera where it is.")
         assertEquals(80f, h.camera.y)
+    }
+
+    @Test
+    fun mouseWorldPositionUsesTheOffsetLastFrameDrewWith() {
+        val h = SceneHarness()
+        h.camera.x = 400f
+        h.camera.y = 300f
+        h.addSystem(Phase.UPDATE) { h.camera.offsetX = 6f }
+        h.frame(16.milliseconds)
+        h.input.handle(PlatformEvent.MouseMoved(400f, 300f, 0f, 0f))
+        val seen = mutableListOf<String>()
+        h.addSystem(Phase.INPUT) { seen += "${h.input.mouse.worldPosition} ${h.camera.offsetX}" }
+
+        h.frame(16.milliseconds)
+
+        assertEquals(listOf("${Vec2(406f, 300f)} 0.0"), seen)
     }
 
     @Test

@@ -108,7 +108,7 @@ it:
 addSystem(Phase.UPDATE) { app ->
     val mouse = app.input.mouse
     val ship = app.world.get(player, Transform)
-    // The world point under the cursor, through the camera as it stood at the start of INPUT.
+    // The world point under the cursor, through the camera as the last frame drew it.
     val target = mouse.worldPosition
     ship.rotation = Vec2(target.x - ship.x, target.y - ship.y).angle
     if (mouse.isJustPressed(MouseButton.LEFT)) println("Fire at $target")
@@ -116,7 +116,8 @@ addSystem(Phase.UPDATE) { app ->
 }
 ```
 
-The engine computes `worldPosition` at the start of INPUT, through the camera as it stood then.
+The engine computes `worldPosition` at the start of the frame, before any INPUT system runs,
+through the camera as the last frame drew it, its shake offset included.
 A camera that follows the player in LATE_UPDATE moves after that, so the value is one frame
 behind the picture. When it matters, as for a cursor drawn in the world, convert the position
 yourself after the camera has moved:

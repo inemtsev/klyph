@@ -75,7 +75,7 @@ class InputGuide {
         addSystem(Phase.UPDATE) { app ->
             val mouse = app.input.mouse
             val ship = app.world.get(player, Transform)
-            // The world point under the cursor, through the camera as it stood at the start of INPUT.
+            // The world point under the cursor, through the camera as the last frame drew it.
             val target = mouse.worldPosition
             ship.rotation = Vec2(target.x - ship.x, target.y - ship.y).angle
             if (mouse.isJustPressed(MouseButton.LEFT)) println("Fire at $target")

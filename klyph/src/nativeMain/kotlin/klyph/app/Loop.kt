@@ -23,6 +23,7 @@ import klyph.event.WindowFocusGained
 import klyph.event.WindowFocusLost
 import klyph.event.WindowDensityChanged
 import klyph.event.WindowResized
+import klyph.input.Input
 import klyph.platform.AudioDevice
 import klyph.platform.EventPump
 import klyph.platform.Files
@@ -221,6 +222,16 @@ private fun startCamera(window: Window): Camera {
  */
 private fun pointsOf(pixels: Int, density: Float): Float = (pixels / density).coerceAtLeast(1f)
 
+/**
+ * Finishes [input]'s frame update through [camera] as last frame drew it, offset included, so the
+ * mouse's world position matches the picture on screen, and then sets the camera's offset to 0,
+ * so a shake lasts only the frames that set it.
+ */
+internal fun finishFrameInput(input: Input, camera: Camera) {
+    input.endFrame(camera)
+    camera.clearOffset()
+}
+
 /** Runs [app]'s phases: startup, frames until a quit request, shutdown. */
 private class FrameLoop(
     private val app: App,
@@ -271,9 +282,7 @@ private class FrameLoop(
 
         app.input.beginFrame()
         translatePlatformEvents()
-        app.input.endFrame(app.camera)
-        // After the mouse's world position, which matches the picture last frame's offset drew.
-        app.camera.clearOffset()
+        finishFrameInput(app.input, app.camera)
         toggleOverlay()
         app.run(Phase.INPUT)
         var mark = clock.markNow()
