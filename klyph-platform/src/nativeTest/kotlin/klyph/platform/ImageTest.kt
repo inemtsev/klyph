@@ -442,15 +442,21 @@ class ImageTest {
     }
 
     @Test
-    fun drawWithTheWholeImageAsSourceMatchesDrawWithout() {
+    fun drawWithoutASourceSizeDrawsTheRestOfTheImageFromTheSourceCorner() {
         val source = patterned(3, 3)
         source[1, 1] = Color(0x12345680u)
         for ((x, y) in listOf(0 to 0, -1 to 2, 2 to -1, 1 to 1)) {
             val expected = patterned(4, 4)
             val actual = patterned(4, 4)
-            expected.draw(source, x, y)
-            actual.draw(source, x, y, sourceX = 0, sourceY = 0, sourceWidth = 3, sourceHeight = 3)
-            assertContentEquals(expected.pixels, actual.pixels, "Drawn at ($x, $y).")
+            expected.draw(source, x, y, sourceX = 0, sourceY = 0, sourceWidth = 3, sourceHeight = 3)
+            actual.draw(source, x, y)
+            assertContentEquals(expected.pixels, actual.pixels, "Whole image drawn at ($x, $y).")
+            expected.draw(source, x, y, sourceX = 1, sourceY = 0, sourceWidth = 2, sourceHeight = 3)
+            actual.draw(source, x, y, sourceX = 1)
+            assertContentEquals(expected.pixels, actual.pixels, "From column 1 drawn at ($x, $y).")
+            expected.draw(source, x, y, sourceX = 2, sourceY = 1, sourceWidth = 1, sourceHeight = 2)
+            actual.draw(source, x, y, sourceX = 2, sourceY = 1)
+            assertContentEquals(expected.pixels, actual.pixels, "From (2, 1) drawn at ($x, $y).")
         }
     }
 
@@ -479,6 +485,8 @@ class ImageTest {
             target.draw(source, x = 0, y = 0, sourceX = 2, sourceY = 1, sourceWidth = 3, sourceHeight = 2)
         }
         assertEquals("Source rectangle 3x2 at (2, 1) is outside image size 4x3.", outside.message)
+        val corner = assertFailsWith<IllegalArgumentException> { target.draw(source, x = 0, y = 0, sourceX = 5) }
+        assertEquals("Source corner (5, 0) is outside image size 4x3.", corner.message)
         val rectangles = listOf(
             Rectangle(-1, 0, 2, 2), Rectangle(0, -1, 2, 2), Rectangle(3, 0, 2, 1), Rectangle(0, 2, 1, 2), Rectangle(5, 0, 0, 0),
             Rectangle(Int.MAX_VALUE, 0, Int.MAX_VALUE, 1), Rectangle(0, Int.MAX_VALUE, 1, Int.MAX_VALUE), Rectangle(Int.MIN_VALUE, 0, 1, 1),

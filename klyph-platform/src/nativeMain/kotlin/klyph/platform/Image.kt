@@ -25,6 +25,8 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.sqrt
 
+private const val BYTES_PER_PIXEL = 4
+
 /**
  * A [width] by [height] grid of RGBA pixels with 8 bits per channel, stored row by row from the
  * top-left corner. Every pixel starts as transparent black.
@@ -125,45 +127,42 @@ public class Image(public val width: Int, public val height: Int) {
     }
 
     /**
-     * Draws [image] over this image with its top-left corner at column [x] and row [y], blending
-     * each of its pixels by its alpha.
+     * Draws the rectangle of [image] [sourceWidth] pixels wide and [sourceHeight] pixels tall whose
+     * top-left corner is at column [sourceX] and row [sourceY] over this image, with that corner at
+     * column [x] and row [y], blending each of its pixels by its alpha. The source rectangle is the
+     * whole of [image] by default, so `draw(image, x, y)` draws all of it; giving one, such as a
+     * sprite cut out of a sheet, draws only that part.
      *
      * A fully opaque pixel of [image] replaces the pixel under it and a fully transparent one
      * leaves it as it is. Any other is blended over it with the "over" rule for colors whose alpha
      * is not premultiplied, as the rim of [fillCircle] is: the result's alpha counts both pixels,
-     * and a pixel drawn over a transparent one keeps its own color and alpha. The parts of [image]
-     * outside this image are left out. [image] is never changed, and may be this image, which is
-     * then read as it was before the call.
+     * and a pixel drawn over a transparent one keeps its own color and alpha. Only the pixels inside
+     * the source rectangle are read, and the parts of it that fall outside this image are left out,
+     * so a source rectangle with a [sourceWidth] or [sourceHeight] of 0 paints nothing. [image] is
+     * never changed, and may be this image, which is then read as it was before the call. Pass the
+     * source arguments by name; [x] and [y] are a conventional pair.
+     *
+     * @throws IllegalArgumentException if [sourceX] or [sourceY] lies outside [image],
+     *   [sourceWidth] or [sourceHeight] is negative, or the source rectangle does not lie wholly
+     *   inside [image].
      *
      * @sample samples.platform.Images.draw
      */
-    public fun draw(image: Image, x: Int, y: Int) {
-        draw(image, x, y, sourceX = 0, sourceY = 0, sourceWidth = image.width, sourceHeight = image.height)
-    }
-
-    /**
-     * Draws the rectangle of [image] [sourceWidth] pixels wide and [sourceHeight] pixels tall whose
-     * top-left corner is at column [sourceX] and row [sourceY] over this image, with that corner at
-     * column [x] and row [y], blending each of its pixels by its alpha as the [draw] without a
-     * source rectangle does. This is how a sprite is cut out of a sheet image.
-     *
-     * Only the pixels inside the source rectangle are read, and the parts of it that fall outside
-     * this image are left out, so a source rectangle with a [sourceWidth] or [sourceHeight] of 0
-     * paints nothing. [image] is never changed, and may be this image, which is then read as it
-     * was before the call. Pass the source arguments by name; [x] and [y] are a conventional pair.
-     *
-     * @throws IllegalArgumentException if [sourceWidth] or [sourceHeight] is negative, or the
-     *   source rectangle does not lie wholly inside [image].
-     *
-     * @sample samples.platform.Images.draw
-     */
-    public fun draw(image: Image, x: Int, y: Int, sourceX: Int, sourceY: Int, sourceWidth: Int, sourceHeight: Int) {
+    public fun draw(
+        image: Image,
+        x: Int,
+        y: Int,
+        sourceX: Int = 0,
+        sourceY: Int = 0,
+        sourceWidth: Int = image.width - sourceX,
+        sourceHeight: Int = image.height - sourceY,
+    ) {
+        require(sourceX in 0..image.width && sourceY in 0..image.height) {
+            "Source corner ($sourceX, $sourceY) is outside image size ${image.width}x${image.height}."
+        }
         require(sourceWidth >= 0) { "Source rectangle width $sourceWidth is negative." }
         require(sourceHeight >= 0) { "Source rectangle height $sourceHeight is negative." }
-        require(
-            sourceX >= 0 && sourceY >= 0 &&
-                sourceX.toLong() + sourceWidth <= image.width && sourceY.toLong() + sourceHeight <= image.height,
-        ) {
+        require(sourceX.toLong() + sourceWidth <= image.width && sourceY.toLong() + sourceHeight <= image.height) {
             "Source rectangle ${sourceWidth}x$sourceHeight at ($sourceX, $sourceY) is outside image size ${image.width}x${image.height}."
         }
         val left = maxOf(x, 0)
@@ -268,8 +267,6 @@ public class Image(public val width: Int, public val height: Int) {
 
     /** Holds the factories that decode image files. */
     public companion object {
-        private const val BYTES_PER_PIXEL = 4
-
         /**
          * Decodes a PNG or JPEG file held in [bytes] into a new image. Images with fewer channels
          * are expanded to RGBA, with opaque alpha when the file has none.
@@ -371,6 +368,7 @@ private fun mixChannel(destination: Byte, source: Float, weight: Float, keep: Fl
 public fun Image.drawLine(x1: Int, y1: Int, x2: Int, y2: Int, color: Color) {
     val isSteep = abs(y2.toLong() - y1) > abs(x2.toLong() - x1)
     when {
+        x1 == x2 && y1 == y2 -> if (x1 in 0 until width && y1 in 0 until height) set(x1, y1, color)
         !isSteep && x1 <= x2 -> drawShallowLine(x1, y1, x2, y2, color, isTransposed = false)
         !isSteep -> drawShallowLine(x2, y2, x1, y1, color, isTransposed = false)
         y1 <= y2 -> drawShallowLine(y1, x1, y2, x2, color, isTransposed = true)
@@ -379,10 +377,10 @@ public fun Image.drawLine(x1: Int, y1: Int, x2: Int, y2: Int, color: Color) {
 }
 
 /**
- * Sets the pixels of the line from ([u1], [v1]) to ([u2], [v2]) to [color], where [u1] is at most
- * [u2] and the line rises or falls by at most as much as it runs: one pixel for each `u`, at the
- * `v` nearest to the line, a half rounded away from [v1]. `u` counts columns and `v` rows, or the
- * other way round when [isTransposed]. Only the `u` inside the image are visited.
+ * Sets the pixels of the line from ([u1], [v1]) to ([u2], [v2]) to [color], where [u1] is less
+ * than [u2] and the line rises or falls by at most as much as it runs: one pixel for each `u`, at
+ * the `v` nearest to the line, a half rounded away from [v1]. `u` counts columns and `v` rows, or
+ * the other way round when [isTransposed]. Only the `u` inside the image are visited.
  */
 private fun Image.drawShallowLine(u1: Int, v1: Int, u2: Int, v2: Int, color: Color, isTransposed: Boolean) {
     val uSize = if (isTransposed) height else width
@@ -393,10 +391,14 @@ private fun Image.drawShallowLine(u1: Int, v1: Int, u2: Int, v2: Int, color: Col
     val first = maxOf(0L, -u1.toLong())
     val last = minOf(run, uSize - 1L - u1)
     if (first > last) return
-    if (run == 0L) {
-        if (v1 in 0 until vSize) set(if (isTransposed) v1 else u1, if (isTransposed) u1 else v1, color)
-        return
-    }
+    val rowBytes = width * BYTES_PER_PIXEL
+    val uStride = if (isTransposed) rowBytes else BYTES_PER_PIXEL
+    val vStride = if (isTransposed) BYTES_PER_PIXEL else rowBytes
+    val rgba = color.rgba
+    val red = (rgba shr 24).toByte()
+    val green = (rgba shr 16).toByte()
+    val blue = (rgba shr 8).toByte()
+    val alpha = rgba.toByte()
     // At step i the line has risen i * rise / run pixels, held as whole + remainder / run. Both
     // factors are below 2^32, so their product fits in a ULong.
     val product = first.toULong() * rise.toULong()
@@ -406,8 +408,11 @@ private fun Image.drawShallowLine(u1: Int, v1: Int, u2: Int, v2: Int, color: Col
         val rounded = if (2 * remainder >= run) whole + 1 else whole
         val v = v1 + direction * rounded
         if (v in 0L until vSize) {
-            val u = (u1 + step).toInt()
-            if (isTransposed) set(v.toInt(), u, color) else set(u, v.toInt(), color)
+            val i = (u1 + step).toInt() * uStride + v.toInt() * vStride
+            pixels[i] = red
+            pixels[i + 1] = green
+            pixels[i + 2] = blue
+            pixels[i + 3] = alpha
         }
         remainder += rise
         if (remainder >= run) {
