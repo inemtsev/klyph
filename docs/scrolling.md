@@ -41,8 +41,9 @@ steps.
 ## Shaking the view
 
 `camera.offsetX` and `offsetY` shift the view without moving the camera, so a shake never fights
-`follow` or the bounds. Set them to a new small value every frame while the shake lasts, and back to
-0 when it ends. The camera keeps whatever offset it was last given.
+`follow` or the bounds. The engine sets both back to 0 at the start of every frame, before the first
+INPUT system, so an offset lasts one frame. Set them to a new small value every frame while the shake
+lasts, and stop setting them when it ends.
 
 <!-- snippet: shake -->
 ```kotlin
@@ -53,7 +54,7 @@ addSystem(Phase.FIXED_UPDATE) { app ->
     if (body.hasLanded && body.landingSpeed > 600f) shake = 10f
 }
 addSystem(Phase.LATE_UPDATE) { app ->
-    // The shake fades out in a third of a second. At 0 both offsets are 0 again.
+    // The shake fades out in a third of a second.
     shake = maxOf(shake - 30f * app.time.deltaSeconds, 0f)
     app.camera.offsetX = (Random.nextFloat() * 2f - 1f) * shake
     app.camera.offsetY = (Random.nextFloat() * 2f - 1f) * shake
@@ -62,7 +63,8 @@ addSystem(Phase.LATE_UPDATE) { app ->
 
 The snippet starts a shake on a hard landing and lets it fade in a third of a second. `follow` keeps
 easing toward the hero meanwhile, and `x` and `y` never hold the shake. Both systems belong to the
-app, so a pause scene pushed mid-shake does not freeze the view off-center.
+app, so the shake goes on under a pause scene. Add them to the level's scene instead and a pause
+pushed mid-shake is drawn centered: the level is frozen, nothing sets the offset, and it stays 0.
 
 The order of the camera's steps decides what a shake can show. `follow` eases `x` and `y`, the clamp
 keeps them inside `bounds`, and the offset is added last. Nothing clamps the offset, so the view can
@@ -74,7 +76,8 @@ Bounds smaller than the view along an axis stop the camera scrolling along it. T
 the middle of the bounds on that axis, so a level no taller than the view scrolls sideways only.
 
 `worldToScreen`, `screenToWorld` and `Mouse.worldPosition` include the offset, so during a shake the
-cursor still points at the world point it is over.
+cursor still points at the world point it is over. The engine computes `Mouse.worldPosition` before it
+clears the offset, with the offset the last frame was drawn with, the picture the cursor is over.
 
 ## Teleports
 

@@ -82,7 +82,8 @@ left, `ParticleEmitter.burst(region, count, …)` makes such a one-shot emitter 
 toward a point, `Camera.bounds` keeps the view inside a `Rect`, and `Camera.offsetX`/`offsetY` shift
 the view on top of both for a shake (`worldToScreen`, `screenToWorld` and the projection add them;
 `follow`, `lookAt` and `clampToBounds` never read or change them, so the view can show past the
-bounds by the offset); a `ParallaxLayer(factorX, factorY = factorX, repeatX = 0f, repeatY = 0f)` on a root entity
+bounds by the offset, and the engine zeroes both at the start of every frame, so an offset lasts one
+frame and a scene pushed over a shake is drawn centered); a `ParallaxLayer(factorX, factorY = factorX, repeatX = 0f, repeatY = 0f)` on a root entity
 with a `Transform` and a `Sprite` is drawn at its transform plus `1 - factor` times the view (the camera after
 its bounds clamp plus `offsetX`/`offsetY`, so a factor-0 sky does not shake), and with a repeat once for each
 period the bounding box of the view touches, at most `ParallaxLayer.MAX_COPIES`; the internal `ParallaxPlan`
@@ -256,7 +257,8 @@ to `mavenLocal`.
 `runApp` runs STARTUP once and applies the scene transitions queued so far. Each frame then runs:
 drop last frame's events, advance the top scene's `Scene.elapsed` by the frame's clamped delta
 (`SceneStack.advanceClock`, never by a fixed step), refresh audio, translate platform events into `app.input` and
-`app.events`, toggle the overlay, INPUT, FIXED_UPDATE zero or more times (interpolated transforms
+`app.events`, zero `app.camera`'s `offsetX`/`offsetY` (after `Mouse.worldPosition`, which uses
+the offset the last frame drew with), toggle the overlay, INPUT, FIXED_UPDATE zero or more times (interpolated transforms
 recorded before each step, then every `Velocity` applied to its `Transform` after the step's
 systems and their commands, by the fixed step length, then every `KinematicBody` moved against the
 solids through `app.collisions.moveBodies`), propagate transforms, detect collisions and publish `Overlap` events,

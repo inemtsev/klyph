@@ -260,6 +260,21 @@ class CameraTest {
     }
 
     @Test
+    fun clearOffsetZeroesBothOffsetsAndLeavesTheRestOfTheView() {
+        val camera = Camera(x = 100f, y = 200f, zoom = 2f, rotation = 0.5f, viewportWidth = 800f, viewportHeight = 600f)
+        camera.bounds = Rect(0f, 0f, 2000f, 1000f)
+        camera.offsetX = 6f
+        camera.offsetY = -4f
+
+        camera.clearOffset()
+
+        assertEquals(
+            "Camera(x=100.0, y=200.0, zoom=2.0, rotation=0.5, viewport=800.0x600.0, bounds=${camera.bounds})",
+            camera.toString(),
+        )
+    }
+
+    @Test
     fun lookAtAndFollowNeverReadOrChangeTheOffset() {
         val camera = Camera(viewportWidth = 800f, viewportHeight = 600f)
         camera.offsetX = 25f

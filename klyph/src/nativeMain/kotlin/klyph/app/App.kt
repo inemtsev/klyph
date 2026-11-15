@@ -61,7 +61,8 @@ public class App internal constructor(
      *
      * The engine keeps its viewport equal to the window's size in points and never moves it; move,
      * zoom or rotate it from a system, such as a [Phase.LATE_UPDATE] system that follows the player,
-     * and shake it with its `offsetX` and `offsetY`.
+     * and shake it with its `offsetX` and `offsetY`, which the engine sets back to 0 at the start
+     * of every [Phase.INPUT], before the first system runs.
      */
     public val camera: Camera,
     /**

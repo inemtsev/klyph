@@ -74,8 +74,6 @@ class GameScenes {
         onEnter { app ->
             // The music ducks instead of stopping, so resuming does not restart it.
             app.audio.music.volume = Tuning.PAUSED_MUSIC_VOLUME
-            // A shake in progress would hold the view off-centre for the whole pause.
-            app.camera.offsetX = 0f
             println("Paused.")
         }
         onExit { app ->
@@ -87,7 +85,6 @@ class GameScenes {
     }
 
     val complete: Scene = buildScene("complete") {
-        onEnter { app -> app.camera.offsetX = 0f }
         addSystem(Phase.INPUT) { app -> leaveEndScreen(app) }
         addSystem(Phase.RENDER) { app -> drawComplete(app) }
     }
@@ -97,8 +94,6 @@ class GameScenes {
             val game = app.game
             game.gameOvers++
             game.bestScore = maxOf(game.bestScore, app.run.score)
-            // The fatal hit started a shake that would otherwise hold the view off-centre.
-            app.camera.offsetX = 0f
             app.audio.music.volume = Tuning.END_MUSIC_VOLUME
             app.audio.play(game.sounds.gameOver)
             println("Game over: score ${app.run.score}, ${app.run.rings} rings, ${app.run.stomps} stomps.")

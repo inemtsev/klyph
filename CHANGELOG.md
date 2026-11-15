@@ -6,6 +6,13 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The engine sets `App.camera.offsetX` and `offsetY` back to 0 at the start of every frame, after it
+  computes `Mouse.worldPosition` and before the first INPUT system, so a scene pushed over a shaking one
+  is drawn centered. An offset now lasts one frame: a game that set a constant offset once must set it
+  every frame.
+
 ## [1.2.0] - 2026-11-15
 
 Scrolling worlds: layers that move at their own speed, textures that repeat, a sky under the

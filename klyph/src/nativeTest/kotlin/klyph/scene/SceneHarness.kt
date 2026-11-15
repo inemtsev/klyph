@@ -9,6 +9,8 @@ import klyph.app.Time
 import klyph.entity.Commands
 import klyph.entity.Entity
 import klyph.entity.World
+import klyph.render.Camera
+import klyph.render.clearOffset
 import kotlin.time.Duration
 
 /** A handle no test world ever issues, so it is never alive; stands for "not spawned yet". */
@@ -32,6 +34,9 @@ internal class SceneHarness : SceneHost {
     val schedule = Schedule()
     val stack = SceneStack()
     val log = mutableListOf<String>()
+
+    /** Stands for `App.camera`, whose offset [frame] clears before INPUT as the frame loop does. */
+    val camera = Camera(viewportWidth = 800f, viewportHeight = 600f)
 
     /** The frame clock [frame] with a duration drives, at the fixed rate of [FIXED_RATE] steps a second. */
     val time = Time(FIXED_RATE)
@@ -67,21 +72,26 @@ internal class SceneHarness : SceneHost {
         schedule.run(phase, world, commands, stack.currentOrNull, stack.currentOwner) { (it as TestSystem).action() }
     }
 
-    /** Runs each phase of a frame once, with no frame clock, and then applies the queued transitions as the frame loop does. */
+    /**
+     * Runs each phase of a frame once, with no frame clock, clearing the camera's offset before
+     * INPUT, and then applies the queued transitions as the frame loop does.
+     */
     fun frame() {
+        camera.clearOffset()
         for (phase in FRAME_PHASES) run(phase)
         stack.applyTransitions(this)
     }
 
     /**
      * Runs one frame that lasted [delta] in the order `FrameLoop.frame` does: starts the frame on
-     * [time], advances the clock of the top scene, runs INPUT, one FIXED_UPDATE for every fixed step
+     * [time], advances the clock of the top scene, clears the camera's offset, runs INPUT, one FIXED_UPDATE for every fixed step
      * [delta] covers, UPDATE, LATE_UPDATE and RENDER, applies the queued transitions and ends the
      * frame. Returns the number of fixed steps.
      */
     fun frame(delta: Duration): Int {
         time.beginFrame(delta)
         stack.advanceClock(time.delta)
+        camera.clearOffset()
         run(Phase.INPUT)
         val steps = stepper.accumulate(time.delta)
         repeat(steps) {

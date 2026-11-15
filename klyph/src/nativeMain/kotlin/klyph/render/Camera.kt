@@ -103,12 +103,17 @@ public class Camera(
      * to [bounds], so the view can show past the bounds by the offset. It is measured along the
      * world's axes whatever the [rotation].
      *
-     * To shake the view, set [offsetX] and [offsetY] to a new small value every frame while the
-     * shake lasts, and back to 0 when it ends. [follow] keeps easing toward its target meanwhile,
-     * and nothing has to be taken out of [x] and [y] first. Any system may set the offset, because
-     * the engine reads it when it draws the frame. `Mouse.worldPosition`, computed at INPUT through
-     * [screenToWorld], includes the offset too, so during a shake the cursor points at the world
-     * point it is really over, which moves with the view.
+     * The engine sets both offsets of `App.camera` back to 0 at the start of every frame's INPUT,
+     * after it computes `Mouse.worldPosition` and before the first system runs, so an offset lasts
+     * one frame unless a system sets it again. To shake the view, set [offsetX] and [offsetY] to a
+     * new small value every frame while the shake lasts, and stop setting them when it ends. A
+     * scene pushed over a shaking one is drawn centered, because the frozen scene's systems no
+     * longer set the offset. [follow] keeps easing toward its target meanwhile, and nothing has to
+     * be taken out of [x] and [y] first. Any system may set the offset, because the engine reads it
+     * when it draws the frame. `Mouse.worldPosition`, computed through [screenToWorld] before the
+     * reset, includes the offset the last frame was drawn with, so during a shake the cursor points
+     * at the world point it is really over, which moves with the view. A camera the engine does not
+     * drive keeps its offset until it is changed.
      *
      * @sample samples.render.Cameras.offset
      */
@@ -278,6 +283,12 @@ public val Camera.visibleWidth: Float
  */
 public val Camera.visibleHeight: Float
     get() = viewportHeight / zoom
+
+/** Sets [Camera.offsetX] and [Camera.offsetY] to 0, as the engine does at the start of every frame's INPUT. */
+internal fun Camera.clearOffset() {
+    offsetX = 0f
+    offsetY = 0f
+}
 
 /**
  * Writes the camera's view-projection matrix into the first 16 elements of [destination],

@@ -41,6 +41,7 @@ import klyph.render.Camera
 import klyph.render.advanceFades
 import klyph.render.advanceSpriteAnimations
 import klyph.render.clampToBounds
+import klyph.render.clearOffset
 import klyph.render.lookAt
 import kotlin.time.Duration
 import kotlin.time.TimeSource
@@ -74,7 +75,10 @@ import kotlin.time.TimeSource
  * [App.quit], so closing the window ends the app. [App.commands] is applied after `setup`, after
  * every system and after the transform propagation.
  *
- * Right after it updates [App.input], the engine shows or hides [App.overlay] if
+ * Right after it updates [App.input], whose mouse world position it computes through [App.camera]
+ * as the last frame drew it, the engine sets the camera's `offsetX` and `offsetY` back to 0, so an
+ * offset lasts until the end of the frame a system set it in, and a scene pushed over a shaking one
+ * is drawn centered. Then it shows or hides [App.overlay] if
  * [AppConfig.overlayKey] went down this frame. While the overlay is visible, the engine queues it
  * on [App.canvas] after the last RENDER system, so it is drawn over everything else.
  *
@@ -268,6 +272,8 @@ private class FrameLoop(
         app.input.beginFrame()
         translatePlatformEvents()
         app.input.endFrame(app.camera)
+        // After the mouse's world position, which matches the picture last frame's offset drew.
+        app.camera.clearOffset()
         toggleOverlay()
         app.run(Phase.INPUT)
         var mark = clock.markNow()

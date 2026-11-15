@@ -67,7 +67,7 @@ class Scrolling {
             if (body.hasLanded && body.landingSpeed > 600f) shake = 10f
         }
         addSystem(Phase.LATE_UPDATE) { app ->
-            // The shake fades out in a third of a second. At 0 both offsets are 0 again.
+            // The shake fades out in a third of a second.
             shake = maxOf(shake - 30f * app.time.deltaSeconds, 0f)
             app.camera.offsetX = (Random.nextFloat() * 2f - 1f) * shake
             app.camera.offsetY = (Random.nextFloat() * 2f - 1f) * shake

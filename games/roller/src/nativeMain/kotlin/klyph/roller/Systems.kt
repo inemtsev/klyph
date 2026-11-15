@@ -454,7 +454,7 @@ fun Run.followCamera(app: App) {
     camera.follow(drawn.x + lookAhead, Tuning.WORLD_HEIGHT / 2, smoothing = Tuning.CAMERA_SMOOTHING, delta = app.time.delta)
     if (shake > 0f) {
         shake -= dt
-        // The strength fades to 0 with the shake, so the frame it ends in puts the offset back to 0.
+        // The engine clears the offset every frame, so a pause or end screen pushed mid-shake is centered.
         val strength = Tuning.CAMERA_SHAKE * max(0f, shake) / Tuning.CAMERA_SHAKE_SECONDS
         camera.offsetX = (game.random.nextFloat() * 2f - 1f) * strength
     }
