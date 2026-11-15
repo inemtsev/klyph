@@ -144,7 +144,7 @@ class AppConfigTest {
 
     @Test
     fun fromEnvironmentKeepsTheBaseWithoutVariables() {
-        // Every setting differs from its default, so a setting fromEnvironment fails to copy fails the test.
+        // Every setting differs from its default, so a setting that fromEnvironment forgets to copy fails the test.
         val base = AppConfig(
             title = "Game",
             width = 640,
@@ -168,8 +168,35 @@ class AppConfigTest {
             screenshot = Screenshot(5, "base.png"),
             textureFilter = SamplerFilter.NEAREST,
         )
+        val defaults = settingsOf(AppConfig())
+        val changed = settingsOf(base)
+        for ((name, value) in defaults) {
+            assertNotEquals(value, changed.getValue(name), "The base leaves $name at its default.")
+        }
         assertEquals(base, AppConfig.fromEnvironment(base, environment()))
-        assertEquals(base, AppConfig.fromEnvironment(base, environment("KLYPH_FRAMES" to "", "KLYPH_VSYNC" to "")), "An empty value counts as unset.")
+        val variables = listOf("FRAMES", "SECONDS", "VALIDATION", "VSYNC", "OFFSCREEN", "OVERLAY", "FULLSCREEN", "SCREENSHOT")
+        val empty = environment(*variables.map { "KLYPH_$it" to "" }.toTypedArray())
+        assertEquals(base, AppConfig.fromEnvironment(base, empty), "An empty value counts as unset.")
+    }
+
+    /** Splits the `toString` of [config] into its top-level settings by name, so `audio=AudioConfig(...)` stays one value. */
+    private fun settingsOf(config: AppConfig): Map<String, String> {
+        val text = config.toString().removePrefix("AppConfig(").removeSuffix(")")
+        val settings = mutableListOf<String>()
+        var depth = 0
+        var start = 0
+        text.forEachIndexed { index, char ->
+            when {
+                char == '(' -> depth++
+                char == ')' -> depth--
+                char == ',' && depth == 0 -> {
+                    settings += text.substring(start, index).trim()
+                    start = index + 1
+                }
+            }
+        }
+        settings += text.substring(start).trim()
+        return settings.associate { it.substringBefore('=') to it.substringAfter('=') }
     }
 
     @Test
@@ -218,14 +245,11 @@ class AppConfigTest {
     @Test
     fun fromEnvironmentReadsScreenshotAndFullscreen() {
         val config = AppConfig.fromEnvironment(
-            AppConfig(cursor = CursorMode.HIDDEN),
+            AppConfig(),
             environment("KLYPH_SCREENSHOT" to "20:C:/shots/a.png", "KLYPH_FULLSCREEN" to "1"),
         )
         assertEquals(Screenshot(20, "C:/shots/a.png"), config.screenshot)
         assertEquals(WindowMode.FULLSCREEN, config.windowMode)
-        assertEquals(CursorMode.HIDDEN, config.cursor, "The cursor has no variable, so it comes from the base.")
-        val pixelArt = AppConfig.fromEnvironment(AppConfig(textureFilter = SamplerFilter.NEAREST), environment("KLYPH_FRAMES" to "1"))
-        assertEquals(SamplerFilter.NEAREST, pixelArt.textureFilter, "The texture filter has no variable, so it comes from the base.")
         val windowed = AppConfig.fromEnvironment(AppConfig(windowMode = WindowMode.FULLSCREEN), environment("KLYPH_FULLSCREEN" to "0"))
         assertEquals(WindowMode.WINDOWED, windowed.windowMode)
         assertFailsWith<IllegalArgumentException> { AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_FULLSCREEN" to "yes")) }
@@ -255,9 +279,6 @@ class AppConfigTest {
         assertFailsWith<IllegalArgumentException> { AppConfig(frameLimit = -1) }
         assertFailsWith<IllegalArgumentException> { AppConfig(timeLimit = (-1).seconds) }
         assertEquals(0, AppConfig(frameLimit = 0).frameLimit)
-        assertNotEquals(AppConfig(), AppConfig(frameLimit = 5))
-        assertNotEquals(AppConfig(), AppConfig(timeLimit = 5.seconds))
-        assertNotEquals(AppConfig(), AppConfig(overlay = OverlayStart.VISIBLE))
         assertEquals(AppConfig(timeLimit = 5.seconds).hashCode(), AppConfig(timeLimit = 5.seconds).hashCode())
     }
 }
