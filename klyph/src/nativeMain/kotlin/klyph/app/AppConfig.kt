@@ -127,56 +127,6 @@ public class AppConfig(
         require(timeLimit == null || (!timeLimit.isNegative() && timeLimit.isFinite())) { "Time limit $timeLimit is negative or infinite." }
     }
 
-    /**
-     * Returns a config with the settings passed replaced and every other setting kept. A setting
-     * added to the constructor must be added here too; `AppConfigTest` checks that none is lost.
-     */
-    internal fun copy(
-        title: String = this.title,
-        width: Int = this.width,
-        height: Int = this.height,
-        fixedRate: Int = this.fixedRate,
-        maxFixedStepsPerFrame: Int = this.maxFixedStepsPerFrame,
-        presentMode: PresentMode = this.presentMode,
-        target: RenderTarget = this.target,
-        gpuSync: GpuSync = this.gpuSync,
-        validation: GpuValidation = this.validation,
-        clearColor: Color = this.clearColor,
-        assetRoot: String? = this.assetRoot,
-        audio: AudioConfig = this.audio,
-        collisionCellSize: Float = this.collisionCellSize,
-        overlayKey: Scancode? = this.overlayKey,
-        overlay: OverlayStart = this.overlay,
-        frameLimit: Int? = this.frameLimit,
-        timeLimit: Duration? = this.timeLimit,
-        windowMode: WindowMode = this.windowMode,
-        cursor: CursorMode = this.cursor,
-        screenshot: Screenshot? = this.screenshot,
-        textureFilter: SamplerFilter = this.textureFilter,
-    ): AppConfig = AppConfig(
-        title = title,
-        width = width,
-        height = height,
-        fixedRate = fixedRate,
-        maxFixedStepsPerFrame = maxFixedStepsPerFrame,
-        presentMode = presentMode,
-        target = target,
-        gpuSync = gpuSync,
-        validation = validation,
-        clearColor = clearColor,
-        assetRoot = assetRoot,
-        audio = audio,
-        collisionCellSize = collisionCellSize,
-        overlayKey = overlayKey,
-        overlay = overlay,
-        frameLimit = frameLimit,
-        timeLimit = timeLimit,
-        windowMode = windowMode,
-        cursor = cursor,
-        screenshot = screenshot,
-        textureFilter = textureFilter,
-    )
-
     override fun equals(other: Any?): Boolean =
         other is AppConfig &&
             title == other.title &&
@@ -294,7 +244,12 @@ public class AppConfig(
             val overlay = flag("KLYPH_OVERLAY")
             val fullscreen = flag("KLYPH_FULLSCREEN")
             val screenshot = parseScreenshot(read("KLYPH_SCREENSHOT"))
-            return base.copy(
+            return AppConfig(
+                title = base.title,
+                width = base.width,
+                height = base.height,
+                fixedRate = base.fixedRate,
+                maxFixedStepsPerFrame = base.maxFixedStepsPerFrame,
                 presentMode = when (vsync) {
                     null -> base.presentMode
                     true -> PresentMode.VSYNC
@@ -311,6 +266,11 @@ public class AppConfig(
                     true -> GpuValidation.ENABLED
                     false -> GpuValidation.DISABLED
                 },
+                clearColor = base.clearColor,
+                assetRoot = base.assetRoot,
+                audio = base.audio,
+                collisionCellSize = base.collisionCellSize,
+                overlayKey = base.overlayKey,
                 overlay = when (overlay) {
                     null -> base.overlay
                     true -> OverlayStart.VISIBLE
@@ -323,7 +283,9 @@ public class AppConfig(
                     true -> WindowMode.FULLSCREEN
                     false -> WindowMode.WINDOWED
                 },
+                cursor = base.cursor,
                 screenshot = screenshot ?: base.screenshot,
+                textureFilter = base.textureFilter,
             )
         }
     }
