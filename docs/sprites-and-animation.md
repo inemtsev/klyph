@@ -288,10 +288,10 @@ in bulk: `fill` sets every pixel to a color, `fillRect` a rectangle of them, `dr
 pixel wide, `fillCircle` paints a soft-edged disc, and `draw(image, x, y)` lays another image over
 it, blending by alpha. Give `draw` a source rectangle (`sourceX`, `sourceY`, `sourceWidth`,
 `sourceHeight`) to lay only that part of the other image, such as one sprite cut out of a sheet.
-The shapes and `draw` leave out whatever falls outside the image. `assets.createTexture(image)` uploads the
-result. Two regions come ready-made: `assets.whitePixel`, one white texel to stretch into bars and
-backgrounds, and `assets.disc(diameter)`, a white disc with a soft edge for particles, bullets and
-shadows, cached by diameter. Tint both with the sprite's color.
+The shapes and `draw` leave out whatever falls outside the image. `assets.createTexture(image)`
+uploads the result. Two regions come ready-made: `assets.whitePixel`, one white texel to stretch
+into bars and backgrounds, and `assets.disc(diameter)`, a white disc with a soft edge for
+particles, bullets and shadows, cached by diameter. Tint both with the sprite's color.
 
 <!-- snippet: generated -->
 ```kotlin

@@ -8,7 +8,7 @@ All notable changes to klyph are recorded here. The format follows
 
 ### Added
 
-- `Image.drawLine`: set the pixels of a line one pixel wide, clipped to the image, before `createTexture`.
+- `Image.drawLine`: draw a line one pixel wide into an image.
 - `Image.draw` with a source rectangle: lay only a part of another image, such as one sprite cut out of a sheet.
 
 ## [1.2.0] - 2026-11-15
