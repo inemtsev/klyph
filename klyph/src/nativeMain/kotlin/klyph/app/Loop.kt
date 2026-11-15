@@ -42,7 +42,6 @@ import klyph.render.Camera
 import klyph.render.advanceFades
 import klyph.render.advanceSpriteAnimations
 import klyph.render.clampToBounds
-import klyph.render.clearOffset
 import klyph.render.lookAt
 import kotlin.time.Duration
 import kotlin.time.TimeSource
@@ -229,7 +228,8 @@ private fun pointsOf(pixels: Int, density: Float): Float = (pixels / density).co
  */
 internal fun finishFrameInput(input: Input, camera: Camera) {
     input.endFrame(camera)
-    camera.clearOffset()
+    camera.offsetX = 0f
+    camera.offsetY = 0f
 }
 
 /** Runs [app]'s phases: startup, frames until a quit request, shutdown. */

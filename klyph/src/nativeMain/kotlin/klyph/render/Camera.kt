@@ -284,12 +284,6 @@ public val Camera.visibleWidth: Float
 public val Camera.visibleHeight: Float
     get() = viewportHeight / zoom
 
-/** Sets [Camera.offsetX] and [Camera.offsetY] to 0, as the engine does at the start of every frame's INPUT. */
-internal fun Camera.clearOffset() {
-    offsetX = 0f
-    offsetY = 0f
-}
-
 /**
  * Writes the camera's view-projection matrix into the first 16 elements of [destination],
  * column-major, mapping world positions to clip space.
