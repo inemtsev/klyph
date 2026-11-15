@@ -134,10 +134,25 @@ class AppConfigTest {
 
     @Test
     fun fromEnvironmentKeepsTheBaseWithoutVariables() {
+        // Every setting differs from its default, so a setting fromEnvironment fails to copy fails the test.
         val base = AppConfig(
             title = "Game",
-            frameLimit = 10,
+            width = 640,
+            height = 480,
+            fixedRate = 50,
+            maxFixedStepsPerFrame = 2,
             presentMode = PresentMode.IMMEDIATE,
+            target = RenderTarget.OFFSCREEN,
+            gpuSync = GpuSync.WAIT_EACH_FRAME,
+            validation = GpuValidation.ENABLED,
+            clearColor = Color.RED,
+            assetRoot = "data",
+            audio = AudioConfig(output = AudioOutput.NONE, maxVoices = 8),
+            collisionCellSize = 32f,
+            overlayKey = null,
+            overlay = OverlayStart.VISIBLE,
+            frameLimit = 10,
+            timeLimit = 2.seconds,
             windowMode = WindowMode.FULLSCREEN,
             cursor = CursorMode.HIDDEN,
             screenshot = Screenshot(5, "base.png"),
