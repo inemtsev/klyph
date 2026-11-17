@@ -47,10 +47,22 @@ import klyph.text.parseBmFont
  * Samples live in the sandbox because they need a display.
  */
 public class Assets internal constructor(
-    private val device: GpuDevice,
+    private val upload: (image: Image, filter: SamplerFilter, address: SamplerAddress) -> Texture,
     root: String,
     textureFilter: SamplerFilter = SamplerFilter.LINEAR,
 ) : AutoCloseable {
+    /**
+     * Creates assets that upload every texture to [device]. The primary constructor takes the
+     * upload function itself, so tests can pass one that needs no GPU.
+     */
+    internal constructor(device: GpuDevice, root: String, textureFilter: SamplerFilter = SamplerFilter.LINEAR) : this(
+        upload = { image, filter, address ->
+            Texture(device, device.createTexture(image), image.width, image.height, filter, address)
+        },
+        root = root,
+        textureFilter = textureFilter,
+    )
+
     /**
      * The directory relative paths resolve under. A separator is appended when the configured
      * directory lacks one; an empty root means [Files.basePath] itself.
@@ -454,11 +466,6 @@ public class Assets internal constructor(
     private fun decodeFileOrNull(resolved: String): Image? {
         val bytes = Files.readBytesOrNull(resolved) ?: return null
         return Image.decodeOrNull(bytes)
-    }
-
-    private fun upload(image: Image, filter: SamplerFilter, address: SamplerAddress): Texture {
-        val handle = device.createTexture(image)
-        return Texture(device, handle, image.width, image.height, filter, address)
     }
 
     /** Returns [path] under [root], or [path] itself if it is absolute. */
