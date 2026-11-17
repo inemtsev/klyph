@@ -20,6 +20,7 @@ import stb.stbi_failure_reason
 import stb.stbi_image_free
 import stb.stbi_load_from_memory
 import stb.stbi_write_png_to_func
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.sqrt
@@ -29,8 +30,8 @@ import kotlin.math.sqrt
  * top-left corner. Every pixel starts as transparent black.
  *
  * Read and write pixels with [get] and [set], or decode a PNG or JPEG file with [Image.decode].
- * [fill], [fillRect] and [fillCircle] paint shapes and [draw] lays another image over this one, all
- * on the CPU and clipped to the image. A game turns an image into a texture it can draw with
+ * [fill], [fillRect], [fillCircle] and [drawLine] paint shapes and [draw] lays another image, or a
+ * rectangle of it, over this one, all on the CPU and clipped to the image. A game turns an image into a texture it can draw with
  * `klyph.app.Assets.createTexture`.
  *
  * @throws IllegalArgumentException if [width] or [height] is not positive, or the image would
@@ -124,33 +125,69 @@ public class Image(public val width: Int, public val height: Int) {
     }
 
     /**
-     * Draws [image] over this image with its top-left corner at column [x] and row [y], blending
-     * each of its pixels by its alpha.
+     * Draws [image], or the rectangle of it [sourceWidth] pixels wide and [sourceHeight] pixels
+     * tall whose top-left corner is at column [sourceX] and row [sourceY], over this image with
+     * that corner at column [x] and row [y], blending each of its pixels by its alpha.
      *
      * A fully opaque pixel of [image] replaces the pixel under it and a fully transparent one
      * leaves it as it is. Any other is blended over it with the "over" rule for colors whose alpha
      * is not premultiplied, as the rim of [fillCircle] is: the result's alpha counts both pixels,
-     * and a pixel drawn over a transparent one keeps its own color and alpha. The parts of [image]
-     * outside this image are left out. [image] is never changed, and may be this image, which is
-     * then read as it was before the call.
+     * and a pixel drawn over a transparent one keeps its own color and alpha. The parts that fall
+     * outside this image are left out, so a rectangle that lands wholly outside, or has a
+     * [sourceWidth] or [sourceHeight] of 0, draws nothing. [image] is never changed, and may be
+     * this image, which is then read as it was before the call.
+     *
+     * Without a source rectangle the whole of [image] is drawn; [sourceWidth] and [sourceHeight]
+     * default to the rest of [image] right of and below the corner, so passing only [sourceX] and
+     * [sourceY] cuts off its top and left. The rectangle must lie inside [image]. Pass [sourceX],
+     * [sourceY], [sourceWidth] and [sourceHeight] by name; [x] and [y] are a conventional pair.
+     *
+     * @throws IllegalArgumentException if [sourceX], [sourceY], [sourceWidth] or [sourceHeight] is
+     *   negative, which the default size is when the corner lies past the right or bottom edge of
+     *   [image], or the rectangle runs past the right or bottom edge of [image].
      *
      * @sample samples.platform.Images.draw
      */
-    public fun draw(image: Image, x: Int, y: Int) {
+    public fun draw(
+        image: Image,
+        x: Int,
+        y: Int,
+        sourceX: Int = 0,
+        sourceY: Int = 0,
+        sourceWidth: Int = image.width - sourceX,
+        sourceHeight: Int = image.height - sourceY,
+    ) {
+        require(sourceX >= 0) { "Source x $sourceX is negative." }
+        require(sourceY >= 0) { "Source y $sourceY is negative." }
+        require(sourceWidth >= 0) { "Source width $sourceWidth is negative." }
+        require(sourceHeight >= 0) { "Source height $sourceHeight is negative." }
+        require(sourceX.toLong() + sourceWidth <= image.width) {
+            "Source columns $sourceX until ${sourceX.toLong() + sourceWidth} run past the image width ${image.width}."
+        }
+        require(sourceY.toLong() + sourceHeight <= image.height) {
+            "Source rows $sourceY until ${sourceY.toLong() + sourceHeight} run past the image height ${image.height}."
+        }
         val left = maxOf(x, 0)
         val top = maxOf(y, 0)
-        val right = minOf(x.toLong() + image.width, width.toLong()).toInt()
-        val bottom = minOf(y.toLong() + image.height, height.toLong()).toInt()
+        val right = minOf(x.toLong() + sourceWidth, width.toLong()).toInt()
+        val bottom = minOf(y.toLong() + sourceHeight, height.toLong()).toInt()
         if (left >= right || top >= bottom) return
+        // The pixel of image at (sourceLeft, sourceTop) lands on (left, top) of this one.
+        val sourceLeft = sourceX + (left - x)
+        val sourceTop = sourceY + (top - y)
         // Reading a copy makes drawing an image into itself independent of the order the rows are visited in.
         // Only the source rows that are read are copied.
-        val base = if (image === this) (top - y) * image.width * BYTES_PER_PIXEL else 0
-        val source = if (image === this) pixels.copyOfRange(base, (bottom - y) * image.width * BYTES_PER_PIXEL) else image.pixels
-        for (row in top until bottom) {
-            val sourceStart = ((row - y) * image.width + (left - x)) * BYTES_PER_PIXEL
-            val start = (row * width + left) * BYTES_PER_PIXEL
+        val base = if (image === this) sourceTop * image.width * BYTES_PER_PIXEL else 0
+        val source = if (image === this) {
+            pixels.copyOfRange(base, (sourceTop + bottom - top) * image.width * BYTES_PER_PIXEL)
+        } else {
+            image.pixels
+        }
+        for (row in 0 until bottom - top) {
+            val sourceStart = ((sourceTop + row) * image.width + sourceLeft) * BYTES_PER_PIXEL - base
+            val start = ((top + row) * width + left) * BYTES_PER_PIXEL
             for (offset in 0 until (right - left) * BYTES_PER_PIXEL step BYTES_PER_PIXEL) {
-                val from = sourceStart + offset - base
+                val from = sourceStart + offset
                 val to = start + offset
                 val alpha = source[from + 3].toInt() and 0xFF
                 if (alpha == 0) continue
@@ -162,6 +199,39 @@ public class Image(public val width: Int, public val height: Int) {
                 } else {
                     blendOver(to, colorAt(source, from), weight = alpha / 255f)
                 }
+            }
+        }
+    }
+
+    /**
+     * Sets the pixels of a line one pixel wide from column [x1] and row [y1] to column [x2] and row
+     * [y2] to [color], alpha included, as [set] does. Nothing is blended, so a transparent [color]
+     * clears the pixels the line covers.
+     *
+     * Coordinates are in pixels from the image's top-left corner. Both ends are set, and between
+     * them the line takes one pixel in each column, or in each row when it is taller than it is
+     * wide, picked with Bresenham's algorithm, so its edges are hard. A line drawn from either end
+     * sets the same pixels, and a line whose ends are the same pixel sets that pixel. The parts of
+     * the line outside the image are left out without changing the pixels inside, and ends far
+     * outside cost no more than ends on the edge. Pass the coordinates and [color] by name.
+     *
+     * @sample samples.platform.Images.drawLine
+     */
+    public fun drawLine(x1: Int, y1: Int, x2: Int, y2: Int, color: Color) {
+        val isWide = abs(x2.toLong() - x1) >= abs(y2.toLong() - y1)
+        // Walking from the end with the smaller coordinate along the line's longer side makes both directions alike.
+        val swap = if (isWide) x1 > x2 else y1 > y2
+        val fromX = if (swap) x2 else x1
+        val fromY = if (swap) y2 else y1
+        val toX = if (swap) x1 else x2
+        val toY = if (swap) y1 else y2
+        if (isWide) {
+            walkLine(fromMajor = fromX, fromMinor = fromY, toMajor = toX, toMinor = toY, majorSize = width) { x, y ->
+                if (y in 0..<height) set(x, y, color)
+            }
+        } else {
+            walkLine(fromMajor = fromY, fromMinor = fromX, toMajor = toY, toMinor = toX, majorSize = height) { y, x ->
+                if (x in 0..<width) set(x, y, color)
             }
         }
     }
@@ -320,6 +390,50 @@ private fun colorAt(bytes: ByteArray, i: Int): Color = Color(
 private fun mixChannel(destination: Byte, source: Float, weight: Float, keep: Float, alpha: Float): Byte {
     val old = (destination.toInt() and 0xFF) / 255f
     return (((source * weight + old * keep) / alpha) * 255f + 0.5f).toInt().coerceIn(0, 255).toByte()
+}
+
+/**
+ * Calls [plot] with each pixel of the Bresenham line from ([fromMajor], [fromMinor]) to ([toMajor],
+ * [toMinor]) whose major coordinate lies in `0 until majorSize`, the pixel's major coordinate first.
+ * The major axis is the line's longer side: [fromMajor] is at most [toMajor], and the minor
+ * coordinates differ by at most as much. [plot] skips minor coordinates outside the image itself.
+ *
+ * Step `t` from the start sets the pixel `t * rise / run` minor steps along, rounded to the nearest
+ * with a tie staying nearer the start. The first step inside the image is computed directly, with
+ * `t * rise` held in a `ULong` (both are below 2^32), and the rest by Bresenham's running remainder,
+ * so far-off ends cost nothing and nothing overflows.
+ */
+private inline fun walkLine(
+    fromMajor: Int,
+    fromMinor: Int,
+    toMajor: Int,
+    toMinor: Int,
+    majorSize: Int,
+    plot: (major: Int, minor: Int) -> Unit,
+) {
+    val first = maxOf(fromMajor, 0)
+    val last = minOf(toMajor, majorSize - 1)
+    if (first > last) return
+    val run = toMajor.toLong() - fromMajor
+    val rise = abs(toMinor.toLong() - fromMinor)
+    val direction = if (toMinor < fromMinor) -1L else 1L
+    // At every step t: t * rise == steps * run + remainder, with remainder in 0 until run.
+    var steps = 0L
+    var remainder = 0L
+    if (run > 0L) {
+        val start = (first.toLong() - fromMajor).toULong() * rise.toULong()
+        steps = (start / run.toULong()).toLong()
+        remainder = (start % run.toULong()).toLong()
+    }
+    for (major in first..last) {
+        val offset = if (2 * remainder > run) steps + 1 else steps
+        plot(major, (fromMinor + direction * offset).toInt())
+        remainder += rise
+        if (remainder >= run) {
+            remainder -= run
+            steps++
+        }
+    }
 }
 
 /**

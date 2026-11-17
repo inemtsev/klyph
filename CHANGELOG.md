@@ -6,6 +6,10 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `Image.drawLine` and a source rectangle on `Image.draw`: paint a one-pixel line, or cut one picture out of a sheet image.
+
 ## [1.2.0] - 2026-11-15
 
 Scrolling worlds: layers that move at their own speed, textures that repeat, a sky under the
