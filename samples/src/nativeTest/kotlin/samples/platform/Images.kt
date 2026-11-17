@@ -2,6 +2,7 @@ package samples.platform
 
 import klyph.platform.Color
 import klyph.platform.Image
+import klyph.platform.drawLine
 import klyph.platform.withAlpha
 import samples.Sample
 import samples.assertPrints

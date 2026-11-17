@@ -204,39 +204,6 @@ public class Image(public val width: Int, public val height: Int) {
     }
 
     /**
-     * Sets the pixels of a line one pixel wide from column [x1] and row [y1] to column [x2] and row
-     * [y2] to [color], alpha included, as [set] does. Nothing is blended, so a transparent [color]
-     * clears the pixels the line covers.
-     *
-     * Coordinates are in pixels from the image's top-left corner. Both ends are set, and between
-     * them the line takes one pixel in each column, or in each row when it is taller than it is
-     * wide, picked with Bresenham's algorithm, so its edges are hard. A line drawn from either end
-     * sets the same pixels, and a line whose ends are the same pixel sets that pixel. The parts of
-     * the line outside the image are left out without changing the pixels inside, and ends far
-     * outside cost no more than ends on the edge. Pass the coordinates and [color] by name.
-     *
-     * @sample samples.platform.Images.drawLine
-     */
-    public fun drawLine(x1: Int, y1: Int, x2: Int, y2: Int, color: Color) {
-        val isWide = abs(x2.toLong() - x1) >= abs(y2.toLong() - y1)
-        // Walking from the end with the smaller coordinate along the line's longer side makes both directions alike.
-        val swap = if (isWide) x1 > x2 else y1 > y2
-        val fromX = if (swap) x2 else x1
-        val fromY = if (swap) y2 else y1
-        val toX = if (swap) x1 else x2
-        val toY = if (swap) y1 else y2
-        if (isWide) {
-            walkLine(fromMajor = fromX, fromMinor = fromY, toMajor = toX, toMinor = toY, majorSize = width) { x, y ->
-                if (y in 0..<height) set(x, y, color)
-            }
-        } else {
-            walkLine(fromMajor = fromY, fromMinor = fromX, toMajor = toY, toMinor = toX, majorSize = height) { y, x ->
-                if (x in 0..<width) set(x, y, color)
-            }
-        }
-    }
-
-    /**
      * Paints a disc of [radius] pixels centered on ([centerX], [centerY]) in [color], over what the
      * image already holds.
      *
@@ -390,6 +357,39 @@ private fun colorAt(bytes: ByteArray, i: Int): Color = Color(
 private fun mixChannel(destination: Byte, source: Float, weight: Float, keep: Float, alpha: Float): Byte {
     val old = (destination.toInt() and 0xFF) / 255f
     return (((source * weight + old * keep) / alpha) * 255f + 0.5f).toInt().coerceIn(0, 255).toByte()
+}
+
+/**
+ * Sets the pixels of a line one pixel wide from column [x1] and row [y1] to column [x2] and row
+ * [y2] to [color], alpha included, as [Image.set] does. Nothing is blended, so a transparent [color]
+ * clears the pixels the line covers.
+ *
+ * Coordinates are in pixels from the image's top-left corner. Both ends are set, and between
+ * them the line takes one pixel in each column, or in each row when it is taller than it is
+ * wide, picked with Bresenham's algorithm, so its edges are hard. A line drawn from either end
+ * sets the same pixels, and a line whose ends are the same pixel sets that pixel. The parts of
+ * the line outside the image are left out without changing the pixels inside, and ends far
+ * outside cost no more than ends on the edge. Pass the coordinates and [color] by name.
+ *
+ * @sample samples.platform.Images.drawLine
+ */
+public fun Image.drawLine(x1: Int, y1: Int, x2: Int, y2: Int, color: Color) {
+    val isWide = abs(x2.toLong() - x1) >= abs(y2.toLong() - y1)
+    // Walking from the end with the smaller coordinate along the line's longer side makes both directions alike.
+    val swap = if (isWide) x1 > x2 else y1 > y2
+    val fromX = if (swap) x2 else x1
+    val fromY = if (swap) y2 else y1
+    val toX = if (swap) x1 else x2
+    val toY = if (swap) y1 else y2
+    if (isWide) {
+        walkLine(fromMajor = fromX, fromMinor = fromY, toMajor = toX, toMinor = toY, majorSize = width) { x, y ->
+            if (y in 0..<height) set(x, y, color)
+        }
+    } else {
+        walkLine(fromMajor = fromY, fromMinor = fromX, toMajor = toY, toMinor = toX, majorSize = height) { y, x ->
+            if (x in 0..<width) set(x, y, color)
+        }
+    }
 }
 
 /**
