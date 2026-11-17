@@ -25,12 +25,14 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.sqrt
 
+private const val BYTES_PER_PIXEL = 4
+
 /**
  * A [width] by [height] grid of RGBA pixels with 8 bits per channel, stored row by row from the
  * top-left corner. Every pixel starts as transparent black.
  *
  * Read and write pixels with [get] and [set], or decode a PNG or JPEG file with [Image.decode].
- * [fill], [fillRect], [fillCircle] and [drawLine] paint shapes and [draw] lays another image, or a
+ * [fill], [fillRect], [fillCircle] and [drawLine] paint shapes and [draw][Image.draw] lays another image, or a
  * rectangle of it, over this one, all on the CPU and clipped to the image. A game turns an image into a texture it can draw with
  * `klyph.app.Assets.createTexture`.
  *
@@ -76,191 +78,6 @@ public class Image(public val width: Int, public val height: Int) {
         pixels[i + 3] = rgba.toByte()
     }
 
-    /**
-     * Sets every pixel to [color].
-     *
-     * @sample samples.platform.Images.fill
-     */
-    public fun fill(color: Color) {
-        fillRect(x = 0, y = 0, width = width, height = height, color = color)
-    }
-
-    /**
-     * Sets every pixel of the rectangle [width] pixels wide and [height] pixels tall whose top-left
-     * corner is at column [x] and row [y] to [color], alpha included, as [set] does. Nothing is
-     * blended, so a transparent [color] clears the rectangle; [draw] is the call that blends.
-     *
-     * Coordinates are in pixels from the image's top-left corner. The parts of the rectangle
-     * outside the image are left out, so a rectangle that lies wholly outside, or has a [width] or
-     * [height] of 0, paints nothing. Pass [width], [height] and [color] by name; [x] and [y] are a
-     * conventional pair.
-     *
-     * @throws IllegalArgumentException if [width] or [height] is negative.
-     *
-     * @sample samples.platform.Images.fillRect
-     */
-    public fun fillRect(x: Int, y: Int, width: Int, height: Int, color: Color) {
-        require(width >= 0) { "Rectangle width $width is negative." }
-        require(height >= 0) { "Rectangle height $height is negative." }
-        val left = maxOf(x, 0)
-        val top = maxOf(y, 0)
-        val right = minOf(x.toLong() + width, this.width.toLong()).toInt()
-        val bottom = minOf(y.toLong() + height, this.height.toLong()).toInt()
-        if (left >= right || top >= bottom) return
-        val rgba = color.rgba
-        val red = (rgba shr 24).toByte()
-        val green = (rgba shr 16).toByte()
-        val blue = (rgba shr 8).toByte()
-        val alpha = rgba.toByte()
-        for (row in top until bottom) {
-            val start = (row * this.width + left) * BYTES_PER_PIXEL
-            val end = (row * this.width + right) * BYTES_PER_PIXEL
-            for (i in start until end step BYTES_PER_PIXEL) {
-                pixels[i] = red
-                pixels[i + 1] = green
-                pixels[i + 2] = blue
-                pixels[i + 3] = alpha
-            }
-        }
-    }
-
-    /**
-     * Draws [image], or the rectangle of it [sourceWidth] pixels wide and [sourceHeight] pixels
-     * tall whose top-left corner is at column [sourceX] and row [sourceY], over this image with
-     * that corner at column [x] and row [y], blending each of its pixels by its alpha.
-     *
-     * A fully opaque pixel of [image] replaces the pixel under it and a fully transparent one
-     * leaves it as it is. Any other is blended over it with the "over" rule for colors whose alpha
-     * is not premultiplied, as the rim of [fillCircle] is: the result's alpha counts both pixels,
-     * and a pixel drawn over a transparent one keeps its own color and alpha. The parts that fall
-     * outside this image are left out, so a rectangle that lands wholly outside, or has a
-     * [sourceWidth] or [sourceHeight] of 0, draws nothing. [image] is never changed, and may be
-     * this image, which is then read as it was before the call.
-     *
-     * Without a source rectangle the whole of [image] is drawn; [sourceWidth] and [sourceHeight]
-     * default to the rest of [image] right of and below the corner, so passing only [sourceX] and
-     * [sourceY] cuts off its top and left. The rectangle must lie inside [image]. Pass [sourceX],
-     * [sourceY], [sourceWidth] and [sourceHeight] by name; [x] and [y] are a conventional pair.
-     *
-     * @throws IllegalArgumentException if [sourceX], [sourceY], [sourceWidth] or [sourceHeight] is
-     *   negative, which the default size is when the corner lies past the right or bottom edge of
-     *   [image], or the rectangle runs past the right or bottom edge of [image].
-     *
-     * @sample samples.platform.Images.draw
-     */
-    public fun draw(
-        image: Image,
-        x: Int,
-        y: Int,
-        sourceX: Int = 0,
-        sourceY: Int = 0,
-        sourceWidth: Int = image.width - sourceX,
-        sourceHeight: Int = image.height - sourceY,
-    ) {
-        require(sourceX >= 0) { "Source x $sourceX is negative." }
-        require(sourceY >= 0) { "Source y $sourceY is negative." }
-        require(sourceWidth >= 0) { "Source width $sourceWidth is negative." }
-        require(sourceHeight >= 0) { "Source height $sourceHeight is negative." }
-        require(sourceX.toLong() + sourceWidth <= image.width) {
-            "Source columns $sourceX until ${sourceX.toLong() + sourceWidth} run past the image width ${image.width}."
-        }
-        require(sourceY.toLong() + sourceHeight <= image.height) {
-            "Source rows $sourceY until ${sourceY.toLong() + sourceHeight} run past the image height ${image.height}."
-        }
-        val left = maxOf(x, 0)
-        val top = maxOf(y, 0)
-        val right = minOf(x.toLong() + sourceWidth, width.toLong()).toInt()
-        val bottom = minOf(y.toLong() + sourceHeight, height.toLong()).toInt()
-        if (left >= right || top >= bottom) return
-        // The pixel of image at (sourceLeft, sourceTop) lands on (left, top) of this one.
-        val sourceLeft = sourceX + (left - x)
-        val sourceTop = sourceY + (top - y)
-        // Reading a copy makes drawing an image into itself independent of the order the rows are visited in.
-        // Only the source rows that are read are copied.
-        val base = if (image === this) sourceTop * image.width * BYTES_PER_PIXEL else 0
-        val source = if (image === this) {
-            pixels.copyOfRange(base, (sourceTop + bottom - top) * image.width * BYTES_PER_PIXEL)
-        } else {
-            image.pixels
-        }
-        for (row in 0 until bottom - top) {
-            val sourceStart = ((sourceTop + row) * image.width + sourceLeft) * BYTES_PER_PIXEL - base
-            val start = ((top + row) * width + left) * BYTES_PER_PIXEL
-            for (offset in 0 until (right - left) * BYTES_PER_PIXEL step BYTES_PER_PIXEL) {
-                val from = sourceStart + offset
-                val to = start + offset
-                val alpha = source[from + 3].toInt() and 0xFF
-                if (alpha == 0) continue
-                if (alpha == 0xFF) {
-                    pixels[to] = source[from]
-                    pixels[to + 1] = source[from + 1]
-                    pixels[to + 2] = source[from + 2]
-                    pixels[to + 3] = source[from + 3]
-                } else {
-                    blendOver(to, colorAt(source, from), weight = alpha / 255f)
-                }
-            }
-        }
-    }
-
-    /**
-     * Paints a disc of [radius] pixels centered on ([centerX], [centerY]) in [color], over what the
-     * image already holds.
-     *
-     * Coordinates are in pixels from the image's top-left corner, where pixel (x, y) covers the
-     * square from x to x + 1, so the center of a 16 by 16 image is (8, 8). Each pixel is covered by
-     * how far its center lies inside the circle's edge, from 0 at half a pixel outside to 1 at half a
-     * pixel inside, which gives the disc a soft edge one pixel wide. A fully covered pixel takes
-     * [color]; a partly covered one is blended over its old color by [color]'s alpha times its
-     * coverage, so a disc painted on a transparent image keeps its color all the way to the edge.
-     * The parts of the disc outside the image are left out, and a radius of 0 paints nothing.
-     * Pass the `Float` parameters by name.
-     *
-     * @throws IllegalArgumentException if [radius] is negative or not finite, or [centerX] or
-     *   [centerY] is not finite.
-     *
-     * @sample samples.platform.Images.fillCircle
-     */
-    public fun fillCircle(centerX: Float, centerY: Float, radius: Float, color: Color) {
-        require(centerX.isFinite() && centerY.isFinite()) { "Circle center ($centerX, $centerY) is not finite." }
-        require(radius >= 0f && radius.isFinite()) { "Circle radius $radius is not a finite number of at least zero." }
-        if (radius == 0f) return
-        val reach = radius + 0.5f
-        val left = floor(centerX - reach).toInt().coerceAtLeast(0)
-        val right = ceil(centerX + reach).toInt().coerceAtMost(width)
-        val top = floor(centerY - reach).toInt().coerceAtLeast(0)
-        val bottom = ceil(centerY + reach).toInt().coerceAtMost(height)
-        val sourceAlpha = color.alpha
-        for (y in top until bottom) {
-            val dy = y + 0.5f - centerY
-            for (x in left until right) {
-                val dx = x + 0.5f - centerX
-                val coverage = (radius - sqrt(dx * dx + dy * dy) + 0.5f).coerceIn(0f, 1f)
-                if (coverage == 0f) continue
-                if (coverage == 1f) {
-                    set(x, y, color)
-                } else {
-                    blendOver(offsetOf(x, y), color, weight = sourceAlpha * coverage)
-                }
-            }
-        }
-    }
-
-    /**
-     * Blends [color] at [weight] over the pixel at byte [i] with the "over" rule for colors whose
-     * alpha is not premultiplied, so a transparent pixel takes [color]'s channels unchanged.
-     */
-    private fun blendOver(i: Int, color: Color, weight: Float) {
-        val destinationAlpha = (pixels[i + 3].toInt() and 0xFF) / 255f
-        val alpha = weight + destinationAlpha * (1f - weight)
-        if (alpha <= 0f) return
-        val keep = destinationAlpha * (1f - weight)
-        pixels[i] = mixChannel(pixels[i], color.red, weight = weight, keep = keep, alpha = alpha)
-        pixels[i + 1] = mixChannel(pixels[i + 1], color.green, weight = weight, keep = keep, alpha = alpha)
-        pixels[i + 2] = mixChannel(pixels[i + 2], color.blue, weight = weight, keep = keep, alpha = alpha)
-        pixels[i + 3] = (alpha * 255f + 0.5f).toInt().coerceIn(0, 255).toByte()
-    }
-
     private fun offsetOf(x: Int, y: Int): Int {
         if (x !in 0..<width || y !in 0..<height) {
             throw IndexOutOfBoundsException("Pixel ($x, $y) is out of bounds for image size ${width}x$height.")
@@ -273,8 +90,6 @@ public class Image(public val width: Int, public val height: Int) {
 
     /** Holds the factories that decode image files. */
     public companion object {
-        private const val BYTES_PER_PIXEL = 4
-
         /**
          * Decodes a PNG or JPEG file held in [bytes] into a new image. Images with fewer channels
          * are expanded to RGBA, with opaque alpha when the file has none.
@@ -350,13 +165,199 @@ private fun colorAt(bytes: ByteArray, i: Int): Color = Color(
 )
 
 /**
- * Returns one color channel of an `Image.blendOver` result: the [destination] byte kept by [keep] plus
+ * Blends [color] at [weight] over the pixel whose RGBA bytes start at byte [i] of [pixels] with the
+ * "over" rule for colors whose alpha is not premultiplied, so a transparent pixel takes [color]'s
+ * channels unchanged.
+ */
+private fun blendOver(pixels: ByteArray, i: Int, color: Color, weight: Float) {
+    val destinationAlpha = (pixels[i + 3].toInt() and 0xFF) / 255f
+    val alpha = weight + destinationAlpha * (1f - weight)
+    if (alpha <= 0f) return
+    val keep = destinationAlpha * (1f - weight)
+    pixels[i] = mixChannel(pixels[i], color.red, weight = weight, keep = keep, alpha = alpha)
+    pixels[i + 1] = mixChannel(pixels[i + 1], color.green, weight = weight, keep = keep, alpha = alpha)
+    pixels[i + 2] = mixChannel(pixels[i + 2], color.blue, weight = weight, keep = keep, alpha = alpha)
+    pixels[i + 3] = (alpha * 255f + 0.5f).toInt().coerceIn(0, 255).toByte()
+}
+
+/**
+ * Returns one color channel of a [blendOver] result: the [destination] byte kept by [keep] plus
  * [source], from 0 to 1, by [weight], divided by the blended [alpha] and rounded back to a byte.
  * It is a plain function rather than a local one so the rim of a disc allocates nothing.
  */
 private fun mixChannel(destination: Byte, source: Float, weight: Float, keep: Float, alpha: Float): Byte {
     val old = (destination.toInt() and 0xFF) / 255f
     return (((source * weight + old * keep) / alpha) * 255f + 0.5f).toInt().coerceIn(0, 255).toByte()
+}
+
+/**
+ * Sets every pixel to [color].
+ *
+ * @sample samples.platform.Images.fill
+ */
+public fun Image.fill(color: Color) {
+    fillRect(x = 0, y = 0, width = width, height = height, color = color)
+}
+
+/**
+ * Sets every pixel of the rectangle [width] pixels wide and [height] pixels tall whose top-left
+ * corner is at column [x] and row [y] to [color], alpha included, as [Image.set] does. Nothing
+ * is blended, so a transparent [color] clears the rectangle; [Image.draw] is the call that blends.
+ *
+ * Coordinates are in pixels from the image's top-left corner. The parts of the rectangle
+ * outside the image are left out, so a rectangle that lies wholly outside, or has a [width] or
+ * [height] of 0, paints nothing. Pass [width], [height] and [color] by name; [x] and [y] are a
+ * conventional pair.
+ *
+ * @throws IllegalArgumentException if [width] or [height] is negative.
+ *
+ * @sample samples.platform.Images.fillRect
+ */
+public fun Image.fillRect(x: Int, y: Int, width: Int, height: Int, color: Color) {
+    require(width >= 0) { "Rectangle width $width is negative." }
+    require(height >= 0) { "Rectangle height $height is negative." }
+    val left = maxOf(x, 0)
+    val top = maxOf(y, 0)
+    val right = minOf(x.toLong() + width, this.width.toLong()).toInt()
+    val bottom = minOf(y.toLong() + height, this.height.toLong()).toInt()
+    if (left >= right || top >= bottom) return
+    val rgba = color.rgba
+    val red = (rgba shr 24).toByte()
+    val green = (rgba shr 16).toByte()
+    val blue = (rgba shr 8).toByte()
+    val alpha = rgba.toByte()
+    for (row in top until bottom) {
+        val start = (row * this.width + left) * BYTES_PER_PIXEL
+        val end = (row * this.width + right) * BYTES_PER_PIXEL
+        for (i in start until end step BYTES_PER_PIXEL) {
+            pixels[i] = red
+            pixels[i + 1] = green
+            pixels[i + 2] = blue
+            pixels[i + 3] = alpha
+        }
+    }
+}
+
+/**
+ * Draws [image], or the rectangle of it [sourceWidth] pixels wide and [sourceHeight] pixels
+ * tall whose top-left corner is at column [sourceX] and row [sourceY], over this image with
+ * that corner at column [x] and row [y], blending each of its pixels by its alpha.
+ *
+ * A fully opaque pixel of [image] replaces the pixel under it and a fully transparent one
+ * leaves it as it is. Any other is blended over it with the "over" rule for colors whose alpha
+ * is not premultiplied, as the rim of [fillCircle] is: the result's alpha counts both pixels,
+ * and a pixel drawn over a transparent one keeps its own color and alpha. The parts that fall
+ * outside this image are left out, so a rectangle that lands wholly outside, or has a
+ * [sourceWidth] or [sourceHeight] of 0, draws nothing. [image] is never changed, and may be
+ * this image, which is then read as it was before the call.
+ *
+ * Without a source rectangle the whole of [image] is drawn; [sourceWidth] and [sourceHeight]
+ * default to the rest of [image] right of and below the corner, so passing only [sourceX] and
+ * [sourceY] cuts off its top and left. The rectangle must lie inside [image]. Pass [sourceX],
+ * [sourceY], [sourceWidth] and [sourceHeight] by name; [x] and [y] are a conventional pair.
+ *
+ * @throws IllegalArgumentException if [sourceX], [sourceY], [sourceWidth] or [sourceHeight] is
+ *   negative, which the default size is when the corner lies past the right or bottom edge of
+ *   [image], or the rectangle runs past the right or bottom edge of [image].
+ *
+ * @sample samples.platform.Images.draw
+ */
+public fun Image.draw(
+    image: Image,
+    x: Int,
+    y: Int,
+    sourceX: Int = 0,
+    sourceY: Int = 0,
+    sourceWidth: Int = image.width - sourceX,
+    sourceHeight: Int = image.height - sourceY,
+) {
+    require(sourceX >= 0) { "Source x $sourceX is negative." }
+    require(sourceY >= 0) { "Source y $sourceY is negative." }
+    require(sourceWidth >= 0) { "Source width $sourceWidth is negative." }
+    require(sourceHeight >= 0) { "Source height $sourceHeight is negative." }
+    require(sourceX.toLong() + sourceWidth <= image.width) {
+        "Source columns $sourceX until ${sourceX.toLong() + sourceWidth} run past the image width ${image.width}."
+    }
+    require(sourceY.toLong() + sourceHeight <= image.height) {
+        "Source rows $sourceY until ${sourceY.toLong() + sourceHeight} run past the image height ${image.height}."
+    }
+    val left = maxOf(x, 0)
+    val top = maxOf(y, 0)
+    val right = minOf(x.toLong() + sourceWidth, width.toLong()).toInt()
+    val bottom = minOf(y.toLong() + sourceHeight, height.toLong()).toInt()
+    if (left >= right || top >= bottom) return
+    // The pixel of image at (sourceLeft, sourceTop) lands on (left, top) of this one.
+    val sourceLeft = sourceX + (left - x)
+    val sourceTop = sourceY + (top - y)
+    // Reading a copy makes drawing an image into itself independent of the order the rows are visited in.
+    // Only the source rows that are read are copied.
+    val base = if (image === this) sourceTop * image.width * BYTES_PER_PIXEL else 0
+    val source = if (image === this) {
+        pixels.copyOfRange(base, (sourceTop + bottom - top) * image.width * BYTES_PER_PIXEL)
+    } else {
+        image.pixels
+    }
+    for (row in 0 until bottom - top) {
+        val sourceStart = ((sourceTop + row) * image.width + sourceLeft) * BYTES_PER_PIXEL - base
+        val start = ((top + row) * width + left) * BYTES_PER_PIXEL
+        for (offset in 0 until (right - left) * BYTES_PER_PIXEL step BYTES_PER_PIXEL) {
+            val from = sourceStart + offset
+            val to = start + offset
+            val alpha = source[from + 3].toInt() and 0xFF
+            if (alpha == 0) continue
+            if (alpha == 0xFF) {
+                pixels[to] = source[from]
+                pixels[to + 1] = source[from + 1]
+                pixels[to + 2] = source[from + 2]
+                pixels[to + 3] = source[from + 3]
+            } else {
+                blendOver(pixels, to, colorAt(source, from), weight = alpha / 255f)
+            }
+        }
+    }
+}
+
+/**
+ * Paints a disc of [radius] pixels centered on ([centerX], [centerY]) in [color], over what the
+ * image already holds.
+ *
+ * Coordinates are in pixels from the image's top-left corner, where pixel (x, y) covers the
+ * square from x to x + 1, so the center of a 16 by 16 image is (8, 8). Each pixel is covered by
+ * how far its center lies inside the circle's edge, from 0 at half a pixel outside to 1 at half a
+ * pixel inside, which gives the disc a soft edge one pixel wide. A fully covered pixel takes
+ * [color]; a partly covered one is blended over its old color by [color]'s alpha times its
+ * coverage, so a disc painted on a transparent image keeps its color all the way to the edge.
+ * The parts of the disc outside the image are left out, and a radius of 0 paints nothing.
+ * Pass the `Float` parameters by name.
+ *
+ * @throws IllegalArgumentException if [radius] is negative or not finite, or [centerX] or
+ *   [centerY] is not finite.
+ *
+ * @sample samples.platform.Images.fillCircle
+ */
+public fun Image.fillCircle(centerX: Float, centerY: Float, radius: Float, color: Color) {
+    require(centerX.isFinite() && centerY.isFinite()) { "Circle center ($centerX, $centerY) is not finite." }
+    require(radius >= 0f && radius.isFinite()) { "Circle radius $radius is not a finite number of at least zero." }
+    if (radius == 0f) return
+    val reach = radius + 0.5f
+    val left = floor(centerX - reach).toInt().coerceAtLeast(0)
+    val right = ceil(centerX + reach).toInt().coerceAtMost(width)
+    val top = floor(centerY - reach).toInt().coerceAtLeast(0)
+    val bottom = ceil(centerY + reach).toInt().coerceAtMost(height)
+    val sourceAlpha = color.alpha
+    for (y in top until bottom) {
+        val dy = y + 0.5f - centerY
+        for (x in left until right) {
+            val dx = x + 0.5f - centerX
+            val coverage = (radius - sqrt(dx * dx + dy * dy) + 0.5f).coerceIn(0f, 1f)
+            if (coverage == 0f) continue
+            if (coverage == 1f) {
+                set(x, y, color)
+            } else {
+                blendOver(pixels, (y * width + x) * BYTES_PER_PIXEL, color, weight = sourceAlpha * coverage)
+            }
+        }
+    }
 }
 
 /**
