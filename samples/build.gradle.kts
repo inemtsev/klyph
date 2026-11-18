@@ -7,6 +7,7 @@ kotlin {
         nativeTest.dependencies {
             implementation(project(":klyph"))
             implementation(project(":klyph-platform"))
+            implementation(project(":klyph-physics"))
             implementation(kotlin("test"))
         }
     }

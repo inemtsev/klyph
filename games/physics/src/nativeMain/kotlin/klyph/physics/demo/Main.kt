@@ -1,0 +1,51 @@
+package klyph.physics.demo
+
+import klyph.app.AppConfig
+import klyph.app.runApp
+import klyph.physics.DebugView
+import klyph.platform.Sdl
+
+/**
+ * The klyph-physics sandbox: every feature of the engine, one scene at a time. The physics steps 60
+ * times a second, in klyph's fixed step.
+ *
+ * `AppConfig.fromEnvironment` reads the `KLYPH_*` variables, so `./gradlew :games:physics:run -Pklyph.frames=60`
+ * stops after 60 frames and `-Pklyph.screenshot=30:shot.png` saves frame 30. `SANDBOX_SCENE=3`
+ * starts on the third scene and `SANDBOX_DETAILS=3` with the debug view at level 3 of 0 to 3 (see
+ * [DebugView]), and `SANDBOX_GRID=1` with the broadphase shown, for pictures taken without
+ * a keyboard. `SANDBOX_RECORD=2:/tmp/frames` saves every second step as a numbered PNG (see
+ * [Recording]), `SANDBOX_CLEAN=1` leaves only the title on screen, and `SANDBOX_DRAG=320,200` grabs
+ * what is there and drags it about (see [ScriptedHand]).
+ * `SANDBOX_BENCH=600` opens no window: it times 600 steps of every scene and of the stress world, and
+ * prints them (see [Bench]); `SANDBOX_SCENE` picks one scene, `scenes` the scenes alone or `stress`
+ * the stress world alone. `SANDBOX_EXAMPLE=1` runs a small example instead of the sandbox (see
+ * [installExample]), stopping after `SANDBOX_STEPS` steps if that's set.
+ */
+fun main() {
+    Sdl.environmentVariable("SANDBOX_BENCH")?.toIntOrNull()?.let { steps ->
+        Bench.run(steps, which = Sdl.environmentVariable("SANDBOX_SCENE"))
+        return
+    }
+    val config = AppConfig.fromEnvironment(AppConfig(title = "klyph-physics sandbox", width = 1280, height = 720, fixedRate = 60))
+    val sandbox = Sandbox(Scenes.all)
+    Sdl.environmentVariable("SANDBOX_SCENE")?.toIntOrNull()?.let { sandbox.select(it - 1) }
+    val level = Sdl.environmentVariable("SANDBOX_DETAILS")?.toIntOrNull() ?: 0
+    val view = DebugView.entries[level.coerceIn(0, DebugView.entries.size - 1)]
+    val grid = Sdl.environmentVariable("SANDBOX_GRID") == "1"
+    val recording = Recording.parse(Sdl.environmentVariable("SANDBOX_RECORD"))
+    val clean = Sdl.environmentVariable("SANDBOX_CLEAN") == "1"
+    val hand = ScriptedHand.parse(Sdl.environmentVariable("SANDBOX_DRAG"))
+    if (Sdl.environmentVariable("SANDBOX_EXAMPLE") == "1") {
+        // recording, at most one step a frame, so saving a picture doesn't make it skip steps to catch up
+        val base = if (recording == null) {
+            AppConfig(title = "klyph-physics example", width = 1280, height = 720, fixedRate = 60)
+        } else {
+            AppConfig(title = "klyph-physics example", width = 1280, height = 720, fixedRate = 60, maxFixedStepsPerFrame = 1)
+        }
+        val example = AppConfig.fromEnvironment(base)
+        val steps = Sdl.environmentVariable("SANDBOX_STEPS")?.toLongOrNull()
+        runApp(example) { installExample(recording, steps) }
+        return
+    }
+    runApp(config) { installSandbox(sandbox, view, grid, recording, clean, hand) }
+}

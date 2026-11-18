@@ -1,0 +1,64 @@
+package klyph.physics
+
+import kotlin.math.max
+import kotlin.math.sqrt
+
+/**
+ * What a surface is like to touch: how much it grips and how much it bounces. Solids and particles
+ * each have one, and a contact mixes the two: grip by the geometric mean, so ice on anything slides,
+ * and bounce by the larger, so a rubber ball bounces on a stone floor. Pass the values by name.
+ *
+ * Two materials are equal when every value is. [toString] gives every value, as
+ * `Material(friction=0.4, staticFriction=0.6, restitution=0.0)`.
+ *
+ * @throws IllegalArgumentException if [friction] or [staticFriction] is negative, or [restitution] is
+ * outside 0..1.
+ *
+ * @sample samples.physics.WorldSamples.material
+ */
+public class Material(
+    /**
+     * Grip while sliding, the Coulomb coefficient: a sliding thing loses this times the push holding
+     * it on the surface. 0 is ice.
+     */
+    public val friction: Float = 0.4f,
+    /**
+     * Grip at rest: a thing stays put while the force along the surface is under this times the push
+     * holding it on. Something rests on a slope while this is over the slope's tangent: 0.58 for 30°.
+     */
+    public val staticFriction: Float = 0.6f,
+    /** How much of its speed into the surface a thing keeps, bouncing back out: 0 stops dead, 1 bounces forever. */
+    public val restitution: Float = 0f,
+) {
+    init {
+        require(friction >= 0f) { "Friction $friction is negative." }
+        require(staticFriction >= 0f) { "Static friction $staticFriction is negative." }
+        require(restitution in 0f..1f) { "Restitution $restitution is outside 0..1." }
+    }
+
+    override fun equals(other: Any?): Boolean =
+        other is Material && friction.equals(other.friction) && staticFriction.equals(other.staticFriction) &&
+            restitution.equals(other.restitution)
+
+    override fun hashCode(): Int = 31 * (31 * friction.hashCode() + staticFriction.hashCode()) + restitution.hashCode()
+
+    override fun toString(): String = "Material(friction=$friction, staticFriction=$staticFriction, restitution=$restitution)"
+
+    /** Holds materials many things are made of. */
+    public companion object {
+        /** What everything is made of unless told otherwise: some grip, no bounce. */
+        public val DEFAULT: Material = Material()
+
+        /** No grip at all, no bounce. */
+        public val ICE: Material = Material(friction = 0f, staticFriction = 0f)
+
+        /** A lot of grip. */
+        public val RUBBER: Material = Material(friction = 0.9f, staticFriction = 1.2f)
+
+        @Suppress("NOTHING_TO_INLINE")
+        internal inline fun mixFriction(a: Float, b: Float): Float = if (a == b) a else sqrt(a * b)
+
+        @Suppress("NOTHING_TO_INLINE")
+        internal inline fun mixRestitution(a: Float, b: Float): Float = max(a, b)
+    }
+}

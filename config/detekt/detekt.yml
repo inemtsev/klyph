@@ -9,7 +9,7 @@
 #   WildcardImport stay on; the rest (braces, wrapping, parentheses, trailing lambdas) are off
 #   by default and stay off.
 # - The API_STYLE.md rules detekt can check from syntax alone are on for the library modules
-#   (klyph, klyph-platform, klyph-gradle-plugin; the executables and samples are excluded by path):
+#   (klyph, klyph-platform, klyph-physics, klyph-gradle-plugin; the executables and samples are excluded by path):
 #   KDoc on every public declaration, KDoc first sentences that end, KDoc links to public things,
 #   no Manager/Helper/Util/Wrapper/Data/Info in class names, no public data class (from the
 #   libraries rule set, a separate detekt artifact both builds add to detektPlugins).

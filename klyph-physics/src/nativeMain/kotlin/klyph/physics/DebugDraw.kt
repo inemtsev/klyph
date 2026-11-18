@@ -1,0 +1,719 @@
+package klyph.physics
+
+import klyph.math.Rect
+import kotlin.math.PI
+import kotlin.math.abs
+import klyph.platform.Color
+import klyph.render.Canvas
+import klyph.render.DrawSpace
+import klyph.render.TextureRegion
+import klyph.text.Font
+import klyph.text.TextAlign
+import klyph.text.TextShadow
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+
+/**
+ * Draws what the physics sees, in world space, on a klyph [Canvas]: soft bodies filled from their
+ * outlines, and the solids they collide with. Its [view] adds more, a level at a time: every particle
+ * and tile edge, then every constraint coloured by its stress, then every contact and its normal (see
+ * [DebugView]). [showBroadphase] adds the broadphase's cells on top. What isn't shown costs nothing.
+ *
+ * klyph has no polygons, so shapes are filled one row of [ROW] world units at a time, and lines are
+ * stretched, turned quads of [pixel] (`App.assets.whitePixel`). Labels need a [font], such as
+ * `App.assets.defaultFont`; without one they are not drawn.
+ *
+ * [toString] gives what it shows, for example `DebugDraw(view=CONSTRAINTS, broadphase=false)`.
+ */
+public class DebugDraw(private val pixel: TextureRegion, private val font: Font? = null) {
+    /** How much to draw on top of the plain view. */
+    public var view: DebugView = DebugView.OFF
+
+    /** Whether particles and tile edges are drawn: any [view] but [DebugView.OFF]. */
+    public val showDetails: Boolean get() = view.shows(DebugView.BODIES)
+
+    /** Whether [overlay] also shades the broadphase's cells and outlines its boxes. */
+    public var showBroadphase: Boolean = false
+
+    /** Canvas layer the plain view is drawn in; details go in the layers just above it. */
+    public var layer: Int = 0
+
+    // The scratch broadphase and narrowphase that particleBroadphase and overlap find with.
+    private var scratchBroadphase: Broadphase? = null
+    private val narrowphase = Narrowphase()
+    private val manifold = Manifold()
+
+    override fun toString(): String = "DebugDraw(view=$view, broadphase=$showBroadphase)"
+
+    private var spanLeft = FloatArray(32)
+    private var spanRight = FloatArray(32)
+
+    /**
+     * Draws every particle in [particles] as a square as wide as the particle, and at least two units,
+     * in the colour [colorOf] picks for it.
+     */
+    public inline fun particles(canvas: Canvas, particles: Particles, colorOf: (Particle) -> Color) {
+        particles.forEach { p ->
+            val size = max(particles.radiusOf(p) * 2f, DOT)
+            square(canvas, particles.xOf(p), particles.yOf(p), size, colorOf(p))
+        }
+    }
+
+    /** Draws every live distance and rope in [constraints] as a line between its particles: ropes in [ropeColor]. */
+    public fun links(canvas: Canvas, constraints: Constraints, particles: Particles, color: Color = LINK, ropeColor: Color = ROPE) {
+        for (c in 0 until constraints.linkEnd) {
+            if (!constraints.isLinkAlive(c)) continue
+            val a = constraints.linkA(c)
+            val b = constraints.linkB(c)
+            if (!particles.isAlive(a) || !particles.isAlive(b)) continue
+            val tint = if (constraints.isRope(c)) ropeColor else color
+            line(canvas, particles.x(a), particles.y(a), particles.x(b), particles.y(b), OUTLINE, tint, layer)
+        }
+    }
+
+    /**
+     * Fills a rectangle [width] by [height] centred on ([x], [y]) and turned by [angle] radians, in
+     * [color], with a darker edge: how a rigid box looks.
+     */
+    public fun turnedRect(canvas: Canvas, x: Float, y: Float, width: Float, height: Float, angle: Float, color: Color) {
+        canvas.drawSprite(pixel, x = x, y = y, width = width, height = height, rotation = angle, color = color, layer = layer, space = DrawSpace.WORLD)
+        val c = cos(angle)
+        val s = sin(angle)
+        val hx = width / 2f
+        val hy = height / 2f
+        val edge = color.darker()
+        for (k in 0 until 4) {
+            // the corners in turn, round the rectangle
+            val ax = if (k == 0 || k == 3) -hx else hx
+            val ay = if (k < 2) -hy else hy
+            val bx = if (k == 0 || k == 1) hx else -hx
+            val by = if (k == 0 || k == 3) -hy else hy
+            line(canvas, x + c * ax - s * ay, y + s * ax + c * ay, x + c * bx - s * by, y + s * bx + c * by, OUTLINE, edge, layer + 1)
+        }
+    }
+
+    /**
+     * Fills every shape of [body] of [world] in [color] and outlines it, with a spoke on each round
+     * shape so its turning shows; with details, also marks its centre of mass. A sleeping body is drawn
+     * faded, half way to the background.
+     */
+    public fun rigidBody(canvas: Canvas, world: PhysicsWorld, body: RigidBody, color: Color) {
+        rigidBody(canvas, world, body.index, color)
+    }
+
+    internal fun rigidBody(canvas: Canvas, world: PhysicsWorld, body: Int, color: Color) {
+        val bodies = world.rigidBodies
+        val color = if (bodies.isAsleep(body)) color.faded() else color
+        val edge = color.darker()
+        for (i in 0 until bodies.shapeCount(body)) {
+            val shape = bodies.shape(body, i)
+            val n = outline(bodies, body, shape)
+            fillConvex(canvas, n, color)
+            for (k in 0 until n) {
+                val j = if (k + 1 == n) 0 else k + 1
+                line(canvas, outlineX[k], outlineY[k], outlineX[j], outlineY[j], OUTLINE, edge, layer + 1)
+            }
+            if (shape.kind == ShapeKind.CIRCLE) {
+                val cx = bodies.worldX(body, shape.vertexXAt(0), shape.vertexYAt(0))
+                val cy = bodies.worldY(body, shape.vertexXAt(0), shape.vertexYAt(0))
+                // along the body's own x axis, so it turns with it
+                val tipX = bodies.worldX(body, shape.vertexXAt(0) + shape.radius, shape.vertexYAt(0))
+                val tipY = bodies.worldY(body, shape.vertexXAt(0) + shape.radius, shape.vertexYAt(0))
+                line(canvas, cx, cy, tipX, tipY, OUTLINE, edge, layer + 1)
+            }
+        }
+        if (showDetails) rect(canvas, bodies.x(body) - CORE_DOT / 2f, bodies.y(body) - CORE_DOT / 2f, CORE_DOT, CORE_DOT, CORE, layer + 3)
+    }
+
+    /**
+     * Draws where [a] and [b] of [world] overlap, shape by shape, as the narrowphase finds it, in
+     * [color]: each point as a dot on each surface, joined, and a line along the normal. Unlike
+     * [contacts], it shows bodies that pass through each other, such as a kinematic body and a
+     * static one, which never push and so have no contacts.
+     */
+    public fun overlap(canvas: Canvas, world: PhysicsWorld, a: RigidBody, b: RigidBody, color: Color = CONTACT) {
+        val bodies = world.rigidBodies
+        if (!bodies.isAlive(a) || !bodies.isAlive(b)) return
+        val i = a.index
+        val j = b.index
+        for (sa in bodies.shapes[i]!!) {
+            for (sb in bodies.shapes[j]!!) {
+                val found = narrowphase.collide(
+                    sa, bodies.x(i), bodies.y(i), bodies.angle(i),
+                    sb, bodies.x(j), bodies.y(j), bodies.angle(j), manifold,
+                )
+                if (found) manifold(canvas, manifold, color)
+            }
+        }
+    }
+
+    /**
+     * Draws where two shapes touch, as [manifold] found it: each point as a dot on each shape's
+     * surface, joined, and a line from the second shape's along the normal, in [color].
+     */
+    internal fun manifold(canvas: Canvas, manifold: Manifold, color: Color = CONTACT) {
+        val top = layer + 7
+        for (i in 0 until manifold.count) {
+            val ax = manifold.pointAX(i)
+            val ay = manifold.pointAY(i)
+            val bx = manifold.pointBX(i)
+            val by = manifold.pointBY(i)
+            line(canvas, ax, ay, bx, by, EDGE, color, top)
+            line(canvas, bx, by, bx + manifold.normalX * NORMAL, by + manifold.normalY * NORMAL, EDGE, color, top)
+            rect(canvas, ax - 1f, ay - 1f, 2f, 2f, color, top)
+            rect(canvas, bx - 1f, by - 1f, 2f, 2f, color, top)
+        }
+    }
+
+    private val outlineX = FloatArray(MAX_OUTLINE)
+    private val outlineY = FloatArray(MAX_OUTLINE)
+
+    /**
+     * Writes the outline of [shape], a shape of [body], in the world into [outlineX] and [outlineY], and
+     * returns how many points it has: a polygon's corners, or round ends made of short straight edges.
+     */
+    private fun outline(bodies: RigidBodies, body: Int, shape: Shape): Int {
+        val angle = bodies.angle(body)
+        return when (shape.kind) {
+            ShapeKind.POLYGON -> {
+                for (k in 0 until shape.vertexCount) {
+                    outlineX[k] = bodies.worldX(body, shape.vertexXAt(k), shape.vertexYAt(k))
+                    outlineY[k] = bodies.worldY(body, shape.vertexXAt(k), shape.vertexYAt(k))
+                }
+                shape.vertexCount
+            }
+            ShapeKind.CIRCLE -> {
+                val cx = bodies.worldX(body, shape.vertexXAt(0), shape.vertexYAt(0))
+                val cy = bodies.worldY(body, shape.vertexXAt(0), shape.vertexYAt(0))
+                arc(0, cx, cy, shape.radius, angle, 2f * PI_F, ROUND_STEPS)
+            }
+            ShapeKind.CAPSULE -> {
+                val ax = bodies.worldX(body, shape.vertexXAt(0), shape.vertexYAt(0))
+                val ay = bodies.worldY(body, shape.vertexXAt(0), shape.vertexYAt(0))
+                val bx = bodies.worldX(body, shape.vertexXAt(1), shape.vertexYAt(1))
+                val by = bodies.worldY(body, shape.vertexXAt(1), shape.vertexYAt(1))
+                // the segment's direction, then a half circle round each end
+                val along = atan2(by - ay, bx - ax)
+                val half = ROUND_STEPS / 2
+                val n = arc(0, bx, by, shape.radius, along - PI_F / 2f, PI_F, half)
+                arc(n, ax, ay, shape.radius, along + PI_F / 2f, PI_F, half)
+            }
+        }
+    }
+
+    /** Adds [steps] + 1 points from [from] round an arc of [sweep] radians about ([cx], [cy]); returns the new count. */
+    private fun arc(start: Int, cx: Float, cy: Float, r: Float, from: Float, sweep: Float, steps: Int): Int {
+        val full = sweep >= 2f * PI_F
+        val count = if (full) steps else steps + 1
+        for (k in 0 until count) {
+            val a = from + sweep * k / steps
+            outlineX[start + k] = cx + r * cos(a)
+            outlineY[start + k] = cy + r * sin(a)
+        }
+        return start + count
+    }
+
+    /** Fills the convex outline of [n] points in [outlineX] and [outlineY] row by row in [color]. */
+    private fun fillConvex(canvas: Canvas, n: Int, color: Color) {
+        var top = Float.MAX_VALUE
+        var bottom = -Float.MAX_VALUE
+        for (k in 0 until n) {
+            top = min(top, outlineY[k])
+            bottom = max(bottom, outlineY[k])
+        }
+        var y = floor(top / ROW) * ROW
+        while (y < bottom) {
+            val mid = y + ROW / 2f
+            var left = Float.MAX_VALUE
+            var right = -Float.MAX_VALUE
+            for (k in 0 until n) {
+                val j = if (k + 1 == n) 0 else k + 1
+                val y0 = outlineY[k]
+                val y1 = outlineY[j]
+                if ((y0 <= mid) == (y1 <= mid)) continue
+                val x = outlineX[k] + (mid - y0) / (y1 - y0) * (outlineX[j] - outlineX[k])
+                left = min(left, x)
+                right = max(right, x)
+            }
+            if (left < right) rect(canvas, left, y, right - left, ROW, color, layer)
+            y += ROW
+        }
+    }
+
+    /** Draws a square [size] wide centred on ([x], [y]) in [color], in the plain view's layer. */
+    public fun square(canvas: Canvas, x: Float, y: Float, size: Float, color: Color) {
+        rect(canvas, x - size / 2f, y - size / 2f, size, size, color, layer)
+    }
+
+    /** Fills [body] of [world] in [color] and outlines it; with details, also marks every particle. */
+    public fun softBody(canvas: Canvas, world: PhysicsWorld, body: SoftBody, color: Color) {
+        softBody(canvas, world, body.index, color)
+    }
+
+    internal fun softBody(canvas: Canvas, world: PhysicsWorld, body: Int, color: Color) {
+        val bodies = world.softBodies
+        ring(canvas, bodies.ring(body), bodies.minY(body), bodies.maxY(body), color)
+        if (!showDetails) return
+        val ps = world.particles
+        for (i in 0..bodies.ringCount(body)) {
+            val p = bodies.particle(body, i)
+            val isCore = i == bodies.ringCount(body)
+            val dot = if (isCore) CORE_DOT else DOT
+            rect(canvas, ps.x(p) - dot / 2f, ps.y(p) - dot / 2f, dot, dot, if (isCore) CORE else PARTICLE, layer + 3)
+        }
+    }
+
+    /** Fills the outline [ring], which spans [top] to [bottom], row by row in [color], and draws its edge. */
+    private fun ring(canvas: Canvas, ring: Ring, top: Float, bottom: Float, color: Color) {
+        if (spanLeft.size < ring.size) {
+            spanLeft = FloatArray(ring.size)
+            spanRight = FloatArray(ring.size)
+        }
+        var y = floor(top / ROW) * ROW
+        while (y < bottom) {
+            val count = Outline.spans(ring, y + ROW / 2f, spanLeft, spanRight)
+            for (k in 0 until count) rect(canvas, spanLeft[k], y, spanRight[k] - spanLeft[k], ROW, color, layer)
+            y += ROW
+        }
+        val edge = color.darker()
+        val n = ring.size
+        for (i in 0 until n) {
+            val j = if (i + 1 == n) 0 else i + 1
+            line(canvas, ring.xAt(i), ring.yAt(i), ring.xAt(j), ring.yAt(j), OUTLINE, edge, layer + 1)
+        }
+    }
+
+    /**
+     * Draws everything [view] and [showBroadphase] ask for that a scene doesn't draw itself:
+     * [constraints], [contacts] and [broadphase]. Call it after the scene, every frame.
+     */
+    public fun overlay(canvas: Canvas, world: PhysicsWorld) {
+        constraints(canvas, world)
+        contacts(canvas, world)
+        if (showBroadphase) broadphase(canvas, world)
+    }
+
+    /**
+     * Draws every constraint of [world] from [DebugView.CONSTRAINTS] up, coloured by its stress, from
+     * blue squeezed through grey at rest to red stretched: a link along its length, a pin as a line to
+     * the point it holds, an attachment as a line to its point on its rigid body, a joint as a dot
+     * on its anchor (a line to its other end for a distance joint), a bend as a dot on
+     * its middle particle, an area as a dot in its middle.
+     */
+    public fun constraints(canvas: Canvas, world: PhysicsWorld) {
+        if (!view.shows(DebugView.CONSTRAINTS)) return
+        val ps = world.particles
+        val cs = world.constraints
+        val top = layer + 6
+        for (c in 0 until cs.linkEnd) {
+            if (!cs.isLinkAlive(c)) continue
+            val a = cs.linkA(c)
+            val b = cs.linkB(c)
+            if (!ps.isAlive(a) || !ps.isAlive(b)) continue
+            val strain = cs.strain(c)
+            val tint = if (cs.isRope(c) && strain < 0f) SLACK else stressColor(strain / FULL_STRAIN)
+            line(canvas, ps.x(a), ps.y(a), ps.x(b), ps.y(b), EDGE, tint, top)
+        }
+        for (c in 0 until cs.pinEnd) {
+            if (!cs.isPinAlive(c)) continue
+            val p = cs.pinnedParticle(c)
+            if (!ps.isAlive(p)) continue
+            val dx = cs.pinX(c) - ps.x(p)
+            val dy = cs.pinY(c) - ps.y(p)
+            val tint = stressColor(sqrt(dx * dx + dy * dy) / FULL_PIN)
+            line(canvas, ps.x(p), ps.y(p), cs.pinX(c), cs.pinY(c), EDGE, tint, top)
+            rect(canvas, cs.pinX(c) - 1f, cs.pinY(c) - 1f, 2f, 2f, tint, top)
+        }
+        val tied = world.attachments
+        for (a in 0 until tied.end) {
+            if (!tied.isAlive(a)) continue
+            val p = tied.particle(a)
+            if (!ps.isAlive(p) || !world.rigidBodies.isAlive(tied.body(a))) continue
+            val x = tied.pointX(a)
+            val y = tied.pointY(a)
+            val dx = x - ps.x(p)
+            val dy = y - ps.y(p)
+            val tint = stressColor(sqrt(dx * dx + dy * dy) / FULL_PIN)
+            line(canvas, ps.x(p), ps.y(p), x, y, EDGE, tint, top)
+            rect(canvas, x - 1.5f, y - 1.5f, 3f, 3f, tint, top + 1)
+        }
+        joints(canvas, world)
+        for (c in 0 until cs.bendEnd) {
+            if (!cs.isBendAlive(c)) continue
+            val p = cs.bendB(c)
+            if (!ps.isAlive(p)) continue
+            var off = cs.bendAngle(c) - cs.restAngle(c)
+            if (off > PI_F) off -= 2f * PI_F
+            if (off < -PI_F) off += 2f * PI_F
+            rect(canvas, ps.x(p) - 1f, ps.y(p) - 1f, 2f, 2f, stressColor(abs(off) / FULL_BEND), top + 1)
+        }
+        for (c in 0 until cs.areaEnd) {
+            if (!cs.isAreaAlive(c)) continue
+            val n = cs.ringSize(c)
+            var x = 0f
+            var y = 0f
+            for (i in 0 until n) {
+                x += ps.x(cs.ringParticle(c, i))
+                y += ps.y(cs.ringParticle(c, i))
+            }
+            val change = cs.currentArea(c) / cs.restArea(c) - 1f
+            rect(canvas, x / n - 2f, y / n - 2f, 4f, 4f, stressColor(change / FULL_AREA), top + 1)
+        }
+    }
+
+    /**
+     * Draws every joint of [world] from [DebugView.CONSTRAINTS] up: a dot on its first anchor, yellow,
+     * or orange when its motor is on, a line to its second coloured by how far it's been pulled from
+     * where it should be (a slider's off its axis; a distance joint's line is its stick), and a weld's
+     * dot bigger. A hinge with limits shows them as a wedge fixed to its second end, and its first
+     * end's direction as a needle inside it; a slider shows the stretch of its axis it may slide along.
+     */
+    public fun joints(canvas: Canvas, world: PhysicsWorld) {
+        if (!view.shows(DebugView.CONSTRAINTS)) return
+        val joints = world.joints
+        val bodies = world.rigidBodies
+        val top = layer + 6
+        for (j in 0 until joints.end) {
+            if (!joints.isAlive(j)) continue
+            val ax = joints.anchorAX(j)
+            val ay = joints.anchorAY(j)
+            val bx = joints.anchorBX(j)
+            val by = joints.anchorBY(j)
+            val kind = joints.kind(j)
+            // how far it's been pulled from where it should be: a slider's off its axis, the others' apart
+            val stretch = when (kind) {
+                JointKind.DISTANCE -> 0f
+                JointKind.SLIDER -> abs((bx - ax) * joints.axisY(j) - (by - ay) * joints.axisX(j))
+                else -> sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+            }
+            val tint = stressColor(stretch / FULL_PIN)
+            line(canvas, ax, ay, bx, by, EDGE, tint, top)
+            if (kind == JointKind.HINGE && joints.hasLimits(j)) {
+                // the angles the first end's x axis may point in: the second end's, less the rest angle, less the limits
+                val b = joints.endB(j)
+                val base = (if (b >= 0) bodies.angle(b) else 0f) - joints.restAngle(j)
+                arc(canvas, ax, ay, LIMIT_RADIUS, base - joints.upperLimit(j), base - joints.lowerLimit(j), LIMIT, top)
+                val needle = bodies.angle(joints.bodyA(j))
+                line(canvas, ax, ay, ax + cos(needle) * LIMIT_RADIUS, ay + sin(needle) * LIMIT_RADIUS, EDGE, JOINT, top + 1)
+            }
+            if (kind == JointKind.SLIDER) {
+                val ux = joints.axisX(j)
+                val uy = joints.axisY(j)
+                val from = if (joints.hasLimits(j)) joints.lowerLimit(j) else joints.position(j) - SLIDE_SPAN
+                val to = if (joints.hasLimits(j)) joints.upperLimit(j) else joints.position(j) + SLIDE_SPAN
+                line(canvas, ax + ux * from, ay + uy * from, ax + ux * to, ay + uy * to, EDGE, LIMIT, top)
+                for (end in floatArrayOf(from, to)) rect(canvas, ax + ux * end - 1f, ay + uy * end - 1f, 2f, 2f, LIMIT, top)
+            }
+            val size = if (kind == JointKind.WELD) 4f else 3f
+            rect(canvas, ax - size / 2f, ay - size / 2f, size, size, if (joints.hasMotor(j)) MOTOR else JOINT, top + 1)
+            rect(canvas, bx - 1f, by - 1f, 2f, 2f, tint, top + 1)
+        }
+    }
+
+    /** An arc of radius [r] about ([cx], [cy]) from angle [from] to [to], in short straight lines, with a line to each end. */
+    private fun arc(canvas: Canvas, cx: Float, cy: Float, r: Float, from: Float, to: Float, color: Color, layer: Int) {
+        val steps = 12
+        var px = cx + cos(from) * r
+        var py = cy + sin(from) * r
+        line(canvas, cx, cy, px, py, EDGE, color, layer)
+        for (k in 1..steps) {
+            val a = from + (to - from) * k / steps
+            val x = cx + cos(a) * r
+            val y = cy + sin(a) * r
+            line(canvas, px, py, x, y, EDGE, color, layer)
+            px = x
+            py = y
+        }
+        line(canvas, cx, cy, px, py, EDGE, color, layer)
+    }
+
+    /**
+     * Marks, from [DebugView.EVERYTHING] up, every particle of [world] that touched something during the
+     * last step: a dot where it touched, and a short line along the normal it was pushed out by, in
+     * yellow on a floor and cyan on anything else. Every rigid body's velocity, as a line to where it
+     * will be in a tenth of a second. And every rigid contact the same way, a line the way it pushes
+     * the first body: green where friction holds it, orange where it slides, dim where it was found
+     * near but didn't push.
+     */
+    public fun contacts(canvas: Canvas, world: PhysicsWorld) {
+        if (!view.shows(DebugView.EVERYTHING)) return
+        // how fast each rigid body is going: where it will be in a tenth of a second
+        val bodies = world.rigidBodies
+        for (b in 0 until bodies.end) {
+            if (!bodies.isAlive(b) || bodies.inverseMass(b) == 0f) continue
+            val x = bodies.x(b)
+            val y = bodies.y(b)
+            line(canvas, x, y, x + bodies.velocityX(b) * AHEAD, y + bodies.velocityY(b) * AHEAD, EDGE, VELOCITY, layer + 7)
+        }
+        val rigid = world.rigidContacts
+        for (c in 0 until rigid.count) {
+            val x = rigid.pointX(c)
+            val y = rigid.pointY(c)
+            val tint = when {
+                rigid.push(c) <= 0f -> NEAR
+                rigid.isSliding(c) -> SLIDING
+                else -> HELD
+            }
+            line(canvas, x, y, x - rigid.normalX(c) * NORMAL, y - rigid.normalY(c) * NORMAL, EDGE, tint, layer + 7)
+            rect(canvas, x - 1f, y - 1f, 2f, 2f, tint, layer + 7)
+        }
+        val ps = world.particles
+        val events = world.events
+        for (p in 0 until ps.end) {
+            if (!ps.isAlive(p) || !events.isTouching(p)) continue
+            val nx = events.contactNormalX(p)
+            val ny = events.contactNormalY(p)
+            val r = ps.radius(p)
+            val x = ps.x(p) - nx * r
+            val y = ps.y(p) - ny * r
+            val tint = if (events.isOnFloor(p)) FLOOR_CONTACT else CONTACT
+            line(canvas, x, y, x + nx * NORMAL, y + ny * NORMAL, EDGE, tint, layer + 7)
+            rect(canvas, x - 0.75f, y - 0.75f, 1.5f, 1.5f, tint, layer + 7)
+        }
+    }
+
+    /**
+     * Shades every cell of [world]'s broadphase once per box filed there, so busy cells glow brighter,
+     * and outlines each box: one per soft body and one per colliding particle, from the world's own
+     * broadphase, and one per rigid body, from its contacts' broadphase.
+     */
+    public fun broadphase(canvas: Canvas, world: PhysicsWorld) {
+        broadphaseBoxes(canvas, world.broadphase)
+        broadphaseBoxes(canvas, world.rigidContacts.broadphase)
+    }
+
+    private fun broadphaseBoxes(canvas: Canvas, bp: Broadphase) {
+        val size = bp.cellSize
+        for (e in 0 until bp.count) {
+            val col0 = floor(bp.left(e) / size).toInt()
+            val col1 = floor(bp.right(e) / size).toInt()
+            val row0 = floor(bp.top(e) / size).toInt()
+            val row1 = floor(bp.bottom(e) / size).toInt()
+            for (row in row0..row1) for (col in col0..col1) rect(canvas, col * size, row * size, size, size, CELL, layer - 1)
+            box(canvas, bp.left(e), bp.top(e), bp.right(e), bp.bottom(e), BOX, layer + 6)
+        }
+    }
+
+    private fun box(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, color: Color, layer: Int) {
+        line(canvas, left, top, right, top, EDGE, color, layer)
+        line(canvas, right, top, right, bottom, EDGE, color, layer)
+        line(canvas, right, bottom, left, bottom, EDGE, color, layer)
+        line(canvas, left, bottom, left, top, EDGE, color, layer)
+    }
+
+    /**
+     * Draws the solids of [grid] that lie in [view], tiles and moving ones alike, in [color]. Tiles
+     * outside [view] cost nothing; with details, each tile's edge is drawn too.
+     */
+    public fun solids(canvas: Canvas, grid: SolidGrid, view: Rect, color: Color = SOLID) {
+        val t = grid.tileSize
+        val firstCol = max(0, floor(view.x / t).toInt())
+        val lastCol = min(grid.columns - 1, floor((view.x + view.width) / t).toInt())
+        val firstRow = max(0, floor(view.y / t).toInt())
+        val lastRow = min(grid.rows - 1, floor((view.y + view.height) / t).toInt())
+        for (row in firstRow..lastRow) for (col in firstCol..lastCol) {
+            val solid = grid.at(col, row) ?: continue
+            solid(canvas, solid, color)
+        }
+        for (solid in grid.dynamic) solid(canvas, solid, MOVING)
+    }
+
+    /** Fills one [solid] in [color]: a box whole, a slope one row at a time under its surface. */
+    public fun solid(canvas: Canvas, solid: Solid, color: Color) {
+        val width = solid.right - solid.left
+        when (solid.shape) {
+            SolidShape.BOX -> rect(canvas, solid.left, solid.top, width, solid.bottom - solid.top, color, layer)
+            SolidShape.RISING, SolidShape.FALLING -> {
+                var y = solid.top
+                while (y < solid.bottom) {
+                    // Measured at the row's middle, so a row is filled where the slope covers most of it.
+                    val under = solid.bottom - (y + ROW / 2f)
+                    if (solid.shape == SolidShape.RISING) {
+                        rect(canvas, solid.left + under, y, width - under, ROW, color, layer)
+                    } else {
+                        rect(canvas, solid.left, y, width - under, ROW, color, layer)
+                    }
+                    y += ROW
+                }
+            }
+        }
+        if (!showDetails) return
+        val edge = color.darker()
+        when (solid.shape) {
+            SolidShape.BOX -> {
+                line(canvas, solid.left, solid.top, solid.right, solid.top, EDGE, edge, layer + 2)
+                line(canvas, solid.right, solid.top, solid.right, solid.bottom, EDGE, edge, layer + 2)
+                line(canvas, solid.right, solid.bottom, solid.left, solid.bottom, EDGE, edge, layer + 2)
+                line(canvas, solid.left, solid.bottom, solid.left, solid.top, EDGE, edge, layer + 2)
+            }
+            SolidShape.RISING -> line(canvas, solid.left, solid.bottom, solid.right, solid.top, EDGE, edge, layer + 2)
+            SolidShape.FALLING -> line(canvas, solid.left, solid.top, solid.right, solid.bottom, EDGE, edge, layer + 2)
+        }
+    }
+
+    /**
+     * Shows how a broadphase of [cellSize] sees every particle of [world], each as the box it sweeps
+     * through in the next [ahead]: every cell a box is filed under, tinted once per box so busy cells
+     * glow brighter, and a line between the two particles of every pair that might touch. It finds
+     * them itself, so it shows particles that collide with nothing too.
+     *
+     * @throws IllegalArgumentException if [cellSize] is not more than 0.
+     */
+    public fun particleBroadphase(
+        canvas: Canvas,
+        world: PhysicsWorld,
+        ahead: Duration,
+        cellSize: Float = 16f,
+        cellColor: Color = CELL,
+        pairColor: Color = PAIR,
+    ) {
+        require(cellSize > 0f) { "Cell size $cellSize is not more than 0." }
+        val broadphase = scratchBroadphase?.takeIf { it.cellSize == cellSize } ?: Broadphase(cellSize).also { scratchBroadphase = it }
+        val particles = world.particles
+        val seconds = ahead.toDouble(DurationUnit.SECONDS).toFloat()
+        broadphase.clear()
+        for (p in 0 until particles.end) {
+            if (!particles.isAlive(p)) continue
+            val dx = world.velocityX(p) * seconds
+            val dy = world.velocityY(p) * seconds
+            broadphase.addMoving(p, particles.x(p), particles.y(p), dx, dy, particles.radius(p))
+        }
+        broadphase.build()
+        val size = broadphase.cellSize
+        for (e in 0 until broadphase.count) {
+            val col0 = floor(broadphase.left(e) / size).toInt()
+            val col1 = floor(broadphase.right(e) / size).toInt()
+            val row0 = floor(broadphase.top(e) / size).toInt()
+            val row1 = floor(broadphase.bottom(e) / size).toInt()
+            for (row in row0..row1) for (col in col0..col1) rect(canvas, col * size, row * size, size, size, cellColor, layer - 1)
+        }
+        for (i in 0 until broadphase.pairCount) {
+            val a = broadphase.pairA(i)
+            val b = broadphase.pairB(i)
+            line(canvas, particles.x(a), particles.y(a), particles.x(b), particles.y(b), EDGE, pairColor, layer + 1)
+        }
+    }
+
+    /** Writes [text] centred on [x] with its top at [y], in world units, above everything else drawn here. */
+    public fun label(canvas: Canvas, text: CharSequence, x: Float, y: Float, color: Color = LABEL) {
+        val labelFont = font ?: return
+        canvas.drawText(labelFont, text, x, y, color, scale = 1f, align = TextAlign.CENTER, layer = layer + 5, space = DrawSpace.WORLD, shadow = LABEL_SHADOW)
+    }
+
+    /** Draws a line of [thickness] world units from (x0, y0) to (x1, y1). */
+    public fun line(canvas: Canvas, x0: Float, y0: Float, x1: Float, y1: Float, thickness: Float, color: Color, layer: Int) {
+        val dx = x1 - x0
+        val dy = y1 - y0
+        canvas.drawSprite(
+            pixel,
+            x = (x0 + x1) / 2f,
+            y = (y0 + y1) / 2f,
+            width = sqrt(dx * dx + dy * dy) + thickness,
+            height = thickness,
+            rotation = atan2(dy, dx),
+            color = color,
+            layer = layer,
+            space = DrawSpace.WORLD,
+        )
+    }
+
+    private fun rect(canvas: Canvas, x: Float, y: Float, width: Float, height: Float, color: Color, layer: Int) {
+        if (width <= 0f || height <= 0f) return
+        canvas.drawRect(x, y, width, height, color, layer, DrawSpace.WORLD)
+    }
+
+    private fun Color.darker(): Color = Color(red * 0.6f, green * 0.6f, blue * 0.6f, alpha)
+
+    private fun Color.faded(): Color = Color(
+        (red + ASLEEP.red) / 2f, (green + ASLEEP.green) / 2f, (blue + ASLEEP.blue) / 2f, alpha,
+    )
+
+    /** The sizes and colours the drawing uses. */
+    public companion object {
+        /** How many straight edges make a circle's outline; a capsule's two ends share as many. */
+        internal const val ROUND_STEPS = 24
+        private const val MAX_OUTLINE = ROUND_STEPS + 2
+
+        /** Height of one row of a filled shape, in world units. */
+        internal const val ROW = 1f
+
+        internal const val OUTLINE = 1f
+        internal const val EDGE = 0.5f
+        @PublishedApi internal const val DOT: Float = 2f
+        internal const val CORE_DOT = 3f
+        internal const val FOOT = 3f
+
+        internal val SOLID = Color(0x3A4A66FFu)
+
+        /** What a sleeping body's colour fades half way to. */
+        internal val ASLEEP = Color(0x2A3248FFu)
+        internal val MOVING = Color(0x7A5A3AFFu)
+        internal val PARTICLE = Color(0xFFFFFFFFu)
+        internal val LINK = Color(0x9FB3D9FFu)
+        internal val ROPE = Color(0xC9A26BFFu)
+        internal val CORE = Color(0xFF4040FFu)
+        internal val FLOOR_CONTACT = Color(0xFFD36BFFu)
+        internal val LABEL = Color(0xE8ECF4FFu)
+        internal val CONTACT = Color(0x5BE0E0FFu)
+        internal val JOINT = Color(0xFFD36BFFu)
+        internal val MOTOR = Color(0xFF9A3DFFu)
+        internal val LIMIT = Color(0.6f, 0.65f, 0.75f, 0.7f)
+        internal val VELOCITY = Color(0.9f, 0.92f, 1f, 0.6f)
+
+        /** How far out a hinge's limits are drawn, and how much of an unlimited slider's axis. */
+        internal const val LIMIT_RADIUS = 10f
+        internal const val SLIDE_SPAN = 20f
+
+        /** How far ahead a body's velocity line reaches, in seconds. */
+        internal const val AHEAD = 0.1f
+        internal val HELD = Color(0x6BE07AFFu)
+        internal val SLIDING = Color(0xFF9A3DFFu)
+        internal val NEAR = Color(0.6f, 0.65f, 0.75f, 0.4f)
+        internal val SLACK = Color(0.55f, 0.6f, 0.7f, 0.35f)
+        internal val BOX = Color(0.36f, 0.55f, 0.94f, 0.6f)
+
+        /** How far along a contact's normal its line reaches, in world units. */
+        internal const val NORMAL = 6f
+
+        /** What counts as full stress, drawn fully blue or red: a link 10% off its length... */
+        internal const val FULL_STRAIN = 0.1f
+
+        /** ...a pinned particle 8 units from its point, a bend half a radian off, an area 20% off. */
+        internal const val FULL_PIN = 8f
+        internal const val FULL_BEND = 0.5f
+        internal const val FULL_AREA = 0.2f
+
+        private val SQUEEZED = Color(0x4D7CFFFFu)
+        private val RESTING = Color(0xB8C2D6FFu)
+        private val STRETCHED = Color(0xFF4D4DFFu)
+        private const val PI_F = PI.toFloat()
+
+        /**
+         * Returns the colour of a stress of [amount]: -1 or less is fully squeezed (blue), 0 at rest (grey),
+         * 1 or more fully stretched (red).
+         */
+        public fun stressColor(amount: Float): Color {
+            val k = if (amount.isNaN()) 0f else amount.coerceIn(-1f, 1f)
+            val to = if (k < 0f) SQUEEZED else STRETCHED
+            val t = abs(k)
+            return Color(
+                RESTING.red + (to.red - RESTING.red) * t,
+                RESTING.green + (to.green - RESTING.green) * t,
+                RESTING.blue + (to.blue - RESTING.blue) * t,
+                1f,
+            )
+        }
+        internal val CELL = Color(0.36f, 0.55f, 0.94f, 0.12f)
+        internal val PAIR = Color(0xFF6BB5FFu)
+
+        /** Half a world unit: at the sandbox's zoom, one screen point. */
+        private val LABEL_SHADOW = TextShadow(offsetX = 0.5f, offsetY = 0.5f)
+    }
+}

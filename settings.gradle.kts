@@ -23,9 +23,11 @@ rootProject.name = "klyph"
 
 include(":klyph-platform")
 include(":klyph")
+include(":klyph-physics")
 include(":sandbox")
 include(":games:shooter")
 include(":games:squish")
 include(":games:roller")
+include(":games:physics")
 include(":benchmarks")
 include(":samples")
