@@ -1,0 +1,91 @@
+# 🧠 klyph-physics, explained
+
+One page per part of the engine. Each one takes about a minute: a picture, three bullets, done. 🏁
+Want more? Every page has the details further down.
+
+🎮 To use the module in a game, start with [Physics](../physics.md), the physics page of klyph's guide.
+
+## 📚 The pages
+
+| | page | in one line |
+|---|---|---|
+| 🌍 | [The world and one step](world.md) | one world, one `step`, no garbage |
+| 🏃 | [Verlet integration](verlet.md) | velocity is just where you were |
+| 🔁 | [Substeps](substeps.md) | many tiny steps beat a few big ones |
+| 🧮 | [XPBD and compliance](xpbd.md) | how soft, in real units |
+| 🔗 | [Constraints](constraints.md) | distance, rope, pin, area and bend, each with its own softness |
+| 🍮 | [Soft bodies](soft-bodies.md) | a ring of dots, some spokes and a heavy core |
+| 🧱 | [Solids](solids.md) | tiles, slopes, and which way is out |
+| 🦶 | [Contacts and tags](contacts.md) | what am I standing on? |
+| 🌀 | [Outline](outline.md) | inside or outside, and how to draw it filled |
+| 🗂️ | [Broadphase](broadphase.md) | who might touch whom, without checking everyone |
+| 💥 | [Bodies hitting bodies](bodies.md) | blobs, balls and sand that don't go through each other |
+| 🧽 | [Friction and bounce](friction.md) | what grips, what slides, what bounces back |
+| 🪢 | [Ropes, chains and cloth](ropes.md) | one line for a rope, a chain or a sheet, and tearing |
+| 🖐️ | [Grab](grab.md) | drag anything with the mouse, and never break it |
+| 🔍 | [Debug views](debug-views.md) | see the solver work: stress, contacts, joints, the grid |
+| 📦 | [Rigid bodies and rotation](rigid-bodies.md) | one thing that moves and turns |
+| 🔷 | [Shapes, mass and inertia](shapes.md) | what a body is made of, and how hard it is to turn |
+| ✂️ | [SAT and contact points](sat.md) | where two shapes touch, to the point |
+| 🧱 | [Stacking: contacts, friction, bounce](stacking.md) | towers that stand, dominoes that fall |
+| 🤝 | [Soft meets rigid](coupling.md) | crates squash blobs, blobs knock crates over |
+| 🔩 | [Joints and motors](joints.md) | hinges, sliders, welds: cars, lifts, pendulums |
+| 😴 | [Sleeping](sleeping.md) | a pile that has stopped costs nothing |
+| 🚀 | [Fast things and tunnelling](tunnelling.md) | bullets at 5 000 units a second never pass a one-unit wall |
+| 🔦 | [Raycasts and queries](queries.md) | the first thing along a line, everything at a point or in a box |
+| 🚦 | [Filters, sensors and events](filters.md) | who collides with whom, zones that notice, and what touched |
+| 🏎️ | [Making it fast](performance.md) | 5 000 grains, 1 000 crates and 50 blobs in 19 ms, on one thread |
+| 🔌 | [Using it in a klyph game](klyph.md) | one line to run it, one component to follow a body |
+
+Read them in that order and each one builds on the last. 🧱 New parts of the engine bring their own page with them.
+
+---
+
+## 📝 The template
+
+Every page looks like this. Copy it, fill it in, keep it short. ✂️
+
+````markdown
+# 🍮 Name of the thing
+
+⚡ **One line: what it is, the way you'd say it to a friend.**
+
+<img src="img/<name>.gif" alt="what the picture shows" width="100%">
+
+## 🧠 How it works
+
+- 👉 the first idea, one line
+- 👉 the second idea, one line
+- 👉 the third idea, one line
+
+<details>
+<summary>🤓 the details</summary>
+
+The longer version, for those who want it: the maths, the code, the why.
+
+</details>
+
+## 🎛️ The knobs
+
+| knob | default | turn it up 🔼 | turn it down 🔽 |
+|---|---|---|---|
+| `name` | `1.0` | what happens | what happens |
+
+## 💥 Gotchas
+
+- 💥 **What breaks it**: why, and what to do about it.
+
+## 🧪 Try it
+
+`./gradlew :games:physics:run`, press `1` for **Scene name**, then `F1` to see the particles. 👀
+````
+
+## ✍️ The rules
+
+- 🖼️ **Picture first.** Every page has one, recorded from the demo, so it's real physics, never a drawing.
+- 3️⃣ **Three bullets**, max. If it doesn't fit, it goes in 🤓 the details.
+- ✂️ **Short sentences.** One idea each.
+- 🎛️ **Every knob** that the code has goes in the table, with what turning it does. A knob you don't
+  turn up or down, such as a switch or a call, gets `| knob | default | what it does |` instead.
+- 💥 **Every gotcha** that bit us goes in, even the embarrassing ones.
+- 🚢 **A page ships with its feature**, in the same PR. Never after.

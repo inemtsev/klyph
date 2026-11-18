@@ -6,6 +6,16 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `klyph-physics`, a new module: a 2D physics engine solved with XPBD in substeps, with rigid bodies of
+  circles, boxes, capsules and convex polygons, soft bodies, particles and sand, ropes, chains and cloth that
+  tear, hinges, sliders, welds and motors, a tile grid of solids with slopes and tags, contact and sensor
+  events, raycasts and point and box queries, sleeping, and bullets that never tunnel. `App.addPhysics` steps
+  it in the fixed step and `PhysicsBody` moves an entity with its body; see the
+  [Physics guide](https://inemtsev.github.io/klyph/guide/physics.html).
+- `games/physics`: a playground of eighteen physics scenes, from a blob garden to a 5 000-grain stress test.
+
 ## [1.3.0] - 2026-11-21
 
 Levels that move: maps painted in Tiled and loaded in one call, platforms that carry the
