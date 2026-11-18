@@ -6,7 +6,7 @@ import klyph.platform.Sdl
 import kotlin.system.exitProcess
 
 /** Every benchmark this executable can run, in the order they are listed. */
-internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, collisionBenchmark, particleBenchmark, drawnBenchmark, overlapBenchmark, parentsBenchmark, tileBenchmark, mixerBenchmark)
+internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, collisionBenchmark, particleBenchmark, drawnBenchmark, overlapBenchmark, parentsBenchmark, tileBenchmark, mixerBenchmark, physicsBenchmark)
 
 /**
  * Runs the benchmark named by the first argument. Without an argument, prints the available
@@ -16,7 +16,8 @@ internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenc
  * emitter of 1000 particles per 1000), `KLYPH_CHILDREN` children per parent
  * in the hierarchy benchmark (default 8), `KLYPH_TEXTURES` textures in the sprites benchmark
  * (default 1), `KLYPH_INTERPOLATE=1` to move the sprites benchmark in fixed steps and draw it
- * interpolated, `KLYPH_FRAMES` frames before exit, `KLYPH_SECONDS` seconds of frame time before exit,
+ * interpolated, `KLYPH_FRAMES` frames before exit (steps per workload in the physics benchmark,
+ * default 600), `KLYPH_SECONDS` seconds of frame time before exit,
  * `KLYPH_VSYNC=1` to cap at the display rate, `KLYPH_VALIDATION=1` for the GPU validation layer,
  * `KLYPH_OFFSCREEN=1` to render to a texture and wait for the GPU each frame instead of presenting,
  * `KLYPH_MUSIC=<path to an .ogg>` to make the mixer benchmark stream that Ogg Vorbis file instead of
