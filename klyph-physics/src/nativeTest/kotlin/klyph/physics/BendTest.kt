@@ -136,7 +136,7 @@ class BendTest {
         val b = ps.add(10f, 0f)
         val c = ps.add(20f, 0f)
         val bend = cs.bend(a, b, c)
-        world.removeParticle(c)
+        world.particles.remove(c)
         assertFalse(cs.isAlive(bend))
         assertEquals(0, cs.bendCount)
     }

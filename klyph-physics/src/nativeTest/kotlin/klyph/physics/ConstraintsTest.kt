@@ -165,7 +165,7 @@ class ConstraintsTest {
     }
 
     @Test
-    fun removingAParticleFromTheWorldTakesItsConstraintsWithIt() {
+    fun removingAParticleTakesItsConstraintsWithIt() {
         val a = ps.add(0f, 0f)
         val b = ps.add(10f, 0f)
         val c = ps.add(20f, 0f)
@@ -173,7 +173,7 @@ class ConstraintsTest {
         val pin = cs.pin(a)
         val area = cs.area(listOf(a, b, ps.add(0f, 10f)))
         val other = cs.distance(b, c)
-        world.removeParticle(a)
+        world.particles.remove(a)
         assertFalse(cs.isAlive(link))
         assertFalse(cs.isAlive(pin))
         assertFalse(cs.isAlive(area))
@@ -227,5 +227,33 @@ class ConstraintsTest {
         assertEquals(100, cs.pinCount)
         solveOnce()
         assertTrue(abs(ps.xOf(previous) - 100f) < 0.001f)
+    }
+
+    @Test
+    fun removingAParticleTakesItsAttachmentWithIt() {
+        val body = world.rigidBody(Shape.box(20f, 20f), 100f, 100f, kind = BodyKind.STATIC)
+        val grain = ps.add(0f, 0f)
+        val other = ps.add(5f, 5f)
+        val tie = world.attach(grain, body)
+        val untouched = world.attach(other, body)
+        ps.remove(grain)
+        assertFalse(world.attachments.isAlive(tie))
+        assertTrue(world.attachments.isAlive(untouched))
+        val reused = ps.add(50f, 50f)
+        assertEquals(grain, reused)
+        repeat(5) { solveOnce() }
+        assertEquals(50f, ps.xOf(reused), "the new particle is not pulled to the body")
+    }
+
+    @Test
+    fun removingAParticleTakesTheJointItIsAnEndOfWithIt() {
+        val body = world.rigidBody(Shape.box(20f, 20f), 100f, 100f, kind = BodyKind.STATIC)
+        val bob = ps.add(100f, 130f)
+        val keep = world.rigidBody(Shape.box(20f, 20f), 300f, 100f, kind = BodyKind.STATIC)
+        val hinge = world.joints.hinge(body, bob, x = 100f, y = 110f)
+        val other = world.joints.hinge(body, keep, x = 200f, y = 100f)
+        ps.remove(bob)
+        assertFalse(world.joints.isAlive(hinge))
+        assertTrue(world.joints.isAlive(other))
     }
 }

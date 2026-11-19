@@ -27,7 +27,7 @@ sheet.particleAt(3, 5)                                                          
 
 A `Strand` (rope or chain) and a `Cloth` are just **lists of handles**. The particles and constraints
 live in the world like any others, so everything else works on them: collisions (`collision = ParticleCollision.EVERYTHING`),
-friction, pins, `removeParticle`.
+friction, pins, `particles.remove`.
 
 **The three kinds of cloth link.** 🧵
 

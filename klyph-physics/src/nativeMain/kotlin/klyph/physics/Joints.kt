@@ -47,6 +47,17 @@ public enum class JointKind {
  */
 public class Joints internal constructor(private val particles: Particles, private val bodies: RigidBodies, private val events: Events? = null) {
     private val slots = Slots()
+
+    init {
+        particles.register(
+            object : ParticleHolder {
+                override fun letGo(p: Int) {
+                    for (j in 0 until slots.end) if (slots.isAlive(j) && endB[j] == particle(p)) remove(j)
+                }
+            },
+        )
+    }
+
     private var kind = arrayOfNulls<JointKind>(8)
     private var bodyA = IntArray(8)
     private var endB = IntArray(8)

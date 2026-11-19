@@ -13,7 +13,6 @@
     <ID>ComplexCondition:Joints.kt:Joints$a == p &amp;&amp; b == q || a == q &amp;&amp; b == p</ID>
     <ID>ComplexCondition:Joints.kt:Joints$p >= onBody.size || q >= onBody.size || onBody[p] == 0 || onBody[q] == 0</ID>
     <ID>ComplexCondition:Narrowphase.kt:Narrowphase$d1 &lt; lo &amp;&amp; d2 &lt; lo || d1 > hi &amp;&amp; d2 > hi</ID>
-    <ID>ComplexCondition:PhysicsWorld.kt:PhysicsWorld$c.isBendAlive(bend) &amp;&amp; (c.bendA(bend) == p || c.bendB(bend) == p || c.bendC(bend) == p)</ID>
     <ID>ComplexCondition:Queries.kt:Queries$cx + reach &lt; left || cx - reach > right || cy + reach &lt; top || cy - reach > bottom</ID>
     <ID>ComplexCondition:Queries.kt:Queries$face &lt; 0 || enter &lt; 0f || enter > leave || enter > bestT</ID>
     <ID>ComplexCondition:Queries.kt:Queries$maxX &lt; left || minX > right || maxY &lt; top || minY > bottom</ID>
@@ -42,7 +41,6 @@
     <ID>CyclomaticComplexMethod:Narrowphase.kt:Narrowphase$private fun clip</ID>
     <ID>CyclomaticComplexMethod:Narrowphase.kt:Narrowphase$private fun cores</ID>
     <ID>CyclomaticComplexMethod:Particles.kt:Particles$internal fun applyFriction</ID>
-    <ID>CyclomaticComplexMethod:PhysicsWorld.kt:PhysicsWorld$internal fun removeParticle</ID>
     <ID>CyclomaticComplexMethod:Queries.kt:Queries$fun queryBox: Int</ID>
     <ID>CyclomaticComplexMethod:Queries.kt:Queries$fun queryPoint: Int</ID>
     <ID>CyclomaticComplexMethod:Queries.kt:Queries$private fun coreOverlapsBox: Boolean</ID>

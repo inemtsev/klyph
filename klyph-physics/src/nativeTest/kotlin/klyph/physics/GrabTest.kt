@@ -109,7 +109,7 @@ class GrabTest {
         val world = PhysicsWorld()
         val p = world.particles.add(0f, 0f)
         world.grab(0f, 0f)
-        world.removeParticle(p)
+        world.particles.remove(p)
         world.moveGrab(100f, 0f)
         world.step(dt)
         assertNull(world.hand.particleOrNull)

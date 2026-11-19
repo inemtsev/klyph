@@ -16,6 +16,16 @@ import kotlin.math.sqrt
 public class Attachments internal constructor(private val particles: Particles, private val bodies: RigidBodies) {
     private val slots = Slots()
 
+    init {
+        particles.register(
+            object : ParticleHolder {
+                override fun letGo(p: Int) {
+                    for (a in 0 until slots.end) if (slots.isAlive(a) && particle[a] == p) remove(a)
+                }
+            },
+        )
+    }
+
     // The particle, the body, the point on the body from its centre of mass in its own frame, how
     // soft, and how hard it has pulled this substep.
     private var particle = IntArray(8)

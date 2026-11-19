@@ -184,26 +184,6 @@ public class PhysicsWorld(
     }
 
     /**
-     * Removes [particle] and every constraint on it. Use this rather than [Particles.remove] when the
-     * particle has constraints: its slot will be reused, and a new particle must not inherit them.
-     * Removing one that is gone does nothing.
-     */
-    public fun removeParticle(particle: Particle) {
-        if (particles.isAliveAt(particle.index)) removeParticle(particle.index)
-    }
-
-    internal fun removeParticle(p: Int) {
-        val c = constraints
-        for (link in 0 until c.linkEnd) if (c.isLinkAlive(link) && (c.linkA(link) == p || c.linkB(link) == p)) c.removeLink(link)
-        for (pin in 0 until c.pinEnd) if (c.isPinAlive(pin) && c.pinnedParticle(pin) == p) c.removePin(pin)
-        for (area in 0 until c.areaEnd) if (c.isAreaAlive(area) && c.ringContains(area, p)) c.removeArea(area)
-        for (bend in 0 until c.bendEnd) {
-            if (c.isBendAlive(bend) && (c.bendA(bend) == p || c.bendB(bend) == p || c.bendC(bend) == p)) c.removeBend(bend)
-        }
-        particles.remove(p)
-    }
-
-    /**
      * Takes hold of the dynamic rigid body at ([x], [y]), by that point, or else the movable particle
      * nearest it, within [reach], and pulls it towards that point with a soft pin until [release].
      * One thing at a time: grabbing again lets go of the last. Read what it holds from

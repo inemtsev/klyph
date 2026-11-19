@@ -142,7 +142,7 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
 
     internal fun remove(body: Int) {
         if (!isAlive(body)) return
-        for (i in 0..ringCounts[body]) world.removeParticle(particle(body, i))
+        for (i in 0..ringCounts[body]) world.particles.removeAt(particle(body, i))
         slots.remove(body)
     }
 

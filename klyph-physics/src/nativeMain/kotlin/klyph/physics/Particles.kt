@@ -126,16 +126,26 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
     }
 
     /**
-     * Removes [particle]; its slot may be handed out again. Removing a particle that is gone does
-     * nothing. A particle of a soft body, rope or cloth is removed with it instead: see
-     * [PhysicsWorld.removeParticle], which also removes what holds it.
+     * Removes [particle] and every constraint that holds it, so that the particle that takes its
+     * slot, which may be handed out again, inherits none. Removing a particle that is gone does
+     * nothing. A particle of a soft body is removed with it instead, by [SoftBodies.remove].
      */
     public fun remove(particle: Particle) {
         removeAt(particle.index)
     }
 
+    // What holds on to these particles, and must let go of one that is removed: its slot is handed
+    // out again, and the next particle must not inherit what held this one. None for particles on their own.
+    private val holders = ArrayList<ParticleHolder>(3)
+
+    /** Makes [holder] let go of every particle that is removed from now on. */
+    internal fun register(holder: ParticleHolder) {
+        holders.add(holder)
+    }
+
     internal fun removeAt(p: Int) {
         if (!isAliveAt(p)) return
+        for (i in 0 until holders.size) holders[i].letGo(p)
         flags[p] = 0
         invMass[p] = 0f
         if (freeCount == free.size) free = free.copyOf(free.size * 2)
@@ -505,4 +515,10 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
         internal const val COLLIDES = 2
         internal const val BULLET = 4
     }
+}
+
+/** Something that holds on to particles: constraints, attachments, joints. */
+internal interface ParticleHolder {
+    /** Lets go of everything that holds particle [p], which is being removed. */
+    fun letGo(p: Int)
 }

@@ -24,6 +24,14 @@ import kotlin.math.sqrt
  * @sample samples.physics.ConstraintSamples.distance
  */
 public class Constraints internal constructor(private val particles: Particles) {
+    init {
+        particles.register(
+            object : ParticleHolder {
+                override fun letGo(p: Int) = forgetParticle(p)
+            },
+        )
+    }
+
     // Distances and ropes.
     private var linkA = IntArray(16)
     private var linkB = IntArray(16)
@@ -436,6 +444,34 @@ public class Constraints internal constructor(private val particles: Particles) 
     }
 
     /** Forgets how hard every constraint has pushed: the start of a substep. */
+    /** Removes every link, pin, area and bend that holds particle [p], so a particle that takes its slot next inherits none. */
+    internal fun forgetParticle(p: Int) {
+        forgetLinks(p)
+        forgetPins(p)
+        forgetAreas(p)
+        forgetBends(p)
+    }
+
+    private fun forgetLinks(p: Int) {
+        for (link in 0 until linkEnd) {
+            if (isLinkAlive(link) && (linkA(link) == p || linkB(link) == p)) removeLink(link)
+        }
+    }
+
+    private fun forgetPins(p: Int) {
+        for (pin in 0 until pinEnd) if (isPinAlive(pin) && pinnedParticle(pin) == p) removePin(pin)
+    }
+
+    private fun forgetAreas(p: Int) {
+        for (area in 0 until areaEnd) if (isAreaAlive(area) && ringContains(area, p)) removeArea(area)
+    }
+
+    private fun forgetBends(p: Int) {
+        for (bend in 0 until bendEnd) if (isBendAlive(bend) && bendHolds(bend, p)) removeBend(bend)
+    }
+
+    private fun bendHolds(bend: Int, p: Int): Boolean = bendA(bend) == p || bendB(bend) == p || bendC(bend) == p
+
     internal fun beginSubstep() {
         linkLambda.fill(0f, 0, links.end)
         pinLambda.fill(0f, 0, pins.end)

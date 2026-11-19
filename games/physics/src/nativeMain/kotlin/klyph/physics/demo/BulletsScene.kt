@@ -138,7 +138,7 @@ object BulletsScene : Scene {
             ps.setMotion(p, Motion.BULLET)
             world.setVelocity(p, sin(spread) * SPEED, -cos(spread) * SPEED)
             sparks += p
-            if (sparks.size > MAX_SPARKS) world.removeParticle(sparks.removeAt(0))
+            if (sparks.size > MAX_SPARKS) world.particles.remove(sparks.removeAt(0))
         }
 
         override fun spawn(x: Float, y: Float) {

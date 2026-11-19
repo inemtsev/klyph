@@ -55,8 +55,8 @@ lambda += change                        // how hard it has pushed this substep
 `2 × 1500 × 0.02 = 60` units. That's true at 2 substeps, 16 substeps, 1 iteration or 6: the
 tests check all of them. ✅
 
-**Removing a particle**: use `world.removeParticle(p)`, not `particles.remove(p)`. It removes every
-constraint on `p` too, so the next particle to get `p`'s handle doesn't inherit its springs. 👻
+**Removing a particle**: `world.particles.remove(p)` removes every constraint, attachment and joint on
+`p` too, so the next particle to get `p`'s handle doesn't inherit its springs. 👻
 
 </details>
 
@@ -72,8 +72,8 @@ constraint on `p` too, so the next particle to get `p`'s handle doesn't inherit 
 
 ## 💥 Gotchas
 
-- 💥 **A reused handle inherits nothing, if you use `removeParticle`.** With `particles.remove`, the
-  old constraints stay, and they'd grab the next particle that gets the handle.
+- 💥 **A reused handle inherits nothing.** `particles.remove` lets go of every rule, attachment and
+  joint that held the particle, so the next one to get its handle starts free.
 - 💥 **Two static ends = nothing happens.** A rule between two particles that can't move is skipped.
 - 💥 **A ring needs a direction, but either one works.** The area store remembers which way the ring
   runs when you add it.
