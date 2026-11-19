@@ -484,7 +484,7 @@ internal class RigidContacts(private val world: PhysicsWorld) {
         updateEdges(grid)
         val moving = grid.dynamic
         for (body in 0 until bodies.end) {
-            if (!bodies.isAlive(body) || bodies.kind[body] != RigidBodies.DYNAMIC) continue
+            if (!bodies.isDynamic(body)) continue
             if (bodies.sensor[body] || bodies.mask[body] and PhysicsLayers.SOLIDS_BIT == 0) continue
             // a sleeping body only wakes if a moving solid reaches it: the still ones it slept on
             if (bodies.asleep[body] && !touchesMovingSolid(body, moving)) continue

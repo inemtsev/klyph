@@ -268,6 +268,9 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
 
     internal fun collides(p: Int): Boolean = collidesAt(p)
 
+    /** Whether slot [p], in range, is a grain: alive, colliding with everything, and part of no soft body. */
+    internal fun isGrain(p: Int): Boolean = isAlive(p) && collides(p) && owner[p] < 0
+
     internal fun x(p: Int): Float = x[p]
 
     internal fun y(p: Int): Float = y[p]

@@ -48,7 +48,7 @@ internal class Bullets(private val world: PhysicsWorld) {
     fun sweepBodies() {
         val bs = bodies
         for (b in 0 until bs.end) {
-            if (!bs.bullet[b] || !bs.alive[b] || bs.kind[b] != RigidBodies.DYNAMIC || bs.asleep[b] || bs.sensor[b]) continue
+            if (!bs.bullet[b] || !bs.isAwakeDynamic(b) || bs.sensor[b]) continue
             sweep(b)
         }
     }

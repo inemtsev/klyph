@@ -155,4 +155,24 @@ class RigidBodiesTest {
         assertFailsWith<IllegalArgumentException> { bodies.add(Float.NaN, 0f) }
         assertFailsWith<IllegalArgumentException> { bodies.add(0f, 0f, angle = Float.POSITIVE_INFINITY) }
     }
+
+    @Test
+    fun onlyAnAwakeDynamicBodyIsAwakeDynamicAndAnySleepingOrNotIsDynamic() {
+        val world = space()
+        val bodies = world.rigidBodies
+        val falling = world.rigidBody(Shape.box(10f, 10f), 0f, 0f)
+        val sleeping = world.rigidBody(Shape.box(10f, 10f), 50f, 0f)
+        val wall = world.rigidBody(Shape.box(10f, 10f), 100f, 0f, kind = BodyKind.STATIC)
+        val lift = world.rigidBody(Shape.box(10f, 10f), 150f, 0f, kind = BodyKind.KINEMATIC)
+        bodies.sleep(sleeping.index, group = 0)
+        assertTrue(bodies.isAwakeDynamic(falling.index))
+        assertFalse(bodies.isAwakeDynamic(sleeping.index))
+        assertTrue(bodies.isDynamic(sleeping.index))
+        for (other in listOf(wall, lift)) {
+            assertFalse(bodies.isDynamic(other.index))
+            assertFalse(bodies.isAwakeDynamic(other.index))
+        }
+        bodies.remove(falling)
+        assertFalse(bodies.isDynamic(falling.index))
+    }
 }

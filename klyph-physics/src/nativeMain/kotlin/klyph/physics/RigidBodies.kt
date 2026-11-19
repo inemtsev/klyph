@@ -406,6 +406,12 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
 
     internal fun isAlive(b: Int): Boolean = isAliveAt(b)
 
+    /** Whether slot [b], in range, is a body that falls and is pushed: alive and [DYNAMIC], asleep or not. */
+    internal fun isDynamic(b: Int): Boolean = alive[b] && kind[b] == DYNAMIC
+
+    /** Whether slot [b], in range, is a [DYNAMIC] body that is awake: the ones that move, and the ones that can fall asleep. */
+    internal fun isAwakeDynamic(b: Int): Boolean = isDynamic(b) && !asleep[b]
+
     @PublishedApi
     internal fun isAliveAt(b: Int): Boolean = b in 0 until end && alive[b]
 
@@ -684,7 +690,7 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
      */
     internal fun updateVelocities(h: Float) {
         for (b in 0 until end) {
-            if (!alive[b] || kind[b] != DYNAMIC || asleep[b]) continue
+            if (!isAwakeDynamic(b)) continue
             vx[b] += movedX[b] / h
             vy[b] += movedY[b] / h
             omega[b] += turned[b] / h

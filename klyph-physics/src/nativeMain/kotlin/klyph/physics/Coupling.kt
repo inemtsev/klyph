@@ -79,7 +79,7 @@ internal class Coupling(private val world: PhysicsWorld) {
             bp.add(id(s, SOFT), l - MARGIN, t - MARGIN, r + MARGIN, b + MARGIN, passive = true)
         }
         for (p in 0 until ps.end) {
-            if (!ps.isAlive(p) || !ps.collides(p) || ps.owner[p] >= 0) continue
+            if (!ps.isGrain(p)) continue
             bp.addMoving(id(p, PARTICLE), ps.x[p], ps.y[p], (ps.x[p] - ps.prevX[p]) * ahead, (ps.y[p] - ps.prevY[p]) * ahead, max(ps.radius[p], SKIN) + MARGIN, passive = true)
         }
         if (bp.count > 1) bp.build()

@@ -42,7 +42,7 @@ internal class Sleeping(private val world: PhysicsWorld) {
         var awake = 0
         for (b in 0 until n) {
             parent[b] = b
-            if (!bs.alive[b] || bs.kind[b] != RigidBodies.DYNAMIC || bs.asleep[b]) continue
+            if (!bs.isAwakeDynamic(b)) continue
             awake++
             // nothing could ever touch a body without shapes to wake it, and it costs nothing awake
             if (bs.reach[b] == 0f) {
@@ -72,12 +72,12 @@ internal class Sleeping(private val world: PhysicsWorld) {
         }
         for (b in 0 until n) islandStill[b] = Float.MAX_VALUE
         for (b in 0 until n) {
-            if (!isAwakeDynamic(b)) continue
+            if (!bodies.isAwakeDynamic(b)) continue
             val root = find(b)
             islandStill[root] = min(islandStill[root], bs.stillFor[b])
         }
         for (b in 0 until n) {
-            if (!isAwakeDynamic(b)) continue
+            if (!bodies.isAwakeDynamic(b)) continue
             val root = find(b)
             if (islandStill[root] >= config.timeToSleepSeconds) bs.sleep(b, root)
         }
@@ -98,8 +98,6 @@ internal class Sleeping(private val world: PhysicsWorld) {
         }
     }
 
-    private fun isAwakeDynamic(b: Int): Boolean = bodies.alive[b] && bodies.kind[b] == RigidBodies.DYNAMIC && !bodies.asleep[b]
-
     /**
      * Puts [p] and [q] in one island, if both are awake and dynamic. Touching a kinematic body, a
      * dynamic one isn't joined to it, but kept awake: the kinematic one can move off at any time.
@@ -110,7 +108,7 @@ internal class Sleeping(private val world: PhysicsWorld) {
         val kq = bs.kind[q]
         if (kp == RigidBodies.KINEMATIC) bs.stillFor[q] = 0f
         if (kq == RigidBodies.KINEMATIC) bs.stillFor[p] = 0f
-        if (!isAwakeDynamic(p) || !isAwakeDynamic(q)) return
+        if (!bodies.isAwakeDynamic(p) || !bodies.isAwakeDynamic(q)) return
         val rp = find(p)
         val rq = find(q)
         if (rp != rq) parent[rp] = rq

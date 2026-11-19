@@ -70,7 +70,7 @@ internal class Collisions(private val world: PhysicsWorld) {
             bp.add(bodyId(body), l - MARGIN, t - MARGIN, r + MARGIN, b + MARGIN)
         }
         for (p in 0 until ps.end) {
-            if (!ps.isAlive(p) || !ps.collides(p) || ps.owner[p] >= 0) continue
+            if (!ps.isGrain(p)) continue
             bp.addMoving(particleId(p), ps.x[p], ps.y[p], (ps.x[p] - ps.prevX[p]) * ahead, (ps.y[p] - ps.prevY[p]) * ahead, ps.radius[p] + MARGIN)
         }
         grainCount = 0
