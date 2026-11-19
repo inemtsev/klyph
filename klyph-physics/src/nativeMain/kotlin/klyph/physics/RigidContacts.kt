@@ -97,28 +97,8 @@ internal class RigidContacts(private val world: PhysicsWorld) {
     private var oldNly = FloatArray(64)
     private var oldTwin = IntArray(64)
 
-    // Each pair of bodies looked at closely this substep: its contacts, `pairN` of them from
-    // `pairFirst`, and where the second body was from the first when they were last found by the
-    // narrowphase: across, down and turned. The last substep's pairs, and a table to find one by its
-    // two bodies, as for the contacts. None are kept from one step to the next.
-    private var pairCount = 0
-    private var pairP = IntArray(64)
-    private var pairQ = IntArray(64)
-    private var pairFirst = IntArray(64)
-    private var pairN = IntArray(64)
-    private var pairX = FloatArray(64)
-    private var pairY = FloatArray(64)
-    private var pairTurn = FloatArray(64)
-    private var oldPairCount = 0
-    private var oldPairP = IntArray(64)
-    private var oldPairQ = IntArray(64)
-    private var oldPairFirst = IntArray(64)
-    private var oldPairN = IntArray(64)
-    private var oldPairX = FloatArray(64)
-    private var oldPairY = FloatArray(64)
-    private var oldPairTurn = FloatArray(64)
-    private var pairTable = IntArray(128)
-    private var newStep = true
+    // The pairs of bodies looked at closely, for the next substep: see [PairMemory].
+    private val pairMemory = PairMemory()
 
     // Whether there are joints at all, so that two bodies a joint connects needn't be looked for otherwise.
     private var anyJoints = false
@@ -167,7 +147,7 @@ internal class RigidContacts(private val world: PhysicsWorld) {
 
     /** Files every body with a shape in the [broadphase], each grown by how far it will move in [dt] seconds. */
     internal fun beginStep(dt: Float) {
-        newStep = true
+        pairMemory.forgetAll()
         val bp = broadphase
         bp.clear()
         val bs = bodies
@@ -188,7 +168,6 @@ internal class RigidContacts(private val world: PhysicsWorld) {
     internal fun find() {
         remember()
         count = 0
-        pairCount = 0
         keptCount = 0
         val bp = broadphase
         val pairs = bp.pairs
@@ -282,7 +261,7 @@ internal class RigidContacts(private val world: PhysicsWorld) {
         slipped = oldSlipped.also { oldSlipped = slipped }
         oldCount = count
         tableBuilt = false
-        rememberPairs()
+        pairMemory.nextSubstep()
     }
 
     /**
@@ -303,81 +282,11 @@ internal class RigidContacts(private val world: PhysicsWorld) {
         if (size != table.size) table = IntArray(size) else table.fill(0)
         val mask = size - 1
         for (c in 0 until n) {
-            var slot = hash(oldA[c], oldB[c], oldShapeKey[c], oldFeature[c]) and mask
+            var slot = keyHash(oldA[c], oldB[c], oldShapeKey[c], oldFeature[c]) and mask
             while (table[slot] != 0) slot = (slot + 1) and mask
             table[slot] = c + 1
         }
         tableBuilt = true
-    }
-
-    /** Keeps this substep's pairs for the next to look up, unless a new step begins: then none. */
-    private fun rememberPairs() {
-        val n = if (newStep) 0 else pairCount
-        newStep = false
-        pairP = oldPairP.also { oldPairP = pairP }
-        pairQ = oldPairQ.also { oldPairQ = pairQ }
-        pairFirst = oldPairFirst.also { oldPairFirst = pairFirst }
-        pairN = oldPairN.also { oldPairN = pairN }
-        pairX = oldPairX.also { oldPairX = pairX }
-        pairY = oldPairY.also { oldPairY = pairY }
-        pairTurn = oldPairTurn.also { oldPairTurn = pairTurn }
-        var size = pairTable.size
-        while (size < 2 * n) size *= 2
-        if (size != pairTable.size) pairTable = IntArray(size) else pairTable.fill(0)
-        val mask = size - 1
-        for (k in 0 until n) {
-            var slot = hash(oldPairP[k], oldPairQ[k], 0, 0) and mask
-            while (pairTable[slot] != 0) slot = (slot + 1) and mask
-            pairTable[slot] = k + 1
-        }
-        oldPairCount = n
-    }
-
-    /** The last substep's pair of [p] and [q], or -1. */
-    @Suppress("NOTHING_TO_INLINE")
-    private inline fun recallPair(p: Int, q: Int): Int {
-        if (oldPairCount == 0) return -1
-        val mask = pairTable.size - 1
-        var slot = hash(p, q, 0, 0) and mask
-        while (true) {
-            val k = pairTable[slot] - 1
-            if (k < 0) return -1
-            if (oldPairP[k] == p && oldPairQ[k] == q) return k
-            slot = (slot + 1) and mask
-        }
-    }
-
-    /** Notes that [p] and [q] were looked at, with the contacts from [first] on, and where [q] was from [p] when last found. */
-    @Suppress("NOTHING_TO_INLINE")
-    private inline fun addPair(p: Int, q: Int, first: Int, x: Float, y: Float, turn: Float) {
-        if (pairCount == pairP.size) growPairs()
-        val k = pairCount++
-        pairP[k] = p
-        pairQ[k] = q
-        pairFirst[k] = first
-        pairN[k] = count - first
-        pairX[k] = x
-        pairY[k] = y
-        pairTurn[k] = turn
-    }
-
-    /** Doubles the room for pairs, this substep's and the last's alike, as they're swapped. */
-    private fun growPairs() {
-        val size = pairP.size * 2
-        pairP = pairP.copyOf(size)
-        pairQ = pairQ.copyOf(size)
-        pairFirst = pairFirst.copyOf(size)
-        pairN = pairN.copyOf(size)
-        pairX = pairX.copyOf(size)
-        pairY = pairY.copyOf(size)
-        pairTurn = pairTurn.copyOf(size)
-        oldPairP = oldPairP.copyOf(size)
-        oldPairQ = oldPairQ.copyOf(size)
-        oldPairFirst = oldPairFirst.copyOf(size)
-        oldPairN = oldPairN.copyOf(size)
-        oldPairX = oldPairX.copyOf(size)
-        oldPairY = oldPairY.copyOf(size)
-        oldPairTurn = oldPairTurn.copyOf(size)
     }
 
     /**
@@ -389,8 +298,8 @@ internal class RigidContacts(private val world: PhysicsWorld) {
     @Suppress("NOTHING_TO_INLINE") // a call costs more than the copying: see the performance page
     private inline fun keep(p: Int, q: Int, k: Int) {
         val first = count
-        val oldFirst = oldPairFirst[k]
-        val n = oldPairN[k]
+        val oldFirst = pairMemory.firstContactOf(k)
+        val n = pairMemory.contactsOf(k)
         val bs = bodies
         val friction = Material.mixFriction(bs.friction[p], bs.friction[q])
         val staticFriction = Material.mixFriction(bs.staticFriction[p], bs.staticFriction[q])
@@ -455,7 +364,7 @@ internal class RigidContacts(private val world: PhysicsWorld) {
             val t = oldTwin[o]
             if (t > o) pair(first + (o - oldFirst), first + (t - oldFirst))
         }
-        addPair(p, q, first, oldPairX[k], oldPairY[k], oldPairTurn[k])
+        pairMemory.add(p, q, first, count - first, pairMemory.relXOf(k), pairMemory.relYOf(k), pairMemory.relTurnOf(k))
         keptCount++
     }
 
@@ -465,7 +374,7 @@ internal class RigidContacts(private val world: PhysicsWorld) {
         if (oldCount == 0) return -1
         if (!tableBuilt) buildTable()
         val mask = table.size - 1
-        var slot = hash(p, q, shapes, id) and mask
+        var slot = keyHash(p, q, shapes, id) and mask
         while (true) {
             val k = table[slot] - 1
             if (k < 0) return -1
@@ -473,10 +382,6 @@ internal class RigidContacts(private val world: PhysicsWorld) {
             slot = (slot + 1) and mask
         }
     }
-
-    @Suppress("NOTHING_TO_INLINE")
-    private inline fun hash(p: Int, q: Int, shapes: Int, id: Int): Int =
-        (p * 73_856_093) xor (q * 19_349_663) xor (shapes * 83_492_791) xor (id * -1_640_531_535)
 
     private fun findAgainstSolids() {
         val grid = world.solids ?: return
@@ -565,8 +470,9 @@ internal class RigidContacts(private val world: PhysicsWorld) {
         val relY = -bodies.sin[p] * dqx + bodies.cos[p] * dqy
         val relTurn = bodies.angle[q] - bodies.angle[p]
         if (!speculative && keeping) {
-            val k = recallPair(p, q)
-            if (k >= 0 && abs(relX - oldPairX[k]) < KEEP_MOVE && abs(relY - oldPairY[k]) < KEEP_MOVE && abs(relTurn - oldPairTurn[k]) < KEEP_TURN) {
+            val k = pairMemory.recall(p, q)
+            val memory = pairMemory
+            if (k >= 0 && abs(relX - memory.relXOf(k)) < KEEP_MOVE && abs(relY - memory.relYOf(k)) < KEEP_MOVE && abs(relTurn - memory.relTurnOf(k)) < KEEP_TURN) {
                 keep(p, q, k)
                 return
             }
@@ -620,7 +526,7 @@ internal class RigidContacts(private val world: PhysicsWorld) {
         }
         narrow.margin = MARGIN
         // found speculatively, from where they were, they're looked at again next substep
-        if (!speculative) addPair(p, q, first, relX, relY, relTurn)
+        if (!speculative) pairMemory.add(p, q, first, count - first, relX, relY, relTurn)
     }
 
     // The turns of the two bodies [bodyAgainstBody] looks at, at the start of the substep.
