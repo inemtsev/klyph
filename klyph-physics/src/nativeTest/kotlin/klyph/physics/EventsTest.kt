@@ -73,4 +73,47 @@ class EventsTest {
         assertEquals(8 * TestBodies.TILE - 5f, world.particles.yOf(p), 0.01f)
         assertTrue(world.events.isOnFloor(p))
     }
+
+    @Test
+    fun aSoftBodysTouchesAreOnlyWrittenDownInTheLastPassOfASubstep() {
+        events.beginPass(last = false)
+        assertFalse(events.records(owner = 0))
+        assertEquals(0f, events.touchReach(owner = 0))
+        events.beginPass(last = true)
+        assertTrue(events.records(owner = 0))
+        assertEquals(Events.TOUCH_SLOP, events.touchReach(owner = 0))
+    }
+
+    @Test
+    fun aParticleThatBelongsToNoSoftBodyWritesNothingDown() {
+        events.beginPass(last = true)
+        assertFalse(events.records(owner = -1))
+        assertEquals(0f, events.touchReach(owner = -1))
+    }
+
+    @Test
+    fun outsideAStepTouchesAreWrittenDownSoAModuleDrivenByHandSeesThem() {
+        assertTrue(events.records(owner = 0))
+    }
+
+    @Test
+    fun aTouchSaidTwiceInOneStepBeginsOnceAndSaidAgainTheNextStepBeginsNothing() {
+        events.beginStep()
+        events.touch(TouchKind.SOFT_BODY, 0, TouchKind.SOLIDS, -1)
+        events.touch(TouchKind.SOLIDS, -1, TouchKind.SOFT_BODY, 0)
+        events.endStep()
+        assertEquals(1, events.contactsBegun.size)
+        events.beginStep()
+        events.touch(TouchKind.SOFT_BODY, 0, TouchKind.SOLIDS, -1)
+        events.endStep()
+        assertEquals(0, events.contactsBegun.size)
+        assertEquals(0, events.contactsEnded.size)
+    }
+
+    @Test
+    fun aWorldStepEndsOnTheLastPassSoTheNextStepStartsRecording() {
+        val world = PhysicsWorld(PhysicsConfig(iterations = 3))
+        world.step(TestBodies.STEP)
+        assertTrue(world.events.records(owner = 0))
+    }
 }

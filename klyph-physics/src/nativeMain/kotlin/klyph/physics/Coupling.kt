@@ -142,7 +142,9 @@ internal class Coupling(private val world: PhysicsWorld) {
             if ((ps.x[p] - cx) * (ps.x[p] - cx) + (ps.y[p] - cy) * (ps.y[p] - cy) > near * near) continue
             if (!narrow.collidePoint(ps.x[p], ps.y[p], radius, shape, bx, by, bodies.cos[body], bodies.sin[body], m)) continue
             val depth = -m.separation(0)
-            if (ps.owner[p] >= 0 && depth > -Events.TOUCH_SLOP && world.events.recording) world.events.touch(TouchKind.RIGID_BODY, body, TouchKind.SOFT_BODY, ps.owner[p])
+            if (depth > -Events.TOUCH_SLOP && world.events.records(ps.owner[p])) {
+                world.events.touch(TouchKind.RIGID_BODY, body, TouchKind.SOFT_BODY, ps.owner[p])
+            }
             if (depth <= 0f) continue
             disturb(body, p)
             // the normal points from the particle into the body: the particle goes back along it

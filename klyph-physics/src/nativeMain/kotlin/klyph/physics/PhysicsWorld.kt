@@ -139,7 +139,7 @@ public class PhysicsWorld(
                 hand.solve(h)
                 // Grip just before the last pass, so collisions still have the last word over it.
                 if (pass == config.iterations - 1) particles.applyFriction(rigidBodies)
-                events.recording = pass == config.iterations - 1
+                events.beginPass(last = pass == config.iterations - 1)
                 collisions.solve()
                 coupling.solve()
                 solids?.collide(particles, events, restingMove)

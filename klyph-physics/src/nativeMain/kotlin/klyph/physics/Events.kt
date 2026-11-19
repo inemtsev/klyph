@@ -59,11 +59,27 @@ public class Events internal constructor(private val particles: Particles, priva
         return Joint(broken[index])
     }
 
+    // Whether particles' touches are written down now: only in a substep's last pass, as once a
+    // substep is enough to know, and the solver makes many. True outside a step, so a module driven
+    // by hand records.
+    private var recording = true
+
+    /** Starts a pass of a substep: touches are written down in the [last] one only. */
+    internal fun beginPass(last: Boolean) {
+        recording = last
+    }
+
     /**
-     * Whether particles' touches are written down now: only in a substep's last pass, as once a
-     * substep is enough to know, and the solver makes many.
+     * Whether a touch of the soft body [owner] (a particle's [Particles.owner], negative for none) is
+     * to be written down now. A module asks this before it looks for touches that are not pushes.
      */
-    internal var recording = true
+    internal fun records(owner: Int): Boolean = owner >= 0 && recording
+
+    /**
+     * How much further than its radius a particle of [owner] looks for what it touches: [TOUCH_SLOP]
+     * where [records], 0 elsewhere.
+     */
+    internal fun touchReach(owner: Int): Float = if (records(owner)) TOUCH_SLOP else 0f
 
     // what touches, and what's in each sensor, this step and the step before
     private var touching = TouchPairs()
