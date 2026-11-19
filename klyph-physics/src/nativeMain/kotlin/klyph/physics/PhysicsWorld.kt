@@ -113,45 +113,70 @@ public class PhysicsWorld(
         require(dt > 0f && dt.isFinite()) { "Step $dt is not a finite time more than 0." }
         val h = dt / config.substeps
         substepLength = h
-        val keep = exp(-config.damping * h)
-        val restingMove = config.bounceSpeed * h
-        val gravity = config.gravity
+        beginStep(dt)
+        repeat(config.substeps) { substep(h) }
+        finishStep(dt)
+    }
+
+    // A step is these three, in this order, and nothing else: the order is the engine's contract, so
+    // it is written here and nowhere else. They are plain calls in the inner loops, not hooks.
+
+    /** Starts a step: every module that carries something from the last one forgets it, or takes it in. */
+    private fun beginStep(dt: Float) {
         events.beginStep()
         hand.beginStep()
         rigidBodies.beginStep(dt)
         collisions.beginStep(dt)
         coupling.beginStep(dt)
         rigidContacts.beginStep(dt)
-        repeat(config.substeps) {
-            integrate(h, keep)
-            rigidBodies.integrate(h, keep, gravity.x, gravity.y, config.maxStep)
-            bullets.sweepParticles(particles)
-            bullets.sweepBodies()
-            rigidContacts.find()
-            constraints.beginSubstep()
-            attachments.beginSubstep()
-            joints.beginSubstep(h)
-            hand.beginSubstep()
-            repeat(config.iterations) { pass ->
-                constraints.solve(h)
-                attachments.solve(h)
-                joints.solve(h)
-                hand.solve(h)
-                // Grip just before the last pass, so collisions still have the last word over it.
-                if (pass == config.iterations - 1) particles.applyFriction(rigidBodies)
-                events.beginPass(last = pass == config.iterations - 1)
-                collisions.solve()
-                coupling.solve()
-                solids?.collide(particles, events, restingMove)
-                rigidContacts.solve()
-            }
-            rigidContacts.recordTouches(events)
-            // a body woken from here on, by a joint breaking, waits for the next substep to move
-            rigidBodies.inSubstep = false
-            joints.endSubstep(h)
-            rigidBodies.updateVelocities(h)
-            rigidContacts.solveVelocities(h, config.bounceSpeed, config.iterations)
-        }
+    }
+
+    /**
+     * One substep of length [h]: things move, then the solver makes [PhysicsConfig.iterations] passes
+     * over what holds them together and what they hit, then velocities are taken from where they went.
+     */
+    private fun substep(h: Float) {
+        val keep = exp(-config.damping * h)
+        val gravity = config.gravity
+        integrate(h, keep)
+        rigidBodies.integrate(h, keep, gravity.x, gravity.y, config.maxStep)
+        bullets.sweepParticles(particles)
+        bullets.sweepBodies()
+        rigidContacts.find()
+        constraints.beginSubstep()
+        attachments.beginSubstep()
+        joints.beginSubstep(h)
+        hand.beginSubstep()
+        repeat(config.iterations) { pass -> solvePass(h, last = pass == config.iterations - 1) }
+        rigidContacts.recordTouches(events)
+        // a body woken from here on, by a joint breaking, waits for the next substep to move
+        rigidBodies.inSubstep = false
+        joints.endSubstep(h)
+        rigidBodies.updateVelocities(h)
+        rigidContacts.solveVelocities(h, config.bounceSpeed, config.iterations)
+    }
+
+    /**
+     * One pass of the solver: what holds things together first, then what they hit, so collisions have
+     * the last word. Touches are written down, and the grip of what a particle rests on applied, in the
+     * [last] pass only.
+     */
+    private fun solvePass(h: Float, last: Boolean) {
+        constraints.solve(h)
+        attachments.solve(h)
+        joints.solve(h)
+        hand.solve(h)
+        // Grip just before the last pass's collisions, so they still have the last word over it.
+        if (last) particles.applyFriction(rigidBodies)
+        events.beginPass(last)
+        collisions.solve()
+        coupling.solve()
+        solids?.collide(particles, events, config.bounceSpeed * h)
+        rigidContacts.solve()
+    }
+
+    /** Ends a step: constraints that were pulled too far tear, still bodies fall asleep, and the events are settled. */
+    private fun finishStep(dt: Float) {
         constraints.tear()
         sleeping.update(dt)
         events.endStep()
