@@ -273,7 +273,7 @@ public class PhysicsWorld(
         toY: Float,
         hit: RayHit,
         targets: QueryTargets = QueryTargets.EVERYTHING,
-    ): Boolean = queries.raycast(fromX, fromY, toX, toY, hit, targets.bits)
+    ): Boolean = queries.raycast(fromX, fromY, toX, toY, hit, targets)
 
     /**
      * Finds everything of [targets] that the point ([x], [y]) is inside, writes it into [found] and
@@ -283,7 +283,7 @@ public class PhysicsWorld(
      * @sample samples.physics.QuerySamples.queryPoint
      */
     public fun queryPoint(x: Float, y: Float, found: Overlaps, targets: QueryTargets = QueryTargets.EVERYTHING): Int =
-        queries.queryPoint(x, y, found, targets.bits)
+        queries.queryPoint(x, y, found, targets)
 
     /**
      * Finds everything of [targets] that reaches into the box from ([left], [top]) to ([right],
@@ -299,7 +299,7 @@ public class PhysicsWorld(
         bottom: Float,
         found: Overlaps,
         targets: QueryTargets = QueryTargets.EVERYTHING,
-    ): Int = queries.queryBox(left, top, right, bottom, found, targets.bits)
+    ): Int = queries.queryBox(left, top, right, bottom, found, targets)
 
     /**
      * Holds [particle] to [body] at the point where the particle is now, as softly as [compliance],

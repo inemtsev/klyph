@@ -22,23 +22,28 @@ public value class QueryTargets internal constructor(internal val bits: Int) {
     public operator fun contains(other: QueryTargets): Boolean = bits and other.bits == other.bits
 
     override fun toString(): String {
-        val names = listOf("RIGID_BODIES" to 1, "SOFT_BODIES" to 2, "SOLIDS" to 4).filter { bits and it.second != 0 }.map { it.first }
+        val all = listOf("RIGID_BODIES" to RIGID, "SOFT_BODIES" to SOFT, "SOLIDS" to SOLID)
+        val names = all.filter { bits and it.second != 0 }.map { it.first }
         return names.joinToString(prefix = "QueryTargets(", postfix = ")")
     }
 
     /** Holds the things a query can look at. */
     public companion object {
         /** The rigid bodies, by their shapes. Sensors are never found. */
-        public val RIGID_BODIES: QueryTargets = QueryTargets(1)
+        public val RIGID_BODIES: QueryTargets = QueryTargets(RIGID)
 
         /** The soft bodies, by their outlines. */
-        public val SOFT_BODIES: QueryTargets = QueryTargets(2)
+        public val SOFT_BODIES: QueryTargets = QueryTargets(SOFT)
 
         /** The solids: tiles and moving solids. */
-        public val SOLIDS: QueryTargets = QueryTargets(4)
+        public val SOLIDS: QueryTargets = QueryTargets(SOLID)
 
         /** Everything: rigid bodies, soft bodies and solids. */
-        public val EVERYTHING: QueryTargets = QueryTargets(7)
+        public val EVERYTHING: QueryTargets = QueryTargets(RIGID or SOFT or SOLID)
+
+        private const val RIGID = 1
+        private const val SOFT = 2
+        private const val SOLID = 4
     }
 }
 
@@ -269,13 +274,13 @@ internal class Queries(private val world: PhysicsWorld) {
     private var bestNx = 0f
     private var bestNy = 0f
 
-    fun raycast(fromX: Float, fromY: Float, toX: Float, toY: Float, hit: RayHit, what: Int): Boolean {
+    fun raycast(fromX: Float, fromY: Float, toX: Float, toY: Float, hit: RayHit, targets: QueryTargets): Boolean {
         hit.clear()
         val dx = toX - fromX
         val dy = toY - fromY
-        if (what and 1 != 0) rayRigid(fromX, fromY, dx, dy, hit)
-        if (what and 2 != 0) raySoft(fromX, fromY, dx, dy, hit)
-        if (what and 4 != 0) raySolids(fromX, fromY, dx, dy, hit)
+        if (QueryTargets.RIGID_BODIES in targets) rayRigid(fromX, fromY, dx, dy, hit)
+        if (QueryTargets.SOFT_BODIES in targets) raySoft(fromX, fromY, dx, dy, hit)
+        if (QueryTargets.SOLIDS in targets) raySolids(fromX, fromY, dx, dy, hit)
         if (hit.hit) {
             hit.x = fromX + dx * hit.fraction
             hit.y = fromY + dy * hit.fraction
@@ -522,9 +527,9 @@ internal class Queries(private val world: PhysicsWorld) {
         hit.normalY = sign * ny / length
     }
 
-    fun queryPoint(x: Float, y: Float, found: Overlaps, what: Int): Int {
+    fun queryPoint(x: Float, y: Float, found: Overlaps, targets: QueryTargets): Int {
         found.clear()
-        if (what and 1 != 0) {
+        if (QueryTargets.RIGID_BODIES in targets) {
             val bs = world.rigidBodies
             for (b in 0 until bs.end) {
                 if (!bs.alive[b] || bs.shapes[b] == null) continue
@@ -535,7 +540,7 @@ internal class Queries(private val world: PhysicsWorld) {
                 if (bs.contains(b, x, y)) found.addRigidBody(b)
             }
         }
-        if (what and 2 != 0) {
+        if (QueryTargets.SOFT_BODIES in targets) {
             val sb = world.softBodies
             for (b in 0 until sb.end) {
                 if (!sb.isAlive(b) || sb.ringCount(b) < 3) continue
@@ -543,7 +548,7 @@ internal class Queries(private val world: PhysicsWorld) {
                 if (Outline.contains(sb.ring(b), x, y)) found.addSoftBody(b)
             }
         }
-        if (what and 4 != 0) {
+        if (QueryTargets.SOLIDS in targets) {
             val grid = world.solids
             if (grid != null) {
                 val tile = grid.tileSize
@@ -555,10 +560,10 @@ internal class Queries(private val world: PhysicsWorld) {
         return found.count
     }
 
-    fun queryBox(left: Float, top: Float, right: Float, bottom: Float, found: Overlaps, what: Int): Int {
+    fun queryBox(left: Float, top: Float, right: Float, bottom: Float, found: Overlaps, targets: QueryTargets): Int {
         found.clear()
         if (left > right || top > bottom) return 0
-        if (what and 1 != 0) {
+        if (QueryTargets.RIGID_BODIES in targets) {
             val bs = world.rigidBodies
             for (b in 0 until bs.end) {
                 if (!bs.alive[b]) continue
@@ -582,7 +587,7 @@ internal class Queries(private val world: PhysicsWorld) {
                 }
             }
         }
-        if (what and 2 != 0) {
+        if (QueryTargets.SOFT_BODIES in targets) {
             val sb = world.softBodies
             for (b in 0 until sb.end) {
                 if (!sb.isAlive(b) || sb.ringCount(b) < 3) continue
@@ -590,7 +595,7 @@ internal class Queries(private val world: PhysicsWorld) {
                 if (ringOverlapsBox(sb.ring(b), left, top, right, bottom)) found.addSoftBody(b)
             }
         }
-        if (what and 4 != 0) {
+        if (QueryTargets.SOLIDS in targets) {
             val grid = world.solids
             if (grid != null) {
                 val tile = grid.tileSize
