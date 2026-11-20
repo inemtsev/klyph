@@ -17,6 +17,7 @@ import klyph.entity.ComponentType
 import klyph.entity.Entity
 import klyph.entity.Interpolated
 import klyph.entity.Transform
+import klyph.entity.Velocity
 import klyph.input.axis
 import klyph.input.isJustPressed
 import klyph.platform.Color
@@ -133,6 +134,41 @@ class Platformers {
             val body = app.world.get(hero, KinematicBody)
             // Down while standing on a ledge: fall through it.
             if (body.isOnFloor && app.input.keyboard.isJustPressed(Scancode.S)) body.dropThrough()
+        }
+        // end snippet
+    }
+
+    fun App.movingPlatform() {
+        // snippet: moving-platform
+        // A steel ledge that shuttles across the gap: a Velocity on the solid is all it takes.
+        val shuttle = spawnSolid(left = 900f, top = 300f, right = 1000f, bottom = 312f, passable = Passable.FROM_BELOW)
+        commands.add(shuttle, Velocity, Velocity(dx = 80f))
+        // Drawn between its last two steps, like the hero who rides it.
+        commands.add(shuttle, Interpolated, Interpolated)
+        addSystem(Phase.FIXED_UPDATE) { app ->
+            val x = app.world.get(shuttle, Transform).x
+            val velocity = app.world.get(shuttle, Velocity)
+            // Turn around at the ends of the track.
+            if (x > 1100f) velocity.dx = -80f
+            if (x < 900f) velocity.dx = 80f
+        }
+        // end snippet
+    }
+
+    fun App.platformJump(hero: Entity) {
+        // snippet: platform-jump
+        var platformSpeed = 0f
+        addSystem(Phase.FIXED_UPDATE) { app ->
+            val body = app.world.get(hero, KinematicBody)
+            val keyboard = app.input.keyboard
+            if (body.isOnFloor) platformSpeed = 0f
+            if (body.isOnFloor && keyboard.isJustPressed(Scancode.SPACE)) {
+                // Leave with the platform's speed as well as your own.
+                platformSpeed = body.floorVelocityX
+                body.dy = -700f + body.floorVelocityY
+            }
+            body.dx = keyboard.axis(Scancode.A, Scancode.D) * 320f + platformSpeed
+            body.dy = minOf(body.dy + 1800f * app.time.deltaSeconds, 900f)
         }
         // end snippet
     }

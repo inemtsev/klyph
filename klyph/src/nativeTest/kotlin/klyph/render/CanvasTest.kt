@@ -221,7 +221,8 @@ class CanvasTest {
         val repeating = Texture(16, 16, address = SamplerAddress.REPEAT)
         val address = assertFailsWith<IllegalArgumentException> { canvas.drawTiled(clamped, x = 0f, y = 0f, width = 32f, height = 32f) }
         assertEquals(
-            "Tiled drawing needs a texture created with SamplerAddress.REPEAT, but Texture(16x16) uses CLAMP.",
+            "Tiled drawing needs a texture created with SamplerAddress.REPEAT, but Texture(16x16) uses CLAMP; " +
+                "load it with assets.region(path, address = SamplerAddress.REPEAT).",
             address.message,
         )
         val part = repeating.region(x = 0, y = 0, width = 8, height = 16)

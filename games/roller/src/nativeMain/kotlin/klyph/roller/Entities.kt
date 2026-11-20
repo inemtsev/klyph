@@ -168,6 +168,26 @@ private fun Commands.spawnLedge(art: Art, ledge: Block) {
     }
 }
 
+/**
+ * Spawns [shuttle]: a girder that is its own solid and moves by its `Velocity`, so the engine
+ * carries the hero standing on it. It is drawn on the solid itself and blended between its steps,
+ * like the hero, so he does not jitter against it.
+ */
+private fun Commands.spawnShuttle(art: Art, shuttle: Shuttle) {
+    val block = shuttle.block
+    val width = block.right - block.left
+    spawn {
+        add(Transform, Transform((block.left + block.right) / 2, block.top + Tuning.LEDGE_HEIGHT / 2))
+        add(Sprite, Sprite.tiled(art.girder, width, Tuning.LEDGE_HEIGHT, scale = Tuning.PIXEL).apply { layer = Tuning.LAYER_BUILDINGS })
+        add(Collider, Collider(Shape.Box(width, Tuning.LEDGE_HEIGHT), layers = Layers.LEVEL, mask = CollisionLayers.NONE))
+        add(Solid, Solid(Passable.FROM_BELOW))
+        add(Velocity, Velocity(dx = shuttle.speed))
+        add(Block, block)
+        add(Shuttle, shuttle)
+        add(Interpolated, Interpolated)
+    }
+}
+
 /** Spawns a decoration standing with its bottom on [floor], centered on [x]. */
 private fun Commands.spawnProp(region: TextureRegion, x: Float, floor: Float, width: Float, height: Float) {
     spawn {
@@ -240,9 +260,10 @@ fun Commands.spawnPlayer(art: Art): Entity = spawn {
     add(Interpolated, Interpolated)
 }
 
-/** Spawns every ring, heart, blob and helicopter of the level. */
+/** Spawns every ring, heart, blob, helicopter and shuttle of the level. */
 fun Commands.spawnPickupsAndEnemies(art: Art, random: Random) {
     val level = RooftopRun
+    for (shuttle in level.shuttles) spawnShuttle(art, shuttle)
     for (index in level.rings.indices) {
         val ring = level.rings[index]
         spawn {

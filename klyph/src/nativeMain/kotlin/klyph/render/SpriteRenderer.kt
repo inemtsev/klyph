@@ -103,6 +103,9 @@ internal class SpriteRenderer(
     /** The copies of the [ParallaxLayer] sprites of the frame being extracted, planned before any record is written. */
     private val parallax = ParallaxPlan()
 
+    /** The cells in view of the `TileLayer`s of the frame being extracted, planned before any record is written. */
+    private val tiles = TilePlan()
+
     /** Unsorted records of a frame whose guessed order was wrong; sized on first use. */
     private var scratch = FloatArray(0)
 
@@ -175,12 +178,18 @@ internal class SpriteRenderer(
      * before those of the ordinary sprites. Grows [capacity] first, to hold every sprite and copy,
      * so none is skipped unless there are more than [MAX_CAPACITY].
      *
+     * Each visible `TileLayer` on an entity with a [Transform] gets one record for each non-empty
+     * cell that touches [camera]'s view, written after the parallax copies and before the ordinary
+     * sprites; the cells sort in the layer's sprite layer with its tile set's texture, so a layer
+     * is one run when nothing else of its texture shares that sprite layer.
+     *
      * @throws IllegalArgumentException if [fixedStepAlpha] is below 0 or above 1.
      * @throws IllegalStateException if a sprite with a tile size has a texture that does not repeat
      *   or a region that does not cover its whole texture, or a tile size is negative, or if a
      *   sprite's origin is infinite or not a number, or if a [ParallaxLayer] has a parent, a factor
      *   or repeat that is negative, infinite or not a number, or an anchor that is infinite or not a
-     *   number. The message names the entity.
+     *   number, or if a `TileLayer` has a parent, a rotation or a scale that is not positive and
+     *   finite. The message names the entity.
      */
     public fun extract(world: World, camera: Camera, fixedStepAlpha: Float = 1f): Int =
         extract(world, camera, fixedStepAlpha, null, null)
@@ -190,6 +199,9 @@ internal class SpriteRenderer(
      * of [first] and then [second] when they are not `null`, all sorted together by space, layer
      * and texture, and returns how many were written in total.
      */
+    // One branch per kind of planned record keeps the walks below as fast as before: folding the parallax copies and
+    // the tile cells into one call behind one flag made the 100000-sprite extract five times slower.
+    @Suppress("CyclomaticComplexMethod")
     internal fun extract(world: World, camera: Camera, fixedStepAlpha: Float, first: QuadBuffer?, second: QuadBuffer?): Int {
         require(fixedStepAlpha >= 0f && fixedStepAlpha <= 1f) { "Fixed step alpha $fixedStepAlpha is not between 0 and 1." }
         prepare(world, camera, fixedStepAlpha, first, second)
@@ -209,6 +221,7 @@ internal class SpriteRenderer(
         // nothing to do still made the optimizer slow the walks below by about 40% at 100000 sprites.
         val guessHeld = if (expectSorted) {
             if (parallax.layerCount > 0) count = appendLayers(world, records, count, limit)
+            if (tiles.layerCount > 0) count = appendTiles(records, count, limit)
             forEachSprite(world) { local, hierarchy, previous, sprite ->
                 if (count < limit) {
                     order.addWithoutPosition(sprite.layer, sprite.region.texture)
@@ -224,6 +237,7 @@ internal class SpriteRenderer(
             order.isSorted
         } else {
             if (parallax.layerCount > 0) count = placeLayers(world, records, count, limit)
+            if (tiles.layerCount > 0) count = placeTiles(records, count, limit)
             forEachSprite(world) { local, hierarchy, previous, sprite ->
                 if (count < limit) {
                     val position = order.place(sprite.layer, sprite.region.texture)
@@ -258,7 +272,8 @@ internal class SpriteRenderer(
      */
     private fun prepare(world: World, camera: Camera, alpha: Float, first: QuadBuffer?, second: QuadBuffer?) {
         parallax.update(world, camera, alpha)
-        val wanted = world.count(Sprite).toLong() + parallax.extraRecords + (first?.count ?: 0) + (second?.count ?: 0)
+        tiles.update(world, camera, alpha)
+        val wanted = world.count(Sprite).toLong() + parallax.extraRecords + tiles.cellsInView + (first?.count ?: 0) + (second?.count ?: 0)
         ensureCapacity(wanted.coerceAtMost(MAX_CAPACITY.toLong()).toInt())
     }
 
@@ -337,6 +352,63 @@ internal class SpriteRenderer(
         return next
     }
 
+    /** Writes the `TileLayer` cells in view as [appendLayers] writes the parallax copies, and returns the new count. */
+    private fun appendTiles(records: MappedFloats, count: Int, limit: Int): Int =
+        writeTiles(records, count, limit) { group, index ->
+            order.addGroupWithoutPosition(group)
+            index
+        }
+
+    /** Writes the `TileLayer` cells in view as [placeLayers] writes the parallax copies, and returns the new count. */
+    private fun placeTiles(records: MappedFloats, count: Int, limit: Int): Int =
+        writeTiles(records, count, limit) { group, _ -> order.placeGroup(group) }
+
+    /**
+     * Writes the records of the `TileLayer` cells in view at the positions [positionOf] gives, from
+     * [count] up to [limit] records in all, and returns the new count. [positionOf] adds each cell
+     * to the order with its group and returns where its record goes, given the next index in
+     * storage order; a position past [limit] is skipped, as only a wrong guess makes one.
+     */
+    private inline fun writeTiles(records: MappedFloats, count: Int, limit: Int, positionOf: (group: Int, index: Int) -> Int): Int {
+        val plan = tiles
+        var written = count
+        for (slot in 0 until plan.layerCount) {
+            if (written >= limit) break
+            val layer = plan.layerOf(slot)
+            val group = order.groupFor(layer.layer, layer.tileSet.sheet.texture)
+            plan.begin(slot)
+            while (written < limit && plan.next()) {
+                val position = positionOf(group, written)
+                if (position < limit) {
+                    copyRecord(plan.template, 0, position * SPRITE_RECORD_FLOATS) { index, value -> records.set(index, value) }
+                }
+                written++
+            }
+        }
+        return written
+    }
+
+    /**
+     * Adds the `TileLayer` cells in view to the order with positions and copies their records into
+     * [scratch] from record [index] on, stopping at [count] records in all. Returns the next index.
+     */
+    private fun scratchTiles(scratch: FloatArray, index: Int, count: Int): Int {
+        val plan = tiles
+        var next = index
+        for (slot in 0 until plan.layerCount) {
+            if (next >= count) break
+            val layer = plan.layerOf(slot)
+            val group = order.groupFor(layer.layer, layer.tileSet.sheet.texture)
+            plan.begin(slot)
+            while (next < count && plan.next()) {
+                order.addGroup(group)
+                plan.template.copyInto(scratch, next * SPRITE_RECORD_FLOATS)
+                next++
+            }
+        }
+        return next
+    }
+
     /**
      * Adds the quads of [quads] to the order as a frame expected to be sorted and writes them at
      * the next positions of [records], from [count] up to [limit] records in all. Returns the new
@@ -392,6 +464,7 @@ internal class SpriteRenderer(
         order.begin()
         var index = 0
         if (parallax.layerCount > 0) index = scratchLayers(world, scratch, index, count)
+        if (tiles.layerCount > 0) index = scratchTiles(scratch, index, count)
         forEachSprite(world) { local, hierarchy, previous, sprite ->
             if (index < count) {
                 order.add(sprite.layer, sprite.region.texture)

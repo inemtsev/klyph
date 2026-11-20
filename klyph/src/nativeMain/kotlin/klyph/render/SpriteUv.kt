@@ -58,7 +58,7 @@ internal fun Sprite.checkTiling(world: World) {
     val texture = region.texture
     check(texture.address == SamplerAddress.REPEAT) {
         "${ownerIn(world)} has a Sprite with a tile size, which needs a texture created with SamplerAddress.REPEAT, " +
-            "but $texture uses ${texture.address}."
+            "but $texture uses ${texture.address}; load it with assets.region(path, address = SamplerAddress.REPEAT)."
     }
     check(region.isWholeTexture) {
         "${ownerIn(world)} has a Sprite with a tile size, which needs a region that covers its whole texture, " +

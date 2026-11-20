@@ -349,6 +349,56 @@ public fun Image.draw(
 }
 
 /**
+ * Copies [image], or the rectangle of it [sourceWidth] pixels wide and [sourceHeight] pixels tall
+ * whose top-left corner is at column [sourceX] and row [sourceY], into this image with that corner
+ * at column [x] and row [y]. Texels are written as given, alpha included and nothing blended, so a
+ * transparent or half-transparent pixel replaces the one under it; [draw] is the call that blends.
+ *
+ * Unlike [draw], nothing is clipped: both rectangles must lie inside their images. Without a source
+ * rectangle the whole of [image] is copied; [sourceWidth] and [sourceHeight] default to the rest of
+ * [image] right of and below the source corner. [image] is never changed, and may be this image,
+ * which is then read as it was before the call. A [sourceWidth] or [sourceHeight] of 0 copies
+ * nothing. Pass [sourceX], [sourceY], [sourceWidth] and [sourceHeight] by name; [x] and [y] are a
+ * conventional pair.
+ *
+ * @throws IllegalArgumentException if [sourceX], [sourceY], [sourceWidth] or [sourceHeight] is
+ *   negative, if the source rectangle runs past the right or bottom edge of [image], or if the
+ *   rectangle at [x] and [y] does not lie inside this image.
+ *
+ * @sample samples.platform.Images.copyFrom
+ */
+@KlyphPlatformApi
+public fun Image.copyFrom(
+    image: Image,
+    x: Int,
+    y: Int,
+    sourceX: Int = 0,
+    sourceY: Int = 0,
+    sourceWidth: Int = image.width - sourceX,
+    sourceHeight: Int = image.height - sourceY,
+) {
+    require(sourceX >= 0 && sourceY >= 0) { "Source corner ($sourceX, $sourceY) is negative." }
+    require(sourceWidth >= 0 && sourceHeight >= 0) { "Source size ${sourceWidth}x$sourceHeight is negative." }
+    require(sourceX.toLong() + sourceWidth <= image.width && sourceY.toLong() + sourceHeight <= image.height) {
+        "Source rectangle of ${sourceWidth}x$sourceHeight at ($sourceX, $sourceY) runs past the image size ${image.width}x${image.height}."
+    }
+    require(x >= 0 && y >= 0 && x.toLong() + sourceWidth <= width && y.toLong() + sourceHeight <= height) {
+        "Destination rectangle of ${sourceWidth}x$sourceHeight at ($x, $y) runs past the image size ${width}x$height."
+    }
+    if (sourceWidth == 0 || sourceHeight == 0) return
+    // An image copied into itself is read from a copy of the rectangle, so rows written early are not read again.
+    val from = if (image === this) copyOfRectangle(sourceX, sourceY, sourceWidth, sourceHeight) else image
+    val fromX = if (image === this) 0 else sourceX
+    val fromY = if (image === this) 0 else sourceY
+    val rowBytes = sourceWidth * BYTES_PER_PIXEL
+    for (row in 0 until sourceHeight) {
+        val start = ((fromY + row) * from.width + fromX) * BYTES_PER_PIXEL
+        val destination = ((y + row) * width + x) * BYTES_PER_PIXEL
+        from.pixels.copyInto(pixels, destinationOffset = destination, startIndex = start, endIndex = start + rowBytes)
+    }
+}
+
+/**
  * Paints a disc of [radius] pixels centered on ([centerX], [centerY]) in [color], over what the
  * image already holds.
  *

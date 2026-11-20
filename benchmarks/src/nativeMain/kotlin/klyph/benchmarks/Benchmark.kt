@@ -36,6 +36,11 @@ internal class BenchmarkSettings(
      */
     val musicPath: String?,
     /**
+     * `KLYPH_MOVING`, from 0 to 1: the collisions benchmark adds a level of solids with a body on
+     * each and moves this share of the solids; `null` leaves the level out.
+     */
+    val movingShare: Float?,
+    /**
      * The app configuration every benchmark runs with: a window titled after the benchmark,
      * immediate presentation and the `KLYPH_CELL` grid cell size (default 64) as the base, with
      * every setting `AppConfig.fromEnvironment` reads (`KLYPH_FRAMES`, `KLYPH_SECONDS`,
@@ -58,7 +63,7 @@ internal class BenchmarkSettings(
 
     override fun toString(): String =
         "BenchmarkSettings(spriteCount=$spriteCount, childCount=$childCount, textureCount=$textureCount, interpolate=$interpolate, " +
-            "musicPath=$musicPath, config=$config)"
+            "musicPath=$musicPath, movingShare=$movingShare, config=$config)"
 }
 
 /**

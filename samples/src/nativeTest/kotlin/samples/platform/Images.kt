@@ -2,6 +2,8 @@ package samples.platform
 
 import klyph.platform.Color
 import klyph.platform.Image
+import klyph.platform.KlyphPlatformApi
+import klyph.platform.copyFrom
 import klyph.platform.draw
 import klyph.platform.drawLine
 import klyph.platform.fill
@@ -53,6 +55,21 @@ class Images {
         image.fillRect(x = 6, y = 6, width = 10, height = 10, color = Color.RED)
         assertPrints(image[7, 7], "Color(#ff0000ff)")
         assertFailsWith<IllegalArgumentException> { image.fillRect(x = 0, y = 0, width = -1, height = 1, color = Color.RED) }
+    }
+
+    @Sample
+    @OptIn(KlyphPlatformApi::class) // The engine copies images into its texture atlas this way; a game draws them.
+    fun copyFrom() {
+        val stamp = Image(2, 2)
+        stamp.fill(Color.RED.withAlpha(0.5f))
+        val sheet = Image(4, 4)
+        sheet.fill(Color.WHITE)
+        sheet.copyFrom(stamp, x = 1, y = 1)
+        // Every texel is written as it is, so the half-transparent red replaces the white instead of blending with it.
+        assertPrints(sheet[1, 1], "Color(#ff000080)")
+        assertPrints(sheet[0, 0], "Color(#ffffffff)")
+        // Nothing is clipped: a rectangle that does not fit is rejected.
+        assertFailsWith<IllegalArgumentException> { sheet.copyFrom(stamp, x = 3, y = 3) }
     }
 
     @Sample

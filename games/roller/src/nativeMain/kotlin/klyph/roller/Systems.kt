@@ -119,7 +119,9 @@ fun Run.movePlayer(app: App) {
             hero.jumpBuffer = if (jump) Tuning.JUMP_BUFFER_SECONDS else hero.jumpBuffer - dt
             hero.coyote = if (isGrounded) Tuning.COYOTE_SECONDS else hero.coyote - dt
             if (hero.jumpBuffer > 0f && hero.coyote > 0f) {
-                body.dy = -Tuning.JUMP_SPEED
+                // Off a shuttle, he keeps its speed as well as his own.
+                body.dx += body.floorVelocityX
+                body.dy = -Tuning.JUMP_SPEED + body.floorVelocityY
                 hero.coyote = 0f
                 hero.jumpBuffer = 0f
                 app.audio.play(game.sounds.jump, volume = 0.6f)
@@ -252,6 +254,15 @@ fun moveEnemies(app: App) {
         } else {
             transform.y = patrol.y + Tuning.HELI_BOB * sin(enemy.phase * Tuning.HELI_BOB_RATE)
         }
+    }
+}
+
+/** Turns every shuttle around at the ends of its track; the engine moves it by its [Velocity]. */
+fun moveShuttles(app: App) {
+    app.world.forEach(Shuttle, Transform, Velocity) { _, shuttle, transform, velocity ->
+        val start = (shuttle.block.left + shuttle.block.right) / 2
+        if (transform.x >= start + shuttle.travel) velocity.dx = -shuttle.speed
+        if (transform.x <= start) velocity.dx = shuttle.speed
     }
 }
 

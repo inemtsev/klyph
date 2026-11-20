@@ -25,11 +25,13 @@ the same list.
    queries, with gravity, coyote time and a jump buffer written as game code.
 8. <a href="guide/scrolling.html">Scrolling worlds</a>: a camera that follows what the player sees and
    shakes, a sky and parallax layers, repeating textures, sprite origins and the scene clock.
-9. <a href="guide/text-canvas-and-overlay.html">Text, canvas and overlay</a>: fonts, the `Text` component,
-   drawing on `app.canvas` and the debug overlay.
-10. <a href="guide/shipping.html">Shipping</a>: the distribution zip, SDL3 at runtime, fullscreen, the cursor
+9. <a href="guide/tilemaps.html">Tile maps</a>: levels painted in the Tiled editor, drawn as tile
+   layers, with solids from the tiles marked solid and tiles changed while the game runs.
+10. <a href="guide/text-canvas-and-overlay.html">Text, canvas and overlay</a>: fonts, the `Text` component,
+    drawing on `app.canvas` and the debug overlay.
+11. <a href="guide/shipping.html">Shipping</a>: the distribution zip, SDL3 at runtime, fullscreen, the cursor
     and screenshots on CI.
-11. <a href="guide/performance.html">Performance</a>: what each engine stage costs and how to keep a
+12. <a href="guide/performance.html">Performance</a>: what each engine stage costs and how to keep a
     frame cheap.
 
 ## API reference

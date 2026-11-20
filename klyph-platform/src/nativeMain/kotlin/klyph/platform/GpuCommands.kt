@@ -116,9 +116,17 @@ public fun CopyPass.uploadToBuffer(
 }
 
 /**
- * Copies tightly packed texels for a whole [width] by [height] texture from [source] at
- * [sourceOffset] into [destination].
+ * Copies tightly packed texels for a [width] by [height] rectangle from [source] at
+ * [sourceOffset] into [destination], with the rectangle's top-left corner at texel [x], [y] of
+ * [destination]. With [x] and [y] at 0 and the texture's own size it fills the whole texture.
+ * The rectangle must lie inside [destination]; SDL does not check it. Pass the `Int` parameters
+ * after the first pair by name.
+ *
+ * @throws IllegalArgumentException if [width] or [height] is not positive, or [sourceOffset], [x]
+ *   or [y] is negative.
  */
+// The size and the corner are two conventional pairs, which API_STYLE section 3 lets a function take beyond five parameters.
+@Suppress("LongParameterList")
 @KlyphPlatformApi
 public fun CopyPass.uploadToTexture(
     source: TransferBuffer,
@@ -126,7 +134,13 @@ public fun CopyPass.uploadToTexture(
     width: Int,
     height: Int,
     sourceOffset: Int = 0,
+    x: Int = 0,
+    y: Int = 0,
 ): Unit = memScoped {
+    require(width > 0) { "Upload width $width is not positive." }
+    require(height > 0) { "Upload height $height is not positive." }
+    require(sourceOffset >= 0) { "Upload source offset $sourceOffset is negative." }
+    require(x >= 0 && y >= 0) { "Upload corner ($x, $y) is negative." }
     val transfer = alloc<SDL_GPUTextureTransferInfo>().zeroed()
     transfer.transfer_buffer = source.handle
     transfer.offset = sourceOffset.toUInt()
@@ -134,6 +148,8 @@ public fun CopyPass.uploadToTexture(
     transfer.rows_per_layer = height.toUInt()
     val region = alloc<SDL_GPUTextureRegion>().zeroed()
     region.texture = destination.handle
+    region.x = x.toUInt()
+    region.y = y.toUInt()
     region.w = width.toUInt()
     region.h = height.toUInt()
     region.d = 1u

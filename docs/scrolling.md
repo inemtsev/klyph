@@ -316,4 +316,4 @@ reads the same value, `FIXED_UPDATE` included, so two steps of one frame see the
   [SamplerAddress](../klyph-platform/klyph.platform/-sampler-address/index.html)
 - [Scene](../klyph/klyph.scene/-scene/index.html) and
   [elapsedSeconds](../klyph/klyph.scene/elapsed-seconds.html)
-- Next: [Text, canvas and overlay](text-canvas-and-overlay.md)
+- Next: [Tile maps](tilemaps.md)

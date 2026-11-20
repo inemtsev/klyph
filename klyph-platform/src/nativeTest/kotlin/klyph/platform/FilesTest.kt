@@ -9,6 +9,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -26,6 +27,16 @@ class FilesTest {
     fun basePathEndsWithSeparator() {
         val last = Files.basePath.last()
         assertTrue(last == '/' || last == '\\', Files.basePath)
+    }
+
+    @Test
+    fun isAbsoluteAcceptsRootsAndDrivesOnly() {
+        assertTrue(Files.isAbsolute("/games/level.tmj"))
+        assertTrue(Files.isAbsolute("\\games\\level.tmj"))
+        assertTrue(Files.isAbsolute("C:/games/level.tmj"))
+        assertFalse(Files.isAbsolute("levels/level.tmj"))
+        assertFalse(Files.isAbsolute("1:/level.tmj"))
+        assertFalse(Files.isAbsolute(""))
     }
 
     @Test

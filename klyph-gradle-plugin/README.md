@@ -96,7 +96,7 @@ and signed again ad hoc. The plugin does no signing for distribution and builds 
 |---|---|
 | `-Psdl3.prefix=<path>` | SDL3 folder; tried before `klyph { sdl3Prefix }`. |
 | `-Pklyph.targets=all` | Overrides `targets`: `host`, `all` or a comma-separated list. `-Pklyph.target=<name>` picks one; setting both fails. |
-| `-Pklyph.<name>=<value>` | Passed to `run` and `runRelease` as `KLYPH_<NAME>`, for `sprites`, `children`, `textures`, `interpolate`, `frames`, `seconds`, `offscreen`, `vsync`, `validation`, `autopilot`, `music`, `cell`, `overlay`, `screenshot`, `fullscreen` and `frameDelta`. `frameDelta` sets `KLYPH_FRAME_DELTA`: a name of several words is camelCase. A property wins over the shell variable; `klyph.music` and the path in `klyph.screenshot` resolve against the root project directory. |
+| `-Pklyph.<name>=<value>` | Passed to `run` and `runRelease` as `KLYPH_<NAME>`, for `sprites`, `children`, `textures`, `interpolate`, `frames`, `seconds`, `offscreen`, `vsync`, `validation`, `autopilot`, `music`, `cell`, `overlay`, `screenshot`, `fullscreen`, `frameDelta`, `atlas` and `moving`. `frameDelta` sets `KLYPH_FRAME_DELTA`: a name of several words is camelCase. A property wins over the shell variable; `klyph.music` and the path in `klyph.screenshot` resolve against the root project directory. |
 | `-Pklyph.sdl3.sha256=<hash>` | Expected SHA-256 when downloading an SDL version the plugin does not pin. |
 | `-Pklyph.sdl3.ignoreSystem=true` | For testing the download: skips the system locations below. |
 | `-Pklyph.sdl3.download=false` | Never downloads SDL3: without an installed one the build stops and names the folders it searched. Put it in `gradle.properties` for a build that must use the system's SDL3. |

@@ -152,7 +152,12 @@ public object Files {
 
     private fun resolve(path: String): String = if (isAbsolute(path)) path else basePath + path
 
-    private fun isAbsolute(path: String): Boolean =
+    /**
+     * Returns whether [path] starts at a root: a leading slash or backslash, or a drive letter
+     * followed by a colon, as in `C:`. Such a path is used as given; any other path is relative
+     * and resolves against [basePath].
+     */
+    public fun isAbsolute(path: String): Boolean =
         path.startsWith('/') ||
             path.startsWith('\\') ||
             (path.length >= 2 && path[1] == ':' && path[0].isLetter())

@@ -22,6 +22,7 @@ class RunEnvironmentTest {
         val names = listOf(
             "SPRITES", "CHILDREN", "TEXTURES", "INTERPOLATE", "FRAMES", "SECONDS", "OFFSCREEN",
             "VSYNC", "VALIDATION", "AUTOPILOT", "MUSIC", "CELL", "OVERLAY", "SCREENSHOT", "FULLSCREEN", "FRAME_DELTA",
+            "ATLAS", "MOVING",
         )
         assertEquals(names, RunEnvironment.variables)
         val environment = RunEnvironment.of(property = { "1" }, environment = { null }, rootDirectory = root)

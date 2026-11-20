@@ -22,8 +22,25 @@ import kotlin.math.min
  * moves it down or up by `dy` times the step length in the same way. A stop leaves a gap of
  * [Collisions.CONTACT_GAP] units between the box and the solid, so the body never overlaps it, and zeroes
  * the velocity along that axis. Moving across and then up or down is exact for upright boxes; there
- * are no slopes and no moving platforms. [Collisions.slideBox] and [Collisions.slideCollider] make
- * the same move without a body, for planning ahead.
+ * are no slopes. [Collisions.slideBox] and [Collisions.slideCollider] make the same move without a
+ * body, for planning ahead.
+ *
+ * A [Solid] that moved since the last step, by a `Velocity` or by a system that set its
+ * `Transform`, acts on bodies before they move. A body standing on it is carried by the same
+ * distance on both axes, stopping a contact gap short of any other solid on the way, and
+ * [wasCarried] says so; [floorVelocityX] and [floorVelocityY] give the floor's speed, which a jump
+ * adds to keep the platform's momentum, because the engine never adds it to [dx] or [dy]. A body
+ * the solid moved into, which it did not stand on, is pushed along the solid's move until it is a
+ * contact gap clear of it. When another solid stops that push, the body stays where the push
+ * stopped, overlapping the moving solid, and [isCrushed] is `true`: the engine destroys nothing, so
+ * the game decides what a crush does. A [Passable.FROM_BELOW] solid carries the bodies on it but
+ * pushes none, so a body it rises through lands on it once its feet are above the top, and a body
+ * it carries up into a ceiling is not crushed but left inside it, to fall through it. A solid only
+ * pushes the bodies it moves into: a body beside a solid moving up or down, or under one moving
+ * across, is left where it is. A body that jumps, setting [dy] upward, is neither carried nor
+ * pushed by the floor it stood on in its next move, so it leaves by its own speed only. A solid
+ * whose size changed since the last step, such as by its `Transform` scale, has not moved: it
+ * carries nothing, and a body it grew into is pushed out as below.
  *
  * Before it moves, a body whose box overlaps a solid, because it was placed there or a solid was
  * moved onto it, is pushed out. Each push takes the shortest way out of one solid, up, down, left
@@ -57,7 +74,9 @@ import kotlin.math.min
  * [toString] gives
  * `KinematicBody(dx=0.0, dy=0.0, isOnFloor=true, isOnWall=false, wallNormalX=0.0, isOnCeiling=false)`,
  * followed by `, hasLanded=true, landingSpeed=450.0` after a move that landed, `, wasPushedOut=true`
- * after one that began with a push and `, isStuck=true` after one that left the body stuck.
+ * after one that began with a push, `, isStuck=true` after one that left the body stuck,
+ * `, floorVelocityX=60.0, floorVelocityY=0.0` while the floor moves, `, wasCarried=true` after a
+ * move that carried the body and `, isCrushed=true` after one that crushed it.
  *
  * @sample samples.collision.Bodies.kinematicBody
  */
@@ -143,6 +162,53 @@ public class KinematicBody(
     public var isStuck: Boolean = false
         internal set
 
+    /**
+     * Whether the last move began by carrying the body along with the solid it stood on, which had
+     * moved since the move before: `true` for each move that did, `false` again after the next one
+     * that did not. The body moves with its floor before its own move, by the floor's whole
+     * displacement on both axes, unless another solid stops it first.
+     *
+     * @sample samples.collision.Bodies.wasCarried
+     */
+    public var wasCarried: Boolean = false
+        internal set
+
+    /**
+     * The speed across, in world units per second, at which the floor under the body moved during
+     * the last move: the floor's displacement over the fixed step divided by the step's length, 0
+     * when the body ended the move on no floor or on one that did not move. A jump from a moving
+     * platform keeps its momentum by adding it, as in `body.dx += body.floorVelocityX`; the engine
+     * never adds it itself. Unlike [floorOrNull], it keeps its value when [dy] is set upward, so a
+     * jump can read it after setting `dy`.
+     *
+     * @sample samples.collision.Bodies.floorVelocity
+     */
+    public var floorVelocityX: Float = 0f
+        internal set
+
+    /**
+     * The speed up or down, in world units per second, at which the floor under the body moved
+     * during the last move, negative for a floor going up; 0 on no floor or a still one. A jump
+     * from a rising lift goes higher by adding it, as in `body.dy = -jumpSpeed + body.floorVelocityY`.
+     * [floorVelocityX] describes both.
+     *
+     * @sample samples.collision.Bodies.floorVelocity
+     */
+    public var floorVelocityY: Float = 0f
+        internal set
+
+    /**
+     * Whether a moving [Solid] pushed the body in the last move and another solid stopped the push
+     * before the body was clear of it, such as a lift pressing the body against a ceiling: `true` for
+     * each move that did, `false` again after the next one that did not. The body stays where the
+     * push stopped, overlapping the moving solid, which then does not stop it. The engine destroys
+     * nothing, so a game reacts as it likes, such as by taking a heart and respawning the body.
+     *
+     * @sample samples.collision.Bodies.isCrushed
+     */
+    public var isCrushed: Boolean = false
+        internal set
+
     /** The raw handle of the solid under the body after the last move, or [NO_FLOOR]. */
     internal var floorRaw: Long = NO_FLOOR
 
@@ -179,7 +245,11 @@ public class KinematicBody(
         val landing = if (hasLanded) ", hasLanded=true, landingSpeed=$landingSpeed" else ""
         val pushed = if (wasPushedOut) ", wasPushedOut=true" else ""
         val stuck = if (isStuck) ", isStuck=true" else ""
-        return "$contacts$landing$pushed$stuck)"
+        val isFloorMoving = floorVelocityX != 0f || floorVelocityY != 0f
+        val floor = if (isFloorMoving) ", floorVelocityX=$floorVelocityX, floorVelocityY=$floorVelocityY" else ""
+        val carried = if (wasCarried) ", wasCarried=true" else ""
+        val crushed = if (isCrushed) ", isCrushed=true" else ""
+        return "$contacts$landing$pushed$stuck$floor$carried$crushed)"
     }
 
     /** Component key for [KinematicBody]. */
@@ -191,15 +261,25 @@ public class KinematicBody(
 
 /**
  * Moves every [KinematicBody] of [world] by its speed times [deltaSeconds] against the solids of
- * this grid, which the caller has refreshed, as the class description of [KinematicBody] explains.
- * When [scenes] is given, a body owned by a scene frozen below its top stands still. Allocates
- * nothing.
+ * this grid, which the caller has refreshed, as the class description of [KinematicBody] explains:
+ * first carried by its floor if that moved, then pushed by every solid that moved into it, then
+ * pushed out of the solids it overlaps, slid and checked for a floor. When [scenes] is given, a body
+ * owned by a scene frozen below its top stands still. The solids' shifts are cleared afterwards,
+ * so each move of a solid acts once. Allocates nothing.
  *
  * @throws IllegalStateException if a body's entity also has a `Velocity` or a [Solid], has no
  *   `Transform` or [Collider], has a collider that is not a box, has a parent, or has a speed that is
  *   not finite.
  */
 internal fun SolidGrid.moveBodies(world: World, deltaSeconds: Float, scenes: SceneStack?) {
+    try {
+        moveEachBody(world, deltaSeconds, scenes)
+    } finally {
+        clearShifts()
+    }
+}
+
+private fun SolidGrid.moveEachBody(world: World, deltaSeconds: Float, scenes: SceneStack?) {
     val bodies = world.storeOrNull(KinematicBody) ?: return
     if (bodies.size == 0) return
     val transforms = world.storeOrNull(Transform)
@@ -214,7 +294,9 @@ internal fun SolidGrid.moveBodies(world: World, deltaSeconds: Float, scenes: Sce
         check(velocities?.getOrNull(entity) == null) {
             "Entity $entity has both a Velocity and a KinematicBody; give a body its speed through KinematicBody.dx and dy."
         }
-        check(solids?.getOrNull(entity) == null) { "Entity $entity has both a Solid and a KinematicBody, and solids cannot move." }
+        check(solids?.getOrNull(entity) == null) {
+            "Entity $entity has both a Solid and a KinematicBody; give a solid a Velocity or set its Transform to move it."
+        }
         val transform = transforms?.getOrNull(entity)
         checkNotNull(transform) { "Entity $entity has a KinematicBody but no Transform." }
         val collider = colliders?.getOrNull(entity)
@@ -230,8 +312,9 @@ internal fun SolidGrid.moveBodies(world: World, deltaSeconds: Float, scenes: Sce
 }
 
 /**
- * Pushes [body] out of the solids it overlaps, moves it across, then up or down, then checks for a
- * floor below, as [moveBodies] describes.
+ * Carries [body] with its floor if the floor moved, lets every moved solid push it, pushes it out
+ * of the solids it overlaps, moves it across, then up or down, then checks for a floor below, as
+ * [moveBodies] describes.
  */
 private fun SolidGrid.moveBody(body: KinematicBody, transform: Transform, collider: Collider, shape: Shape.Box, deltaSeconds: Float) {
     val scaleX = if (collider.scalesWithTransform) transform.scaleX else 1f
@@ -240,10 +323,18 @@ private fun SolidGrid.moveBody(body: KinematicBody, transform: Transform, collid
     val offsetY = collider.offsetY * scaleY
     val halfWidth = shape.width * abs(scaleX) * 0.5f
     val halfHeight = shape.height * abs(scaleY) * 0.5f
-    // The sweeps below skip the solids a box starts inside, so the body is first pushed out of them.
-    val pushes = pushOut(transform, offsetX, offsetY, halfWidth, halfHeight, collider.mask.bits)
-    body.wasPushedOut = pushes > 0
+    val mask = collider.mask.bits
+    val box = bodyBox.set(transform, offsetX, offsetY, halfWidth, halfHeight, mask, body.dropLine)
+    // A moved floor the body has jumped off is left to the body's own move, which goes through it.
+    val leftFloor = if (body.isOnFloor) -1 else movedFloorOf(body)
+    // The solids that moved act first: the body's floor carries it, and the others push it.
+    val crushed = carryAndPush(body, box)
+    // The sweeps below skip the solids a box starts inside, so the body is first pushed out of them,
+    // unless a crush left it inside a moving solid on purpose.
+    val pushes = if (crushed) 0 else pushOut(transform, offsetX, offsetY, halfWidth, halfHeight, mask, ignored = leftFloor)
+    body.wasPushedOut = !crushed && (body.wasPushedOut || pushes > 0)
     body.isStuck = pushes == STUCK
+    body.isCrushed = crushed
     // Standing means touching a floor and not sent up since, so a standing body is not rising.
     val wasOnFloor = body.isOnFloor
     val startSpeedY = body.dy
@@ -263,6 +354,20 @@ private fun SolidGrid.moveBody(body: KinematicBody, transform: Transform, collid
     )
     transform.x = moved.x
     transform.y = moved.y
+    recordContacts(body, moved, wasOnFloor, startSpeedY, deltaSeconds)
+
+    // The drop ends once the feet are below the line, on another floor, or rising.
+    if (dropLine != Float.NEGATIVE_INFINITY && (moved.y + offsetY + halfHeight > dropLine || moved.isOnFloor || startSpeedY < 0f)) {
+        body.dropLine = Float.NEGATIVE_INFINITY
+    }
+}
+
+/**
+ * Sets the contacts of [body] from the slide [moved] it just made, which started standing when
+ * [wasOnFloor] and moving up or down at [startSpeedY], and the speed of the floor it ended on over
+ * a step of [deltaSeconds].
+ */
+private fun SolidGrid.recordContacts(body: KinematicBody, moved: BoxSlide, wasOnFloor: Boolean, startSpeedY: Float, deltaSeconds: Float) {
     body.isTouchingFloor = moved.isOnFloor
     body.isOnWall = moved.isOnWall
     body.isOnCeiling = moved.isOnCeiling
@@ -272,11 +377,10 @@ private fun SolidGrid.moveBody(body: KinematicBody, transform: Transform, collid
     if (moved.isOnFloor || moved.isOnCeiling) body.dy = 0f
     body.hasLanded = moved.isOnFloor && !wasOnFloor
     body.landingSpeed = if (body.hasLanded) startSpeedY else 0f
-
-    // The drop ends once the feet are below the line, on another floor, or rising.
-    if (dropLine != Float.NEGATIVE_INFINITY && (moved.y + offsetY + halfHeight > dropLine || moved.isOnFloor || startSpeedY < 0f)) {
-        body.dropLine = Float.NEGATIVE_INFINITY
-    }
+    val floor = solidOf(moved.floorRaw)
+    val isTimed = floor >= 0 && deltaSeconds > 0f
+    body.floorVelocityX = if (isTimed) shiftXOf(floor) / deltaSeconds else 0f
+    body.floorVelocityY = if (isTimed) shiftYOf(floor) / deltaSeconds else 0f
 }
 
 /** The most pushes [pushOut] makes before it gives up on a body. */
@@ -292,7 +396,8 @@ private const val STUCK: Int = -1
  * takes the box the shortest way, up, down, left or right, clear of the first solid it overlaps,
  * ties going to up, down, left and right in that order, and ends a contact gap from the solid, where
  * a sweep would have stopped it. One-way solids never overlap here: a sweep without a move only meets
- * them when the box moves down.
+ * them when the box moves down. Solid [ignored], such as a moved floor the body jumped off, or -1,
+ * is never pushed out of.
  *
  * Returns how many pushes it took, 0 when the box overlapped nothing, or [STUCK] when [MAX_PUSHES]
  * pushes still left it overlapping a solid, after putting [transform] back where it was. Allocates
@@ -305,6 +410,7 @@ private fun SolidGrid.pushOut(
     halfWidth: Float,
     halfHeight: Float,
     mask: Int,
+    ignored: Int,
 ): Int {
     val gap = Collisions.CONTACT_GAP
     val startX = transform.x
@@ -317,7 +423,7 @@ private fun SolidGrid.pushOut(
         val minY = centerY - halfHeight
         val maxX = centerX + halfWidth
         val maxY = centerY + halfHeight
-        if (!sweep(minX, minY, maxX, maxY, 0f, 0f, mask, skipsOverlaps = false)) return pushes
+        if (!sweep(minX, minY, maxX, maxY, 0f, 0f, mask, skipsOverlaps = false, ignores = ignored)) return pushes
         if (pushes == MAX_PUSHES) {
             transform.x = startX
             transform.y = startY

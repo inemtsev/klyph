@@ -4,10 +4,9 @@
 `Collisions` reports which colliders overlap, and that is all it does for ordinary colliders: a
 hero that falls onto a roof sinks into it until a system pushes it back out. For characters that
 stand on floors, stop at walls and jump through ledges, klyph has two components on top of the
-same colliders. A `Solid` is a wall, floor or ledge. A `KinematicBody` moves in every fixed step
-and stops at the solids in its way. There is no physics engine behind them: no mass, no
-bouncing, no slopes and no moving platforms, only upright boxes that stop exactly where they
-touch.
+same colliders. A `Solid` is a wall, floor or ledge, still or moving. A `KinematicBody` moves in
+every fixed step and stops at the solids in its way. There is no physics engine behind them: no
+mass, no bouncing and no slopes, only upright boxes that stop exactly where they touch.
 
 What makes a platformer feel good stays in your code, because every game tunes it differently:
 gravity, acceleration, jump height, coyote time and the jump buffer. This page builds a hero with
@@ -50,10 +49,11 @@ A solid on a circle collider, or without a collider, is a setup error: the next 
 take part in `Overlap` events and the overlap queries, and their layers and masks work as on the
 [Collisions and particles](collisions-and-particles.md) page.
 
-Solids do not move. `app.collisions` keeps them in a grid of its own and checks them against the
-world once per fixed step and once per frame, which costs one pass over the solids, and rebuilds
-the grid only when a solid was added, removed, moved or resized. A solid you move still stops
-bodies where it now is from the next step, but nothing carries a body along with it.
+`app.collisions` keeps the solids in a grid of its own and checks them against the world once
+per fixed step and once per frame, which costs one pass over the solids, and rebuilds the grid
+only when a solid was added or removed or started or stopped moving. Moving solids live in a
+second hash grid, rebuilt over each moving solid's whole move, so a few moving platforms never
+rebuild the first. [Moving platforms](#moving-platforms) below shows how a solid moves.
 
 ## The body
 
@@ -136,6 +136,9 @@ After every move the body says what it touched:
 | `landingSpeed` | The downward speed that landing arrived with, kept because the landing zeroes `dy`; 0 without a landing. |
 | `wasPushedOut` | The move began by pushing the body out of a solid it overlapped, the shortest way, such as after a respawn inside a floor or a solid moved onto the body. |
 | `isStuck` | Four pushes did not take the body out of the solids it overlapped, such as when it is squeezed between two, so it stayed where it was and the move went on from there. |
+| `wasCarried` | The move began by carrying the body along with the moving solid it stood on. |
+| `floorVelocityX`, `floorVelocityY` | How fast the floor under the body moved in the last step, in units per second; 0 on a still floor or none. |
+| `isCrushed` | A moving solid pushed the body into another solid, so it stayed where the push stopped. |
 
 A body that stood on a floor and is not moving up looks `Collisions.FLOOR_SNAP_DISTANCE`, 2 units,
 further down after its move and lands on a floor it finds there. Walking down a small step then
@@ -169,6 +172,65 @@ addSystem(Phase.FIXED_UPDATE) { app ->
     if (body.isOnFloor && app.input.keyboard.isJustPressed(Scancode.S)) body.dropThrough()
 }
 ```
+
+## Moving platforms
+
+A solid moves like any other entity. Give it a `Velocity`, or set its `Transform` from a system,
+and it is a moving platform, a lift or a closing wall:
+
+<!-- snippet: moving-platform -->
+```kotlin
+// A steel ledge that shuttles across the gap: a Velocity on the solid is all it takes.
+val shuttle = spawnSolid(left = 900f, top = 300f, right = 1000f, bottom = 312f, passable = Passable.FROM_BELOW)
+commands.add(shuttle, Velocity, Velocity(dx = 80f))
+// Drawn between its last two steps, like the hero who rides it.
+commands.add(shuttle, Interpolated, Interpolated)
+addSystem(Phase.FIXED_UPDATE) { app ->
+    val x = app.world.get(shuttle, Transform).x
+    val velocity = app.world.get(shuttle, Velocity)
+    // Turn around at the ends of the track.
+    if (x > 1100f) velocity.dx = -80f
+    if (x < 900f) velocity.dx = 80f
+}
+```
+
+In every fixed step, after the `Velocity` step and before the bodies' own moves, the engine
+compares each solid with where it was in the step before. A body standing on a solid that moved
+is carried by the same distance, across and up or down, and `wasCarried` says so. Riding down
+works at any speed, because the body moves with its floor before its own move. A solid that moves
+into a body it does not carry pushes the body along until it is clear. When another solid is in
+the way, such as a lift pressing the hero against a ceiling, the body stays where the push stopped
+and `isCrushed` is `true`; the engine destroys nothing, so your game decides what a crush does.
+A one-way ledge carries the bodies on it but pushes none, and one that carries a body up into a
+ceiling lets it drop through rather than crushing it. A solid that moves up or down beside a body,
+or across over its head, leaves it alone, and one that grows or shrinks, such as by its scale,
+has not moved: it carries nobody, and a body it grows into is pushed out.
+
+The carry moves the body, not its speed: a hero who jumps off a moving platform leaves with his
+own `dx` and `dy` only, and in the step he jumps the platform neither carries nor pushes him.
+`floorVelocityX` and `floorVelocityY` hold the speed of the floor under
+him in units per second, so the jump can add it:
+
+<!-- snippet: platform-jump -->
+```kotlin
+var platformSpeed = 0f
+addSystem(Phase.FIXED_UPDATE) { app ->
+    val body = app.world.get(hero, KinematicBody)
+    val keyboard = app.input.keyboard
+    if (body.isOnFloor) platformSpeed = 0f
+    if (body.isOnFloor && keyboard.isJustPressed(Scancode.SPACE)) {
+        // Leave with the platform's speed as well as your own.
+        platformSpeed = body.floorVelocityX
+        body.dy = -700f + body.floorVelocityY
+    }
+    body.dx = keyboard.axis(Scancode.A, Scancode.D) * 320f + platformSpeed
+    body.dy = minOf(body.dy + 1800f * app.time.deltaSeconds, 900f)
+}
+```
+
+Both keep their values after `dy` is set upward, unlike `floorOrNull`, so the jump can read them
+in either order. A solid moved by a system in `UPDATE` carries its riders in the next fixed step,
+and a solid of a frozen scene does not move.
 
 ## Sweeps
 
@@ -264,14 +326,14 @@ neither pushes the box out of a solid it starts inside, as a body is.
 ## Limits
 
 - Bodies and solids are upright boxes: a rotation is ignored and a circle collider is an error.
-- Solids do not move bodies: there are no moving platforms, a solid with a `Velocity` or a parent
-  is an error, and a solid moved onto a body by its `Transform` pushes the body out of it but
-  does not carry it.
+- A solid must be a root entity: one with a parent is an error. Put a moving solid's `Sprite` on
+  the solid itself and mark it `Interpolated`, so it is drawn as smoothly as the hero riding it.
 - Bodies do not stop each other. Use `Overlap` events between them, as for any colliders.
 - A body that overlaps a solid when its move starts is pushed out of it first, the shortest way,
   in at most four pushes. A body squeezed between solids stays where it was and reports `isStuck`:
   the engine neither crushes nor moves it, so your game decides what happens to it.
-- A scene frozen under a pushed scene keeps its bodies still, and its solids stop nothing.
+- A scene frozen under a pushed scene keeps its bodies still, and its solids stop nothing and do
+  not move. A moving solid of the scene on top does not carry or push a frozen body.
 - A body moved by setting its `Transform`, such as a respawn, is drawn sliding from its old place
   to the new one during the next step when it is `Interpolated`, a dash across the screen. Call
   `world.snapInterpolation(entity)` right after the move to draw it at the new place at once. A

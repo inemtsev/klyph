@@ -118,7 +118,8 @@ public class Canvas internal constructor(
         checkOpen()
         val texture = region.texture
         require(texture.address == SamplerAddress.REPEAT) {
-            "Tiled drawing needs a texture created with SamplerAddress.REPEAT, but $texture uses ${texture.address}."
+            "Tiled drawing needs a texture created with SamplerAddress.REPEAT, but $texture uses ${texture.address}; " +
+                "load it with assets.region(path, address = SamplerAddress.REPEAT)."
         }
         require(region.isWholeTexture) { "Tiled drawing needs a region that covers its whole texture, but the region is $region." }
         require(tileWidth > 0f && tileWidth.isFinite()) { "Tile width $tileWidth is not positive and finite." }

@@ -149,7 +149,8 @@ public fun runApp(config: AppConfig = AppConfig(), setup: App.() -> Unit) {
                                 PresentMode.VSYNC
                             }
                             // Opening the assets also uploads the built-in font, so the device must exist.
-                            Assets(device, config.assetRoot ?: Files.basePath + "assets/", config.textureFilter).use { assets ->
+                            val assetRoot = config.assetRoot ?: (Files.basePath + "assets/")
+                            Assets(device, assetRoot, config.textureFilter, config.atlas).use { assets ->
                                 EventPump().use { pump ->
                                     SpritePass(device, window, config.target, config.gpuSync).use { pass ->
                                         val app = App(config, window, presentMode, assets, startCamera(window), audio)

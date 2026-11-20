@@ -140,6 +140,88 @@ class Bodies {
     }
 
     @Sample
+    fun wasCarried() {
+        val world = World()
+        // A platform 200 wide whose top is at y = 100, and a hero standing on it.
+        val platform = world.create()
+        world.add(platform, Transform, Transform(x = 0f, y = 110f))
+        world.add(platform, Collider, Collider(Shape.Box(width = 200f, height = 20f)))
+        world.add(platform, Solid, Solid())
+        val hero = world.create()
+        val body = KinematicBody(dy = 100f)
+        world.add(hero, Transform, Transform(x = 0f, y = 80f - Collisions.CONTACT_GAP))
+        world.add(hero, Collider, Collider(Shape.Box(width = 20f, height = 40f)))
+        world.add(hero, KinematicBody, body)
+        val collisions = Collisions()
+        collisions.moveBodies(world, 0.1.seconds)
+        assertPrints(body.isOnFloor, "true")
+
+        // The platform moves 30 to the right, as a Velocity(dx = 300f) on it does in an app's fixed step.
+        world.get(platform, Transform).x += 30f
+        collisions.moveBodies(world, 0.1.seconds)
+        assertPrints(body.wasCarried, "true")
+        assertPrints(world.get(hero, Transform).x, "30.0")
+        assertPrints(body.isOnFloor, "true")
+    }
+
+    @Sample
+    fun floorVelocity() {
+        val world = World()
+        val platform = world.create()
+        world.add(platform, Transform, Transform(x = 0f, y = 110f))
+        world.add(platform, Collider, Collider(Shape.Box(width = 200f, height = 20f)))
+        world.add(platform, Solid, Solid())
+        val hero = world.create()
+        val body = KinematicBody(dy = 100f)
+        world.add(hero, Transform, Transform(x = 0f, y = 80f - Collisions.CONTACT_GAP))
+        world.add(hero, Collider, Collider(Shape.Box(width = 20f, height = 40f)))
+        world.add(hero, KinematicBody, body)
+        val collisions = Collisions()
+        collisions.moveBodies(world, 0.1.seconds)
+
+        // The platform moves 30 to the right in a step of a tenth of a second: 300 units a second.
+        world.get(platform, Transform).x += 30f
+        collisions.moveBodies(world, 0.1.seconds)
+        assertPrints(body.floorVelocityX, "300.0")
+        assertPrints(body.floorVelocityY, "0.0")
+
+        // A jump that keeps the platform's momentum, as a game's jump code does.
+        body.dy = -500f + body.floorVelocityY
+        body.dx += body.floorVelocityX
+        assertPrints(body.dx, "300.0")
+    }
+
+    @Sample
+    fun isCrushed() {
+        val world = World()
+        // A ceiling whose bottom is at y = 0, and a lift whose top is at y = 100.
+        val ceiling = world.create()
+        world.add(ceiling, Transform, Transform(x = 0f, y = -50f))
+        world.add(ceiling, Collider, Collider(Shape.Box(width = 200f, height = 100f)))
+        world.add(ceiling, Solid, Solid())
+        val lift = world.create()
+        world.add(lift, Transform, Transform(x = 0f, y = 110f))
+        world.add(lift, Collider, Collider(Shape.Box(width = 200f, height = 20f)))
+        world.add(lift, Solid, Solid())
+        // A hero 40 tall standing on the lift.
+        val hero = world.create()
+        val body = KinematicBody(dy = 100f)
+        world.add(hero, Transform, Transform(x = 0f, y = 80f - Collisions.CONTACT_GAP))
+        world.add(hero, Collider, Collider(Shape.Box(width = 20f, height = 40f)))
+        world.add(hero, KinematicBody, body)
+        val collisions = Collisions()
+        collisions.moveBodies(world, 0.1.seconds)
+
+        // The lift rises 80, but only 60 fit under the ceiling.
+        world.get(lift, Transform).y -= 80f
+        collisions.moveBodies(world, 0.1.seconds)
+        assertPrints(body.isCrushed, "true")
+        // He stays under the ceiling, inside the lift; the game decides what a crush does.
+        val top = world.get(hero, Transform).y - 20f
+        assertTrue(top > 0f && top < 0.1f)
+    }
+
+    @Sample
     fun dropThrough() {
         val world = World()
         val ledge = world.create()
