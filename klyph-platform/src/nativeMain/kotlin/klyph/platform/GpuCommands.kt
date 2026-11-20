@@ -121,6 +121,9 @@ public fun CopyPass.uploadToBuffer(
  * [destination]. With [x] and [y] at 0 and the texture's own size it fills the whole texture.
  * The rectangle must lie inside [destination]; SDL does not check it. Pass the `Int` parameters
  * after the first pair by name.
+ *
+ * @throws IllegalArgumentException if [width] or [height] is not positive, or [sourceOffset], [x]
+ *   or [y] is negative.
  */
 // The size and the corner are two conventional pairs, which API_STYLE section 3 lets a function take beyond five parameters.
 @Suppress("LongParameterList")
@@ -134,6 +137,10 @@ public fun CopyPass.uploadToTexture(
     x: Int = 0,
     y: Int = 0,
 ): Unit = memScoped {
+    require(width > 0) { "Upload width $width is not positive." }
+    require(height > 0) { "Upload height $height is not positive." }
+    require(sourceOffset >= 0) { "Upload source offset $sourceOffset is negative." }
+    require(x >= 0 && y >= 0) { "Upload corner ($x, $y) is negative." }
     val transfer = alloc<SDL_GPUTextureTransferInfo>().zeroed()
     transfer.transfer_buffer = source.handle
     transfer.offset = sourceOffset.toUInt()

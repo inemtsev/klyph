@@ -34,9 +34,13 @@ import kotlin.math.min
  * contact gap clear of it. When another solid stops that push, the body stays where the push
  * stopped, overlapping the moving solid, and [isCrushed] is `true`: the engine destroys nothing, so
  * the game decides what a crush does. A [Passable.FROM_BELOW] solid carries the bodies on it but
- * pushes none, so a body it rises through lands on it once its feet are above the top. A solid only
+ * pushes none, so a body it rises through lands on it once its feet are above the top, and a body
+ * it carries up into a ceiling is not crushed but left inside it, to fall through it. A solid only
  * pushes the bodies it moves into: a body beside a solid moving up or down, or under one moving
- * across, is left where it is.
+ * across, is left where it is. A body that jumps, setting [dy] upward, is neither carried nor
+ * pushed by the floor it stood on in its next move, so it leaves by its own speed only. A solid
+ * whose size changed since the last step, such as by its `Transform` scale, has not moved: it
+ * carries nothing, and a body it grew into is pushed out as below.
  *
  * Before it moves, a body whose box overlaps a solid, because it was placed there or a solid was
  * moved onto it, is pushed out. Each push takes the shortest way out of one solid, up, down, left
@@ -321,11 +325,13 @@ private fun SolidGrid.moveBody(body: KinematicBody, transform: Transform, collid
     val halfHeight = shape.height * abs(scaleY) * 0.5f
     val mask = collider.mask.bits
     val box = bodyBox.set(transform, offsetX, offsetY, halfWidth, halfHeight, mask, body.dropLine)
+    // A moved floor the body has jumped off is left to the body's own move, which goes through it.
+    val leftFloor = if (body.isOnFloor) -1 else movedFloorOf(body)
     // The solids that moved act first: the body's floor carries it, and the others push it.
     val crushed = carryAndPush(body, box)
     // The sweeps below skip the solids a box starts inside, so the body is first pushed out of them,
     // unless a crush left it inside a moving solid on purpose.
-    val pushes = if (crushed) 0 else pushOut(transform, offsetX, offsetY, halfWidth, halfHeight, mask)
+    val pushes = if (crushed) 0 else pushOut(transform, offsetX, offsetY, halfWidth, halfHeight, mask, ignored = leftFloor)
     body.wasPushedOut = !crushed && (body.wasPushedOut || pushes > 0)
     body.isStuck = pushes == STUCK
     body.isCrushed = crushed
@@ -390,7 +396,8 @@ private const val STUCK: Int = -1
  * takes the box the shortest way, up, down, left or right, clear of the first solid it overlaps,
  * ties going to up, down, left and right in that order, and ends a contact gap from the solid, where
  * a sweep would have stopped it. One-way solids never overlap here: a sweep without a move only meets
- * them when the box moves down.
+ * them when the box moves down. Solid [ignored], such as a moved floor the body jumped off, or -1,
+ * is never pushed out of.
  *
  * Returns how many pushes it took, 0 when the box overlapped nothing, or [STUCK] when [MAX_PUSHES]
  * pushes still left it overlapping a solid, after putting [transform] back where it was. Allocates
@@ -403,6 +410,7 @@ private fun SolidGrid.pushOut(
     halfWidth: Float,
     halfHeight: Float,
     mask: Int,
+    ignored: Int,
 ): Int {
     val gap = Collisions.CONTACT_GAP
     val startX = transform.x
@@ -415,7 +423,7 @@ private fun SolidGrid.pushOut(
         val minY = centerY - halfHeight
         val maxX = centerX + halfWidth
         val maxY = centerY + halfHeight
-        if (!sweep(minX, minY, maxX, maxY, 0f, 0f, mask, skipsOverlaps = false)) return pushes
+        if (!sweep(minX, minY, maxX, maxY, 0f, 0f, mask, skipsOverlaps = false, ignores = ignored)) return pushes
         if (pushes == MAX_PUSHES) {
             transform.x = startX
             transform.y = startY

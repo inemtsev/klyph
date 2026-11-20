@@ -25,12 +25,13 @@ import kotlin.math.min
  *
  * A solid moves when its box changes between two refreshes. [refresh] finds each solid's box of
  * the last refresh by its entity, wherever the store's order put it, and adds the difference of
- * the top-left corners to the solid's shift, which [moveBodies] carries and pushes bodies by and
- * then clears with [clearShifts], so a move made between two fixed steps counts once whatever
- * refreshed in between. A solid with a `Velocity`, or one whose box changed in the last
- * [STILL_REFRESHES] refreshes, is moving: it stays out of the cells, in a short list every sweep
- * tests, as the very large solids are, so a platform that moves every step rebuilds nothing. The
- * grid is rebuilt when a solid starts or stops moving, as when one is added or removed.
+ * the top-left corners to the solid's shift, unless the box changed size, which [moveBodies]
+ * carries and pushes bodies by and then clears with [clearShifts], so a move made between two
+ * fixed steps counts once whatever refreshed in between. A solid with a `Velocity`, or one whose
+ * box changed in the last [STILL_REFRESHES] refreshes, is moving: it stays out of the still cells
+ * and goes into a second hash grid, rebuilt over each moving solid's whole move, so a platform
+ * that moves every step rebuilds only that. The still cells are rebuilt when a solid starts or
+ * stops moving, as when one is added or removed.
  *
  * A sweep treats the moving box as a point against every solid grown by the box's half size (the
  * Minkowski sum of the two boxes), which gives the exact time of impact per axis. It visits the
@@ -54,9 +55,11 @@ internal class SolidGrid {
     var solidCount: Int = 0
         private set
 
-    // One entry per solid: its raw entity handle, its box (BOX floats: min x, min y, max x, max y),
-    // its collider's layer bits, whether it is one-way, whether it is moving, how far its top-left
-    // corner moved since the shifts were last cleared, and for how many refreshes it has kept still.
+    // One entry per solid: its raw entity handle, its box and size (BOX floats: min x, min y, max x,
+    // max y, then the half width and half height computed from its collider, so a resize is told
+    // from a move exactly), its collider's layer bits, whether it is one-way, whether it is moving,
+    // how far its top-left corner moved since the shifts were last cleared, and for how many
+    // refreshes it has kept still.
     // refresh swaps them with the previous* arrays, which hold the last refresh's entries.
     private var entities = LongArray(INITIAL_SOLIDS)
     private var boxes = FloatArray(INITIAL_SOLIDS * BOX)
@@ -109,6 +112,9 @@ internal class SolidGrid {
     private var movingLarge = IntArray(16)
     private var movingLargeCount = 0
 
+    /** Whether [movingCells] no longer match the moving solids' boxes and shifts, so the next refresh rebuilds them. */
+    private var isMovingStale = true
+
     // The shifted solids near a body, found by shiftedNear, and the stamps that find each one once.
     private var near = IntArray(16)
     private var nearStamps = IntArray(INITIAL_SOLIDS)
@@ -154,20 +160,26 @@ internal class SolidGrid {
      * Gathers every [Solid] of [world], except those owned by a scene [scenes] holds frozen, adds
      * how far each moved since the last refresh to its shift, and rebuilds the grid with cells
      * [cellSize] across if a solid was added or removed, started or stopped moving, changed while
-     * still, or the cell size changed.
+     * still, the cell size changed or [world] is not the world of the last refresh, whose solids
+     * then count as new, with no shift. After it throws, the grid's state is undefined until a
+     * refresh succeeds: the game fixes the entity rather than calling again.
      *
      * @throws IllegalStateException if a solid has no [Collider], a collider that is not a box, or a parent.
      */
     fun refresh(world: World, scenes: SceneStack?, cellSize: Float) {
+        // Handles of another world can equal this one's, so its solids are not compared with them.
+        val isSameWorld = this.world === world
+        val previousCount = if (isSameWorld) solidCount else 0
+        val previousMovingCount = movingCount
         this.world = world
         this.scenes = scenes
         val solids = world.storeOrNull(Solid)
         val colliders = world.storeOrNull(Collider)
         solidVersion = solids?.version ?: -1
         colliderVersion = colliders?.version ?: -1
-        val previousCount = solidCount
         swapWithPrevious()
-        var changed = cellSize != this.cellSize
+        var changed = cellSize != this.cellSize || !isSameWorld
+        var movingStale = isMovingStale
         var count = 0
         shiftedCount = 0
         movingCount = 0
@@ -219,7 +231,7 @@ internal class SolidGrid {
                 if (!minX.isFinite() || !minY.isFinite() || !maxX.isFinite() || !maxY.isFinite()) continue
                 val layers = collider.layers.bits
                 val oneWay = solids.items[k].let { (it as Solid).passable == Passable.FROM_BELOW }
-                ensureIndexCapacity(entity.index)
+                solidOfIndex = solidOfIndex.withRoomFor(entity.index)
 
                 // The same solid in the last refresh, found by its entity wherever it was.
                 val last = previousSolidOf(raw, count, previousCount)
@@ -232,8 +244,11 @@ internal class SolidGrid {
                     val p = last * BOX
                     moved = previousBoxes[p] != minX || previousBoxes[p + 1] != minY ||
                         previousBoxes[p + 2] != maxX || previousBoxes[p + 3] != maxY
-                    shiftedX = previousShiftX[last] + (minX - previousBoxes[p])
-                    shiftedY = previousShiftY[last] + (minY - previousBoxes[p + 1])
+                    // A box that changed size grew or shrank in place: it moved for the grid, but
+                    // shifts nothing, so it carries no rider by half its growth.
+                    val keepsSize = previousBoxes[p + 4] == halfWidth && previousBoxes[p + 5] == halfHeight
+                    shiftedX = previousShiftX[last] + if (keepsSize) minX - previousBoxes[p] else 0f
+                    shiftedY = previousShiftY[last] + if (keepsSize) minY - previousBoxes[p + 1] else 0f
                     still = if (moved) 0 else min(previousStillRefreshes[last] + 1, STILL_REFRESHES + 1)
                     wasMoving = previousIsMoving[last]
                 }
@@ -241,12 +256,15 @@ internal class SolidGrid {
                 // The cells stay as they are while every solid keeps its place, and its look while still.
                 val keepsPlace = last == count && wasMoving == nowMoving
                 if (!keepsPlace || !(nowMoving || looksTheSame(last, moved, layers, oneWay))) changed = true
+                if (nowMoving && moved) movingStale = true
                 val o = count * BOX
                 entities[count] = raw
                 boxes[o] = minX
                 boxes[o + 1] = minY
                 boxes[o + 2] = maxX
                 boxes[o + 3] = maxY
+                boxes[o + 4] = halfWidth
+                boxes[o + 5] = halfHeight
                 layerBits[count] = layers
                 isOneWay[count] = oneWay
                 isMoving[count] = nowMoving
@@ -268,7 +286,9 @@ internal class SolidGrid {
         if (count != previousCount) changed = true
         solidCount = count
         if (changed) build(cellSize)
-        buildMoving()
+        // The moving cells stand while the moving solids keep their places, boxes and shifts.
+        if (changed || movingStale || movingCount != previousMovingCount) buildMoving()
+        isMovingStale = false
     }
 
     /**
@@ -320,6 +340,7 @@ internal class SolidGrid {
 
     /** Sets every shift back to zero once [moveBodies] has carried and pushed the bodies by them. */
     fun clearShifts() {
+        if (shiftedCount > 0) isMovingStale = true
         for (k in 0 until shiftedCount) {
             val solid = shifted[k]
             shiftX[solid] = 0f
@@ -348,7 +369,7 @@ internal class SolidGrid {
         for (s in 0 until solidCount) {
             if (isMoving[s]) continue
             val o = s * BOX
-            if (!addTo(stillCells, s, boxes[o], boxes[o + 1], boxes[o + 2], boxes[o + 3])) {
+            if (!stillCells.addBox(s, boxes[o], boxes[o + 1], boxes[o + 2], boxes[o + 3], inverse)) {
                 if (largeCount == large.size) large = large.copyOf(largeCount * 2)
                 large[largeCount++] = s
             }
@@ -374,27 +395,12 @@ internal class SolidGrid {
             val minY = min(boxes[o + 1], boxes[o + 1] - dy)
             val maxX = max(boxes[o + 2], boxes[o + 2] - dx)
             val maxY = max(boxes[o + 3], boxes[o + 3] - dy)
-            if (!addTo(movingCells, s, minX, minY, maxX, maxY)) {
+            if (!movingCells.addBox(s, minX, minY, maxX, maxY, inverseCell)) {
                 if (movingLargeCount == movingLarge.size) movingLarge = movingLarge.copyOf(movingLargeCount * 2)
                 movingLarge[movingLargeCount++] = s
             }
         }
         movingCells.finish()
-    }
-
-    /**
-     * Adds solid [s] with the box from ([minX], [minY]) to ([maxX], [maxY]) to [cells] and returns
-     * `true`, or returns `false` if it covers more than LARGE_CELLS cells.
-     */
-    private fun addTo(cells: SolidCells, s: Int, minX: Float, minY: Float, maxX: Float, maxY: Float): Boolean {
-        val inverse = inverseCell
-        val x0 = cellOf(minX, inverse)
-        val y0 = cellOf(minY, inverse)
-        val x1 = cellOf(maxX, inverse)
-        val y1 = cellOf(maxY, inverse)
-        if ((x1.toLong() - x0 + 1) * (y1.toLong() - y0 + 1) > LARGE_CELLS) return false
-        cells.add(s, x0, y0, x1, y1)
-        return true
     }
 
     /**
@@ -720,16 +726,6 @@ internal class SolidGrid {
         if (nearStamps.size < grown) nearStamps = nearStamps.copyOf(grown)
     }
 
-    /** Makes room in [solidOfIndex] for entity index [index], marking the new entries as no solid. */
-    private fun ensureIndexCapacity(index: Int) {
-        if (index < solidOfIndex.size) return
-        var grown = solidOfIndex.size * 2
-        while (grown <= index) grown *= 2
-        val old = solidOfIndex.size
-        solidOfIndex = solidOfIndex.copyOf(grown)
-        solidOfIndex.fill(-1, old, grown)
-    }
-
     override fun toString(): String =
         "SolidGrid(solids=$solidCount, moving=$movingCount, cells=${stillCells.cellCount}, movingCells=${movingCells.cellCount})"
 
@@ -739,11 +735,8 @@ internal class SolidGrid {
         /** Hits by fraction, ties by entity index. */
         private val HIT_ORDER: Comparator<SweepHit> = compareBy<SweepHit> { it.fraction }.thenBy { it.entity.index }
 
-        /** Floats per solid in [boxes]. */
-        private const val BOX: Int = 4
-
-        /** The most cells a solid may cover and still be placed in the grid; solids rarely change, so it is generous. */
-        private const val LARGE_CELLS: Long = 4096
+        /** Floats per solid in [boxes]: the box's four edges and its two half sizes. */
+        private const val BOX: Int = 6
 
         /**
          * How many refreshes a solid without a `Velocity` stays moving after its box last changed:
@@ -761,6 +754,35 @@ internal class SolidGrid {
  */
 @Suppress("NOTHING_TO_INLINE")
 internal inline fun blocksOneWay(bottom: Float, dy: Float, solidTop: Float): Boolean = dy > 0f && bottom <= solidTop
+
+/**
+ * Returns [this] if it has an entry for entity index [index], or a copy grown to have one, its new
+ * entries marking no solid.
+ */
+private fun IntArray.withRoomFor(index: Int): IntArray {
+    if (index < size) return this
+    var grown = size * 2
+    while (grown <= index) grown *= 2
+    return copyOf(grown).also { it.fill(-1, size, grown) }
+}
+
+/**
+ * Adds [solid] with the box from ([minX], [minY]) to ([maxX], [maxY]) to the cells it touches, given
+ * the inverse of the cell size, and returns `true`, or returns `false` if it covers more than
+ * [LARGE_CELLS] cells.
+ */
+private fun SolidCells.addBox(solid: Int, minX: Float, minY: Float, maxX: Float, maxY: Float, inverseCell: Float): Boolean {
+    val x0 = cellOf(minX, inverseCell)
+    val y0 = cellOf(minY, inverseCell)
+    val x1 = cellOf(maxX, inverseCell)
+    val y1 = cellOf(maxY, inverseCell)
+    if ((x1.toLong() - x0 + 1) * (y1.toLong() - y0 + 1) > LARGE_CELLS) return false
+    add(solid, x0, y0, x1, y1)
+    return true
+}
+
+/** The most cells a solid may cover and still be placed in the cells; solids rarely change, so it is generous. */
+private const val LARGE_CELLS: Long = 4096
 
 /** Returns the grid cell coordinate of [value], given the inverse of the cell size. */
 @Suppress("NOTHING_TO_INLINE")

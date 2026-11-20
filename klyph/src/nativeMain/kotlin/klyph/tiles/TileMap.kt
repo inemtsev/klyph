@@ -90,10 +90,10 @@ public class TileMapLayer internal constructor(
     /** Number of cells down. */
     override val rows: Int,
     /** The cells row by row, each the bits of its [Tile]. Never changed. */
-    private val cells: IntArray,
-    /** Whether the layer's eye is open in Tiled; `spawnTileLayer` copies it to [TileLayer.isVisible]. */
+    internal val cells: IntArray,
+    /** Whether the layer's eye is open in Tiled, and those of the groups it is in; `spawnTileLayer` copies it to [TileLayer.isVisible]. */
     public val isVisible: Boolean,
-    /** The layer's opacity in Tiled, from 0 to 1; `spawnTileLayer` makes it the alpha of [TileLayer.color]. */
+    /** The layer's opacity in Tiled times those of its groups, from 0 to 1; `spawnTileLayer` makes it the alpha of [TileLayer.color]. */
     public val opacity: Float,
     /** The layer's horizontal offset in Tiled, with those of its groups; `spawnTileLayer` and `spawnSolids` add it to `x`. */
     public val offsetX: Float = 0f,

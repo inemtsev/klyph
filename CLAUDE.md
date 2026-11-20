@@ -40,19 +40,22 @@ and answers shape queries (overlap only for ordinary colliders), plus solid
 response: a `Solid` next to a box `Collider` is a wall or floor (`Passable.FROM_BELOW` a one-way
 ledge) kept in a second grid inside `Collisions` (`SolidGrid`, rescanned at every body move and
 detection, or before a sweep when the `Solid` or `Collider` store's version moved; each rescan finds
-every solid's box of the last one by entity and adds the move of its top-left corner to the solid's
-shift, which the body move uses and then clears; still solids sit in cells rebuilt only when one is
-added, removed or changed, or starts or stops moving, and moving solids, those with a `Velocity` or
-whose box changed in the last 120 rescans, in a second `SolidCells` rebuilt at every rescan over
-the box each covered while moving), a solid moves like any root entity, by a `Velocity` or a system
-setting its `Transform`, and is never shortened, a `KinematicBody(dx, dy)` on a root entity with a
+every solid's box of the last one by entity, in the same world only, and adds the move of its
+top-left corner to the solid's shift unless its size changed, which the body move uses and then
+clears; still solids sit in cells rebuilt only when one is added, removed or changed, or starts or
+stops moving, and moving solids, those with a `Velocity` or whose box changed in the last 120
+rescans, in a second `SolidCells` rebuilt at a rescan where one moved, its shift was cleared or the
+set changed, over the box each covered while moving), a solid moves like any root entity, by a
+`Velocity` or a system setting its `Transform`, and is never shortened, a `KinematicBody(dx, dy)` on a root entity with a
 box collider is moved by the engine in every fixed step and stopped `Collisions.CONTACT_GAP` short
 of solids, reporting `isOnFloor` (contact from the last move and `dy >= 0`), `isOnWall`/`wallNormalX`,
 `isOnCeiling`, `floorOrNull`, `hasLanded` and `landingSpeed`, and `wasPushedOut` and `isStuck` for a
 body that starts a move overlapping a solid (pushed out the shortest way in at most four pushes,
 else left in place), `wasCarried`, `floorVelocityX`/`floorVelocityY` (the floor's shift over the
 step, which the engine never adds to `dx`/`dy`; a jump adds it) and `isCrushed` (a moving solid's
-push that another solid stopped, the body left where it stopped and nothing destroyed), with a
+push that another solid stopped, the body left where it stopped and nothing destroyed; a one-way
+carrier lets its rider drop through instead, and a body that jumped is neither carried nor pushed
+by the floor it left), with a
 `FLOOR_SNAP_DISTANCE` floor snap and
 `dropThrough()`, `sweepBox`/`sweepBoxTo`/`sweepCollider` sweep a box against the solids as they
 are now (a thick-ray Amanatides and Woo walk shared with the body move), `floorBelowOrNull` probes

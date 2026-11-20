@@ -143,6 +143,37 @@ class TiledLoaderTest {
     }
 
     @Test
+    fun groupsHideAndFadeTheTileLayersInsideThem() {
+        val map = assets().tileMap("levels/group-looks.tmj")
+        assertFalse(map["hidden"].isVisible, "A hidden group hides a visible layer inside it.")
+        assertEquals(0.5f, map["hidden"].opacity)
+        assertTrue(map["faded"].isVisible)
+        // The group's 0.5 and the layer's own 0.5 multiply.
+        assertEquals(0.25f, map["faded"].opacity)
+        assertTrue(map["plain"].isVisible)
+        assertEquals(1f, map["plain"].opacity)
+    }
+
+    @Test
+    fun rejectsAFirstTileIdThatIsNotPositive() {
+        assertEquals(
+            "The tileset of levels/firstgid.tmj has 'firstgid' set to 0, which must be positive; save the file again from Tiled.",
+            message("levels/firstgid.tmj"),
+        )
+    }
+
+    @Test
+    fun againstStepsUpButNeverAboveARoot() {
+        assertEquals("art/tiles.png", against("levels/map.tmj", "../art/tiles.png"))
+        assertEquals("../tiles.png", against("map.tmj", "../tiles.png"))
+        assertEquals("/../tiles.png", against("/map.tmj", "../tiles.png"))
+        assertEquals("C:/../tiles.png", against("C:/map.tmj", "../tiles.png"))
+        assertEquals("C:\\../tiles.png", against("C:\\map.tmj", "../tiles.png"))
+        assertEquals("C:/tiles.png", against("C:/levels/map.tmj", "../tiles.png"))
+        assertEquals("C:/../tiles.png", against("C:/levels/map.tmj", "../../tiles.png"))
+    }
+
+    @Test
     fun rejectsAParallaxFactorOtherThanOne() {
         assertEquals(
             "Layer 'ground' of levels/parallax.tmj has 'parallaxx' set to 0.5, which klyph does not read; " +
@@ -334,6 +365,14 @@ class TiledLoaderTest {
                     """{"id": 6, "name": "spawns", "type": "objectgroup", "objects": []}, """ +
                     csvLayer("inner", "1, 0, 0, 0, 0, 0", extra = "\"offsetx\": 6,") + "]}]",
             ),
+            "levels/group-looks.tmj" to map(
+                "[" + """{"id": 5, "name": "off", "type": "group", "visible": false, "opacity": 0.5, "layers": [""" +
+                    csvLayer("hidden", "0, 0, 0, 0, 0, 0") + "]}, " +
+                    """{"id": 6, "name": "half", "type": "group", "opacity": 0.5, "layers": [""" +
+                    csvLayer("faded", "0, 0, 0, 0, 0, 0", extra = "\"opacity\": 0.5,") + "]}, " +
+                    csvLayer("plain", "0, 0, 0, 0, 0, 0") + "]",
+            ),
+            "levels/firstgid.tmj" to map("[]", tilesets = "[${tileset(firstId = 0)}]"),
             "levels/parallax.tmj" to map("[" + csvLayer("ground", "0, 0, 0, 0, 0, 0", extra = "\"parallaxx\": 0.5,") + "]"),
             "levels/tint.tmj" to map("[" + csvLayer("ground", "0, 0, 0, 0, 0, 0", extra = "\"tintcolor\": \"#ff0000\",") + "]"),
             "levels/tileoffset.tmj" to map(

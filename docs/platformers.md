@@ -51,9 +51,9 @@ take part in `Overlap` events and the overlap queries, and their layers and mask
 
 `app.collisions` keeps the solids in a grid of its own and checks them against the world once
 per fixed step and once per frame, which costs one pass over the solids, and rebuilds the grid
-only when a solid was added or removed or started or stopped moving. A solid that moves stays out
-of the grid in a short list of its own, so a few moving platforms cost a few more tests per sweep
-and no rebuilds. [Moving platforms](#moving-platforms) below shows how a solid moves.
+only when a solid was added or removed or started or stopped moving. Moving solids live in a
+second hash grid, rebuilt over each moving solid's whole move, so a few moving platforms never
+rebuild the first. [Moving platforms](#moving-platforms) below shows how a solid moves.
 
 ## The body
 
@@ -201,11 +201,14 @@ works at any speed, because the body moves with its floor before its own move. A
 into a body it does not carry pushes the body along until it is clear. When another solid is in
 the way, such as a lift pressing the hero against a ceiling, the body stays where the push stopped
 and `isCrushed` is `true`; the engine destroys nothing, so your game decides what a crush does.
-A one-way ledge carries the bodies on it but pushes none. A solid that moves up or down beside a
-body, or across over its head, leaves it alone.
+A one-way ledge carries the bodies on it but pushes none, and one that carries a body up into a
+ceiling lets it drop through rather than crushing it. A solid that moves up or down beside a body,
+or across over its head, leaves it alone, and one that grows or shrinks, such as by its scale,
+has not moved: it carries nobody, and a body it grows into is pushed out.
 
 The carry moves the body, not its speed: a hero who jumps off a moving platform leaves with his
-own `dx` and `dy` only. `floorVelocityX` and `floorVelocityY` hold the speed of the floor under
+own `dx` and `dy` only, and in the step he jumps the platform neither carries nor pushes him.
+`floorVelocityX` and `floorVelocityY` hold the speed of the floor under
 him in units per second, so the jump can add it:
 
 <!-- snippet: platform-jump -->

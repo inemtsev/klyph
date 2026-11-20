@@ -74,6 +74,12 @@ sizes, because a counting sort of 5,000 boxes is cheap. The moving cells keep th
 being rebuilt every step in a level whose still solids number in the tens of thousands, such as a
 tile map, at the price of a second cell lookup per cell a sweep visits.
 
+A rescan now skips rebuilding the moving cells when no moving solid moved, its shift was not
+cleared and the set of moving solids is the same, and it keeps each solid's size so a solid that
+grows in place is not taken for a moved one. Neither shows above the noise: two binaries run in
+turn gave a `fixed` of 0.143 against 0.147 ms at a share of 0 and 0.184 against 0.186 to 0.191 ms
+at 0.1, with `collide` unchanged.
+
 ## Tile layers (2026-11-20)
 
 The `tiles` benchmark (`./gradlew :benchmarks:benchmarkTilesOffscreen`) draws eight `TileLayer`s of

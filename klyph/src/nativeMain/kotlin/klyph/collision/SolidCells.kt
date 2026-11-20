@@ -3,7 +3,7 @@ package klyph.collision
 /**
  * A set of grid cells, each holding the numbers of the solids that touch it, found through a hash
  * table keyed by the cell's coordinates. [SolidGrid] keeps two: one for the solids that stand
- * still, rebuilt only when they change, and one for the moving solids, rebuilt at every refresh.
+ * still, rebuilt only when they change, and one for the moving solids, rebuilt when one moved.
  *
  * It is filled in three steps: [clear], one [add] per solid with the range of cells it covers,
  * then [finish], which sorts the entries into cells with a counting sort. Cells are numbered in

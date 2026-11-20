@@ -69,8 +69,19 @@ internal class TilePlan {
      *   scale that is not positive and finite; the message names the entity.
      */
     fun update(world: World, camera: Camera, alpha: Float) {
+        val previousCount = layerCount
         layerCount = 0
         cellsInView = 0
+        walkLayer = null
+        try {
+            planLayers(world, camera, alpha)
+        } finally {
+            // Slots the last plan used and this one did not would otherwise keep layers, and their worlds' tiles, alive.
+            if (layerCount < previousCount) layers.fill(null, layerCount, previousCount)
+        }
+    }
+
+    private fun planLayers(world: World, camera: Camera, alpha: Float) {
         val store = world.storeOrNull(TileLayer)
         if (store == null || store.size == 0) return
         setView(camera)

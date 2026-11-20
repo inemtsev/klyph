@@ -394,4 +394,148 @@ class MovingSolidTest {
         assertEquals(101f, h.world.get(platform, Transform).x, 0.001f)
         assertNotNull(collisions.sweepBox(x = 101f, y = 0f, width = 10f, height = 10f, dx = 0f, dy = 200f))
     }
+
+    @Test
+    fun aSolidMovingDiagonallyPastABodyDoesNotPushIt() {
+        val world = World()
+        val block = world.solid(left = 0f, top = 0f, right = 50f, bottom = 50f)
+        // The union of the block's old and new boxes covers him, but the block passes below his
+        // bottom-left corner: when its right side reaches his left side, its top is already below him.
+        val hero = world.hero(x = 85f, feet = 20f)
+        val collisions = Collisions()
+        collisions.run(world)
+        val transform = world.get(block, Transform)
+        transform.x += 50f
+        transform.y += 50f
+        collisions.run(world)
+        assertEquals(85f, hero.transform.x)
+        assertEquals(20f, hero.feet)
+        assertFalse(hero.body.wasPushedOut)
+    }
+
+    @Test
+    fun aSolidMovingDiagonallyThroughABodyPushesIt() {
+        val world = World()
+        val block = world.solid(left = 0f, top = 0f, right = 50f, bottom = 50f)
+        val hero = world.hero(x = 65f, feet = 20f)
+        val collisions = Collisions()
+        collisions.run(world)
+        val transform = world.get(block, Transform)
+        transform.x += 50f
+        transform.y += 50f
+        collisions.run(world)
+        assertEquals(100f + gap, hero.left, 0.0001f)
+        assertTrue(hero.body.wasPushedOut)
+        assertFalse(hero.body.isCrushed)
+    }
+
+    @Test
+    fun aOneWayLiftCarryingABodyIntoACeilingLetsItDropThrough() {
+        val world = World()
+        world.solid(left = 0f, top = 0f, right = 200f, bottom = 70f)
+        val ledge = world.solid(left = 0f, top = 100f, right = 200f, bottom = 110f, dy = -240f, passable = Passable.FROM_BELOW)
+        val hero = world.hero(x = 100f, feet = 100f - gap)
+        val collisions = Collisions()
+        collisions.settle(world, hero)
+        // Four units a step: his head reaches the ceiling in the third step, the ledge goes on to 76.
+        repeat(6) {
+            collisions.run(world, gravityOn = hero)
+            assertFalse(hero.body.isCrushed, "Crushed in step $it.")
+            assertFalse(hero.body.wasPushedOut, "Pushed in step $it.")
+        }
+        // Stopped by the ceiling, the ledge rose past his feet, and he has started to fall.
+        assertTrue(hero.feet > world.topOf(ledge), "His feet ${hero.feet} are above the ledge.")
+        assertFalse(hero.body.isOnFloor)
+        world.get(ledge, Velocity).dy = 0f
+        collisions.run(world, steps = 30, gravityOn = hero)
+        assertFalse(hero.body.isCrushed)
+        assertTrue(hero.top > world.topOf(ledge) + 10f, "His top ${hero.top} is not below the ledge.")
+    }
+
+    @Test
+    fun aBodyJumpingOffARisingLiftMovesByItsOwnSpeedOnly() {
+        val world = World()
+        world.solid(left = 0f, top = 100f, right = 200f, bottom = 120f, dy = -240f)
+        val hero = world.hero(x = 100f, feet = 100f - gap)
+        val collisions = Collisions()
+        collisions.settle(world, hero)
+        collisions.run(world, gravityOn = hero)
+        assertEquals(-240f, hero.body.floorVelocityY, 0.01f)
+
+        hero.body.dy = -600f + hero.body.floorVelocityY
+        val expected = hero.transform.y + hero.body.dy * step
+        collisions.run(world)
+        assertEquals(expected, hero.transform.y, 0.0001f)
+        assertFalse(hero.body.wasCarried)
+        assertFalse(hero.body.wasPushedOut)
+        assertFalse(hero.body.isCrushed)
+    }
+
+    @Test
+    fun aBodyJumpingOffARisingLiftUnderACeilingIsNotCrushed() {
+        val world = World()
+        world.solid(left = 0f, top = 100f, right = 200f, bottom = 120f, dy = -240f)
+        val hero = world.hero(x = 100f, feet = 100f - gap)
+        val collisions = Collisions()
+        collisions.settle(world, hero)
+        collisions.run(world, gravityOn = hero)
+        // Three units above his head, less than the lift's four a step.
+        val ceiling = hero.top - 3f
+        world.solid(left = 0f, top = 0f, right = 200f, bottom = ceiling)
+
+        hero.body.dy = -600f + hero.body.floorVelocityY
+        collisions.run(world)
+        assertFalse(hero.body.isCrushed)
+        assertFalse(hero.body.wasPushedOut)
+        assertTrue(hero.body.isOnCeiling)
+        assertEquals(ceiling + gap, hero.top, 0.0001f)
+    }
+
+    @Test
+    fun aSolidWhoseScaleGrowsCarriesNothing() {
+        val world = World()
+        val platform = world.solid(left = 0f, top = 100f, right = 200f, bottom = 120f)
+        val hero = world.hero(x = 100f, feet = 100f - gap)
+        val collisions = Collisions()
+        collisions.settle(world, hero)
+        // Twice as wide about its center: its left edge moves 100 units, but it did not move.
+        world.get(platform, Transform).scaleX = 2f
+        collisions.run(world, gravityOn = hero)
+        assertEquals(100f, hero.transform.x)
+        assertFalse(hero.body.wasCarried)
+        assertTrue(hero.body.isOnFloor)
+    }
+
+    @Test
+    fun aBodyOnASolidThatGrowsUpwardIsPushedOutNotCarried() {
+        val world = World()
+        val platform = world.solid(left = 0f, top = 100f, right = 200f, bottom = 120f)
+        val hero = world.hero(x = 100f, feet = 100f - gap)
+        val collisions = Collisions()
+        collisions.settle(world, hero)
+        // Twice as tall with its bottom kept at 120: its top rises 20 units into him.
+        val transform = world.get(platform, Transform)
+        transform.scaleY = 2f
+        transform.y = 100f
+        collisions.run(world, gravityOn = hero)
+        assertEquals(80f - gap, hero.feet, 0.0001f)
+        assertTrue(hero.body.wasPushedOut)
+        assertFalse(hero.body.wasCarried)
+    }
+
+    @Test
+    fun aRefreshAgainstAnotherWorldShiftsNothing() {
+        val first = World()
+        val a = first.solid(left = 0f, top = 100f, right = 200f, bottom = 120f)
+        val second = World()
+        val b = second.solid(left = 50f, top = 140f, right = 250f, bottom = 160f)
+        assertEquals(a, b)
+        val grid = SolidGrid()
+        grid.refresh(first, scenes = null, cellSize = 64f)
+        grid.refresh(second, scenes = null, cellSize = 64f)
+        val solid = grid.solidOf(b.raw)
+        assertEquals(0f, grid.shiftXOf(solid))
+        assertEquals(0f, grid.shiftYOf(solid))
+        assertEquals(0, grid.shiftedCount)
+    }
 }

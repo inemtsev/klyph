@@ -16,7 +16,8 @@ internal class JsonException(message: String) : KlyphException(message)
  *
  * Strict RFC 8259 JSON: no comments, no trailing commas, no single quotes, no leading zeros, no
  * raw control characters inside strings, and a `\u` escape of a surrogate must be one half of a
- * pair. Nesting deeper than [MAX_JSON_DEPTH] is rejected so a hostile file cannot exhaust the stack.
+ * pair. A number too large for a `Double`, such as `1e309`, is rejected rather than read as
+ * infinity. Nesting deeper than [MAX_JSON_DEPTH] is rejected so a hostile file cannot exhaust the stack.
  *
  * @throws JsonException if [text] is not one valid JSON value, naming the line and column.
  */
@@ -102,8 +103,20 @@ private class JsonParser(private val text: String) {
 
     private fun parseString(): String {
         val start = index
-        index++
+        // Most strings hold no escape, so look for the closing quote first and cut the string out whole.
+        var end = start + 1
+        while (end < text.length) {
+            val c = text[end]
+            if (c == '"') {
+                index = end + 1
+                return text.substring(start + 1, end)
+            }
+            if (c == '\\' || c < ' ') break
+            end++
+        }
         val builder = StringBuilder()
+        builder.appendRange(text, start + 1, end)
+        index = end
         while (true) {
             if (index >= text.length) fail("The text ends inside the string that starts", start)
             val c = text[index]
@@ -161,12 +174,34 @@ private class JsonParser(private val text: String) {
 
     private fun parseNumber(): Double {
         val start = index
-        if (peek() == '-') index++
+        val isNegative = peek() == '-'
+        if (isNegative) index++
+        val digitsStart = index
         when {
             peek() == '0' -> index++
             peek() in '1'..'9' -> skipDigits()
             else -> fail("A number needs a digit after '-'", start)
         }
+        val digitsEnd = index
+        val isWhole = !skipFractionAndExponent(start)
+        if (isWhole && digitsEnd - digitsStart <= MAX_LONG_DIGITS) {
+            // A whole number this short fits a Long, and converting it rounds as parsing its text would.
+            var magnitude = 0L
+            for (i in digitsStart until digitsEnd) magnitude = magnitude * 10 + (text[i] - '0')
+            return if (isNegative) -magnitude.toDouble() else magnitude.toDouble()
+        }
+        val number = text.substring(start, index)
+        val value = number.toDouble()
+        if (!value.isFinite()) fail("The number $number is too large for a Double", start)
+        return value
+    }
+
+    /**
+     * Moves past the fraction and the exponent of the number that starts at [start], if it has
+     * them, and returns `true` if it had either.
+     */
+    private fun skipFractionAndExponent(start: Int): Boolean {
+        val end = index
         if (peek() == '.') {
             index++
             if (peek() !in '0'..'9') fail("A number needs a digit after '.'", start)
@@ -178,7 +213,7 @@ private class JsonParser(private val text: String) {
             if (peek() !in '0'..'9') fail("A number needs a digit in its exponent", start)
             skipDigits()
         }
-        return text.substring(start, index).toDouble()
+        return index != end
     }
 
     private fun skipDigits() {
@@ -264,9 +299,14 @@ internal class JsonObject(private val members: Map<String, Any?>, val context: S
     /**
      * Returns the number in member [name] as a `Float`, or [default] if there is no such member or it is `null`.
      *
-     * @throws JsonException if it is not a number.
+     * @throws JsonException if it is not a number, or it is too large for a `Float`.
      */
-    fun floatOrDefault(name: String, default: Float): Float = doubleOrNull(name)?.toFloat() ?: default
+    fun floatOrDefault(name: String, default: Float): Float {
+        val number = doubleOrNull(name) ?: return default
+        val value = number.toFloat()
+        if (!value.isFinite()) wrongType(name, number, "a number in the range of a Float")
+        return value
+    }
 
     /**
      * Returns the string in member [name].
@@ -340,6 +380,9 @@ private fun simpleEscape(c: Char): Char? = when (c) {
     't' -> '\t'
     else -> null
 }
+
+/** The most digits a whole number may have for [JsonParser] to add them up in a `Long`, which holds every 18-digit number. */
+private const val MAX_LONG_DIGITS = 18
 
 /** The four characters JSON allows between tokens. */
 private const val WHITESPACE = " \n\r\t"

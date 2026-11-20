@@ -176,8 +176,9 @@ spacing, the `solid` and `oneWay` bool properties of its tiles, and every flip a
 and rotate buttons make. Each layer keeps its visibility, and its opacity becomes the alpha of the
 `TileLayer`'s color.
 
-Tile layers inside groups are read, with the group's offset added. Object layers and image layers
-are skipped. Their names are in `map.skippedLayers`, so you can tell that something is missing.
+Tile layers inside groups are read, with the group's offset added; a hidden group hides them and
+a group's opacity multiplies theirs. The map's render order is ignored, because every tile is drawn
+at its cell. Object layers and image layers are skipped. Their names are in `map.skippedLayers`, so you can tell that something is missing.
 These stop the load with a message that says what to change: compressed layers, layers with a
 tint or a parallax factor other than 1, a tileset with a drawing offset, infinite maps, isometric, hexagonal and staggered maps, a map with more than one
 tileset, a tileset saved as XML (`.tsx`), a tileset made of separate images, and a tileset image

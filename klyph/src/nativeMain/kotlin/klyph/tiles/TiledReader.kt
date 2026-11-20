@@ -21,7 +21,9 @@ import kotlin.io.encoding.Base64
  * layers hold their data as a CSV array or as uncompressed base64. The tileset's image and an
  * external tileset resolve against the folder of the file that names them, as Tiled writes them.
  * Group layers are read through the tile layers inside them, their offsets added to the layers'
- * own; object and image layers are listed in [TileMap.skippedLayers]. A tile layer's `offsetx` and
+ * own, a hidden group hiding them and its opacity multiplied into theirs; object and image layers
+ * are listed in [TileMap.skippedLayers]. The map's `renderorder` is not read, because every tile
+ * is drawn at its cell whatever the order. A tile layer's `offsetx` and
  * `offsety` are kept in [TileMapLayer.offsetX] and [TileMapLayer.offsetY]. Every other feature is
  * rejected with a message that names the file and says what to change in Tiled.
  *
@@ -51,7 +53,7 @@ private class TiledReader(
             val tileset = readTileset(map)
             val layers = ArrayList<TileMapLayer>()
             val skipped = ArrayList<String>()
-            readLayers(map, tileset, 0f, 0f, layers, skipped)
+            readLayers(map, tileset, Inherited.MAP, layers, skipped)
             return TileMap(path, tileset.tileSet, columns, rows, layers, skipped)
         } catch (e: JsonException) {
             throw TileMapException(e.message ?: "$path could not be read.", e)
@@ -59,14 +61,32 @@ private class TiledReader(
     }
 
     /**
+     * What a layer takes from the groups it is inside: the sum of their offsets, whether all of
+     * them are visible and the product of their opacities.
+     */
+    private class Inherited(val offsetX: Float, val offsetY: Float, val isVisible: Boolean, val opacity: Float) {
+        /** Returns these groups' values combined with the offset, visibility and opacity of [layer], a tile or group layer inside them. */
+        fun with(layer: JsonObject): Inherited = Inherited(
+            offsetX = offsetX + layer.floatOrDefault("offsetx", 0f),
+            offsetY = offsetY + layer.floatOrDefault("offsety", 0f),
+            isVisible = isVisible && (layer.booleanOrNull("visible") ?: true),
+            opacity = opacity * layer.floatOrDefault("opacity", 1f),
+        )
+
+        companion object {
+            /** What a layer directly in the map takes: nothing. */
+            val MAP = Inherited(offsetX = 0f, offsetY = 0f, isVisible = true, opacity = 1f)
+        }
+    }
+
+    /**
      * Reads the layers of [parent], the map or a group layer, into [layers] and [skipped], each
-     * moved by [offsetX] and [offsetY], the sum of the offsets of the groups it is inside.
+     * taking [inherited] from the groups it is inside.
      */
     private fun readLayers(
         parent: JsonObject,
         tileset: MapTileset,
-        offsetX: Float,
-        offsetY: Float,
+        inherited: Inherited,
         layers: MutableList<TileMapLayer>,
         skipped: MutableList<String>,
     ) {
@@ -74,15 +94,11 @@ private class TiledReader(
             when (val type = layer.string("type")) {
                 "tilelayer" -> {
                     checkLayerFeatures(layer)
-                    val x = offsetX + layer.floatOrDefault("offsetx", 0f)
-                    val y = offsetY + layer.floatOrDefault("offsety", 0f)
-                    layers += readLayer(layer, tileset, x, y)
+                    layers += readLayer(layer, tileset, inherited.with(layer))
                 }
                 "group" -> {
                     checkLayerFeatures(layer)
-                    val groupX = offsetX + layer.floatOrDefault("offsetx", 0f)
-                    val groupY = offsetY + layer.floatOrDefault("offsety", 0f)
-                    readLayers(layer, tileset, groupX, groupY, layers, skipped)
+                    readLayers(layer, tileset, inherited.with(layer), layers, skipped)
                 }
                 "objectgroup", "imagelayer" -> skipped += layer.stringOrNull("name").orEmpty()
                 else -> layer.fail("has the type '$type', which klyph does not know")
@@ -122,7 +138,7 @@ private class TiledReader(
             )
         }
         val entry = entries[0]
-        val firstId = entry.int("firstgid")
+        val firstId = positive(entry, "firstgid")
         val source = entry.stringOrNull("source")
             ?: return MapTileset(readTilesetFields(entry, resolved, "the tileset of $path", path, map), firstId, path)
         val sourcePath = against(resolved, source)
@@ -223,7 +239,8 @@ private class TiledReader(
         return SpriteSheet(texture, grid.regions.take(count))
     }
 
-    private fun readLayer(layer: JsonObject, tileset: MapTileset, offsetX: Float, offsetY: Float): TileMapLayer {
+    /** Reads the tile [layer], which takes [inherited] from its groups, its own offset, visibility and opacity included. */
+    private fun readLayer(layer: JsonObject, tileset: MapTileset, inherited: Inherited): TileMapLayer {
         val compression = layer.stringOrNull("compression").orEmpty()
         if (compression.isNotEmpty()) {
             layer.fail(
@@ -241,10 +258,18 @@ private class TiledReader(
         }
         val cells = IntArray(ids.size)
         for (index in ids.indices) cells[index] = cellOf(layer, ids[index], index % columns, index / columns, tileset)
-        val opacity = (layer.doubleOrNull("opacity") ?: 1.0).toFloat()
-        val isVisible = layer.booleanOrNull("visible") ?: true
         val name = layer.stringOrNull("name").orEmpty()
-        return TileMapLayer(name, tileset.tileSet, columns, rows, cells, isVisible, opacity, offsetX, offsetY)
+        return TileMapLayer(
+            name,
+            tileset.tileSet,
+            columns,
+            rows,
+            cells,
+            inherited.isVisible,
+            inherited.opacity,
+            inherited.offsetX,
+            inherited.offsetY,
+        )
     }
 
     /** Turns the Tiled id [id] of the cell at [column] and [row] into the bits of its [Tile]. */
@@ -367,20 +392,25 @@ private fun JsonObject.fail(problem: String, fix: String): Nothing = throw TileM
 
 /**
  * Returns [relative] resolved against the folder of the file at [file]: [relative] itself when it
- * is absolute, with `../` steps taken out where the folder has a name to remove.
+ * is absolute, with `../` steps taken out where the folder has a name to remove. Steps stop at a
+ * root (`/`), a drive root (`C:/` or `C:\`) or the start of a relative folder, and the `../`
+ * left over is kept, so the drive is never lost.
  */
 internal fun against(file: String, relative: String): String {
     if (Files.isAbsolute(relative)) return relative
     val folder = file.substring(0, maxOf(file.lastIndexOf('/'), file.lastIndexOf('\\')) + 1)
     var base = folder
     var rest = relative
-    while (rest.startsWith("../") && base.isNotEmpty() && !base.endsWith("../")) {
+    while (rest.startsWith("../")) {
+        // Nothing is above a root, a drive root or the start of a relative folder, and a "../" kept in it cannot be taken out.
+        if (base.isEmpty() || base.endsWith("../") || ROOT.matches(base)) break
         val trimmed = base.dropLast(1)
         val cut = maxOf(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'))
-        // A folder that is only a root ("/") or a drive has nothing above it to step into.
-        if (cut < 0 && trimmed.isEmpty()) break
         base = if (cut < 0) "" else trimmed.substring(0, cut + 1)
         rest = rest.removePrefix("../")
     }
     return base + rest
 }
+
+/** A folder with nothing above it: a root, `/` or `\`, or a drive root such as `C:/` or `C:\`. */
+private val ROOT = Regex("""[/\\]|[A-Za-z]:[/\\]""")

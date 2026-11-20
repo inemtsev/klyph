@@ -115,10 +115,10 @@ private const val CRUSHED: Int = 2
 
 /**
  * Pushes [box] out of the way of [solid], which moved by its shift since the last move, if the
- * solid moved into it: if the box overlaps the area the solid covered while moving, the union of
- * its old and new boxes, and lies ahead of the old box along the move, its side facing the move
- * beyond the old box's. The push goes along the solid's move, on the axis that clears the box
- * soonest when the solid moved on both, until the box is a contact gap past the solid's new box.
+ * solid moved into it: if the solid passed through the box, as [hasMovedInto] says, and the box
+ * lies ahead of the old box along the move, its side facing the move beyond the old box's. The
+ * push goes along the solid's move, on the axis that clears the box soonest when the solid moved
+ * on both, until the box is a contact gap past the solid's new box.
  * One-way solids and solids outside the box's mask push nothing, and a box behind the old box's
  * leading side, such as one already inside the solid, is left to [pushOut].
  *
@@ -136,7 +136,12 @@ private fun SolidGrid.pushByMovedSolid(box: BodyBox, solid: Int): Int {
     return if (moved == wanted) PUSHED else CRUSHED
 }
 
-/** Returns whether [box] overlaps the area [solid] covered while it moved: its old box and its new box and all between. */
+/**
+ * Returns whether [solid] passed through [box] while it moved by its shift: whether the box shares
+ * area with the solid at some point of the move. A move along one axis covers the union of the old
+ * and new boxes; a move on both is swept, its old center moved along the shift against the body's
+ * box grown by the solid's half size, so a solid moving past a corner of the box does not count.
+ */
 private fun SolidGrid.hasMovedInto(box: BodyBox, solid: Int): Boolean {
     val shiftX = shiftXOf(solid)
     val shiftY = shiftYOf(solid)
@@ -144,9 +149,23 @@ private fun SolidGrid.hasMovedInto(box: BodyBox, solid: Int): Boolean {
     val right = box.centerX + box.halfWidth
     val top = box.centerY - box.halfHeight
     val bottom = box.centerY + box.halfHeight
-    val overlapsAcross = left < max(rightOf(solid), rightOf(solid) - shiftX) && min(leftOf(solid), leftOf(solid) - shiftX) < right
-    val overlapsUpOrDown = top < max(bottomOf(solid), bottomOf(solid) - shiftY) && min(topOf(solid), topOf(solid) - shiftY) < bottom
-    return overlapsAcross && overlapsUpOrDown
+    if (shiftX == 0f || shiftY == 0f) {
+        val overlapsAcross = left < max(rightOf(solid), rightOf(solid) - shiftX) && min(leftOf(solid), leftOf(solid) - shiftX) < right
+        val overlapsUpOrDown = top < max(bottomOf(solid), bottomOf(solid) - shiftY) && min(topOf(solid), topOf(solid) - shiftY) < bottom
+        return overlapsAcross && overlapsUpOrDown
+    }
+    val halfWidth = (rightOf(solid) - leftOf(solid)) * 0.5f
+    val halfHeight = (bottomOf(solid) - topOf(solid)) * 0.5f
+    val startX = leftOf(solid) + halfWidth - shiftX
+    val startY = topOf(solid) + halfHeight - shiftY
+    // When the old center, moving along the shift, is inside the grown box on each axis.
+    val leftTime = (left - halfWidth - startX) / shiftX
+    val rightTime = (right + halfWidth - startX) / shiftX
+    val topTime = (top - halfHeight - startY) / shiftY
+    val bottomTime = (bottom + halfHeight - startY) / shiftY
+    val enter = max(min(leftTime, rightTime), min(topTime, bottomTime))
+    val exit = min(max(leftTime, rightTime), max(topTime, bottomTime))
+    return max(enter, 0f) < min(exit, 1f)
 }
 
 /**
@@ -178,17 +197,31 @@ private fun SolidGrid.pushUpOrDownOf(box: BodyBox, solid: Int): Float {
 }
 
 /**
- * Carries [body], whose box is [box], by its floor if the floor moved since the last move, then
- * lets every other solid that moved into it push it, and sets [KinematicBody.wasCarried] and,
- * for a push that got the body clear, [KinematicBody.wasPushedOut]. Returns `true` if a solid in
- * the way stopped the carry up or a push, which leaves the body crushed.
+ * Returns the solid [body] stood on at the end of its last move, whether or not its `dy` has been
+ * set upward since, if that solid moved since then, or -1.
+ */
+internal fun SolidGrid.movedFloorOf(body: KinematicBody): Int {
+    val floor = if (body.isTouchingFloor) solidOf(body.floorRaw) else -1
+    return if (floor >= 0 && (shiftXOf(floor) != 0f || shiftYOf(floor) != 0f)) floor else -1
+}
+
+/**
+ * Carries [body], whose box is [box], by its floor if the floor moved since the last move and the
+ * body still stands on it, then lets every other solid that moved into it push it, and sets
+ * [KinematicBody.wasCarried] and, for a push that got the body clear, [KinematicBody.wasPushedOut].
+ * Returns `true` if a solid in the way stopped the carry up or a push, which leaves the body
+ * crushed; a carry up by a one-way solid that was stopped leaves the body inside it, not crushed,
+ * to fall through it.
  */
 internal fun SolidGrid.carryAndPush(body: KinematicBody, box: BodyBox): Boolean {
+    // The floor of the last move, if it moved since: it carries a body still standing on it and
+    // never pushes the body, so a body that jumped off it leaves by its own speed alone.
+    val floor = movedFloorOf(body)
     // Carried first, so a body on a platform going down stays on it rather than dipping off it.
-    val floor = if (body.isOnFloor) solidOf(body.floorRaw) else -1
-    val carrier = if (floor >= 0 && (shiftXOf(floor) != 0f || shiftYOf(floor) != 0f)) floor else -1
-    // A carry up that another solid stopped leaves the body inside its floor: crushed.
-    var result = if (carrier >= 0 && !carry(box, carrier)) CRUSHED else NOT_PUSHED
+    val carrier = if (body.isOnFloor) floor else -1
+    // A carry up that another solid stopped leaves the body inside its floor: crushed, unless the
+    // floor is one-way, which the body then drops through in its own move.
+    var result = if (carrier >= 0 && !carry(box, carrier) && !isOneWayAt(carrier)) CRUSHED else NOT_PUSHED
     body.wasCarried = carrier >= 0
     // Only the solids whose move covered a cell the body touches can have moved into it.
     val nearby = shiftedNear(
@@ -197,7 +230,7 @@ internal fun SolidGrid.carryAndPush(body: KinematicBody, box: BodyBox): Boolean 
     )
     for (k in 0 until nearby) {
         val solid = nearAt(k)
-        if (solid != carrier) result = max(result, pushByMovedSolid(box, solid))
+        if (solid != floor) result = max(result, pushByMovedSolid(box, solid))
     }
     body.wasPushedOut = result == PUSHED
     return result == CRUSHED

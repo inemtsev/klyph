@@ -35,9 +35,10 @@ internal class SkylinePacker(val width: Int, val height: Int) {
         var bestY = Int.MAX_VALUE
         for (index in segments.indices) {
             val x = segments[index].x
-            if (x + width > this.width) break
+            // Written as differences so that a huge width or height cannot overflow.
+            if (width > this.width - x) break
             val y = restingHeight(index, width)
-            if (y + height <= this.height && y < bestY) {
+            if (height <= this.height - y && y < bestY) {
                 bestIndex = index
                 bestY = y
             }

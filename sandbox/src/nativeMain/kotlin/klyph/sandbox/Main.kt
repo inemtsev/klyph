@@ -47,8 +47,9 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * Sandbox entry point: a smoke test that runs a klyph app, which clears the window every frame
  * and draws a little world-space and screen-space text and shapes, a sky under the world, two
- * parallax layers that repeat across a camera that sways, a particle fountain and a small Tiled
- * map from `assets/tiles.tmj`, until the window closes, escape is pressed, `KLYPH_FRAMES` frames have run or
+ * parallax layers that repeat across a camera that sways, a particle fountain, a small Tiled
+ * map from `assets/tiles.tmj` and two files packed into one atlas page, the second at frame
+ * [LATE_REGION_FRAME], until the window closes, escape is pressed, `KLYPH_FRAMES` frames have run or
  * `KLYPH_SECONDS` seconds have passed. It prints a line for every mouse or gamepad button press,
  * gamepad connection and focus change it sees through `app.input` and the engine events, the manual
  * check of the engine's input path.
@@ -98,6 +99,11 @@ fun main() {
             addBackdrop(app)
             addFountain(app)
             addTileMap(app)
+            addAtlasSprite(app, "tiles.png", x = 560f, y = 330f, width = 128f, height = 32f)
+        }
+        addSystem(Phase.UPDATE) { app ->
+            // frameCount counts the frames before this one.
+            if (app.time.frameCount + 1 == LATE_REGION_FRAME) addAtlasSprite(app, "star.png", x = 760f, y = 330f, width = 64f, height = 64f)
         }
         // The camera sways 100 units either way, so the layers of the backdrop scroll by their own factors.
         addSystem(Phase.UPDATE) { app -> app.camera.x = swayCenter + 100f * sin(app.time.frameCount * 0.05f) }
@@ -238,6 +244,22 @@ private fun addTileMap(app: App) {
     app.commands.spawnTileLayer(map["decor"], x = 880f, y = 100f)
     val solids = app.commands.spawnSolids(map["ground"], x = 880f, y = 100f)
     println("$map, ${solids.size} solids.")
+}
+
+/**
+ * The frame, counted from 1, at which the sandbox loads `star.png` through `Assets.region`, so the
+ * atlas page that `tiles.png` went into at startup is written while earlier frames that draw from
+ * it may still be on the GPU.
+ */
+private const val LATE_REGION_FRAME = 30L
+
+/** Loads [path] through `Assets.region`, which packs it into an atlas page, and spawns a [width] by [height] sprite of it at [x], [y]. */
+private fun addAtlasSprite(app: App, path: String, x: Float, y: Float, width: Float, height: Float) {
+    val region = app.assets.region(path)
+    val entity = app.world.create()
+    app.world.add(entity, Transform, Transform(x, y))
+    app.world.add(entity, Sprite, Sprite(region, width = width, height = height, layer = 2))
+    println("Frame ${app.time.frameCount + 1}: $path packed as $region.")
 }
 
 /** Prints the mouse and gamepad buttons that went down this frame, gamepad connections and focus changes. */

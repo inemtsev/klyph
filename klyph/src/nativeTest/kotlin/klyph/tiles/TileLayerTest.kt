@@ -138,6 +138,32 @@ class TileLayerTest {
     }
 
     @Test
+    fun solidRectanglesMatchRowsOfManyRuns() {
+        // Runs that end, continue, start further left, and start at an open run's column with another end.
+        val layer = layerOf(
+            "##.#.#",
+            "##.###",
+            ".#.#.#",
+            "####..",
+            "###...",
+        )
+        assertEquals(
+            listOf(
+                Rect(0f, 0f, 32f, 32f),
+                Rect(48f, 0f, 16f, 16f),
+                Rect(80f, 0f, 16f, 16f),
+                Rect(48f, 16f, 48f, 16f),
+                Rect(16f, 32f, 16f, 16f),
+                Rect(48f, 32f, 16f, 16f),
+                Rect(80f, 32f, 16f, 16f),
+                Rect(0f, 48f, 64f, 16f),
+                Rect(0f, 64f, 48f, 16f),
+            ),
+            layer.solidRectangles(),
+        )
+    }
+
+    @Test
     fun solidRectanglesKeepOneWayRunsApart() {
         val layer = layerOf(
             "~==~##",
@@ -171,6 +197,11 @@ class TileLayerTest {
         for (row in 0 until 2) for (column in 0 until 2) assertEquals(layer[column, row], copy[column, row])
         copy[0, 0] = Tile.EMPTY
         assertEquals(Tile.of(0), layer[0, 0], "The copy is independent.")
+        val mapLayer = TileMapLayer("ground", tileSet, columns = 3, rows = 1, cells = intArrayOf(1, 0, 4), isVisible = true, opacity = 1f)
+        val fromMap = mapLayer.toTileLayer()
+        assertEquals(2, fromMap.tileCount)
+        assertEquals(Tile.of(3), fromMap[2, 0])
+        assertEquals(Tile.EMPTY, fromMap[1, 0])
     }
 
     @Test

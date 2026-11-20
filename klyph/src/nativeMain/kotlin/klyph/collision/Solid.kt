@@ -26,8 +26,8 @@ import klyph.entity.Velocity
  * [Collisions] keeps the solids in a grid of its own, which it checks against the world at every
  * body move and every detection, once per fixed step and once per frame, at a cost that grows with
  * the number of solids. A solid with a [Velocity], or one that moved in the last second or so, is
- * kept out of the grid's cells in a list every sweep tests, so a level where a few platforms move
- * costs a few more tests per sweep; the grid itself is rebuilt only when a solid is added or
+ * kept in a second hash grid, rebuilt over each moving solid's whole move, so a level where a few
+ * platforms move rebuilds only that one; the first grid is rebuilt only when a solid is added or
  * removed, starts or stops moving, or changes its [passable] or layers while it stands still.
  *
  * A solid is also an ordinary collider: it takes part in overlap detection and `Overlap` events

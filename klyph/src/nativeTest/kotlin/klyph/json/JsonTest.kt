@@ -28,6 +28,22 @@ class JsonTest {
     }
 
     @Test
+    fun rejectsANumberTooLargeForADouble() {
+        assertEquals("The number 1e309 is too large for a Double at line 1, column 2.", failure("[1e309]"))
+        assertEquals("The number -1E400 is too large for a Double at line 1, column 1.", failure("-1E400"))
+    }
+
+    @Test
+    fun parsesWholeNumbersOfEveryLength() {
+        // 18 digits are added up in a Long; 19 go through the text, as does anything with a fraction or exponent.
+        assertEquals(123456789012345678.0, parseJson("123456789012345678"))
+        assertEquals(1234567890123456789.0, parseJson("1234567890123456789"))
+        assertEquals(-42.0, parseJson("-42"))
+        assertEquals(-999999999999999999.0, parseJson("-999999999999999999"))
+        assertEquals(-0.0, parseJson("-0"))
+    }
+
+    @Test
     fun rejectsMalformedNumbers() {
         for (text in listOf("01", "-", "1.", ".5", "1e", "+1", "0x10")) assertFailsWith<JsonException>(text) { parseJson(text) }
     }
@@ -35,6 +51,12 @@ class JsonTest {
     @Test
     fun parsesEscapes() {
         assertEquals("quote\" slash\\ / \b\u000C\n\r\t A é", parseJson(""""quote\" slash\\ \/ \b\f\n\r\t A é""""))
+    }
+
+    @Test
+    fun parsesAnEscapedStringAfterAnUnescapedOne() {
+        assertEquals(listOf("plain", "tab\there", "", "end\\"), parseJson("""["plain", "tab\there", "", "end\\"]"""))
+        assertEquals(mapOf("key" to "a\"b"), parseJson("""{"key": "a\"b"}"""))
     }
 
     @Test
@@ -119,6 +141,18 @@ class JsonTest {
         assertEquals(
             "Layer 'ground' of level.tmj has 'visible' set to \"yes\", which must be true or false; save it again.",
             assertFailsWith<JsonException> { json.booleanOrNull("visible") }.message,
+        )
+    }
+
+    @Test
+    fun floatOrDefaultRejectsANumberTooLargeForAFloat() {
+        @Suppress("UNCHECKED_CAST")
+        val members = parseJson("""{"offsetx": 1e300, "offsety": -2.5}""") as Map<String, Any?>
+        val json = JsonObject(members, "Layer 'ground' of level.tmj", "save it again")
+        assertEquals(-2.5f, json.floatOrDefault("offsety", 0f))
+        assertEquals(
+            "Layer 'ground' of level.tmj has 'offsetx' set to 1.0E300, which must be a number in the range of a Float; save it again.",
+            assertFailsWith<JsonException> { json.floatOrDefault("offsetx", 0f) }.message,
         )
     }
 }

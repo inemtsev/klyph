@@ -66,33 +66,81 @@ public fun TileGrid.tileAt(x: Float, y: Float): Tile {
  * Has no sample because a [TileSet] needs a texture, which needs a GPU device.
  */
 public fun TileGrid.solidRectangles(isSolid: (Tile) -> Boolean = tileSet::isSolid): List<Rect> {
-    val width = tileSet.tileWidth
-    val height = tileSet.tileHeight
-    val result = ArrayList<Rect>()
-    // The rectangles still growing downwards, as [first column, end column, first row] each.
-    var open = ArrayList<IntArray>()
-    for (row in 0..rows) {
-        val next = ArrayList<IntArray>()
+    val runs = SolidRuns(tileSet.tileWidth, tileSet.tileHeight)
+    for (row in 0 until rows) {
         var column = 0
-        while (row < rows && column < columns) {
-            if (!isSolid(get(column, row))) {
+        while (column < columns) {
+            if (isSolid(get(column, row))) {
+                val start = column
+                while (column < columns && isSolid(get(column, row))) column++
+                runs.add(start, column, row)
+            } else {
                 column++
-                continue
-            }
-            val start = column
-            while (column < columns && isSolid(get(column, row))) column++
-            val above = open.firstOrNull { it[0] == start && it[1] == column }
-            next.add(above ?: intArrayOf(start, column, row))
-        }
-        for (run in open) {
-            if (next.none { it === run }) {
-                result.add(Rect(run[0] * width, run[2] * height, (run[1] - run[0]) * width, (row - run[2]) * height))
             }
         }
-        open = next
+        runs.endRow(row)
     }
+    runs.endRow(rows)
+    val result = runs.rectangles
     result.sortWith(compareBy<Rect> { it.y }.thenBy { it.x })
     return result
+}
+
+/**
+ * The runs of solid cells of [TileGrid.solidRectangles], merged downwards into [rectangles] of
+ * cells [width] by [height]. Each row's runs are [add]ed left to right and the row is ended with
+ * [endRow]; a run that covers the same columns as one of the row above grows it, and one of the
+ * row above that no run continues becomes a rectangle.
+ */
+private class SolidRuns(private val width: Float, private val height: Float) {
+    val rectangles = ArrayList<Rect>()
+
+    // The runs still growing downwards, left to right, as [first column, end column, first row] each,
+    // and those the row being read continues or starts.
+    private var open = ArrayList<IntArray>()
+    private var next = ArrayList<IntArray>()
+
+    /** The first run of [open] that no run of this row has been matched against yet. */
+    private var above = 0
+
+    /**
+     * Adds the run from column [start] until [end] in [row]. Both lists are sorted by first column and their runs do not
+     * overlap, so one pass over each matches them up: every open run left of this one, or starting where it starts with
+     * another end, can grow no further.
+     */
+    fun add(start: Int, end: Int, row: Int) {
+        while (above < open.size && open[above][0] < start) close(open[above++], row)
+        val run = open.getOrNull(above)
+        if (run != null && run[0] == start) {
+            above++
+            if (run[1] == end) {
+                next.add(run)
+                return
+            }
+            close(run, row)
+        }
+        next.add(intArrayOf(start, end, row))
+    }
+
+    /**
+     * Ends [row]: the open runs it did not continue become rectangles. Called with the grid's row
+     * count after the last row, it turns every run still open into one.
+     */
+    fun endRow(row: Int) {
+        while (above < open.size) close(open[above++], row)
+        val done = open
+        open = next
+        next = done
+        next.clear()
+        above = 0
+    }
+
+    /** Adds the rectangle of [run], which grew down to the row before [row]. */
+    private fun close(run: IntArray, row: Int) {
+        rectangles.add(Rect(run[0] * width, run[2] * height, (run[1] - run[0]) * width, (row - run[2]) * height))
+    }
+
+    override fun toString(): String = "SolidRuns(open=${open.size}, rectangles=${rectangles.size})"
 }
 
 /**
@@ -105,8 +153,13 @@ public fun TileGrid.solidRectangles(isSolid: (Tile) -> Boolean = tileSet::isSoli
  */
 public fun TileGrid.toTileLayer(): TileLayer {
     val layer = TileLayer(tileSet, columns, rows)
-    for (row in 0 until rows) {
-        for (column in 0 until columns) layer[column, row] = get(column, row)
+    // The two kinds of layer klyph makes hold their cells as one array, already checked against the tile set.
+    when (this) {
+        is TileLayer -> layer.copyCellsFrom(cells, tileCount)
+        is TileMapLayer -> layer.copyCellsFrom(cells, cells.count { it != 0 })
+        else -> for (row in 0 until rows) {
+            for (column in 0 until columns) layer[column, row] = get(column, row)
+        }
     }
     return layer
 }

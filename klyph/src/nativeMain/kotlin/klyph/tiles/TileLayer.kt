@@ -58,6 +58,12 @@ public class TileLayer(
     internal var tileCount: Int = 0
         private set
 
+    /** Replaces every cell with [source], cells of the same size and tile set, of which [tiles] hold a tile. */
+    internal fun copyCellsFrom(source: IntArray, tiles: Int) {
+        source.copyInto(cells)
+        tileCount = tiles
+    }
+
     /**
      * Returns the tile in the cell at [column] and [row], [Tile.EMPTY] when the cell has none.
      *

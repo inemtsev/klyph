@@ -7,6 +7,7 @@ import klyph.platform.Image
 import klyph.platform.SamplerFilter
 import klyph.platform.TextureUsage
 import klyph.platform.beginRenderPass
+import klyph.platform.copyFrom
 import klyph.platform.createTexture
 import klyph.platform.release
 
@@ -53,10 +54,10 @@ internal class AtlasPages(
      */
     fun add(image: Image, filter: SamplerFilter): TextureRegion? {
         if (!fits(image.width, image.height)) return null
-        val width = image.width + 2 * RING
-        val height = image.height + 2 * RING
-        val (page, placement) = placeOnOpenPage(filter, width, height) ?: placeOnNewPage(filter, width, height)
-        write(page.texture, image.withEdgeRing(), placement.x, placement.y)
+        // Built first, so a failure here leaves every packer and the page list as they were.
+        val ringed = image.withEdgeRing()
+        val (page, placement) = placeOnOpenPage(filter, ringed.width, ringed.height) ?: placeOnNewPage(filter, ringed.width, ringed.height)
+        write(page.texture, ringed, placement.x, placement.y)
         return TextureRegion(page.texture, x = placement.x + RING, y = placement.y + RING, width = image.width, height = image.height)
     }
 
@@ -102,10 +103,19 @@ internal class AtlasPages(
 internal fun Image.withEdgeRing(): Image {
     val ring = AtlasPages.RING
     val result = Image(width + 2 * ring, height + 2 * ring)
+    // The middle, then the top and bottom rows repeated outwards, a row at a time.
+    result.copyFrom(this, x = ring, y = ring)
+    for (k in 0 until ring) {
+        result.copyFrom(this, x = ring, y = k, sourceY = 0, sourceHeight = 1)
+        result.copyFrom(this, x = ring, y = ring + height + k, sourceY = height - 1, sourceHeight = 1)
+    }
+    // The left and right columns, corners included, from the rows just written.
     for (row in 0 until result.height) {
-        val sourceRow = (row - ring).coerceIn(0, height - 1)
-        for (column in 0 until result.width) {
-            result[column, row] = this[(column - ring).coerceIn(0, width - 1), sourceRow]
+        val left = result[ring, row]
+        val right = result[ring + width - 1, row]
+        for (k in 0 until ring) {
+            result[k, row] = left
+            result[ring + width + k, row] = right
         }
     }
     return result

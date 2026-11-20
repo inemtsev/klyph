@@ -555,8 +555,11 @@ public class Assets internal constructor(
      * keep the tileset image next to the map or the tileset file. klyph reads orthogonal, finite
      * maps with one tileset, embedded or saved as a JSON `.tsj` file; tile layers stored as CSV or
      * uncompressed base64; the tileset's margin and spacing; and the tile properties `solid` and
-     * `oneWay`, bool properties that `spawnSolids` turns into walls and one-way ledges. Object,
-     * image and group layers are skipped and named in [TileMap.skippedLayers].
+     * `oneWay`, bool properties that `spawnSolids` turns into walls and one-way ledges. Group
+     * layers are flattened: the tile layers inside them are read with the groups' offsets added,
+     * hidden when a group is hidden and with the groups' opacities multiplied in. Object and image
+     * layers are skipped and named in [TileMap.skippedLayers]. The map's render order is ignored,
+     * because every tile is drawn at its cell.
      *
      * The tileset image loads as [texture] does, with [filter] and [SamplerAddress.CLAMP], so it
      * shares the texture cache. [filter] defaults to [textureFilter]; [SamplerFilter.NEAREST] is the

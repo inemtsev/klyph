@@ -74,6 +74,22 @@ class TileRenderTest {
     }
 
     @Test
+    fun aPlanForgetsTheLayersOfAnEarlierWorld() {
+        val plan = TilePlan()
+        val full = World()
+        full.fullLayer(columns = 4, rows = 4)
+        full.fullLayer(columns = 4, rows = 4, x = 100f)
+        plan.update(full, camera(400f, 300f), 1f)
+        assertEquals(2, plan.layerCount)
+        plan.layerOf(1)
+        // A world with no layers empties every slot, so the first world's layers are not kept alive.
+        plan.update(World(), camera(400f, 300f), 1f)
+        assertEquals(0, plan.layerCount)
+        assertFailsWith<IllegalStateException> { plan.layerOf(0) }
+        assertFailsWith<IllegalStateException> { plan.layerOf(1) }
+    }
+
+    @Test
     fun emptyCellsAndHiddenLayersWriteNothing() {
         val world = World()
         val layer = TileLayer(tileSet, columns = 4, rows = 4)
