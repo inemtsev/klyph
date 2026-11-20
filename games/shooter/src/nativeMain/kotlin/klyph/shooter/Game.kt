@@ -29,10 +29,10 @@ class Art(
 
     companion object {
         fun load(assets: Assets): Art = Art(
-            ship = assets.texture("ship.png").asRegion(),
-            enemy = assets.texture("enemy.png").asRegion(),
-            diver = assets.texture("diver.png").asRegion(),
-            bullet = assets.texture("bullet.png").asRegion(),
+            ship = assets.region("ship.png"),
+            enemy = assets.region("enemy.png"),
+            diver = assets.region("diver.png"),
+            bullet = assets.region("bullet.png"),
             star = assets.whitePixel,
             particle = assets.createTexture(Image(Tuning.PARTICLE_SIZE, Tuning.PARTICLE_SIZE).apply { fill(Color.WHITE) }).asRegion(),
             explosion = assets.spriteSheet("explosion.png", columns = 6, rows = 1),

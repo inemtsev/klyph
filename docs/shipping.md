@@ -161,6 +161,11 @@ Through Gradle a relative path resolves against the project folder. `KLYPH_FRAME
 so the job ends. Hosted runners usually have no GPU, which is why the template's workflow only
 links; a runner with a GPU can run the game and upload `build/shot.png` as an artifact.
 
+To compare the pictures of two builds, add `-Pklyph.frameDelta=0.016`. Every frame then advances
+game time by that much instead of the time it took, so a given frame number shows the same state
+on every run. A game without randomness saves byte-identical files, which `cmp` can compare; a game
+that draws random numbers seeds its own `Random` for such a run.
+
 Without an audio device the game prints one line and runs silently, so CI needs no sound setup.
 
 ## A checklist before you ship

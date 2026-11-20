@@ -8,6 +8,7 @@ import klyph.platform.Scancode
 import samples.Sample
 import samples.assertPrints
 import kotlin.test.assertFailsWith
+import kotlin.time.Duration.Companion.milliseconds
 
 class AppConfigs {
     @Sample
@@ -22,6 +23,9 @@ class AppConfigs {
         // Textures load with linear sampling; a pixel-art game sets nearest sampling once for all of them.
         assertPrints(config.textureFilter, "LINEAR")
         assertPrints(AppConfig(textureFilter = SamplerFilter.NEAREST).textureFilter, "NEAREST")
+        // Frames last as long as they took; a frame delta gives every frame the same length, so runs repeat.
+        assertPrints(config.frameDelta, "null")
+        assertPrints(AppConfig(frameDelta = 16.milliseconds).frameDelta, "16ms")
         assertFailsWith<IllegalArgumentException> { AppConfig(width = 0) }
     }
 

@@ -6,7 +6,7 @@ import klyph.platform.Sdl
 import kotlin.system.exitProcess
 
 /** Every benchmark this executable can run, in the order they are listed. */
-internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, collisionBenchmark, particleBenchmark, mixerBenchmark)
+internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, collisionBenchmark, particleBenchmark, drawnBenchmark, mixerBenchmark)
 
 /**
  * Runs the benchmark named by the first argument. Without an argument, prints the available
@@ -34,7 +34,7 @@ fun main(args: Array<String>) {
         exitProcess(if (name == null) 0 else 1)
     }
 
-    // The limits, target, present mode, validation, overlay, window mode and screenshot come from
+    // The limits, frame delta, target, present mode, validation, overlay, window mode and screenshot come from
     // KLYPH_* through the engine's own reader, on top of the benchmark's own base.
     val base = AppConfig(
         title = "klyph ${benchmark.name} benchmark",

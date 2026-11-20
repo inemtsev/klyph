@@ -43,12 +43,12 @@ class Art(
 
     companion object {
         fun load(assets: Assets): Art = Art(
-            ant = assets.texture("ant.png").asRegion(),
-            ladybug = assets.texture("ladybug.png").asRegion(),
-            caterpillar = assets.texture("caterpillar.png").asRegion(),
-            cake = assets.texture("cake.png").asRegion(),
-            watermelon = assets.texture("watermelon.png").asRegion(),
-            swatter = assets.texture("swatter.png").asRegion(),
+            ant = assets.region("ant.png"),
+            ladybug = assets.region("ladybug.png"),
+            caterpillar = assets.region("caterpillar.png"),
+            cake = assets.region("cake.png"),
+            watermelon = assets.region("watermelon.png"),
+            swatter = assets.region("swatter.png"),
             splat = assets.createTexture(splatImage(Tuning.SPLAT_TEXELS)).asRegion(),
             droplet = assets.disc(Tuning.DROPLET_TEXELS),
         )

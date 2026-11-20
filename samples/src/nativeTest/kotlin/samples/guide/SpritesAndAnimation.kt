@@ -33,17 +33,17 @@ import kotlin.time.Duration.Companion.milliseconds
 class SpritesAndAnimation {
     fun App.spawnShip() {
         // snippet: sprite
-        val ship = assets.texture("ship.png")
+        val ship = assets.region("ship.png")
         commands.spawn {
             add(Transform, Transform(x = 640f, y = 360f))
-            add(Sprite, Sprite(ship.asRegion()))
+            add(Sprite, Sprite(ship))
         }
         // end snippet
     }
 
     fun App.spawnShadow() {
         // snippet: sprite-options
-        val ship = assets.texture("ship.png").asRegion()
+        val ship = assets.region("ship.png")
         commands.spawn {
             add(Transform, Transform(x = 646f, y = 368f, rotation = 0.3f, scaleX = 0.5f, scaleY = 0.5f))
             add(Sprite, Sprite(ship, color = Color.BLACK.withAlpha(0.4f), layer = -1, isFlippedX = true))
@@ -53,7 +53,7 @@ class SpritesAndAnimation {
 
     fun App.spawnStandingHero() {
         // snippet: origin
-        val hero = assets.texture("hero.png").asRegion()
+        val hero = assets.region("hero.png")
         commands.spawn {
             // The origin (0.5, 1) is the middle of the bottom edge, so the Transform is at the hero's feet.
             add(Transform, Transform(x = 640f, y = 500f))

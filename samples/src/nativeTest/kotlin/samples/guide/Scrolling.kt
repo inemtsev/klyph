@@ -77,7 +77,7 @@ class Scrolling {
 
     fun App.paintSky() {
         // snippet: sky
-        val sky = assets.texture("sky.png").asRegion()
+        val sky = assets.region("sky.png")
         addSystem(Phase.RENDER) { app ->
             // The whole window in points, from its top-left corner, under everything the world draws.
             app.canvas.drawSprite(
@@ -96,7 +96,7 @@ class Scrolling {
 
     fun App.addHills() {
         // snippet: hills
-        val hills = Sprite(assets.texture("hills.png").asRegion(), layer = -2, originY = 1f)
+        val hills = Sprite(assets.region("hills.png"), layer = -2, originY = 1f)
         commands.spawn {
             // The bottom edge of the strip stands on the horizon, at y = 400.
             add(Transform, Transform(x = 0f, y = 400f))
@@ -121,7 +121,7 @@ class Scrolling {
 
     fun App.spawnFeetHero(): Entity {
         // snippet: feet-origin
-        val art = assets.texture("hero.png").asRegion()
+        val art = assets.region("hero.png")
         // The origin (0.5, 1) is the middle of the bottom edge, so the Transform is at the hero's feet.
         val sprite = Sprite(art, originX = 0.5f, originY = 1f)
         val hero = commands.spawn {

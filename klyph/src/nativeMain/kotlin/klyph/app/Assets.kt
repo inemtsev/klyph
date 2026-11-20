@@ -16,6 +16,7 @@ import klyph.platform.createTexture
 import klyph.render.SpriteSheet
 import klyph.render.Texture
 import klyph.render.TextureRegion
+import klyph.render.asRegion
 import klyph.render.fromGrid
 import klyph.text.BuiltInFont
 import klyph.text.Font
@@ -47,10 +48,22 @@ import klyph.text.parseBmFont
  * Samples live in the sandbox because they need a display.
  */
 public class Assets internal constructor(
-    private val device: GpuDevice,
+    private val upload: (image: Image, filter: SamplerFilter, address: SamplerAddress) -> Texture,
     root: String,
-    textureFilter: SamplerFilter = SamplerFilter.LINEAR,
+    textureFilter: SamplerFilter,
 ) : AutoCloseable {
+    /**
+     * Creates assets that upload every texture to [device]. The primary constructor takes the
+     * upload function itself, so tests can pass one that needs no GPU.
+     */
+    internal constructor(device: GpuDevice, root: String, textureFilter: SamplerFilter = SamplerFilter.LINEAR) : this(
+        upload = { image, filter, address ->
+            Texture(device, device.createTexture(image), image.width, image.height, filter, address)
+        },
+        root = root,
+        textureFilter = textureFilter,
+    )
+
     /**
      * The directory relative paths resolve under. A separator is appended when the configured
      * directory lacks one; an empty root means [Files.basePath] itself.
@@ -58,9 +71,10 @@ public class Assets internal constructor(
     public val root: String = if (root.isEmpty() || root.endsWith('/') || root.endsWith('\\')) root else "$root/"
 
     /**
-     * The sampling filter that [texture], [textureOrNull], [createTexture], [spriteSheet],
-     * [spriteSheetOrNull], [font] and [fontOrNull] use when their call passes no `filter`. It is
-     * [AppConfig.textureFilter], [SamplerFilter.LINEAR] unless the app sets another.
+     * The sampling filter that [texture], [textureOrNull], [region], [regionOrNull],
+     * [createTexture], [spriteSheet], [spriteSheetOrNull], [font] and [fontOrNull] use when
+     * their call passes no `filter`. It is [AppConfig.textureFilter], [SamplerFilter.LINEAR]
+     * unless the app sets another.
      */
     public val textureFilter: SamplerFilter = textureFilter
 
@@ -151,6 +165,8 @@ public class Assets internal constructor(
      * A texture has one address, fixed when it loads, so a file used both clamped and repeating is
      * loaded twice, as two textures, and the cache keeps both.
      *
+     * For a `Sprite` that shows the whole file, [region] returns it as a [TextureRegion] in one call.
+     *
      * @throws FileException if the file does not exist or cannot be read.
      * @throws ImageException if the file is not a PNG or JPEG image, or is corrupt.
      * @throws klyph.platform.SdlException if the GPU texture cannot be created.
@@ -172,6 +188,25 @@ public class Assets internal constructor(
         cached.put(resolved, filter, address, texture)
         return texture
     }
+
+    /**
+     * Returns the whole of the PNG or JPEG file at [path] as one [TextureRegion], for a `Sprite`
+     * that shows the file as a single picture. [filter] and [address] default as in [texture],
+     * and the cache rules are the same: the first call for a file, filter and address loads and
+     * uploads it, and every later call with all three returns an equal region. A file that is
+     * missing or not an image throws; [regionOrNull] returns `null` instead. To cut the file into
+     * smaller regions, load it with [texture].
+     *
+     * @throws FileException if the file does not exist or cannot be read.
+     * @throws ImageException if the file is not a PNG or JPEG image, or is corrupt.
+     * @throws klyph.platform.SdlException if the GPU texture cannot be created.
+     * @throws IllegalStateException if these assets are closed.
+     */
+    public fun region(
+        path: String,
+        filter: SamplerFilter = textureFilter,
+        address: SamplerAddress = SamplerAddress.CLAMP,
+    ): TextureRegion = texture(path, filter = filter, address = address).asRegion()
 
     /**
      * Uploads [image], such as one drawn in code, into a new texture sampled with [filter] and
@@ -223,6 +258,20 @@ public class Assets internal constructor(
         cached.put(resolved, filter, address, texture)
         return texture
     }
+
+    /**
+     * Returns the whole of the PNG or JPEG file at [path] as one [TextureRegion] as [region] does,
+     * defaults included, or `null` if the file does not exist, cannot be read, or is not a
+     * decodable image. A failed load is not cached, so a later call tries the file again.
+     *
+     * @throws klyph.platform.SdlException if the GPU texture cannot be created.
+     * @throws IllegalStateException if these assets are closed.
+     */
+    public fun regionOrNull(
+        path: String,
+        filter: SamplerFilter = textureFilter,
+        address: SamplerAddress = SamplerAddress.CLAMP,
+    ): TextureRegion? = textureOrNull(path, filter = filter, address = address)?.asRegion()
 
     /**
      * Returns a sprite sheet that cuts the texture of the file at [path], loaded with [filter] as
@@ -454,11 +503,6 @@ public class Assets internal constructor(
     private fun decodeFileOrNull(resolved: String): Image? {
         val bytes = Files.readBytesOrNull(resolved) ?: return null
         return Image.decodeOrNull(bytes)
-    }
-
-    private fun upload(image: Image, filter: SamplerFilter, address: SamplerAddress): Texture {
-        val handle = device.createTexture(image)
-        return Texture(device, handle, image.width, image.height, filter, address)
     }
 
     /** Returns [path] under [root], or [path] itself if it is absolute. */

@@ -21,11 +21,23 @@ class RunEnvironmentTest {
     fun everyEngineVariablePassesThrough() {
         val names = listOf(
             "SPRITES", "CHILDREN", "TEXTURES", "INTERPOLATE", "FRAMES", "SECONDS", "OFFSCREEN",
-            "VSYNC", "VALIDATION", "AUTOPILOT", "MUSIC", "CELL", "OVERLAY", "SCREENSHOT", "FULLSCREEN",
+            "VSYNC", "VALIDATION", "AUTOPILOT", "MUSIC", "CELL", "OVERLAY", "SCREENSHOT", "FULLSCREEN", "FRAME_DELTA",
         )
         assertEquals(names, RunEnvironment.variables)
         val environment = RunEnvironment.of(property = { "1" }, environment = { null }, rootDirectory = root)
         assertEquals(names.map { "KLYPH_$it" }.toSet(), environment.keys)
+    }
+
+    @Test
+    fun aMultiWordVariableTakesTheCamelCaseProperty() {
+        val fromProperty = RunEnvironment.of(mapOf("klyph.frameDelta" to "0.016")::get, { null }, root)
+        assertEquals(mapOf("KLYPH_FRAME_DELTA" to "0.016"), fromProperty)
+        val fromShell = RunEnvironment.of({ null }, mapOf("KLYPH_FRAME_DELTA" to "0.02")::get, root)
+        assertEquals(mapOf("KLYPH_FRAME_DELTA" to "0.02"), fromShell)
+        val wins = RunEnvironment.of(mapOf("klyph.frameDelta" to "0.016")::get, mapOf("KLYPH_FRAME_DELTA" to "0.02")::get, root)
+        assertEquals(mapOf("KLYPH_FRAME_DELTA" to "0.016"), wins)
+        val lowercase = RunEnvironment.of(mapOf("klyph.framedelta" to "0.016", "klyph.frame_delta" to "0.016")::get, { null }, root)
+        assertEquals(emptyMap(), lowercase)
     }
 
     @Test

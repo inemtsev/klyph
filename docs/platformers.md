@@ -134,6 +134,8 @@ After every move the body says what it touched:
 | `floorOrNull` | The solid the body stands on, or `null` while `isOnFloor` is `false`. |
 | `hasLanded` | The move came down onto a floor and the body did not stand before it: `true` for one step per landing. |
 | `landingSpeed` | The downward speed that landing arrived with, kept because the landing zeroes `dy`; 0 without a landing. |
+| `wasPushedOut` | The move began by pushing the body out of a solid it overlapped, the shortest way, such as after a respawn inside a floor or a solid moved onto the body. |
+| `isStuck` | Four pushes did not take the body out of the solids it overlapped, such as when it is squeezed between two, so it stayed where it was and the move went on from there. |
 
 A body that stood on a floor and is not moving up looks `Collisions.FLOOR_SNAP_DISTANCE`, 2 units,
 further down after its move and lands on a floor it finds there. Walking down a small step then
@@ -256,17 +258,19 @@ fun App.jumpLandingOrNull(hero: Entity, dx: Float, slide: BoxSlide): BoxSlide? {
 
 `slideCollider` starts from where the entity's `Transform` would be and returns that position, so
 each step's `x` and `y` feed the next; `slideBox` does the same for a box you describe. Neither
-looks for a floor below at the end unless you pass `floorSnap`, and neither drops through
-ledges.
+looks for a floor below at the end unless you pass `floorSnap`, neither drops through ledges, and
+neither pushes the box out of a solid it starts inside, as a body is.
 
 ## Limits
 
 - Bodies and solids are upright boxes: a rotation is ignored and a circle collider is an error.
 - Solids do not move bodies: there are no moving platforms, a solid with a `Velocity` or a parent
-  is an error, and a solid moved onto a body by its `Transform` lets the body pass through it.
+  is an error, and a solid moved onto a body by its `Transform` pushes the body out of it but
+  does not carry it.
 - Bodies do not stop each other. Use `Overlap` events between them, as for any colliders.
-- A body that starts a move inside a solid moves through that solid, so it is never stuck, but
-  place bodies outside solids.
+- A body that overlaps a solid when its move starts is pushed out of it first, the shortest way,
+  in at most four pushes. A body squeezed between solids stays where it was and reports `isStuck`:
+  the engine neither crushes nor moves it, so your game decides what happens to it.
 - A scene frozen under a pushed scene keeps its bodies still, and its solids stop nothing.
 - A body moved by setting its `Transform`, such as a respawn, is drawn sliding from its old place
   to the new one during the next step when it is `Interpolated`, a dash across the screen. Call

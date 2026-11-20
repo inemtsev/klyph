@@ -203,7 +203,8 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
     /**
      * Moves every [KinematicBody] in [world] by its speed times [delta] and stops it at the
      * [Solid]s in the way, setting its contact state, as the class description of [KinematicBody]
-     * explains. It first brings the solids grid up to date with [world].
+     * explains. A body that overlaps a solid is pushed out of it first. It first brings the solids
+     * grid up to date with [world].
      *
      * The engine calls this on `App.collisions` in every fixed step, after the `FIXED_UPDATE`
      * systems and the `Velocity` step, with the fixed step length, and leaves out the bodies and
@@ -344,14 +345,15 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
      * [dx] and [dy] are the move of one step in world units, not speeds.
      *
      * The box moves across, then up or down, and stops a [CONTACT_GAP] short of the first [Solid] on
-     * a layer in [mask] each way. It passes one-way solids as a body does and moves out of a solid
-     * it starts inside. A body standing on a floor also keeps to a floor up to
-     * [FLOOR_SNAP_DISTANCE] below it; pass that distance as [floorSnap] when the box stood on a
-     * floor before the move and is not moving up, and the default 0 otherwise. A box moving up never
-     * snaps. [KinematicBody.dropThrough] has no counterpart here. The body's move and this one are
-     * the same code, so a jump followed step by step with the speeds the game's system would give
-     * ends where the body will, and the game zeroes its planned speeds where the body would: `dx`
-     * when [BoxSlide.isOnWall], `dy` when [BoxSlide.isOnFloor] or [BoxSlide.isOnCeiling].
+     * a layer in [mask] each way. It passes one-way solids as a body does. A solid it starts inside
+     * does not stop it, and nothing pushes it out of that solid first, as a body is pushed. A body
+     * standing on a floor also keeps to a floor up to [FLOOR_SNAP_DISTANCE] below it; pass that
+     * distance as [floorSnap] when the box stood on a floor before the move and is not moving up,
+     * and the default 0 otherwise. A box moving up never snaps. [KinematicBody.dropThrough] has no
+     * counterpart here. The body's move and this one are the same code, so a jump followed step by
+     * step with the speeds the game's system would give ends where the body will, and the game
+     * zeroes its planned speeds where the body would: `dx` when [BoxSlide.isOnWall], `dy` when
+     * [BoxSlide.isOnFloor] or [BoxSlide.isOnCeiling].
      *
      * The solids are read as [sweepBox] reads them. It allocates nothing when given a [result].
      *
@@ -394,7 +396,8 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
      * by step, feeding each step's [BoxSlide.x] and [BoxSlide.y] into the next, with no copy of the
      * collider's size and offset. Starting from the entity's `Transform` and moving by its body's
      * speed times the step length, it ends where the engine's move will put the body, given the same
-     * [floorSnap].
+     * [floorSnap] and a box that overlaps no solid, which a body is pushed out of first and a slide
+     * is not.
      *
      * The entity is looked up as [sweepCollider] looks it up. It allocates nothing when given a
      * [result].
@@ -437,10 +440,9 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
      *
      * The line is a falling body's feet: it lands on one-way solids whose top is at or below [y],
      * and a solid whose top is exactly at [y] is met at once. A solid the line starts inside is not a
-     * floor below it and is passed through, as a body moves out of a solid it starts inside. The hit
-     * is a [SweepHit] whose [SweepHit.fraction] of [depth] gives the floor's top,
-     * `y + depth * fraction`, and whose normal is (0, -1). The solids are read as [sweepBox] reads
-     * them. It allocates nothing besides the hit it returns.
+     * floor below it and is passed through. The hit is a [SweepHit] whose [SweepHit.fraction] of
+     * [depth] gives the floor's top, `y + depth * fraction`, and whose normal is (0, -1). The solids
+     * are read as [sweepBox] reads them. It allocates nothing besides the hit it returns.
      *
      * @throws IllegalArgumentException if [x] or [y] is not finite, or [width] or [depth] is not a
      *   positive finite number.

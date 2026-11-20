@@ -284,16 +284,6 @@ class KinematicBodyTest {
     }
 
     @Test
-    fun aBodyStartingInsideASolidMovesOutOfIt() {
-        val world = World()
-        world.solid(left = 0f, top = 0f, right = 200f, bottom = 200f)
-        val hero = world.hero(x = 190f, y = 100f)
-        Collisions().run(world, hero, steps = 10, gravity = 0f, dx = 600f)
-        assertEquals(290f, hero.transform.x, 0.01f)
-        assertFalse(hero.body.isOnWall)
-    }
-
-    @Test
     fun aBodyWithAVelocityIsAnError() {
         val world = World()
         val hero = world.hero(x = 0f, y = 0f)

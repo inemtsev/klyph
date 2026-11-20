@@ -21,7 +21,6 @@ import klyph.platform.Scancode
 import klyph.render.Fade
 import klyph.render.FadeEnd
 import klyph.render.Sprite
-import klyph.render.asRegion
 import klyph.scene.buildScene
 import klyph.text.TextAlign
 import kotlin.time.Duration.Companion.milliseconds
@@ -101,7 +100,7 @@ class EntitiesSystemsAndScenes {
         // snippet: hierarchy
         val ship = commands.spawn {
             add(Transform, Transform(x = 640f, y = 500f))
-            add(Sprite, Sprite(assets.texture("ship.png").asRegion()))
+            add(Sprite, Sprite(assets.region("ship.png")))
         }
         val gun = commands.spawn {
             setParent(ship)
@@ -150,7 +149,7 @@ class EntitiesSystemsAndScenes {
             onEnter { app ->
                 app.commands.spawn {
                     add(Transform, Transform(x = 640f, y = 600f))
-                    add(Sprite, Sprite(app.assets.texture("ship.png").asRegion()))
+                    add(Sprite, Sprite(app.assets.region("ship.png")))
                 }
             }
             addSystem(Phase.INPUT) { app ->
@@ -196,7 +195,7 @@ class EntitiesSystemsAndScenes {
         // A "+100" that waits a second, fades out over half a second and is then destroyed.
         commands.spawn {
             add(Transform, Transform(x = x, y = y - 20f))
-            add(Sprite, Sprite(assets.texture("plus100.png").asRegion()))
+            add(Sprite, Sprite(assets.region("plus100.png")))
             add(Fade, Fade(500.milliseconds, end = FadeEnd.DESTROY, delay = 1.seconds))
         }
         // end snippet

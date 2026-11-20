@@ -2,6 +2,7 @@ package klyph.entity
 
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -228,6 +229,40 @@ class TransformsTest {
         world.propagateTransforms()
         leaves.forEachIndexed { i, leaf -> assertWorld(world.get(leaf, WorldTransform), 2f, i.toFloat(), 0f, 1f, 1f) }
         assertWorld(world.get(previous, WorldTransform), 202f, 99f, 0f, 1f, 1f)
+    }
+
+    @Test
+    fun composeWorldTransformEqualsPropagationToTheBit() {
+        val random = Random(11)
+        fun spread(range: Float) = (random.nextFloat() * 2f - 1f) * range
+        repeat(40) {
+            val world = World()
+            val entities = ArrayList<Entity>()
+            repeat(2 + random.nextInt(12)) { index ->
+                val entity = world.create()
+                // About one entity in six has no Transform, which starts its children over from the identity.
+                if (index == 0 || random.nextInt(6) != 0) {
+                    world.add(entity, Transform, Transform(spread(500f), spread(500f), spread(10f), spread(3f), spread(3f)))
+                }
+                if (index > 0) world.setParent(entity, entities[random.nextInt(index)])
+                entities += entity
+            }
+            world.propagateTransforms()
+
+            var compared = 0
+            for (entity in entities) {
+                val written = world.getOrNull(entity, WorldTransform) ?: continue
+                world.composeWorldTransform(entity) { x, y, rotation, scaleX, scaleY ->
+                    assertEquals(written.x.toRawBits(), x.toRawBits(), "x of $entity")
+                    assertEquals(written.y.toRawBits(), y.toRawBits(), "y of $entity")
+                    assertEquals(written.rotation.toRawBits(), rotation.toRawBits(), "rotation of $entity")
+                    assertEquals(written.scaleX.toRawBits(), scaleX.toRawBits(), "scaleX of $entity")
+                    assertEquals(written.scaleY.toRawBits(), scaleY.toRawBits(), "scaleY of $entity")
+                }
+                compared++
+            }
+            assertEquals(world.count(WorldTransform), compared)
+        }
     }
 
     @Test

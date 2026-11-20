@@ -74,6 +74,10 @@ import kotlin.time.TimeSource
  * [App.quit], so closing the window ends the app. [App.commands] is applied after `setup`, after
  * every system and after the transform propagation.
  *
+ * Each frame advances [Time.elapsed] by the time it took, at most 250 milliseconds, or by exactly
+ * [AppConfig.frameDelta] when the config sets one, so runs and their screenshots repeat. The
+ * loop renders and presents as usual either way.
+ *
  * Right after it updates [App.input], the engine shows or hides [App.overlay] if
  * [AppConfig.overlayKey] went down this frame. While the overlay is visible, the engine queues it
  * on [App.canvas] after the last RENDER system, so it is drawn over everything else.
@@ -217,6 +221,13 @@ private fun startCamera(window: Window): Camera {
  */
 private fun pointsOf(pixels: Int, density: Float): Float = (pixels / density).coerceAtLeast(1f)
 
+/**
+ * Returns [AppConfig.frameDelta] when the config sets one, and otherwise [measured], the real
+ * time since the previous frame began. The result is the duration the frame that just began
+ * advances game time by; [Time.beginFrame] clamps it and the fixed-step counter takes it as it comes.
+ */
+internal fun AppConfig.frameDeltaOf(measured: Duration): Duration = frameDelta ?: measured
+
 /** Runs [app]'s phases: startup, frames until a quit request, shutdown. */
 private class FrameLoop(
     private val app: App,
@@ -248,7 +259,7 @@ private class FrameLoop(
         if (frameLimit != null && frameLimit <= 0) app.quit()
         while (!app.isQuitRequested) {
             val now = clock.markNow()
-            val delta = now - frameStart
+            val delta = app.config.frameDeltaOf(measured = now - frameStart)
             frameStart = now
             frame(delta, now)
         }

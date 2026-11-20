@@ -146,7 +146,7 @@ fixed steps and after LATE_UPDATE. Destroying a parent destroys its children.
 ```kotlin
 val ship = commands.spawn {
     add(Transform, Transform(x = 640f, y = 500f))
-    add(Sprite, Sprite(assets.texture("ship.png").asRegion()))
+    add(Sprite, Sprite(assets.region("ship.png")))
 }
 val gun = commands.spawn {
     setParent(ship)
@@ -228,7 +228,7 @@ val play = buildScene("play") {
     onEnter { app ->
         app.commands.spawn {
             add(Transform, Transform(x = 640f, y = 600f))
-            add(Sprite, Sprite(app.assets.texture("ship.png").asRegion()))
+            add(Sprite, Sprite(app.assets.region("ship.png")))
         }
     }
     addSystem(Phase.INPUT) { app ->
@@ -306,7 +306,7 @@ commands.spawn {
 // A "+100" that waits a second, fades out over half a second and is then destroyed.
 commands.spawn {
     add(Transform, Transform(x = x, y = y - 20f))
-    add(Sprite, Sprite(assets.texture("plus100.png").asRegion()))
+    add(Sprite, Sprite(assets.region("plus100.png")))
     add(Fade, Fade(500.milliseconds, end = FadeEnd.DESTROY, delay = 1.seconds))
 }
 ```

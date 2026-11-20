@@ -11,6 +11,7 @@ import klyph.platform.Sdl
 import klyph.platform.WindowMode
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
 
 /**
  * Holds the settings [runApp] opens the window, the GPU device and the frame loop with.
@@ -18,13 +19,16 @@ import kotlin.time.Duration.Companion.seconds
  * Every parameter has a default, so callers pass only what they change, by name:
  * `AppConfig(title = "Shooter", fixedRate = 50)`. [width] and [height] must be positive,
  * [fixedRate] must be between 1 and 1000, [maxFixedStepsPerFrame] must be at least 1,
- * [collisionCellSize] must be a positive finite number, [frameLimit] must be at least 0, and
- * [timeLimit] must not be negative or infinite. [fromEnvironment] fills the limits and a few
- * other settings, among them [windowMode] and [screenshot], from `KLYPH_*` environment variables.
+ * [collisionCellSize] must be a positive finite number, [frameLimit] must be at least 0,
+ * [timeLimit] must not be negative or infinite, and [frameDelta] must be above 0, at most
+ * 250 milliseconds and at most [maxFixedStepsPerFrame] fixed steps long. [fromEnvironment] fills
+ * the limits and a few other settings, among them [frameDelta], [windowMode] and [screenshot],
+ * from `KLYPH_*` environment variables.
  *
  * Two configs are equal when every setting is equal.
  *
- * @throws IllegalArgumentException if a value is outside its range.
+ * @throws IllegalArgumentException if a value is outside its range, or if [frameDelta] is longer
+ *   than [maxFixedStepsPerFrame] fixed steps, each one second divided by [fixedRate].
  *
  * @sample samples.app.AppConfigs.appConfig
  */
@@ -114,6 +118,20 @@ public class AppConfig(
      * keep the filters they document.
      */
     public val textureFilter: SamplerFilter = SamplerFilter.LINEAR,
+    /**
+     * The duration every frame advances game time by, or `null`, the default, for the real time
+     * each frame took. With a value, every frame lasts exactly this long: [Time.delta] outside a
+     * fixed step equals it and [Time.elapsed] grows by it, so [Phase.FIXED_UPDATE] runs the same
+     * steps in the same frames on every run, however fast the machine is, and the [screenshot]s of
+     * two runs can be compared. The loop still renders and presents as usual; only the measured
+     * duration is replaced. Must be above 0, at most 250 milliseconds, the longest frame [Time]
+     * accepts, and at most [maxFixedStepsPerFrame] fixed steps long, each step one second divided
+     * by [fixedRate]. A longer frame would run only [maxFixedStepsPerFrame] steps and drop the
+     * rest, while [Time.elapsed] still counted all of it. Random sources stay the game's
+     * business: a game that wants a run to repeat also seeds its own `Random`,
+     * `ParticleEmitter.random` included. [fromEnvironment] sets it from `KLYPH_FRAME_DELTA=<seconds>`.
+     */
+    public val frameDelta: Duration? = null,
 ) {
     init {
         require(width > 0) { "Window width $width is not positive." }
@@ -125,6 +143,15 @@ public class AppConfig(
         }
         require(frameLimit == null || frameLimit >= 0) { "Frame limit $frameLimit is less than zero." }
         require(timeLimit == null || (!timeLimit.isNegative() && timeLimit.isFinite())) { "Time limit $timeLimit is negative or infinite." }
+        require(frameDelta == null || (frameDelta.isPositive() && frameDelta <= Time.MAX_FRAME_DELTA)) {
+            "Frame delta $frameDelta is not above zero and at most ${Time.MAX_FRAME_DELTA}."
+        }
+        // Steps are as long as Time.fixedDelta, so a frame this long gives the FixedStepper exactly this many steps and drops none.
+        val longestFrame = 1.seconds / fixedRate * maxFixedStepsPerFrame
+        require(frameDelta == null || frameDelta <= longestFrame) {
+            "Frame delta $frameDelta is longer than $longestFrame, the most that $maxFixedStepsPerFrame fixed steps " +
+                "at a fixed rate of $fixedRate cover."
+        }
     }
 
     override fun equals(other: Any?): Boolean =
@@ -149,7 +176,8 @@ public class AppConfig(
             windowMode == other.windowMode &&
             cursor == other.cursor &&
             screenshot == other.screenshot &&
-            textureFilter == other.textureFilter
+            textureFilter == other.textureFilter &&
+            frameDelta == other.frameDelta
 
     override fun hashCode(): Int {
         var result = title.hashCode()
@@ -173,6 +201,7 @@ public class AppConfig(
         result = 31 * result + cursor.hashCode()
         result = 31 * result + screenshot.hashCode()
         result = 31 * result + textureFilter.hashCode()
+        result = 31 * result + frameDelta.hashCode()
         return result
     }
 
@@ -186,7 +215,63 @@ public class AppConfig(
             "gpuSync=$gpuSync, validation=$validation, clearColor=$clearColor, assetRoot=$assetRoot, audio=$audio, " +
             "collisionCellSize=$collisionCellSize, overlayKey=$overlayKey, overlay=$overlay, frameLimit=$frameLimit, " +
             "timeLimit=$timeLimit, windowMode=$windowMode, cursor=$cursor, screenshot=$screenshot, " +
-            "textureFilter=$textureFilter)"
+            "textureFilter=$textureFilter, frameDelta=$frameDelta)"
+
+    /**
+     * Returns a config with the settings passed replaced and every other setting of this one kept.
+     * It is the one place that copies all of them, so [fromEnvironment] names only the settings an
+     * environment variable sets. A setting added to the constructor belongs here, in [equals],
+     * [hashCode] and [toString]; `AppConfigTest` fails when one is missing.
+     *
+     * @throws IllegalArgumentException if a value is outside its range, as for the constructor.
+     */
+    internal fun copy(
+        title: String = this.title,
+        width: Int = this.width,
+        height: Int = this.height,
+        fixedRate: Int = this.fixedRate,
+        maxFixedStepsPerFrame: Int = this.maxFixedStepsPerFrame,
+        presentMode: PresentMode = this.presentMode,
+        target: RenderTarget = this.target,
+        gpuSync: GpuSync = this.gpuSync,
+        validation: GpuValidation = this.validation,
+        clearColor: Color = this.clearColor,
+        assetRoot: String? = this.assetRoot,
+        audio: AudioConfig = this.audio,
+        collisionCellSize: Float = this.collisionCellSize,
+        overlayKey: Scancode? = this.overlayKey,
+        overlay: OverlayStart = this.overlay,
+        frameLimit: Int? = this.frameLimit,
+        timeLimit: Duration? = this.timeLimit,
+        windowMode: WindowMode = this.windowMode,
+        cursor: CursorMode = this.cursor,
+        screenshot: Screenshot? = this.screenshot,
+        textureFilter: SamplerFilter = this.textureFilter,
+        frameDelta: Duration? = this.frameDelta,
+    ): AppConfig = AppConfig(
+        title = title,
+        width = width,
+        height = height,
+        fixedRate = fixedRate,
+        maxFixedStepsPerFrame = maxFixedStepsPerFrame,
+        presentMode = presentMode,
+        target = target,
+        gpuSync = gpuSync,
+        validation = validation,
+        clearColor = clearColor,
+        assetRoot = assetRoot,
+        audio = audio,
+        collisionCellSize = collisionCellSize,
+        overlayKey = overlayKey,
+        overlay = overlay,
+        frameLimit = frameLimit,
+        timeLimit = timeLimit,
+        windowMode = windowMode,
+        cursor = cursor,
+        screenshot = screenshot,
+        textureFilter = textureFilter,
+        frameDelta = frameDelta,
+    )
 
     /** Creates configs from the process environment. */
     public companion object {
@@ -198,6 +283,9 @@ public class AppConfig(
          *
          * - `KLYPH_FRAMES=<n>` sets [frameLimit] to `n`, a whole number of at least 0.
          * - `KLYPH_SECONDS=<s>` sets [timeLimit] to `s` seconds, a number of at least 0 such as `2.5`.
+         * - `KLYPH_FRAME_DELTA=<s>` sets [frameDelta] to `s` seconds, a number such as `0.016` that
+         *   [frameDelta] accepts for the [fixedRate] and [maxFixedStepsPerFrame] of [base], so every
+         *   frame advances game time by exactly that much.
          * - `KLYPH_VALIDATION=1` turns [validation] on, `0` off.
          * - `KLYPH_VSYNC=1` sets [presentMode] to [PresentMode.VSYNC], `0` to [PresentMode.IMMEDIATE].
          * - `KLYPH_OFFSCREEN=1` sets [target] to [RenderTarget.OFFSCREEN] and [gpuSync] to
@@ -221,6 +309,18 @@ public class AppConfig(
          */
         public fun fromEnvironment(base: AppConfig = AppConfig()): AppConfig = fromEnvironment(base) { Sdl.environmentVariable(it) }
 
+        /**
+         * Returns the duration a `KLYPH_FRAME_DELTA` [value] of seconds names, such as `0.016`.
+         *
+         * @throws IllegalArgumentException if [value] is not a number above 0 and at most the longest frame, 0.25.
+         */
+        private fun parseFrameDelta(value: String): Duration =
+            value.toDoubleOrNull()?.takeIf { it > 0.0 }?.seconds?.takeIf { it.isPositive() && it <= Time.MAX_FRAME_DELTA }
+                ?: throw IllegalArgumentException(
+                    "Environment variable KLYPH_FRAME_DELTA is '$value', which is not a number of seconds above 0 " +
+                        "and at most ${Time.MAX_FRAME_DELTA.toDouble(DurationUnit.SECONDS)}.",
+                )
+
         /** Returns [base] with the settings that the `KLYPH_*` variables [environment] returns replaced, as the public overload describes. */
         internal fun fromEnvironment(base: AppConfig, environment: (String) -> String?): AppConfig {
             fun read(name: String): String? = environment(name)?.ifEmpty { null }
@@ -238,18 +338,14 @@ public class AppConfig(
                 value.toDoubleOrNull()?.takeIf { it >= 0.0 && it.isFinite() }?.seconds
                     ?: throw IllegalArgumentException("Environment variable KLYPH_SECONDS is '$value', which is not a finite number of at least 0.")
             }
+            val frameDelta = read("KLYPH_FRAME_DELTA")?.let(::parseFrameDelta)
             val validation = flag("KLYPH_VALIDATION")
             val vsync = flag("KLYPH_VSYNC")
             val offscreen = flag("KLYPH_OFFSCREEN")
             val overlay = flag("KLYPH_OVERLAY")
             val fullscreen = flag("KLYPH_FULLSCREEN")
             val screenshot = parseScreenshot(read("KLYPH_SCREENSHOT"))
-            return AppConfig(
-                title = base.title,
-                width = base.width,
-                height = base.height,
-                fixedRate = base.fixedRate,
-                maxFixedStepsPerFrame = base.maxFixedStepsPerFrame,
+            return base.copy(
                 presentMode = when (vsync) {
                     null -> base.presentMode
                     true -> PresentMode.VSYNC
@@ -266,11 +362,6 @@ public class AppConfig(
                     true -> GpuValidation.ENABLED
                     false -> GpuValidation.DISABLED
                 },
-                clearColor = base.clearColor,
-                assetRoot = base.assetRoot,
-                audio = base.audio,
-                collisionCellSize = base.collisionCellSize,
-                overlayKey = base.overlayKey,
                 overlay = when (overlay) {
                     null -> base.overlay
                     true -> OverlayStart.VISIBLE
@@ -283,9 +374,8 @@ public class AppConfig(
                     true -> WindowMode.FULLSCREEN
                     false -> WindowMode.WINDOWED
                 },
-                cursor = base.cursor,
                 screenshot = screenshot ?: base.screenshot,
-                textureFilter = base.textureFilter,
+                frameDelta = frameDelta ?: base.frameDelta,
             )
         }
     }

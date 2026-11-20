@@ -68,13 +68,13 @@ private val TINTS: List<Color> = listOf(
 )
 
 /** Width and height of every benchmark sprite in physical pixels. */
-private const val SPRITE_PIXELS = 24f
+internal const val SPRITE_PIXELS = 24f
 
 /**
  * Adds [count] sprites of [size] by [size] world units at random positions in a [width] by
  * [height] area, with seed 42 so every run is the same. Sprite `i` shows `regions[i % regions.size]`.
  */
-private fun spawnSprites(world: World, regions: List<TextureRegion>, count: Int, size: Float, width: Float, height: Float) {
+internal fun spawnSprites(world: World, regions: List<TextureRegion>, count: Int, size: Float, width: Float, height: Float) {
     val random = Random(42)
     repeat(count) { i ->
         val entity = world.create()

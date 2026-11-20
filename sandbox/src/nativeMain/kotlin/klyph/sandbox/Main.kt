@@ -37,6 +37,7 @@ import klyph.text.Text
 import klyph.text.TextAlign
 import klyph.text.TextShadow
 import kotlin.math.sin
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -56,7 +57,8 @@ import kotlin.time.Duration.Companion.seconds
  * validation layer, `KLYPH_OFFSCREEN=1` to draw into a texture instead of the window,
  * `KLYPH_OVERLAY=1` to show the debug overlay from the first frame (F3 toggles it either way),
  * `KLYPH_SCREENSHOT=<frame>:<path>` to save that frame as a PNG, `KLYPH_FULLSCREEN=1` to open in
- * fullscreen. `KLYPH_EVENTS=1` runs the event printer, which reads the two limits itself.
+ * fullscreen, `KLYPH_FRAME_DELTA=<seconds>` to advance every frame by the same game time, so two
+ * runs save identical PNGs. `KLYPH_EVENTS=1` runs the event printer, which reads the two limits itself.
  *
  * Keys: escape quits, F3 toggles the debug overlay, F11 switches between a window and fullscreen,
  * and C cycles the cursor through the system arrow, an image cursor and hidden, the manual check
@@ -201,6 +203,8 @@ private fun addFountain(app: App) {
         startScale = 1.5f
         endScale = 0.5f
         layer = 1
+        // Seeded, so two runs with a frame delta draw the same particles.
+        random = Random(seed = 1)
     }
     emitter.emit(64)
     val fountain = app.world.create()

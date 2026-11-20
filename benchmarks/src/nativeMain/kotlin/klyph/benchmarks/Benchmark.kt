@@ -39,8 +39,8 @@ internal class BenchmarkSettings(
      * The app configuration every benchmark runs with: a window titled after the benchmark,
      * immediate presentation and the `KLYPH_CELL` grid cell size (default 64) as the base, with
      * every setting `AppConfig.fromEnvironment` reads (`KLYPH_FRAMES`, `KLYPH_SECONDS`,
-     * `KLYPH_VSYNC`, `KLYPH_OFFSCREEN`, `KLYPH_VALIDATION`, `KLYPH_OVERLAY`, `KLYPH_FULLSCREEN`,
-     * `KLYPH_SCREENSHOT`) applied on top.
+     * `KLYPH_FRAME_DELTA`, `KLYPH_VSYNC`, `KLYPH_OFFSCREEN`, `KLYPH_VALIDATION`, `KLYPH_OVERLAY`,
+     * `KLYPH_FULLSCREEN`, `KLYPH_SCREENSHOT`) applied on top.
      */
     val config: AppConfig,
 ) {

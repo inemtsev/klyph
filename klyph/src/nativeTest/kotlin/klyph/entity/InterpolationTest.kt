@@ -204,6 +204,190 @@ class InterpolationTest {
     }
 
     @Test
+    fun drawnPositionOfAChildCountsAParentMovedSinceThePropagation() {
+        val world = World()
+        val parent = world.create()
+        val parentTransform = Transform(x = 100f, y = 50f)
+        world.add(parent, Transform, parentTransform)
+        val child = world.create()
+        world.add(child, Transform, Transform(x = 20f, y = 5f))
+        world.setParent(child, parent)
+        world.propagateTransforms()
+        assertEquals(Vec2(120f, 55f), world.drawnPositionOf(child, 0.5f))
+
+        // A system moves the parent in UPDATE, and the child's WorldTransform stays as it was until
+        // the propagation after LATE_UPDATE. The call already returns where that propagation puts it.
+        parentTransform.x = 160f
+        parentTransform.y = 70f
+        assertEquals(120f, world.get(child, WorldTransform).x, "The stored world transform is the last propagation's.")
+        assertEquals(Vec2(180f, 75f), world.drawnPositionOf(child, 0.5f))
+
+        world.propagateTransforms()
+        val written = world.get(child, WorldTransform)
+        assertEquals(Vec2(written.x, written.y), world.drawnPositionOf(child, 0.5f))
+        assertEquals(Vec2(180f, 75f), Vec2(written.x, written.y))
+    }
+
+    @Test
+    fun drawnPositionOfAChildBeforeAnyPropagationIsItsWorldPosition() {
+        val world = World()
+        val parent = world.create()
+        world.add(parent, Transform, Transform(x = 100f, y = 50f))
+        val child = world.create()
+        world.add(child, Transform, Transform(x = 20f))
+        world.setParent(child, parent)
+
+        assertNull(world.getOrNull(child, WorldTransform))
+        assertEquals(Vec2(120f, 50f), world.drawnPositionOf(child, 0.5f))
+    }
+
+    @Test
+    fun drawnPositionOfAChildIsTheSameAtEveryAlphaAndIgnoresTheMarker() {
+        val world = World()
+        val parent = world.create()
+        val parentTransform = Transform(x = 100f)
+        world.add(parent, Transform, parentTransform)
+        world.add(parent, Interpolated, Interpolated)
+        val child = world.create()
+        world.add(child, Transform, Transform(x = 20f))
+        world.add(child, Interpolated, Interpolated)
+        world.setParent(child, parent)
+        world.recordPreviousTransforms()
+        world.recordPreviousTransforms()
+        parentTransform.x = 110f
+
+        // The renderer composes the parent's current Transform, not its blend, so a child is not
+        // blended whatever the alpha, even though the root it hangs from is.
+        for (alpha in listOf(0f, 0.25f, 0.5f, 1f)) {
+            assertEquals(Vec2(130f, 0f), world.drawnPositionOf(child, alpha), "Alpha $alpha")
+        }
+        assertEquals(Vec2(105f, 0f), world.drawnPositionOf(parent, 0.5f))
+    }
+
+    @Test
+    fun drawnPositionOfAGrandchildComposesRotationAndScaleDownTheChain() {
+        val world = World()
+        val parent = world.create()
+        val child = world.create()
+        val grandchild = world.create()
+        val quarter = (PI / 2).toFloat()
+        val parentTransform = Transform(x = 10f, y = 10f)
+        world.add(parent, Transform, parentTransform)
+        world.add(child, Transform, Transform(x = 1f, y = 0f))
+        world.add(grandchild, Transform, Transform(x = 1f, y = 0f, rotation = quarter, scaleX = 0.5f, scaleY = 3f))
+        world.setParent(grandchild, child)
+        world.setParent(child, parent)
+        world.propagateTransforms()
+        assertEquals(Vec2(11f, 10f), world.drawnPositionOf(child, 0.5f))
+
+        // The parent turns a quarter and doubles in size after that propagation. The child is then at
+        // (10, 12), and the grandchild one more step along the child's turned and doubled x axis.
+        parentTransform.rotation = quarter
+        parentTransform.scaleX = 2f
+        parentTransform.scaleY = 2f
+        val drawnChild = world.drawnPositionOf(child, 0.5f)
+        val drawnGrandchild = world.drawnPositionOf(grandchild, 0.5f)
+        assertTrue(abs(drawnChild.x - 10f) < 1e-4f && abs(drawnChild.y - 12f) < 1e-4f, "Child at $drawnChild.")
+        assertTrue(abs(drawnGrandchild.x - 10f) < 1e-4f && abs(drawnGrandchild.y - 14f) < 1e-4f, "Grandchild at $drawnGrandchild.")
+
+        world.propagateTransforms()
+        for ((entity, drawn) in listOf(child to drawnChild, grandchild to drawnGrandchild)) {
+            val written = world.get(entity, WorldTransform)
+            assertEquals(written.x.toRawBits(), drawn.x.toRawBits(), "x of $entity")
+            assertEquals(written.y.toRawBits(), drawn.y.toRawBits(), "y of $entity")
+        }
+    }
+
+    @Test
+    fun drawnPositionBelowAnAncestorWithoutATransformStartsOverFromIt() {
+        val world = World()
+        val root = world.create()
+        val middle = world.create()
+        val child = world.create()
+        val grandchild = world.create()
+        val rootTransform = Transform(x = 100f)
+        world.add(root, Transform, rootTransform)
+        world.add(child, Transform, Transform(x = 10f, scaleX = 2f, scaleY = 2f))
+        world.add(grandchild, Transform, Transform(x = 1f))
+        world.setParent(middle, root)
+        world.setParent(child, middle)
+        world.setParent(grandchild, child)
+        rootTransform.x = 500f
+
+        // The ancestor with no Transform is the identity, as in propagation, so the root does not count.
+        assertEquals(Vec2(10f, 0f), world.drawnPositionOf(child, 0.5f))
+        assertEquals(Vec2(12f, 0f), world.drawnPositionOf(grandchild, 0.5f))
+    }
+
+    @Test
+    fun drawnPositionOfAChildOfAParentWithoutATransformIsItsOwn() {
+        val world = World()
+        val group = world.create()
+        val child = world.create()
+        world.add(child, Transform, Transform(x = 2f, y = 3f))
+        world.setParent(child, group)
+
+        assertEquals(Vec2(2f, 3f), world.drawnPositionOf(child, 0.5f))
+    }
+
+    @Test
+    fun drawnPositionOfADeepChainGrowsTheWorkStack() {
+        val world = World()
+        val root = world.create()
+        val rootTransform = Transform(x = 1f, rotation = 0.01f)
+        world.add(root, Transform, rootTransform)
+        var parent = root
+        // More levels than the stack of 32 holds.
+        val chain = List(100) {
+            val link = world.create()
+            world.add(link, Transform, Transform(x = 1f, y = 0.5f, rotation = 0.02f, scaleX = 1.01f, scaleY = 0.99f))
+            world.setParent(link, parent)
+            parent = link
+            link
+        }
+        world.propagateTransforms()
+        rootTransform.x = 7f
+        val drawn = world.drawnPositionOf(chain.last(), 0.5f)
+        world.propagateTransforms()
+
+        val written = world.get(chain.last(), WorldTransform)
+        assertEquals(written.x.toRawBits(), drawn.x.toRawBits())
+        assertEquals(written.y.toRawBits(), drawn.y.toRawBits())
+    }
+
+    @Test
+    fun drawnPositionOfAChildThatLeavesItsParentIsAtItsOwnTransform() {
+        val world = World()
+        val parent = world.create()
+        world.add(parent, Transform, Transform(x = 100f))
+        val child = world.create()
+        val childTransform = Transform(x = 20f)
+        world.add(child, Transform, childTransform)
+        world.add(child, Interpolated, Interpolated)
+        world.setParent(child, parent)
+        world.recordPreviousTransforms()
+        world.recordPreviousTransforms()
+        assertEquals(Vec2(120f, 0f), world.drawnPositionOf(child, 0.5f))
+
+        world.removeParent(child)
+        childTransform.x = 40f
+
+        // A root again: blended from the copy the last step saved, which is 20.
+        assertEquals(Vec2(30f, 0f), world.drawnPositionOf(child, 0.5f))
+    }
+
+    @Test
+    fun drawnPositionOfAChildWithoutATransformFails() {
+        val world = World()
+        val parent = world.create()
+        world.add(parent, Transform, Transform())
+        val child = world.create()
+        world.setParent(child, parent)
+
+        assertFailsWith<NoSuchElementException> { world.drawnPositionOf(child, 0.5f) }
+    }
+
+    @Test
     fun drawnPositionTakesAnAlphaFromZeroToOne() {
         val world = World()
         val entity = world.create()

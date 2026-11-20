@@ -11,6 +11,38 @@ times the pixels they did. The benchmarks spread sprites over the window's size 
 divide sprite sizes (and the hierarchy's ring radii) by the window's pixel density, so every
 sprite still covers the same pixels as in the earlier runs and the GPU fill work matches them.
 
+## Drawn position (2026-11-20)
+
+`drawnPositionOf` returns a new `Vec2`, so a game that asks for the drawn position of every entity
+allocates once per entity per frame. The `drawn` benchmark
+(`./gradlew :benchmarks:benchmarkDrawnOffscreen -Pklyph.sprites=<n>`) measures what that costs. It
+moves `KLYPH_SPRITES` sprites in `FIXED_UPDATE`, as `sprites` does with `KLYPH_INTERPOLATE=1`, and
+calls `App.drawnPositionOf` for each of them in `LATE_UPDATE`, adding up the results so the calls
+stay in the build. The `drawn` stage is those calls alone and `extract` is the sprite pass writing
+the same sprites. The last line counts the garbage collections after startup. Same machine and
+offscreen setup as below, 10k sprites, 2,000 frames, with other builds running on the machine. Ten
+runs gave `drawn` from 0.369 to 0.434 ms, nine of them from 0.369 to 0.403, and `extract` from
+0.140 to 0.161 ms; the lines are a typical run.
+
+```
+sprites=10000 calls=10000 fps=669 frame=1.494ms fixed=0.005ms collide=0.000ms update=0.000ms propagate=0.000ms acquire=0.001ms extract=0.142ms record=0.023ms gpuwait=0.927ms drawn=0.378ms other=0.014ms
+collections=148
+```
+
+A call costs 38 ns, so 10,000 of them take 0.38 ms. That is 2.7 times what the sprite pass takes to
+write the same sprites (`extract` matches the `sprites` benchmark with interpolation on) and 2.3% of
+a 60 Hz frame. The `Vec2` is a small part of it. A build that returned one shared `Vec2` from the
+same lookups and blend, with no allocation and no collections, measured `drawn` at 0.34 to 0.35 ms
+in three runs. The allocation and its 148 collections therefore cost about 4 ns a call, 0.04 ms for
+10,000, and the other 34 ns is the lookups and the blend, which any form of the call pays. No
+non-allocating form was added.
+
+An entity with a parent also walks up its chain, because `drawnPositionOf` composes the current
+transforms of the chain instead of reading the last propagation. A temporary variant of the
+benchmark put a chain of bare children under each sprite and asked for the last child, two runs
+each: 65 ns for a chain of one child, then 80, 109 and 154 ns for chains of two, three and five.
+Each further level adds about 20 ns. Roots cost the same 38 ns as before the change.
+
 ## Benchmark warm-up (2026-11-03)
 
 The summary used to skip the first second and then add up whole seconds, so a run whose frame
