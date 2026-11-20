@@ -22,16 +22,18 @@ world and, in `LATE_UPDATE`, visits every `Overlap` of the frame twice: once cal
 returns a plain `Entity`. The entity passed is the pair's `a` and `b` in turn, so every call finds
 the other one, and both loops add up the index of what they get. The `ornull` and `control`
 stages are the two loops, which alternate which runs first; the last line gives the time of one
-call of each over the whole run and counts the garbage collections after startup. The `hierarchy`
-benchmark gained a `parent` stage that calls `World.parentOrNull` for every child and grandchild
-in `LATE_UPDATE`, and counts collections the same way. Same machine and offscreen setup as below,
-10k entities, 2,000 frames, with other builds running on the machine; the lines are a typical run.
+call of each over the whole run and counts the garbage collections after startup. The `parents`
+benchmark (`./gradlew :benchmarks:benchmarkParentsOffscreen -Pklyph.sprites=<n>`) spawns the
+`hierarchy` tree and calls `World.parentOrNull` for every child and grandchild in `LATE_UPDATE`;
+its `parent` stage is those calls alone, and it counts collections the same way, so `hierarchy`
+itself stays free of allocations. Same machine and offscreen setup as below, 10k entities, 2,000
+frames, with other builds running on the machine; the lines are a typical run.
 
 ```
 colliders=10000 calls=2535 fps=877 frame=1.139ms fixed=0.001ms collide=0.481ms update=0.000ms propagate=0.000ms acquire=0.002ms extract=0.065ms record=0.030ms gpuwait=0.488ms ornull=0.020ms control=0.017ms other=0.032ms
 ornull=7.83ns/call control=6.62ns/call collections=64 checksum=0
-sprites=10000 fps=883 frame=1.132ms fixed=0.000ms collide=0.000ms update=0.026ms propagate=0.224ms acquire=0.001ms extract=0.147ms record=0.023ms gpuwait=0.556ms parent=0.134ms other=0.016ms
-collections=92 checksum=92156960000
+sprites=10000 fps=1033 frame=0.968ms fixed=0.000ms collide=0.000ms update=0.027ms propagate=0.234ms acquire=0.001ms extract=0.155ms record=0.021ms gpuwait=0.363ms parent=0.141ms other=0.024ms
+collections=93 checksum=92156960000
 ```
 
 Five `overlaps` runs gave `otherOrNull` 7.8 to 10.2 ns a call and the control 6.4 to 7.7, with
@@ -50,7 +52,8 @@ took 0.100 ms with no collections, so the box and the extra store lookup add abo
 frame per body.
 
 The time is small but the allocation shows in every count, so no note went into the KDoc of the
-three helpers; issue #38 proposes a form that does not box and leaves the decision open.
+three helpers; issue #58 holds the proposal of a form that does not box, `Entity.NONE` with
+`xOrDefault` siblings, and the decision.
 
 ## Drawn position (2026-11-20)
 

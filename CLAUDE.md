@@ -184,6 +184,7 @@ CI job (no display, no GPU) uses it; the Windows job runs it in bash like its ot
 ./gradlew :benchmarks:benchmarkParticlesOffscreen -Pklyph.sprites=100000   # 100 emitters of 1000
 ./gradlew :benchmarks:benchmarkDrawnOffscreen -Pklyph.sprites=10000   # drawnPositionOf for each of 10000 interpolated sprites
 ./gradlew :benchmarks:benchmarkOverlapsOffscreen -Pklyph.sprites=10000   # Overlap.otherOrNull against contains plus otherThan
+./gradlew :benchmarks:benchmarkParentsOffscreen -Pklyph.sprites=10000   # World.parentOrNull for every child of the hierarchy tree
 ./gradlew :benchmarks:benchmarkMixer                            # headless, no window or device
 ./gradlew :benchmarks:benchmarkMixer -Pklyph.music=games/shooter/assets/music.ogg
 ./gradlew :benchmarks:benchmarkList
@@ -194,7 +195,7 @@ tasks run the release build. Every `KLYPH_*` variable below can be given as a Gr
 instead (`-Pklyph.sprites=…`, `-Pklyph.frames=…`, `-Pklyph.offscreen=1`, `-Pklyph.vsync=1`,
 `-Pklyph.validation=1`, `-Pklyph.autopilot=1`, `-Pklyph.music=…`, and `-Pklyph.frameDelta=0.016` for
 `KLYPH_FRAME_DELTA`, a name of several words being camelCase), which is how the IntelliJ run configurations in
-`.run/` pass them. `sprites`, `hierarchy`, `collisions`, `particles`, `drawn` and `overlaps` each have a
+`.run/` pass them. `sprites`, `hierarchy`, `collisions`, `particles`, `drawn`, `overlaps` and `parents` each have a
 `benchmark<Name>` task in a window and a `benchmark<Name>Offscreen` task, which sets
 `KLYPH_OFFSCREEN=1` and 2000 frames; a run's summary skips a warm-up of one second or a quarter
 of the frame limit, whichever is shorter;

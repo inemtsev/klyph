@@ -115,4 +115,46 @@ class CameraOffsetTest {
         val under = Vec2(406f, 300f)
         assertEquals(listOf("input $under $under", "render $under $under"), seen)
     }
+
+    @Test
+    fun offsetSetInOnEnterSurvivesTheTransitionThatEnteredTheScene() {
+        val h = SceneHarness()
+        val menu = h.scene("menu")
+        val play = h.scene("play", enter = {
+            h.camera.offsetX = 8f
+            h.camera.offsetY = -2f
+        })
+        val drawn = mutableListOf<String>()
+        h.addSystem(Phase.RENDER) { drawn += "${h.stack.currentOrNull?.name} ${h.camera.offsetX}x${h.camera.offsetY}" }
+        h.stack.push(menu)
+        h.applyTransitions()
+
+        h.stack.push(play)
+        h.frame(16.milliseconds)
+        h.frame(16.milliseconds)
+        h.frame(16.milliseconds)
+
+        // The transition zeroes the offset first, then runs onEnter, so what onEnter set is what is drawn.
+        assertEquals(listOf("menu 0.0x0.0", "play 8.0x-2.0", "play 8.0x-2.0"), drawn)
+    }
+
+    @Test
+    fun replaceZeroesTheHeldOffsetBeforeTheIncomingSceneEnters() {
+        val h = SceneHarness()
+        val seenOnEnter = mutableListOf<Float>()
+        val play = h.scene("play", enter = { h.camera.offsetX = 10f })
+        val over = h.scene("over", enter = { seenOnEnter += h.camera.offsetX })
+        val drawn = mutableListOf<String>()
+        h.addSystem(Phase.RENDER) { drawn += "${h.stack.currentOrNull?.name} ${h.camera.offsetX}" }
+        h.stack.push(play)
+        h.applyTransitions()
+
+        h.frame(16.milliseconds)
+        h.stack.replace(over)
+        h.frame(16.milliseconds)
+        h.frame(16.milliseconds)
+
+        assertEquals(listOf(0f), seenOnEnter, "The incoming scene's onEnter sees a zeroed offset.")
+        assertEquals(listOf("play 10.0", "play 10.0", "over 0.0"), drawn)
+    }
 }

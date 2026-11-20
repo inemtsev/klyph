@@ -15,26 +15,14 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
-import kotlin.time.Duration
-import kotlin.time.TimeSource
 
-/**
- * Moves a tree of parents, orbiting children and grandchildren, so transform propagation does real
- * work. In `LATE_UPDATE` it also asks `World.parentOrNull` for every child and grandchild, which
- * returns a nullable `Entity` and so may box it; the report's `parent` stage is those calls alone,
- * and the run's last line counts the garbage collections after startup.
- */
+/** Moves a tree of parents, orbiting children and grandchildren, so transform propagation does real work. */
 internal val hierarchyBenchmark: Benchmark = Benchmark(
     name = "hierarchy",
     description = "A three-level tree of parents, orbiting children and grandchildren; measures transform propagation.",
 ) { settings ->
     var sprites = 0
-    // The time of the last frame's parentOrNull calls; the report reads it in the next frame.
-    var parentTime = Duration.ZERO
-    // Adds up the index of every parent found, so the calls cannot be dropped as unused.
-    var checksum = 0L
-    var collectionsBefore = 0L
-    val report = StatsReport(settings.frameLimit, extraStages = listOf("parent" to { _ -> parentTime })) { "sprites=$sprites" }
+    val report = StatsReport(settings.frameLimit) { "sprites=$sprites" }
     runApp(settings.config) {
         addBenchmarkSystems(settings, report)
         addSystem(Phase.STARTUP) { app ->
@@ -50,7 +38,6 @@ internal val hierarchyBenchmark: Benchmark = Benchmark(
                 app.window.height.toFloat(),
             )
             println(shape)
-            collectionsBefore = collectionCount()
         }
         addSystem(Phase.UPDATE) { app ->
             sprites = app.stats.spriteCount
@@ -58,17 +45,6 @@ internal val hierarchyBenchmark: Benchmark = Benchmark(
             move(app.world, delta, app.window.width.toFloat(), app.window.height.toFloat())
             app.world.forEach(Transform, Spin) { _, transform, spin -> transform.rotation += spin.radiansPerSecond * delta }
         }
-        addSystem(Phase.LATE_UPDATE) { app ->
-            val start = TimeSource.Monotonic.markNow()
-            var sum = 0L
-            app.world.forEach(Spin) { entity, _ ->
-                val parent = app.world.parentOrNull(entity)
-                if (parent != null) sum += parent.index
-            }
-            parentTime = start.elapsedNow()
-            checksum += sum
-        }
-        addSystem(Phase.SHUTDOWN) { println("collections=${collectionCount() - collectionsBefore} checksum=$checksum") }
     }
 }
 
@@ -78,7 +54,7 @@ internal class Spin(var radiansPerSecond: Float) {
 }
 
 /** The number of entities spawned at each level of the tree. */
-private class TreeShape(val parents: Int, val children: Int, val grandchildren: Int, val childrenPerParent: Int) {
+internal class TreeShape(val parents: Int, val children: Int, val grandchildren: Int, val childrenPerParent: Int) {
     val total: Int get() = parents + children + grandchildren
 
     override fun toString(): String =
@@ -104,7 +80,7 @@ private const val GRANDCHILD_RING = 12f
  * Sizes and ring radii are the pixel constants above times [pointsPerPixel], so the GPU fills as
  * many pixels on every display as on a density-1 window.
  */
-private fun spawnTree(
+internal fun spawnTree(
     world: World,
     region: TextureRegion,
     total: Int,
