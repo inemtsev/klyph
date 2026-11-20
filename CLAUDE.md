@@ -39,13 +39,21 @@ pair, `otherThan` returns the other one and `otherOrNull` returns `null` for an 
 and answers shape queries (overlap only for ordinary colliders), plus solid
 response: a `Solid` next to a box `Collider` is a wall or floor (`Passable.FROM_BELOW` a one-way
 ledge) kept in a second grid inside `Collisions` (`SolidGrid`, rescanned at every body move and
-detection and rebuilt only when a solid changed, or before a sweep when the `Solid` or `Collider`
-store's version moved), a `KinematicBody(dx, dy)` on a root entity with a box collider is moved by
-the engine in every fixed step and stopped `Collisions.CONTACT_GAP` short of solids, reporting
-`isOnFloor` (contact from the last move and `dy >= 0`), `isOnWall`/`wallNormalX`, `isOnCeiling`,
-`floorOrNull`, `hasLanded` and `landingSpeed`, and `wasPushedOut` and `isStuck` for a body that starts a
-move overlapping a solid (pushed out the shortest way in at most four pushes, else left in place),
-with a `FLOOR_SNAP_DISTANCE` floor snap and
+detection, or before a sweep when the `Solid` or `Collider` store's version moved; each rescan finds
+every solid's box of the last one by entity and adds the move of its top-left corner to the solid's
+shift, which the body move uses and then clears; still solids sit in cells rebuilt only when one is
+added, removed or changed, or starts or stops moving, and moving solids, those with a `Velocity` or
+whose box changed in the last 120 rescans, in a second `SolidCells` rebuilt at every rescan over
+the box each covered while moving), a solid moves like any root entity, by a `Velocity` or a system
+setting its `Transform`, and is never shortened, a `KinematicBody(dx, dy)` on a root entity with a
+box collider is moved by the engine in every fixed step and stopped `Collisions.CONTACT_GAP` short
+of solids, reporting `isOnFloor` (contact from the last move and `dy >= 0`), `isOnWall`/`wallNormalX`,
+`isOnCeiling`, `floorOrNull`, `hasLanded` and `landingSpeed`, and `wasPushedOut` and `isStuck` for a
+body that starts a move overlapping a solid (pushed out the shortest way in at most four pushes,
+else left in place), `wasCarried`, `floorVelocityX`/`floorVelocityY` (the floor's shift over the
+step, which the engine never adds to `dx`/`dy`; a jump adds it) and `isCrushed` (a moving solid's
+push that another solid stopped, the body left where it stopped and nothing destroyed), with a
+`FLOOR_SNAP_DISTANCE` floor snap and
 `dropThrough()`, `sweepBox`/`sweepBoxTo`/`sweepCollider` sweep a box against the solids as they
 are now (a thick-ray Amanatides and Woo walk shared with the body move), `floorBelowOrNull` probes
 for a floor under a line, and `slideBox`/`slideCollider` make the body's move into a reusable
@@ -56,8 +64,12 @@ whole world, for a sky), `WORLD` or `SCREEN` space queued during RENDER, and `ap
 `app.assets.font` or come built in as `app.assets.defaultFont`, a texture's `SamplerFilter`,
 chosen when it loads (`AppConfig.textureFilter`, LINEAR unless set and read back as `Assets.textureFilter`, is what every
 texture, sprite sheet and font gets when its call passes none), picks linear or nearest sampling, its `SamplerAddress`, chosen the same way, picks
-clamped (the default) or repeating addressing, `Assets` caches a texture by path, filter and address, `app.assets.region(path)` returns the whole of one as a
-`TextureRegion` (`texture` is for tiling and hand-cut regions),
+clamped (the default) or repeating addressing, `Assets` caches a texture by path, filter and address, `app.assets.region(path)` returns the whole of a file as a
+`TextureRegion` packed into a shared 2048 by 2048 atlas page, one list of pages per filter (the internal `AtlasPages`
+places each file with a `SkylinePacker`, rings it with its own edge texels and writes it through `Texture.write`, the
+`@KlyphPlatformApi` `GpuDevice.uploadToTexture(texture, image, x, y)`; a REPEAT request, a file over 2046 texels on a side
+and `AppConfig.atlas = TextureAtlas.NONE` (`KLYPH_ATLAS=0`) give the file its own texture, and `region` caches by path and
+filter apart from `texture`, which is for tiling and hand-cut regions),
 and a `Sprite` with `tileWidth` or `tileHeight` (world units before the entity's scale, 0 stretches
 that axis; `Sprite.tiled(region, width, height, scale)` sets both to the region's size times `scale`) or `Canvas.drawTiled` repeats a texture loaded with `address = SamplerAddress.REPEAT`
 across a larger area, the region having to cover the whole texture (a `check` naming the entity when
@@ -95,7 +107,21 @@ its bounds clamp plus `offsetX`/`offsetY`, so a factor-0 sky does not shake), an
 period the bounding box of the view touches, at most `ParallaxLayer.MAX_COPIES`; the internal `ParallaxPlan`
 plans the copies at the start of `SpriteRenderer.extract`, which also sizes the record buffers, layer sprites
 are written before the ordinary sprites of their group, and a `check` naming the entity rejects a layer on a
-child, with a negative or non-finite factor or repeat or with a non-finite anchor; `app.drawnPositionOf(entity)` (`World.drawnPositionOf(entity, alpha)`) returns
+child, with a negative or non-finite factor or repeat or with a non-finite anchor; tile maps live in
+`klyph.tiles`: a `TileLayer` component (a mutable grid of `Tile`s, a value class over Tiled's 32-bit id with its
+three flip bits, drawing from a `TileSet` of a `SpriteSheet`, a tile size and `solidIds`/`oneWayIds`) on a root,
+unrotated entity with a positive scale is drawn by the internal `TilePlan`, which after the parallax plan maps the
+same view into each layer's cells, sizes the record buffers for them and writes one sprite record per non-empty
+cell in view (a diagonal flip is a quarter turn clockwise with the quad's x flip the tile's y flip and its y flip
+the opposite of its x flip) before the ordinary sprites; `TileGrid` is the read-only interface both `TileLayer` and
+the immutable `TileMapLayer` implement, with `tileAt`, `solidRectangles` (row runs merged down equal columns),
+`toTileLayer`, and `Commands.spawnTileLayer`/`spawnSolids` (one `Solid` box per rectangle, `Passable.FROM_BELOW`
+for one-way tiles); `app.assets.tileMap(path)` reads orthogonal finite Tiled JSON maps (`.tmj`, CSV or uncompressed
+base64 layers, one tileset embedded or as `.tsj`, bool tile properties `solid` and `oneWay`) through the internal
+`readTiledMap` and the internal recursive-descent JSON reader `klyph.json.parseJson` (errors name line and column;
+`JsonObject` gives typed reads whose messages name the field and file), rejecting everything else with a
+`TileMapException` naming the file, layer and the fix in Tiled, and `Assets.readText`/`readBytes` are the seam for
+other loaders; `app.drawnPositionOf(entity)` (`World.drawnPositionOf(entity, alpha)`) returns
 where the renderer draws an entity this frame, through the internal `drawnTransform` that the sprite
 pass and the text pass share (a child's world transform is composed on the call from its chain's
 current transforms by the internal `composeWorldTransform`, so a parent moved since the last
@@ -105,7 +131,7 @@ the saved previous transform so a respawn is drawn at the new place at once; `Te
 through `Text.shadow` or `drawText(shadow = …)`; `app.assets.whitePixel` and `app.assets.disc(d)`
 are ready-made regions, and a region's `aspectRatio`, its width over its height, sizes a `Sprite` by one side
 without distorting it; `AppConfig.fromEnvironment()` reads the `KLYPH_*` limits and switches,
-including `KLYPH_SCREENSHOT`, `KLYPH_FULLSCREEN` and `KLYPH_FRAME_DELTA` (`AppConfig.frameDelta`,
+including `KLYPH_SCREENSHOT`, `KLYPH_FULLSCREEN`, `KLYPH_ATLAS` and `KLYPH_FRAME_DELTA` (`AppConfig.frameDelta`,
 which replaces the measured frame delta so that runs repeat);
 every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` beside `Vec2` and
 `Rect`),
@@ -115,7 +141,7 @@ every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` 
 `Wave` resource and shown in the HUD, drifters and divers that swoop at the ship, and every fifth
 wave is a boss with 12 hit points, a health bar drawn in world space and bullets on the
 `ENEMY_BULLET` layer; `KLYPH_AUTOPILOT=1` plays itself, with 4 enemies a wave so a 90 second run
-reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the brick, cap, window and girder tiles and the one-off art are painted into `Image`s at startup with `Image.fillRect`, `fillCircle` and `set`; the one-off art (air conditioner, skyline, clouds, pylon, star) is then drawn into one sheet image with `Image.draw` (alpha blending, clipped like the shapes) and uploaded as one texture, a `SheetLayout` setting the pieces in a row with their edge texels repeated one texel outwards, each building being `Sprite`s that repeat the tiles (`SamplerAddress.REPEAT` textures, one each because a tiled sprite repeats a whole texture, `Sprite.tiled`) with props standing on `originY = 1f`, the sky is one `DrawSpace.BACKGROUND` quad, the clouds and skyline are `ParallaxLayer` sprites anchored at the camera's start, the camera follows `app.drawnPositionOf(hero)` and shakes through `Camera.offsetX`, a respawn calls `snapInterpolation`, and the title's hero, the pickups and the end screens read their scene's `elapsed`; the autopilot plans again every fixed step, probing for the roof's end with `floorBelowOrNull` and for walls ahead with `sweepCollider` and following jump arcs with `slideCollider`, and fails at exit if it took no ring and stomped no enemy), `benchmarks`
+reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, and whose `Shuttle`, a girder over the widest gap, is a play-scene `Solid` with a `Velocity` and its own tiled `Sprite`, marked `Interpolated` and turned at the ends of its track by `moveShuttles`, which the hero rides and jumps off with `floorVelocityX` added, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the brick, cap, window and girder tiles and the one-off art are painted into `Image`s at startup with `Image.fillRect`, `fillCircle` and `set`; the one-off art (air conditioner, skyline, clouds, pylon, star) is then drawn into one sheet image with `Image.draw` (alpha blending, clipped like the shapes) and uploaded as one texture, a `SheetLayout` setting the pieces in a row with their edge texels repeated one texel outwards, each building being `Sprite`s that repeat the tiles (`SamplerAddress.REPEAT` textures, one each because a tiled sprite repeats a whole texture, `Sprite.tiled`) with props standing on `originY = 1f`, the sky is one `DrawSpace.BACKGROUND` quad, the clouds and skyline are `ParallaxLayer` sprites anchored at the camera's start, the camera follows `app.drawnPositionOf(hero)` and shakes through `Camera.offsetX`, a respawn calls `snapInterpolation`, and the title's hero, the pickups and the end screens read their scene's `elapsed`; the autopilot plans again every fixed step, probing for the roof's end with `floorBelowOrNull` and for walls ahead with `sweepCollider` and following jump arcs with `slideCollider`, and fails at exit if it took no ring and stomped no enemy), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`), and
@@ -183,6 +209,7 @@ CI job (no display, no GPU) uses it; the Windows job runs it in bash like its ot
 ./gradlew :benchmarks:benchmarkCollisionsOffscreen -Pklyph.sprites=10000 -Pklyph.cell=64
 ./gradlew :benchmarks:benchmarkParticlesOffscreen -Pklyph.sprites=100000   # 100 emitters of 1000
 ./gradlew :benchmarks:benchmarkDrawnOffscreen -Pklyph.sprites=10000   # drawnPositionOf for each of 10000 interpolated sprites
+./gradlew :benchmarks:benchmarkTilesOffscreen                   # eight full-screen layers of 16-point tiles, camera moving
 ./gradlew :benchmarks:benchmarkOverlapsOffscreen -Pklyph.sprites=10000   # Overlap.otherOrNull against contains plus otherThan
 ./gradlew :benchmarks:benchmarkParentsOffscreen -Pklyph.sprites=10000   # World.parentOrNull for every child of the hierarchy tree
 ./gradlew :benchmarks:benchmarkMixer                            # headless, no window or device
@@ -195,7 +222,7 @@ tasks run the release build. Every `KLYPH_*` variable below can be given as a Gr
 instead (`-Pklyph.sprites=…`, `-Pklyph.frames=…`, `-Pklyph.offscreen=1`, `-Pklyph.vsync=1`,
 `-Pklyph.validation=1`, `-Pklyph.autopilot=1`, `-Pklyph.music=…`, and `-Pklyph.frameDelta=0.016` for
 `KLYPH_FRAME_DELTA`, a name of several words being camelCase), which is how the IntelliJ run configurations in
-`.run/` pass them. `sprites`, `hierarchy`, `collisions`, `particles`, `drawn`, `overlaps` and `parents` each have a
+`.run/` pass them. `sprites`, `hierarchy`, `collisions`, `particles`, `drawn`, `overlaps`, `parents` and `tiles` each have a
 `benchmark<Name>` task in a window and a `benchmark<Name>Offscreen` task, which sets
 `KLYPH_OFFSCREEN=1` and 2000 frames; a run's summary skips a warm-up of one second or a quarter
 of the frame limit, whichever is shorter;
@@ -208,7 +235,7 @@ sprites`.
 exits once `Time.elapsed` reaches `s` seconds, `KLYPH_VSYNC=1` caps at the display rate,
 `KLYPH_VALIDATION=1` turns on the GPU validation layer (slow; use it after touching the platform
 module), `KLYPH_OFFSCREEN=1` draws into a texture and waits for the GPU each frame so the display
-is out of the loop. These five, `KLYPH_OVERLAY`, `KLYPH_SCREENSHOT`, `KLYPH_FULLSCREEN` and `KLYPH_FRAME_DELTA` are
+is out of the loop. These five, `KLYPH_OVERLAY`, `KLYPH_SCREENSHOT`, `KLYPH_FULLSCREEN`, `KLYPH_ATLAS` and `KLYPH_FRAME_DELTA` are
 read by `AppConfig.fromEnvironment`, which
 the sandbox, benchmarks and both games call, and the engine quits by itself at `AppConfig.frameLimit` or
 `timeLimit`. `KLYPH_AUTOPILOT=1` makes the
@@ -216,11 +243,13 @@ shooter play itself and fail at exit if it destroyed no enemy. `KLYPH_MUSIC=<pat
 the `mixer` benchmark stream that file instead of its synthetic music, to measure Vorbis decoding;
 a relative path resolves against the executable's directory, or the repository root through
 Gradle. `KLYPH_CELL=<units>` sets the collision grid's cell size in the `collisions` benchmark
-(default 64), and `KLYPH_OVERLAY=1` starts the sandbox with the debug overlay shown.
+(default 64), `KLYPH_MOVING=<share>` (0 to 1) adds a platformer level to it, a 64 by 16 `Solid` per
+ten circles with a falling `KinematicBody` on each, and gives that share of the solids a `Velocity`, and `KLYPH_OVERLAY=1` starts the sandbox with the debug overlay shown.
 `KLYPH_SCREENSHOT=<frame>:<path>` (`AppConfig.screenshot`) saves frame `<frame>`, counted from 1
 like `KLYPH_FRAMES`, as a PNG at `<path>`; through Gradle a relative path resolves against the
 repository root; a malformed value is ignored. `KLYPH_FULLSCREEN=1` (`AppConfig.windowMode`)
-starts in fullscreen. `KLYPH_FRAME_DELTA=<seconds>` (`AppConfig.frameDelta`, above 0, at most 0.25 so no
+starts in fullscreen. `KLYPH_ATLAS=0` (`AppConfig.atlas`) gives every file `assets.region` loads its own
+texture, to compare a frame with the atlas off. `KLYPH_FRAME_DELTA=<seconds>` (`AppConfig.frameDelta`, above 0, at most 0.25 so no
 `Time` clamp changes it, and at most `maxFixedStepsPerFrame` steps of `1.seconds / fixedRate` so the
 `FixedStepper` drops no step, which is 4 steps of 16.666666 ms by default) replaces the measured frame
 delta in `FrameLoop`, so every frame advances `Time` by exactly that and the fixed steps fall in the
@@ -288,11 +317,14 @@ time it took or `AppConfig.frameDelta` when set (`SceneStack.advanceClock`, neve
 step), refresh audio, translate platform events into `app.input` and
 `app.events`, toggle the overlay, INPUT, FIXED_UPDATE zero or more times (interpolated transforms
 recorded before each step, then every `Velocity` applied to its `Transform` after the step's
-systems and their commands, by the fixed step length, then every `KinematicBody` pushed out of the
-solids it overlaps and moved against the solids through `app.collisions.moveBodies`), propagate transforms, detect collisions and publish `Overlap` events,
+systems and their commands, by the fixed step length, then through `app.collisions.moveBodies` every
+`KinematicBody` carried by its floor if that solid moved since the last step (both axes, before
+anything else, so a descending platform keeps its rider), pushed along the move of every other
+solid that moved into it (crushed and left where the push stopped when a solid is in the way; one-way
+solids never push), pushed out of the solids it overlaps and moved against the solids), propagate transforms, detect collisions and publish `Overlap` events,
 UPDATE, count down `Lifetime` and advance `Fade`, advance particles, advance sprite animations
 (publishing `AnimationFinished`), LATE_UPDATE, propagate transforms, RENDER, queue the overlay on
-`app.canvas`, clamp `app.camera` to its bounds, plan the `ParallaxLayer` copies from it, draw sprites,
+`app.canvas`, clamp `app.camera` to its bounds, plan the `ParallaxLayer` copies and the `TileLayer` cells in view from it, draw tile cells and sprites,
 `Text`, particles and `app.canvas` (BACKGROUND runs with the screen projection, WORLD runs with the
 camera's, then SCREEN runs with the screen projection again) and present, apply scene transitions (zeroing `app.camera`'s `offsetX`/`offsetY` when one applied), quit if `AppConfig.frameLimit`
 or `timeLimit` is reached. Inside FIXED_UPDATE, `isJustPressed` and `isJustReleased` count fixed
@@ -302,7 +334,7 @@ press sees it once, even when the frame of the press ran no step. Commands apply
 after each of the lifetime/fade, particle and animation steps (so what they destroy is gone before
 the next step) and after the second propagation. Scene systems run after the App-level systems of
 the same phase. A pushed scene freezes the one below: its systems do not run, its `Scene.elapsed` stops, its velocities, kinematic bodies, lifetimes, fades,
-particle emitters, sprite animations and colliders stand still (its solids stop nothing) (the engine steps skip them and
+particle emitters, sprite animations and colliders stand still (its solids stop nothing and do not move, and a moving solid of a scene above neither carries nor pushes its bodies) (the engine steps skip them and
 collision detection leaves them out), its entities keep rendering. A frozen body keeps its flags: one
 that landed in the last step before the freeze still reads `hasLanded` through it, and its scene's
 systems see that landing in their first step back, as `Scene.elapsed` stands still. `SceneStack.enter` sets `elapsed`

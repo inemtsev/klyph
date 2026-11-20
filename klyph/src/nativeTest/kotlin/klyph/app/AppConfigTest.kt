@@ -41,6 +41,7 @@ class AppConfigTest {
         assertEquals(null, config.screenshot)
         assertEquals(SamplerFilter.LINEAR, config.textureFilter)
         assertEquals(null, config.frameDelta)
+        assertEquals(TextureAtlas.AUTOMATIC, config.atlas)
     }
 
     @Test
@@ -166,6 +167,9 @@ class AppConfigTest {
             AppConfig(frameDelta = 16.milliseconds).hashCode(),
             AppConfig(frameDelta = 16.milliseconds).hashCode(),
         )
+        assertNotEquals(AppConfig(), AppConfig(atlas = TextureAtlas.NONE))
+        assertEquals(AppConfig(atlas = TextureAtlas.NONE), AppConfig(atlas = TextureAtlas.NONE))
+        assertEquals(AppConfig(atlas = TextureAtlas.NONE).hashCode(), AppConfig(atlas = TextureAtlas.NONE).hashCode())
     }
 
     @Test
@@ -175,7 +179,7 @@ class AppConfigTest {
                 "presentMode=VSYNC, target=WINDOW, gpuSync=NONE, validation=DISABLED, clearColor=Color(#1a1f2eff), assetRoot=null, " +
                 "audio=AudioConfig(output=DEVICE, maxVoices=32, sampleRate=48000, bufferFrames=1024), collisionCellSize=64.0, overlayKey=${Scancode.F3}, " +
                 "overlay=HIDDEN, frameLimit=null, timeLimit=null, windowMode=WINDOWED, cursor=VISIBLE, screenshot=null, " +
-                "textureFilter=LINEAR, frameDelta=null)",
+                "textureFilter=LINEAR, frameDelta=null, atlas=AUTOMATIC)",
             AppConfig().toString(),
         )
         val shot = AppConfig(
@@ -183,7 +187,10 @@ class AppConfigTest {
             textureFilter = SamplerFilter.NEAREST,
             frameDelta = 16.milliseconds,
         ).toString()
-        assertTrue(shot.endsWith("screenshot=Screenshot(frame=20, path=/tmp/shot.png), textureFilter=NEAREST, frameDelta=16ms)"), shot)
+        assertTrue(
+            shot.endsWith("screenshot=Screenshot(frame=20, path=/tmp/shot.png), textureFilter=NEAREST, frameDelta=16ms, atlas=AUTOMATIC)"),
+            shot,
+        )
     }
 
     private fun environment(vararg pairs: Pair<String, String>): (String) -> String? {
@@ -217,6 +224,7 @@ class AppConfigTest {
             screenshot = Screenshot(5, "base.png"),
             textureFilter = SamplerFilter.NEAREST,
             frameDelta = 20.milliseconds,
+            atlas = TextureAtlas.NONE,
         )
         // A setting left out of the list above stays at its default in toString, which the loop below catches.
         val defaults = settingsOf(AppConfig())
@@ -230,7 +238,7 @@ class AppConfigTest {
         assertEquals(base, kept)
         assertEquals(base.toString(), kept.toString(), "equals and toString must both see every setting.")
         val variables = listOf(
-            "FRAMES", "SECONDS", "FRAME_DELTA", "VALIDATION", "VSYNC", "OFFSCREEN", "OVERLAY", "FULLSCREEN", "SCREENSHOT",
+            "FRAMES", "SECONDS", "FRAME_DELTA", "VALIDATION", "VSYNC", "OFFSCREEN", "OVERLAY", "FULLSCREEN", "SCREENSHOT", "ATLAS",
         )
         val empty = environment(*variables.map { "KLYPH_$it" to "" }.toTypedArray())
         assertEquals(base, AppConfig.fromEnvironment(base, empty), "An empty value counts as unset.")
@@ -312,6 +320,15 @@ class AppConfigTest {
         val windowed = AppConfig.fromEnvironment(AppConfig(windowMode = WindowMode.FULLSCREEN), environment("KLYPH_FULLSCREEN" to "0"))
         assertEquals(WindowMode.WINDOWED, windowed.windowMode)
         assertFailsWith<IllegalArgumentException> { AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_FULLSCREEN" to "yes")) }
+    }
+
+    @Test
+    fun fromEnvironmentReadsTheAtlas() {
+        assertEquals(TextureAtlas.NONE, AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_ATLAS" to "0")).atlas)
+        val base = AppConfig(atlas = TextureAtlas.NONE)
+        assertEquals(TextureAtlas.AUTOMATIC, AppConfig.fromEnvironment(base, environment("KLYPH_ATLAS" to "1")).atlas)
+        assertEquals(TextureAtlas.NONE, AppConfig.fromEnvironment(base, environment()).atlas)
+        assertFailsWith<IllegalArgumentException> { AppConfig.fromEnvironment(AppConfig(), environment("KLYPH_ATLAS" to "off")) }
     }
 
     @Test

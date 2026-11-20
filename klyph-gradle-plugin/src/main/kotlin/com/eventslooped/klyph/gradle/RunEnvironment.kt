@@ -14,6 +14,7 @@ internal object RunEnvironment {
     val variables: List<String> = listOf(
         "SPRITES", "CHILDREN", "TEXTURES", "INTERPOLATE", "FRAMES", "SECONDS", "OFFSCREEN",
         "VSYNC", "VALIDATION", "AUTOPILOT", "MUSIC", "CELL", "OVERLAY", "SCREENSHOT", "FULLSCREEN", "FRAME_DELTA",
+        "ATLAS", "MOVING",
     )
 
     private val paths = setOf("MUSIC")

@@ -18,8 +18,8 @@ calls reuse it.
 
 | Call | Returns |
 |---|---|
-| `assets.region(path, filter, address)` | The whole of a PNG or JPEG file as a `TextureRegion`, the picture a `Sprite` shows. |
-| `assets.texture(path, filter, address)` | A `Texture` from a PNG or JPEG file, to cut regions from or to repeat. |
+| `assets.region(path, filter, address)` | The whole of a PNG or JPEG file as a `TextureRegion`, the picture a `Sprite` shows, in a texture shared with other files. |
+| `assets.texture(path, filter, address)` | A `Texture` of its own from a PNG or JPEG file, to cut regions from or to repeat. |
 | `assets.spriteSheet(path, columns, rows, filter)` | The texture cut into a grid of equal cells. |
 | `assets.image(path)` | An `Image` you can read and change, not cached and not uploaded. |
 | `assets.createTexture(image, filter, address)` | A new texture from an `Image`, every call. |
@@ -94,6 +94,17 @@ Within one layer, sprites are grouped by texture, so where two sprites with diff
 overlap in the same layer, which one is on top is not defined. Give them different layers. Each
 distinct pair of layer and texture costs one draw call, so use a few layers as draw-order groups,
 such as background, world and effects, rather than one per sprite.
+
+`assets.region` helps with that on its own: it packs the files it loads into shared textures,
+atlas pages of 2048 by 2048 texels, so sprites that show different files in one layer usually
+share one draw call. Each file keeps a border of its own edge texels around it on the page, so it
+looks the same as it would on a texture of its own. A file loaded with
+`address = SamplerAddress.REPEAT` or larger than 2046 texels on a side gets its own texture
+instead, files loaded with different filters go to different pages, and `assets.texture` never
+packs anything. The `texture` of a packed region is the shared page, so cut regions from
+`assets.texture(path)`, not from it. To see a frame with the atlas off while debugging, run with
+`-Pklyph.atlas=0` or set `AppConfig(atlas = TextureAtlas.NONE)`; the draws count in the F3 overlay
+shows the difference.
 
 `sprite.isVisible = false` hides a sprite without removing it, and a hidden sprite costs no
 drawing work.

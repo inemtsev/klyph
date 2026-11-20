@@ -240,7 +240,7 @@ internal class ParallaxPlan {
  * the side of the smallest box along the axes that holds it. [along] is the half-side that lies on
  * the axis when [rotation] is 0, so the result is [along] then.
  */
-private fun reachAlong(rotation: Float, along: Float, across: Float): Float {
+internal fun reachAlong(rotation: Float, along: Float, across: Float): Float {
     if (rotation == 0f) return along
     return abs(cos(rotation)) * along + abs(sin(rotation)) * across
 }

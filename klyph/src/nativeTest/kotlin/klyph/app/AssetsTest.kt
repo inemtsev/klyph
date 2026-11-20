@@ -25,7 +25,8 @@ class AssetsTest {
 
     /**
      * Returns assets over [ROOT] whose uploads make headless textures and are added to [uploads],
-     * the built-in font's at construction included.
+     * the built-in font's at construction included. The atlas is off, so [Assets.region] loads the
+     * file's own texture; `AtlasTest` covers the atlas.
      */
     private fun open(uploads: MutableList<Upload>, textureFilter: SamplerFilter): Assets {
         writeFiles()
@@ -36,6 +37,7 @@ class AssetsTest {
             },
             root = ROOT,
             textureFilter = textureFilter,
+            atlas = TextureAtlas.NONE,
         )
     }
 
@@ -270,6 +272,12 @@ class AssetsTest {
             "soundOrNull" to { assets.soundOrNull("sound.wav") },
             "musicTrack" to { assets.musicTrack("music.ogg") },
             "musicTrackOrNull" to { assets.musicTrackOrNull("music.ogg") },
+            "tileMap" to { assets.tileMap("level.tmj") },
+            "tileMapOrNull" to { assets.tileMapOrNull("level.tmj") },
+            "readText" to { assets.readText("level.tmj") },
+            "readTextOrNull" to { assets.readTextOrNull("level.tmj") },
+            "readBytes" to { assets.readBytes("ship.png") },
+            "readBytesOrNull" to { assets.readBytesOrNull("ship.png") },
         )
         for ((name, load) in loaders) assertFailsWith<IllegalStateException>("$name after close.") { load() }
     }

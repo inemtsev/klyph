@@ -333,11 +333,11 @@ class KinematicBodyTest {
 
         world.remove(rock, Collider)
         val missing = assertFailsWith<IllegalStateException> { collisions.detect(world, Events()) }
-        assertEquals("Entity $rock has a Solid but no Collider.", missing.message)
+        assertEquals("Entity $rock has a Solid but no Collider; add a Collider with a Shape.Box.", missing.message)
     }
 
     @Test
-    fun aSolidWithAParentOrAVelocityIsAnError() {
+    fun aSolidWithAParentIsAnError() {
         val world = World()
         val building = world.create()
         world.add(building, Transform, Transform(x = 100f, y = 200f))
@@ -345,14 +345,12 @@ class KinematicBodyTest {
         world.setParent(roof, building)
         val collisions = Collisions()
         val parented = assertFailsWith<IllegalStateException> { collisions.moveBodies(world, step, scenes = null) }
-        assertEquals("Entity $roof has a Solid and a parent, but a solid must be a root entity.", parented.message)
+        assertEquals(
+            "Entity $roof has a Solid and a parent, but a solid must be a root entity; " +
+                "remove the parent or move the Solid and its Collider to the root.",
+            parented.message,
+        )
         assertFailsWith<IllegalStateException> { collisions.detect(world, Events()) }
-
-        world.destroy(roof)
-        val platform = world.solid(left = 0f, top = 100f, right = 200f, bottom = 140f)
-        world.add(platform, Velocity, Velocity(dx = 30f))
-        val moving = assertFailsWith<IllegalStateException> { collisions.moveBodies(world, step, scenes = null) }
-        assertEquals("Entity $platform has both a Solid and a Velocity, and solids cannot move.", moving.message)
     }
 
     @Test

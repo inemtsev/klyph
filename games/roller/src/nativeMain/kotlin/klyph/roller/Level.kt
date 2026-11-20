@@ -22,6 +22,17 @@ class Block(val left: Float, val right: Float, val top: Float, val isLedge: Bool
     companion object : ComponentType<Block>("Block")
 }
 
+/**
+ * A steel ledge that slides back and forth: from [block], where it starts, to [travel] units to
+ * the right of there and back, at [speed] units per second. It is a `Solid` with a `Velocity`,
+ * which is all the engine needs to carry the hero standing on it; a system turns it at the ends.
+ */
+class Shuttle(val block: Block, val travel: Float, val speed: Float) {
+    override fun toString(): String = "Shuttle($block, travel=$travel, speed=$speed)"
+
+    companion object : ComponentType<Shuttle>("Shuttle")
+}
+
 /** A walker or a flier going back and forth between [minX] and [maxX] at height [y], starting at [startX]. */
 class Patrol(val minX: Float, val maxX: Float, val y: Float, val startX: Float = (minX + maxX) / 2) {
     override fun toString(): String = "Patrol($minX..$maxX at $y)"
@@ -36,7 +47,8 @@ class Billboard(val x: Float, val roof: Float, val poster: Poster) {
 }
 
 /**
- * The one level of the game: eight rooftops with gaps between them and two steel ledges, rings in
+ * The one level of the game: eight rooftops with gaps between them, a steel ledge and a steel
+ * shuttle that slides across the widest gap, rings in
  * lines and arcs, two hearts, blobs patrolling the roofs, helicopters over them and the arrow sign
  * at the end. Every list is built once.
  */
@@ -60,11 +72,15 @@ object RooftopRun {
 
     val ledges: List<Block> = listOf(
         Block(left = 2160f, right = 2400f, top = 300f, isLedge = true),
-        Block(left = 4150f, right = 4390f, top = 360f, isLedge = true),
     )
 
-    /** Everything solid: the buildings, then the ledges. */
+    /** Everything solid that stands still: the buildings, then the ledges. */
     val blocks: List<Block> = buildings + ledges
+
+    /** The ledges that move, which the play scene spawns, so they freeze with it under the pause screen. */
+    val shuttles: List<Shuttle> = listOf(
+        Shuttle(Block(left = 4130f, right = 4370f, top = 360f, isLedge = true), travel = 60f, speed = 50f),
+    )
 
     /** Where the hero starts, standing on the first roof. */
     val start: Vec2 = Vec2(Tuning.PLAYER_START_X, buildings[0].top)

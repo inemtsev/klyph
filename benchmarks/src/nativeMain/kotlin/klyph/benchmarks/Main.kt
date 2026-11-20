@@ -6,7 +6,7 @@ import klyph.platform.Sdl
 import kotlin.system.exitProcess
 
 /** Every benchmark this executable can run, in the order they are listed. */
-internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, collisionBenchmark, particleBenchmark, drawnBenchmark, overlapBenchmark, parentsBenchmark, mixerBenchmark)
+internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, collisionBenchmark, particleBenchmark, drawnBenchmark, overlapBenchmark, parentsBenchmark, tileBenchmark, mixerBenchmark)
 
 /**
  * Runs the benchmark named by the first argument. Without an argument, prints the available
@@ -21,7 +21,8 @@ internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenc
  * `KLYPH_OFFSCREEN=1` to render to a texture and wait for the GPU each frame instead of presenting,
  * `KLYPH_MUSIC=<path to an .ogg>` to make the mixer benchmark stream that Ogg Vorbis file instead of
  * its synthetic music, so the time includes real decoding, `KLYPH_CELL` the collision grid's cell
- * size in world units (default 64). A relative path resolves against the
+ * size in world units (default 64), `KLYPH_MOVING=<share>` to add moving platforms with bodies on
+ * them to the collisions benchmark, that share of them moving. A relative path resolves against the
  * executable's directory when run directly, and against the repository root through the Gradle
  * tasks.
  */
@@ -47,6 +48,7 @@ fun main(args: Array<String>) {
         textureCount = Sdl.environmentVariable("KLYPH_TEXTURES")?.toIntOrNull() ?: 1,
         interpolate = Sdl.environmentVariable("KLYPH_INTERPOLATE") == "1",
         musicPath = Sdl.environmentVariable("KLYPH_MUSIC")?.ifEmpty { null },
+        movingShare = Sdl.environmentVariable("KLYPH_MOVING")?.toFloatOrNull()?.coerceIn(0f, 1f),
         config = AppConfig.fromEnvironment(base),
     )
     benchmark.run(settings)

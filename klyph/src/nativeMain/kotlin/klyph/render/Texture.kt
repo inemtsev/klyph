@@ -2,9 +2,11 @@ package klyph.render
 
 import klyph.platform.GpuDevice
 import klyph.platform.GpuTexture
+import klyph.platform.Image
 import klyph.platform.SamplerAddress
 import klyph.platform.SamplerFilter
 import klyph.platform.release
+import klyph.platform.uploadToTexture
 
 /**
  * A GPU texture of [width] by [height] texels that sprites draw from through a [TextureRegion].
@@ -107,6 +109,24 @@ public class Texture : AutoCloseable {
      */
     internal val handle: GpuTexture
         get() = gpuTexture ?: throw IllegalStateException("$this was created for tests and has no GPU texture.")
+
+    /**
+     * Copies [image] into this texture as given, with its top-left corner at texel [x], [y], and
+     * leaves the other texels as they were. The atlas pages of [klyph.app.Assets] are filled this
+     * way, one entry at a time.
+     *
+     * @throws IllegalArgumentException if [image] does not lie inside this texture.
+     * @throws IllegalStateException if this texture is closed, or was created for tests and has no GPU texture.
+     * @throws klyph.platform.SdlException if the upload cannot be submitted.
+     */
+    internal fun write(image: Image, x: Int, y: Int) {
+        require(x >= 0 && y >= 0 && x <= width - image.width && y <= height - image.height) {
+            "$image at ($x, $y) does not fit in $this."
+        }
+        check(!isClosed) { "$this is closed." }
+        val gpu = handle
+        checkNotNull(device).uploadToTexture(gpu, image, x = x, y = y)
+    }
 
     /** Releases the GPU texture. Calling it again has no effect. */
     override fun close() {

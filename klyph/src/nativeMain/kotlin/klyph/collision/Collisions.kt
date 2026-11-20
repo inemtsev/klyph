@@ -203,8 +203,10 @@ public class Collisions(cellSize: Float = DEFAULT_CELL_SIZE) {
     /**
      * Moves every [KinematicBody] in [world] by its speed times [delta] and stops it at the
      * [Solid]s in the way, setting its contact state, as the class description of [KinematicBody]
-     * explains. A body that overlaps a solid is pushed out of it first. It first brings the solids
-     * grid up to date with [world].
+     * explains. It first brings the solids grid up to date with [world], which tells it how far
+     * each solid moved since the last call: a body standing on a solid that moved is carried with
+     * it, and a body a solid moved into is pushed along, before the body's own move. A body that
+     * overlaps a solid is then pushed out of it.
      *
      * The engine calls this on `App.collisions` in every fixed step, after the `FIXED_UPDATE`
      * systems and the `Velocity` step, with the fixed step length, and leaves out the bodies and

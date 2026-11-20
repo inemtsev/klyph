@@ -383,3 +383,173 @@ Snippet only: Unreal `GetTimeSeconds` (stops when paused, dilated), `GetUnpaused
 - Far-from-origin float precision for repeating layers: no source; the floored modulo keeps numbers small, which is the only mitigation found.
 - Cinemachine's pipeline order (Body, Aim, Noise, Confiner): page 404, unconfirmed.
 - Pop and re-push of a scene with its own clock: no precedent; klyph's rule (reset on enter, keep while frozen) is its own.
+
+# Prior art: klyph 1.3 levels that move
+
+Swept 2026-11-20. Sources searched: Ebitengine, macroquad, libGDX, Bevy, stb, raylib and HaxeFlixel source; Godot, Unity, Phaser, Defold, TexturePacker, Tiled, LDtk, libGDX and Rapier docs; the Celeste physics article; Jylänki's bin-packing survey; the local `klyph-physics` branch (PR #55). Paper searches (`sweep.py papers`, five queries on atlas packing, skyline packing, character controllers, tile rendering and rectangle decomposition) returned nothing relevant, as in the 1.1 and 1.2 sweeps. Window: living docs and `main` branches as fetched this day; the one paper is from 2010.
+
+Evidence levels: "code read" means the source file was fetched this session; "docs read" means the page was fetched and read as a model summary, so quotes are as the summary returned them; "snippet" means a search result only. Pages are living documents, so numbers can drift.
+
+## Decisions this informs
+
+- **Atlas trigger and surface**: pack only what `assets.region(path)` loads; `texture(path)` keeps returning its own whole texture, so REPEAT tiling and hand-cut regions never meet the atlas. Ebiten and macroquad are the two engines that atlas at runtime, and both keep the caller's handle stable while the engine maps it to a rect; klyph's handle is the `TextureRegion` itself. [1, 3]
+- **Pages, not growth**: fixed 2048-texel pages per filter, a new page when one is full, never grown or repacked. Growing (Ebiten copies on the GPU, macroquad and Bevy repack and hand out new rects) would move regions already given to sprites; klyph's `TextureRegion` computes its UVs once and `Texture` has no sub-rectangle upload today. libGDX's `PixmapPacker` is the fixed-page precedent. [1, 2, 3, 4, 6]
+- **Packer**: online skyline bottom-left, the stb_rect_pack algorithm, which the survey ranks best for online insertion into one bin at a time; MaxRects wins offline, which klyph never does. Try the pages in order, as libGDX's skyline strategy does. [4, 7, 9]
+- **Padding and extrusion**: a one-texel ring around every entry filled with its own edge texels, so neighbours sit two texels apart, which is the roller's `SheetLayout` rule and libGDX's `duplicateBorder`, Defold's Extrude Borders and TexturePacker's Extrude. Transparent padding alone (Ebiten's one pixel, macroquad's gap) is the variant with the reported tile-border artefact. klyph has no mipmaps, so one texel covers bilinear's half-texel reach. [1, 3, 4, 10, 11, 12]
+- **Exclusions**: an image larger than a page, with its ring, gets its own texture as in Ebiten and Unity rather than an error as in libGDX; a REPEAT request gets its own texture because a region of a page cannot repeat; `createTexture` is never atlased because the caller owns it. The libGDX size check that forgets padding is the off-by-two to avoid. [1, 4, 12]
+- **Sub-rectangle upload**: new entries are written into an existing page through a region upload (libGDX `glTexSubImage2D`, the `SDL_GPUTextureRegion` x and y klyph's `uploadToTexture` leaves at zero today) instead of re-uploading the whole 16 MB page per load. [4]
+- **Carry rule**: a body whose floor is a solid that moved since the last fixed step is moved by that solid's displacement before its own move. Celeste checks riders before the move, Godot applies platform velocity times delta through a separate move before the slide, Flixel adds the platform's position delta. The solid's move is guaranteed; the rider adjusts. [13, 14, 15, 21]
+- **Push and crush**: a solid that moves into a body pushes it the way it moved; a body pushed into another solid is reported, as Celeste's `Squish` is, and klyph leaves the response to the game as it leaves gravity and jumps to it. No other engine read states a crush rule. [13]
+- **Sides**: riding means contact from above. Godot ignores wall platforms by default, Phaser's default friction carries horizontally only, Celeste carries riders and pushes overlaps. A body touching a moving solid's side is not dragged. [13, 14, 20]
+- **Jump momentum**: Godot adds the platform's last velocity when the body leaves it, with a variant that drops the downward part; nothing else read does. klyph exposes the floor's velocity on the body and lets the game add it, since jumping is game code. [14, 15]
+- **Snap on a descending platform**: Godot's floor snap runs only when the body was on the floor and is not moving up, and Rapier's user report shows the dip when a controller is not carried first. Carrying before the body's own move keeps the body on a falling platform within `FLOOR_SNAP_DISTANCE`. [15, 22, 23]
+- **Parented solids**: none of the engines read parents a solid to a moving entity; Unity parents the character to the platform instead. Solids stay root entities. [17, 18]
+- **Tile format**: Tiled's JSON map format with CSV or uncompressed base64 layers, GID 0 empty and the four flip bits in the top of the GID; chunks (infinite maps), compression, external tilesets and object layers are later. LDtk's IntGrid is the cleaner collision source but needs its own loader and has no chunk form. Both need a JSON reader, which klyph does not have. [24, 25, 26, 27, 28, 30]
+- **Loader placement**: Bevy keeps the Tiled and LDtk loaders in crates separate from the tilemap renderer; libGDX ships `TmxMapLoader` in core. Either fits the modules rule once the JSON reader's weight is decided. [31, 36]
+- **Tile rendering**: engines either keep chunk meshes (Godot quadrants, bevy_ecs_tilemap) or draw the visible tiles each frame (Flixel). klyph's sprite path rebuilds its records every frame and has no retained quad list, so a `TileLayer` writes one record per tile the camera sees, as `ParallaxLayer` writes its copies; a chunk cache is the optimisation if a benchmark asks for it. [29, 31, 35]
+- **Tile collision**: decide per tile id (Flixel index, Phaser property, Godot and Tiled shapes) and merge runs of solid tiles into rectangles before they become `Solid`s (Unity's composite collider, Godot's physics quadrants). One `TileLayer` grid is the source both the core solids and `klyph-physics`'s own `SolidGrid` read, since the physics module keeps its own grid of tiles. [32, 33, 34, 35, 37]
+- **Coordinates**: Tiled stores pixels from the top-left with y down, as klyph's world does; libGDX is the one engine that flips to y up. `tileAt(x, y)` takes world units and floors by the tile size, as every engine read does. [24, 36]
+- **Bleeding in tilesets**: tiles cut from one sheet touch, so bilinear sampling bleeds between them unless the tileset carries Tiled's `margin`/`spacing` (Godot adds a one-pixel transparent padding option). klyph documents NEAREST or spaced tilesets; the atlas extrusion does not apply inside a sheet. [24, 29]
+
+## Automatic texture atlases
+
+1. **Ebitengine `internal/atlas/image.go`**. GitHub main, code read. https://github.com/hajimehoshi/ebiten/blob/main/internal/atlas/image.go
+   Claim: every regular image is atlased on creation; padding is 1 texel, cleared, not extruded; pages start at 1024 and grow by doubling with a GPU copy up to the driver limit (4096 on 32-bit); an image larger than a page gets its own texture; an image is promoted to a source atlas after 10 uses and a written image resets the count.
+   Fit: the only engine that atlases silently at load, as #42 wants. klyph's regions cannot follow a growing page, and its textures are never written after upload, so growth and the write rule do not apply.
+   Verdict: adopt the trigger and the oversize rule; skip growth.
+2. **Ebitengine `internal/packing/packing.go`**. GitHub main, code read. https://github.com/hajimehoshi/ebiten/blob/main/internal/packing/packing.go
+   Claim: a binary tree packer with largest-free-size cached per subtree, split direction by squareness, free-space merging, and extension by doubling with rollback.
+   Fit: a free list matters only when images are released; klyph keeps every cached texture until `close`.
+   Verdict: skip; skyline is simpler for insert-only.
+3. **macroquad `texture.rs` and `text/atlas.rs`**. docs.rs 0.4.14, code read (the texture atlas's padding is inferred from the glyph atlas file). https://docs.rs/crate/macroquad/latest/source/src/texture.rs
+   Claim: an explicit `build_textures_atlas()` reads loaded textures back into one 512-texel atlas with a 2-texel gap and no extrusion, doubling and re-caching every sprite when full, with rects looked up by key at draw time; one filter for the atlas; originals stay in GPU memory; a forum thread reports tile borders once the atlas is on.
+   Fit: the closest analogue, and its gap-only padding is the artefact the roller sheet already had to extrude against.
+   Verdict: adopt the lesson (extrude), skip the explicit call and the repack.
+4. **libGDX `PixmapPacker`**. GitHub master, code read. https://github.com/libgdx/libgdx/blob/master/gdx/src/com/badlogic/gdx/graphics/g2d/PixmapPacker.java
+   Claim: fixed pages, a new page on overflow, `padding` texels between images, `duplicateBorder` copies edges and corners into the padding "to avoid seams when rendering with bi-linear filtering on", Guillotine (default, last page only) or Skyline (all pages) strategies, dirty pages re-uploaded whole or per region with `glTexSubImage2D`; an image larger than the page is rejected and the check ignores padding.
+   Fit: fixed pages and extrusion match klyph's constraints exactly; the padding-blind size check is a bug to avoid.
+   Verdict: adopt fixed pages, extrusion and per-region upload.
+5. **libGDX `TexturePacker.Settings`**. gdx-tools master, code read. https://github.com/libgdx/libgdx/blob/master/extensions/gdx-tools/src/com/badlogic/gdx/tools/texturepacker/TexturePacker.java
+   Claim: defaults padding 2, `edgePadding` on, `duplicatePadding` off, `bleed` on with 2 iterations, 1024 max page, power of two.
+   Fit: an offline tool's defaults; klyph packs at load.
+   Verdict: watch; the 2-texel spacing agrees with the ring.
+6. **Bevy `TextureAtlasBuilder`**. bevy_image main, code read. https://github.com/bevyengine/bevy/blob/main/crates/bevy_image/src/texture_atlas_builder.rs
+   Claim: build-time packer on `rectangle_pack`, padding zero by default on the right and bottom edges, 256 start doubling to 2048 with a full repack on each failure.
+   Fit: build-time, no bleeding protection, repacks; the opposite of every klyph constraint.
+   Verdict: skip.
+7. **stb_rect_pack.h**. nothings/stb master, code read. https://github.com/nothings/stb/blob/master/stb_rect_pack.h
+   Claim: skyline bottom-left with a best-fit variant at about twice the cost; packing in several calls "will probably produce worse packing results than calling it a single time".
+   Fit: klyph inserts one image at a time, which is the case the header warns about and the survey below says skyline handles best.
+   Verdict: adopt the algorithm, written in Kotlin.
+8. **raylib `GenImageFontAtlas`**. raysan5/raylib master, code read (first 100 000 characters). https://github.com/raysan5/raylib/blob/master/src/rtext.c
+   Claim: row packing or stb skyline, each cell grown by the padding on every side, atlas side from total area times 1.2 rounded to a power of two.
+   Fit: a glyph atlas built once; the area estimate is irrelevant to fixed pages.
+   Verdict: skip.
+9. **Jylänki, "A Thousand Ways to Pack the Bin"**. Survey, 2010, PDF read through text extraction (tables partly garbled). https://github.com/juj/RectangleBinPack
+   Claim: MaxRects performs best overall; skyline "performed the best when packing is performed online only to a single bin at a time"; guillotine is faster than MaxRects and slightly worse; shelf only when simplicity is the concern.
+   Fit: klyph's case is online, one page at a time.
+   Verdict: adopt skyline on its ranking.
+10. **TexturePacker texture settings**. CodeAndWeb docs, read. https://www.codeandweb.com/texturepacker/documentation/texture-settings
+    Claim: Extrude "repeats the sprite's pixels at the border"; shape padding of "at least 2 to avoid dragging in pixels from neighbor sprites".
+    Verdict: adopt; the two-texel distance and extrusion are the industry defaults.
+11. **Defold atlas manual**. defold.com, read. https://defold.com/manuals/atlas/
+    Claim: Extrude Borders repeats edge pixels because "pixels of a neighbor image (on the same atlas texture) may bleed over"; pages are the closest power of two; Max Page Size splits an atlas into pages.
+    Verdict: adopt; multi-page extruded atlases are a shipped shape.
+12. **Unity Sprite Atlas reference** and **Godot `AtlasTexture`**. docs read. https://docs.unity.com/en-us/engine/current/manual/unity2d/sprite/atlas/sprite-atlas-reference , https://docs.godotengine.org/en/stable/classes/class_atlastexture.html
+    Claim: Unity pads 4 by default and ignores the max size when a sprite is larger; Godot's `AtlasTexture` is manual and `filter_clip` clips the region "to avoid bleeding of the surrounding texture pixels".
+    Fit: Unity's oversize rule is Ebiten's; Godot shows the alternative of clipping in the shader, which klyph's vertex-pulled renderer would pay for on every sprite.
+    Verdict: adopt the oversize rule, skip shader clipping.
+    Also read: Citrus engine texture bleeding docs (1 texel extruded by default, 4 for block compression) and the webgl2fundamentals bleeding Q&A (half-texel inset or a one-pixel gutter of repeated edge pixels). Both agree with the ring.
+
+## Moving platforms
+
+13. **Maddy Thorson, "Celeste and TowerFall Physics"**. Blog article, read. http://maddymakesgames.com/articles/celeste_and_towerfall_physics/
+    Claim: "An Actor is carried if it is riding that Solid, but it is pushed if the Solid's movement results in them overlapping"; carry checks before the move, push checks after; a pushed Actor that has nowhere to go gets `Squish`, which destroys it by default; a Solid's own movement is guaranteed.
+    Fit: the same model as klyph's Solid and KinematicBody; klyph reports the squish and lets the game decide, as it does for `isStuck`.
+    Verdict: adopt carry-before, push-after and the guaranteed solid move.
+14. **Godot 4 `CharacterBody2D`**. Class reference, docs read. https://docs.godotengine.org/en/stable/classes/class_characterbody2d.html
+    Claim: the platform's velocity is added to the body's motion; `platform_on_leave` adds the last platform velocity by default, with an upward-only variant and a do-nothing option; `platform_wall_layers` ignores wall contacts by default; `get_platform_velocity` is valid after `move_and_slide`; `floor_snap_length` keeps the body attached.
+    Fit: the leave rule is a game choice in klyph (jumps are game code), so the body exposes the velocity instead.
+    Verdict: adopt the floor-only rule and the exposed velocity; skip the automatic leave rule.
+15. **Godot `character_body_2d.cpp`**. GitHub master, code read. https://raw.githubusercontent.com/godotengine/godot/master/scene/2d/physics/character_body_2d.cpp
+    Claim: platform motion (`velocity * delta`) is applied through a separate `move_and_collide` that excludes the platform, before the body's own slide; platform data is re-recorded on contact; the snap runs only when the body was on the floor last frame and is not moving up.
+    Verdict: adopt the ordering.
+16. **Godot `AnimatableBody2D`**. Class reference, docs read. https://docs.godotengine.org/en/stable/classes/class_animatablebody2d.html
+    Claim: moved by code or animation, "its linear and angular velocity are estimated" from the motion and used on bodies in its path; `sync_to_physics` moves it on the physics frame.
+    Fit: klyph's grid already compares each solid's box with its last pass, so the displacement is known without a velocity.
+    Verdict: adopt the derived displacement.
+17. **Unity Character Controller package, "Moving platforms"** and 18. **"Parenting"**. docs read. https://docs.unity3d.com/Packages/com.unity.charactercontroller@1.3/manual/moving-platforms.html , https://docs.unity3d.com/Packages/com.unity.charactercontroller@1.3/manual/concepts-parenting.html
+    Claim: move the platform by velocity before physics, not through its transform; the character is parented to the ground body and re-parented every frame.
+    Fit: parenting the rider would make a `KinematicBody` a child, which klyph forbids.
+    Verdict: skip parenting; adopt "platform moves first".
+19. **Unity built-in `CharacterController`**. Manual, docs read. https://docs.unity.com/en-us/engine/current/manual/physics-section/physics-overview/character-control-section/class-character-controller
+    Claim: "does not react to forces" and is not carried; the page has no platform rule.
+    Verdict: skip (negative result).
+20. **Phaser 3 Arcade `Body`**. API docs, read (first 100 000 characters). https://docs.phaser.io/api-documentation/class/physics-arcade-body
+    Claim: `friction` is the share of the platform's motion the rider gets per axis, default (1, 0): horizontal carry, no vertical carry; `immovable`, `pushable`, `moves`.
+    Fit: a no-vertical-carry default is why Phaser riders fall off descending lifts; klyph carries both axes.
+    Verdict: skip the default, note the per-axis idea.
+21. **HaxeFlixel `FlxObject.hx`**. GitHub dev, code read (excerpts). https://github.com/HaxeFlixel/flixel/blob/dev/flixel/FlxObject.hx
+    Claim: `collisionXDrag`/`collisionYDrag` add `object2.y - object2.last.y` to the rider when the platform moved; only the non-`immovable` object is separated.
+    Verdict: adopt; the position-delta carry is the same number klyph's grid can derive.
+22. **Rapier character controller guide**. rapier.rs, docs read. https://rapier.rs/docs/user_guides/rust/character_controller/
+    Claim: snap-to-ground for stairs and downhill; carrying on moving platforms is listed as a use but left to the caller.
+    Verdict: skip.
+23. **Rapier issue #488**. GitHub issue, read (user report). https://github.com/dimforge/rapier/issues/488
+    Claim: a controller on a vertically moving kinematic platform "bounces and dips into the platform" and can fall through.
+    Fit: the failure mode of snapping without carrying first.
+    Verdict: watch; a test case for the carry order.
+    Also read: Box2D kinematic bodies (no carry rule for a non-physics controller), Jonathan Whiting's collision tutorial (static tiles only), the Godot "Using CharacterBody2D" tutorial (no platform section), and the `klyph-physics` branch, whose `Solid.moving` only pushes particles out and whose kinematic rigid bodies carry through the solver, so a core carry rule duplicates nothing.
+
+## Tilemaps
+
+24. **Tiled JSON Map Format**. doc.mapeditor.org, spec read. https://doc.mapeditor.org/en/stable/reference/json-map-format/
+    Claim: layers hold `data` as CSV or base64 with zlib, gzip, zstd or none; infinite maps store `chunks` with x, y, width, height in tiles; tilesets carry `firstgid`, `margin`, `spacing`, `columns`, and `source` for an external file; a tile's `objectgroup` holds its collision shapes.
+    Fit: JSON needs a reader klyph lacks; CSV needs no decompression; the rest is skippable in a first loader.
+    Verdict: adopt with CSV and uncompressed base64 only.
+25. **Tiled TMX Map Format**. spec read. https://doc.mapeditor.org/en/stable/reference/tmx-map-format/
+    Claim: XML with TSX tilesets, base64 as little-endian uint32, chunks default 16x16.
+    Fit: an XML reader on top of a JSON reader for the same data.
+    Verdict: skip; JSON is Tiled's own second format.
+26. **Tiled Global Tile IDs**. spec read. https://doc.mapeditor.org/en/stable/reference/global-tile-ids/
+    Claim: flip bits 0x80000000 horizontal, 0x40000000 vertical, 0x20000000 diagonal, 0x10000000 hex rotation; mask 0x0FFFFFFF; GID 0 empty.
+    Verdict: adopt; `Sprite` flips cover horizontal and vertical, diagonal becomes a rotation plus a flip.
+27. **LDtk JSON overview**, 28. **layer instances** and the **JSON schema 1.5.3**. ldtk.io, docs and spec read. https://ldtk.io/docs/game-dev/json-overview/ , https://ldtk.io/docs/game-dev/json-overview/layer-instances/ , https://ldtk.io/files/JSON_SCHEMA.json
+    Claim: `intGridCsv` is a flat integer list, `gridTiles` carry `px`, `src`, `t` and a 2-bit flip `f`; entities carry fields; tilesets have `padding` and `spacing`; no chunk form found.
+    Fit: a clean collision source (one integer per cell) and the format a second loader would read; the Super simple export (PNG and CSV per layer) needs no JSON at all.
+    Verdict: watch; a `klyph-ldtk` or a second core loader once Tiled works.
+29. **Godot `TileMapLayer`** and **Using TileSets**. docs read. https://docs.godotengine.org/en/stable/classes/class_tilemaplayer.html , https://docs.godotengine.org/en/stable/tutorials/2d/using_tilesets.html
+    Claim: rendering quadrants group tiles into one canvas item; `physics_quadrant_size` groups cells with the same physics properties, 1 disables; collision polygons per tile on a physics layer; "Use Texture Padding" adds a one-pixel transparent border per tile against bleeding.
+    Fit: the quadrant cache is the chunk design klyph defers; the padding option names the tileset bleeding problem.
+    Verdict: watch quadrants; adopt the bleeding note in the guide.
+30. **bevy_ecs_tilemap README**. GitHub, docs read. https://github.com/StarArawn/bevy_ecs_tilemap
+    Claim: chunks with one mesh each, one entity per tile, Tiled and LDtk loaders in separate crates.
+    Fit: one entity per tile would put a 200x50 map at 10 000 entities; klyph keeps the grid inside one component.
+    Verdict: skip the entity-per-tile shape; note the separate loader crates.
+31. **Unity `CompositeCollider2D`**. docs read. https://docs.unity.com/en-us/engine/current/manual/unity2d/2d-physics/collider-2d/composite-collider-2d/reference
+    Claim: merges box and polygon colliders into outline or polygon geometry, synchronously or on request.
+    Fit: the precedent for merging tile boxes before they become solids.
+    Verdict: adopt the merge, as rectangles.
+32. **Phaser `TilemapLayerBase`**. docs read (first 100 000 characters). https://docs.phaser.io/api-documentation/class/tilemaps-tilemaplayerbase
+    Claim: `setCollision` by index, `setCollisionByProperty`, `setCollisionByExclusion`; `getTileAt` takes tile units; `putTileAt` recalculates collision faces.
+    Verdict: adopt the by-property form; `tileAt` takes world units in klyph, as `floorBelowOrNull` does.
+33. **libGDX tile maps wiki**. libgdx.com, docs read. https://libgdx.com/wiki/graphics/2d/tile-maps
+    Claim: `TmxMapLoader` in core, `getCell` null when empty, origin bottom-left with y up, a unit scale such as 1/32.
+    Fit: the one y-up engine; klyph is y-down like Tiled.
+    Verdict: adopt the loader-in-core precedent as one option; skip the flip.
+34. **HaxeFlixel `FlxTilemap.hx`**. GitHub dev, code read (excerpt). https://github.com/HaxeFlixel/flixel/blob/dev/flixel/tile/FlxTilemap.hx
+    Claim: collision by index from `collideIndex`, drawing skips off-screen cameras and redraws a per-camera buffer when dirty, tile lookup is floor(position / tile size).
+    Verdict: adopt the lookup; watch the dirty buffer as the chunk-cache fallback.
+35. **`klyph-physics` `SolidGrid`** (PR #55 branch, local). code read.
+    Claim: its own grid of one tile per cell, filled with `fill`, `fillTopHalf` and `removeAt`, plus slopes; it reads no core `Solid`.
+    Fit: #3's `TileLayer` grid has to be readable cell by cell so the module can fill its grid from the same data.
+    Verdict: adopt one public cell-level read on `TileLayer`.
+    Also read: LDtk Super simple export (PNG and CSV per layer, `data.json` for entities). Not retrieved: Phaser 4 `TilemapGPULayer`, KorGE tiled (404), macroquad-tiled, MonoGame.Extended, Heaps, Godot's Tiled importers, Tiled's tile-collision editing page (404), one-way tiles in any engine read.
+
+## Gaps
+
+- No source read separates atlas pages by sampler filter or address; klyph's per-filter pages follow from its per-texture samplers, not from precedent.
+- No engine read states what a body does when a one-way (`FROM_BELOW`) platform moves up through it; klyph needs its own rule.
+- One-way tiles in Tiled or LDtk: no convention found; a tile property is the likely shape.
+- Greedy rectangle merging of tile grids: no article retrieved; the row-run merge is standard enough to write from scratch.
+- Chunked tile rendering cost on a vertex-pulled renderer: no numbers anywhere; the `tiles` benchmark decides.

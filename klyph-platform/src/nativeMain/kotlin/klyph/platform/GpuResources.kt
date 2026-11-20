@@ -345,23 +345,41 @@ public fun GpuDevice.createTexture(
 public fun GpuDevice.createTexture(image: Image): GpuTexture {
     val texture = createTexture(image.width, image.height)
     try {
-        val staging = createTransferBuffer(image.pixels.size)
-        try {
-            write(staging, image.pixels)
-            val commands = acquireCommandBuffer()
-            val copy = commands.beginCopyPass()
-            copy.uploadToTexture(staging, texture, image.width, image.height)
-            copy.end()
-            commands.submit()
-        } finally {
-            // SDL defers the release until the submitted copy has finished with it.
-            release(staging)
-        }
+        uploadToTexture(texture, image, x = 0, y = 0)
     } catch (e: Throwable) {
         release(texture)
         throw e
     }
     return texture
+}
+
+/**
+ * Copies the pixels of [image] into [texture] as given, alpha included and nothing blended, with
+ * the image's top-left corner at texel [x], [y], and leaves the rest of [texture] as it was. The
+ * image must lie inside [texture], an [RGBA8][TextureFormat.RGBA8] texture; SDL does not check it.
+ *
+ * The upload is submitted on its own command buffer before this function returns. SDL runs it
+ * after the work submitted earlier, so a frame already submitted still sees the old texels and the
+ * next one sees the new. Later changes to [image] do not reach the texture.
+ *
+ * @throws IllegalArgumentException if [x] or [y] is negative.
+ * @throws SdlException if the staging memory cannot be created or the upload cannot be submitted.
+ */
+@KlyphPlatformApi
+public fun GpuDevice.uploadToTexture(texture: GpuTexture, image: Image, x: Int, y: Int) {
+    require(x >= 0 && y >= 0) { "Upload corner ($x, $y) is negative." }
+    val staging = createTransferBuffer(image.pixels.size)
+    try {
+        write(staging, image.pixels)
+        val commands = acquireCommandBuffer()
+        val copy = commands.beginCopyPass()
+        copy.uploadToTexture(staging, texture, image.width, image.height, x = x, y = y)
+        copy.end()
+        commands.submit()
+    } finally {
+        // SDL defers the release until the submitted copy has finished with it.
+        release(staging)
+    }
 }
 
 /** Frees [texture]. Never call this on a swapchain texture. */

@@ -132,6 +132,13 @@ public class AppConfig(
      * `ParticleEmitter.random` included. [fromEnvironment] sets it from `KLYPH_FRAME_DELTA=<seconds>`.
      */
     public val frameDelta: Duration? = null,
+    /**
+     * Whether [Assets.region] packs the pictures it loads into shared textures, so sprites that show
+     * different files draw in one call. [TextureAtlas.AUTOMATIC], the default, packs them, and each
+     * picture looks the same either way. [TextureAtlas.NONE] gives every file its own
+     * texture, for comparing the two while debugging. [fromEnvironment] sets it from `KLYPH_ATLAS`.
+     */
+    public val atlas: TextureAtlas = TextureAtlas.AUTOMATIC,
 ) {
     init {
         require(width > 0) { "Window width $width is not positive." }
@@ -177,7 +184,8 @@ public class AppConfig(
             cursor == other.cursor &&
             screenshot == other.screenshot &&
             textureFilter == other.textureFilter &&
-            frameDelta == other.frameDelta
+            frameDelta == other.frameDelta &&
+            atlas == other.atlas
 
     override fun hashCode(): Int {
         var result = title.hashCode()
@@ -202,6 +210,7 @@ public class AppConfig(
         result = 31 * result + screenshot.hashCode()
         result = 31 * result + textureFilter.hashCode()
         result = 31 * result + frameDelta.hashCode()
+        result = 31 * result + atlas.hashCode()
         return result
     }
 
@@ -215,7 +224,7 @@ public class AppConfig(
             "gpuSync=$gpuSync, validation=$validation, clearColor=$clearColor, assetRoot=$assetRoot, audio=$audio, " +
             "collisionCellSize=$collisionCellSize, overlayKey=$overlayKey, overlay=$overlay, frameLimit=$frameLimit, " +
             "timeLimit=$timeLimit, windowMode=$windowMode, cursor=$cursor, screenshot=$screenshot, " +
-            "textureFilter=$textureFilter, frameDelta=$frameDelta)"
+            "textureFilter=$textureFilter, frameDelta=$frameDelta, atlas=$atlas)"
 
     /**
      * Returns a config with the settings passed replaced and every other setting of this one kept.
@@ -248,6 +257,7 @@ public class AppConfig(
         screenshot: Screenshot? = this.screenshot,
         textureFilter: SamplerFilter = this.textureFilter,
         frameDelta: Duration? = this.frameDelta,
+        atlas: TextureAtlas = this.atlas,
     ): AppConfig = AppConfig(
         title = title,
         width = width,
@@ -271,6 +281,7 @@ public class AppConfig(
         screenshot = screenshot,
         textureFilter = textureFilter,
         frameDelta = frameDelta,
+        atlas = atlas,
     )
 
     /** Creates configs from the process environment. */
@@ -293,6 +304,7 @@ public class AppConfig(
          *   [RenderTarget.WINDOW] and keeps [gpuSync].
          * - `KLYPH_OVERLAY=1` sets [overlay] to [OverlayStart.VISIBLE], `0` to [OverlayStart.HIDDEN].
          * - `KLYPH_FULLSCREEN=1` sets [windowMode] to [WindowMode.FULLSCREEN], `0` to [WindowMode.WINDOWED].
+         * - `KLYPH_ATLAS=0` sets [atlas] to [TextureAtlas.NONE], `1` to [TextureAtlas.AUTOMATIC].
          * - `KLYPH_SCREENSHOT=<frame>:<path>` sets [screenshot] to `Screenshot(frame, path)`, such as
          *   `20:/tmp/shot.png`. The value splits at its first colon, so the path may contain colons.
          *   A value without that form, a frame below 1 or an empty path, is ignored and keeps the
@@ -344,6 +356,7 @@ public class AppConfig(
             val offscreen = flag("KLYPH_OFFSCREEN")
             val overlay = flag("KLYPH_OVERLAY")
             val fullscreen = flag("KLYPH_FULLSCREEN")
+            val atlas = flag("KLYPH_ATLAS")
             val screenshot = parseScreenshot(read("KLYPH_SCREENSHOT"))
             return base.copy(
                 presentMode = when (vsync) {
@@ -376,9 +389,34 @@ public class AppConfig(
                 },
                 screenshot = screenshot ?: base.screenshot,
                 frameDelta = frameDelta ?: base.frameDelta,
+                atlas = when (atlas) {
+                    null -> base.atlas
+                    true -> TextureAtlas.AUTOMATIC
+                    false -> TextureAtlas.NONE
+                },
             )
         }
     }
+}
+
+/**
+ * Names whether [Assets.region] packs the pictures it loads into shared textures, set through
+ * [AppConfig.atlas].
+ */
+public enum class TextureAtlas {
+    /**
+     * Packs each picture `Assets.region` loads into a shared texture, an atlas page, so sprites
+     * that show different files in one layer draw in one call. A picture that cannot share one,
+     * because it repeats or is larger than a page, gets its own texture, and each picture looks the
+     * same either way.
+     */
+    AUTOMATIC,
+
+    /**
+     * Gives every file `Assets.region` loads its own texture, as `Assets.texture` does. For
+     * debugging: compare a frame with and without the atlas, or look at one file's texture alone.
+     */
+    NONE,
 }
 
 /** Names whether the debug overlay, [App.overlay], is shown when the app starts. */

@@ -114,7 +114,7 @@ class SpriteTilingTest {
         val error = assertFailsWith<IllegalStateException> { uvOf(sprite) }
         assertEquals(
             "Entity(0:0) has a Sprite with a tile size, which needs a texture created with SamplerAddress.REPEAT, " +
-                "but Texture(16x16) uses CLAMP.",
+                "but Texture(16x16) uses CLAMP; load it with assets.region(path, address = SamplerAddress.REPEAT).",
             error.message,
         )
     }

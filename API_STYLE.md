@@ -51,11 +51,13 @@ in the same PR rather than inventing a one-off.
 | `emptyX()` | Shared immutable empty instance. | `emptyGraph()` |
 | `X.of(...)` | Companion factory for a value class whose constructor takes the raw representation, building it from the value users think in. | `CollisionLayers.of(3)` |
 | `X.<use>(...)` | Companion factory that returns a new `X` set up for one common use, named after that use. | `ParticleEmitter.burst(region, 12)` |
-| `spawnX(...)` on `Commands` | Queues spawning an entity set up as `X` and returns its handle, as `spawn { }` does. | `commands.spawnBurst(x, y, emitter)` |
+| `spawnX(...)` on `Commands` | Queues spawning an entity set up as `X` and returns its handle, as `spawn { }` does; a plural `X` spawns several and returns a `List` of handles. | `commands.spawnBurst(x, y, emitter)`, `commands.spawnSolids(layer)` |
 | `onX { }` | Builder function that registers an action run when `X` happens. | `buildScene("title") { onEnter { } }` |
 | `xOrNull()` | Function or property: same as `x()` but returns `null` instead of throwing. May stand alone when absence is normal rather than an error. | `firstOrNull()`, `nodeOrNull(id)`, `parentOrNull(child)`, `scenes.currentOrNull`, `collisions.floorBelowOrNull(x, y, width, depth)` |
 | `x(path)` on `Assets` | Returns the asset at `path`, loading it on the first call and returning the cached instance after. Named after the type it returns, except `region`, which returns the whole of the cached `texture` and stands for `TextureRegion` because `assets.` already says what it is a region of and the tutorial's readers are children. | `assets.texture("ship.png")`, `assets.region("ship.png")`, `assets.musicTrack("music.ogg")` |
 | `createX(...)` | Makes a new `X` on every call, never cached; the caller owns it. | `assets.createTexture(image)` |
+| `readX(path)` on `Assets` | Reads the file at `path` under the asset root as `X` on every call, never cached; the seam for loaders of other formats. | `assets.readText("save.json")`, `assets.readBytes(path)` |
+| `xAt(x, y)` | Returns the `x` found at a position, not a factory and never throwing for a position outside; the counterpart of `xOf` for coordinates. | `layer.tileAt(x, y)` |
 | `xCount` | Property holding how many of `x` there are. Containers use `size` instead. | `spriteCount`, `drawCallCount`, `Time.frameCount` |
 | `xSeconds` | Extension property returning the `Duration` `x` as a `Float` in seconds, for arithmetic done every frame. The `Duration` stays the primary API. | `time.deltaSeconds`, `scene.elapsedSeconds` |
 | `SubjectVerbed` event | An event that reports a change is a past participle. An event that reports a state every frame, such as an overlap, is a noun. | `KeyPressed`, `MouseWheelScrolled`, `WindowResized`; `Overlap` |

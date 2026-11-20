@@ -224,6 +224,7 @@ and take screenshots without code changes. Through Gradle, pass each variable as
 | `KLYPH_VALIDATION=1` | `-Pklyph.validation=1` | Turns on the GPU validation layer, which is slow. |
 | `KLYPH_OVERLAY=1` | `-Pklyph.overlay=1` | Shows the debug overlay from the first frame. |
 | `KLYPH_FULLSCREEN=1` | `-Pklyph.fullscreen=1` | Starts in borderless fullscreen. |
+| `KLYPH_ATLAS=0` | `-Pklyph.atlas=0` | Gives every file `assets.region` loads its own texture instead of packing it, for debugging. |
 | `KLYPH_SCREENSHOT=<frame>:<path>` | `-Pklyph.screenshot=30:shot.png` | Saves frame `frame`, counted from 1, as a PNG. |
 
 ```

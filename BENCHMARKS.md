@@ -11,6 +11,89 @@ times the pixels they did. The benchmarks spread sprites over the window's size 
 divide sprite sizes (and the hierarchy's ring radii) by the window's pixel density, so every
 sprite still covers the same pixels as in the earlier runs and the GPU fill work matches them.
 
+## Automatic texture atlas (2026-11-20)
+
+`assets.region(path)` packs the files it loads into shared 2048 by 2048 atlas pages, so sprites
+of different files in one layer share a draw call. The sample games were run with no change to
+their code beyond printing the last frame's `FrameStats.drawCallCount` at exit, once with the atlas
+and once with `-Pklyph.atlas=0`:
+`./gradlew :games:<game>:run -Pklyph.autopilot=1 -Pklyph.frameDelta=0.016 -Pklyph.frames=<n>`
+(625 and 1875 frames are the 10 s and 30 s autopilot runs, `-Pklyph.seconds`). Draw counts depend
+on the scene, not the machine. Quads are the frame's sprites, glyphs and particles; the particles
+draw from an unseeded `Random`, so the count can differ by a few between runs.
+
+| Game, frame | Quads | Draws, atlas off | Draws, atlas on |
+|---|---|---|---|
+| shooter, 300 | 653 | 7 | 5 |
+| shooter, 625 | 646 | 6 | 5 |
+| shooter, 900 | 653 | 5 | 5 |
+| roller, 300 | 207 | 25 | 17 |
+| roller, 900 | 178 | 25 | 17 |
+| roller, 1875 | 193 | 23 | 15 |
+
+The roller loses a third of its draws: its ninja, blobs, helicopters, pickups, signs and posters
+now share one page. What is left includes a texture each for the tiled walls (repeating textures
+stay apart), its painted sheet, the sky, the dust disc and the built-in font. The shooter's ship,
+enemies and bullets share a page, but its explosion sheet, particle texture and text keep their
+own, and sprites of different files in different layers still need a draw each. With each emitter's `random` seeded
+for the comparison, the shooter's frame 300 screenshot is byte for byte the same with and without
+the atlas, and the roller's differs in 2 of 2,073,600 pixels by one level in one channel: its
+files are sampled LINEAR, and texture coordinates on a 2048 page round differently from those on
+the file's own texture.
+## Moving solids (2026-11-20)
+
+`./gradlew :benchmarks:benchmarkCollisionsOffscreen -Pklyph.sprites=<n> -Pklyph.moving=<share>
+-Pklyph.frameDelta=0.016667` runs the `collisions` world plus a platformer level: one 64 by 16
+`Solid` per ten circles on a jittered grid, a 12 by 12 `KinematicBody` with gravity dropped on
+each, and `<share>` of the solids given a `Velocity` of 40 units a second that turns every two
+seconds, so their riders are carried. The fixed frame delta makes every frame run one fixed step,
+so `fixed` is the cost of one step: the circles' move system (the same in every row) and the
+bodies' move, carries and pushes. `collide` includes the solids' rescan. Same machine and
+offscreen setup as below, 2,000 frames, other builds running at times; the lines are typical runs.
+
+| circles | solids | moving | `fixed` ms | `collide` ms |
+|---|---|---|---|---|
+| 10k | none | - | 0.021 | 0.506 |
+| 10k | 1,000 | 0 | 0.145 | 0.686 |
+| 10k | 1,000 | 0.1 | 0.186 | 0.688 |
+| 10k | 1,000 | 0.5 | 0.220 | 0.710 |
+| 10k | 1,000 | 1 | 0.248 | 0.742 |
+| 50k | 5,000 | 0 | 1.148 to 1.163 | 9.40 |
+| 50k | 5,000 | 0.01 | 1.374 to 1.414 | 9.22 to 9.43 |
+| 50k | 5,000 | 0.1 | 1.563 | 9.43 |
+
+The first version kept every moving solid in one list that every sweep tested, as the grid's very
+large solids are. Each body sweeps three or four times a step, so the cost grew with bodies times
+moving solids: 2.32 ms a step at 100 moving solids of 1,000, 14.2 ms at 500 and 40.8 ms at 1,000.
+Moving solids now have cells of their own, a second hash grid rebuilt at every rescan over the box
+each one covered while it moved, which a sweep visits beside the still solids' cells and a body
+asks for the solids that may have moved into it. Forcing every solid into the still grid instead,
+so it is rebuilt whenever one moves, gave 0.187 and 0.235 ms for the 10k rows at 0.1 and 1, and
+1.27 to 1.42 ms for the 50k rows at 0.01 and 0.1: within the noise of the moving cells at these
+sizes, because a counting sort of 5,000 boxes is cheap. The moving cells keep the still grid from
+being rebuilt every step in a level whose still solids number in the tens of thousands, such as a
+tile map, at the price of a second cell lookup per cell a sweep visits.
+
+## Tile layers (2026-11-20)
+
+The `tiles` benchmark (`./gradlew :benchmarks:benchmarkTilesOffscreen`) draws eight `TileLayer`s of
+400 by 300 cells of 16-point tiles, filled with random tiles of one 4-tile sheet, each in its own
+sprite layer, under a camera that circles over them. The window is 1280 by 720 points, so each
+layer has 81 by 46 cells in view and a frame writes 29,808 records in 8 draw calls; the cells off
+screen cost nothing. Same machine and offscreen setup as below, 2,000 frames; the line is a typical
+summary.
+
+```
+sprites=29808 layers=8 fps=850 frame=1.176ms fixed=0.000ms collide=0.000ms update=0.000ms propagate=0.000ms acquire=0.001ms extract=0.547ms record=0.013ms gpuwait=0.600ms other=0.012ms
+```
+
+Extraction costs about 18 ns a cell, against about 6 ns a sprite in a `sprites` run of 100k made
+the same hour (extract 0.60 to 0.62 ms with and without the tile pass): each cell's record is built
+in a 16-float template and then copied into the mapped buffer. At 0.55 ms for eight full screens of
+tiles no per-chunk cache was added. The tile branches sit in `SpriteRenderer.extract` next to the
+parallax ones; a version that folded both behind one flag and one call made the 100k sprite
+extract 3.2 ms, five times slower, so the branches stay separate.
+
 ## Nullable entity handles (2026-11-20)
 
 `Entity` is a value class over a `Long`, so a function that returns `Entity?` may box the handle

@@ -14,18 +14,23 @@ import klyph.platform.SamplerAddress
 import klyph.platform.SamplerFilter
 import klyph.platform.createTexture
 import klyph.platform.fillCircle
+import klyph.render.AtlasPages
 import klyph.render.SpriteSheet
 import klyph.render.Texture
 import klyph.render.TextureRegion
 import klyph.render.asRegion
+import klyph.render.createClearedTexture
 import klyph.render.fromGrid
 import klyph.text.BuiltInFont
 import klyph.text.Font
 import klyph.text.FontException
 import klyph.text.parseBmFont
+import klyph.tiles.TileMap
+import klyph.tiles.TileMapException
+import klyph.tiles.readTiledMap
 
 /**
- * Loads images, textures, sprite sheets, fonts, sounds and music from the files under [root], and
+ * Loads images, textures, sprite sheets, fonts, sounds, music and tile maps from the files under [root], and
  * owns every texture it creates until [close].
  *
  * A relative path resolves under [root]; an absolute path is used as given. [root] defaults to
@@ -36,13 +41,15 @@ import klyph.text.parseBmFont
  * and [SamplerAddress], and fonts by path and filter, so a file loaded with both filters, or both
  * clamped and repeating, is uploaded twice, as two textures. A loading function whose call passes
  * no `filter` uses [textureFilter], which [AppConfig.textureFilter] sets, so a game of pixel art
- * names [SamplerFilter.NEAREST] once in its config and not in every call. [runApp] creates the
+ * names [SamplerFilter.NEAREST] once in its config and not in every call. [region] packs the files
+ * it loads into shared textures, atlas pages, unless [AppConfig.atlas] says otherwise; see [region]
+ * for which files share one. [runApp] creates the
  * one instance, available as [App.assets], and closes it after every [Phase.SHUTDOWN] system has
  * run. Do not close the textures it returns yourself.
  *
- * [toString] gives the root and the number of textures, fonts, sounds and music tracks held, for
- * example `Assets(root=/games/shooter/assets/, textures=3, fonts=1, sounds=4, music=1)`. The
- * built-in font's texture counts as one.
+ * [toString] gives the root and the number of textures, atlas pages, fonts, sounds and music tracks
+ * held, for example `Assets(root=/games/shooter/assets/, textures=3, pages=1, fonts=1, sounds=4, music=1)`.
+ * The built-in font's texture counts as one texture.
  *
  * Not thread-safe; call it from systems only.
  *
@@ -52,17 +59,36 @@ public class Assets internal constructor(
     private val upload: (image: Image, filter: SamplerFilter, address: SamplerAddress) -> Texture,
     root: String,
     textureFilter: SamplerFilter,
+    private val atlas: TextureAtlas = TextureAtlas.NONE,
+    private val pages: AtlasPages? = null,
 ) : AutoCloseable {
+    init {
+        require(atlas == TextureAtlas.NONE || pages != null) { "Atlas pages are needed when the atlas is $atlas." }
+    }
+
     /**
-     * Creates assets that upload every texture to [device]. The primary constructor takes the
-     * upload function itself, so tests can pass one that needs no GPU.
+     * Creates assets that upload every texture to [device] and pack [region]'s files as [atlas]
+     * says. The primary constructor takes the upload function and, for an atlas, the atlas pages
+     * themselves, so tests can pass ones that need no GPU; without [pages] the atlas must be
+     * [TextureAtlas.NONE], the default, or the constructor throws [IllegalArgumentException].
      */
-    internal constructor(device: GpuDevice, root: String, textureFilter: SamplerFilter = SamplerFilter.LINEAR) : this(
+    internal constructor(
+        device: GpuDevice,
+        root: String,
+        textureFilter: SamplerFilter = SamplerFilter.LINEAR,
+        atlas: TextureAtlas = TextureAtlas.AUTOMATIC,
+    ) : this(
         upload = { image, filter, address ->
             Texture(device, device.createTexture(image), image.width, image.height, filter, address)
         },
         root = root,
         textureFilter = textureFilter,
+        atlas = atlas,
+        pages = AtlasPages(
+            AtlasPages.PAGE_SIZE,
+            createPage = { size, filter -> Texture(device, device.createClearedTexture(size), size, size, filter) },
+            write = { page, image, x, y -> page.write(image, x, y) },
+        ),
     )
 
     /**
@@ -80,6 +106,9 @@ public class Assets internal constructor(
     public val textureFilter: SamplerFilter = textureFilter
 
     private val cached = FileCache<Texture>()
+
+    /** What [region] and [regionOrNull] returned, by path and filter; a REPEAT region is the texture's own and is not held here. */
+    private val cachedRegions = FileCache<TextureRegion>()
     private val uploaded = ArrayList<Texture>()
     private val cachedSounds = HashMap<String, Sound>()
     private val cachedMusic = HashMap<String, MusicTrack>()
@@ -156,9 +185,13 @@ public class Assets internal constructor(
     }
 
     /**
-     * Returns the texture of the PNG or JPEG file at [path], sampled with [filter] and [address],
-     * loading and uploading it on the first call for that file, filter and address and returning
-     * the same [Texture] on every later call with all three. [filter] defaults to [textureFilter],
+     * Returns the PNG or JPEG file at [path] as a [Texture] of its own: call it to repeat the file
+     * across a tiled sprite or to cut regions from it yourself; for a `Sprite` that shows the whole
+     * file, call [region] instead.
+     *
+     * The texture is sampled with [filter] and [address]. The first call for a file, filter and
+     * address loads and uploads it, and every later call with all three returns the same
+     * [Texture]. [filter] defaults to [textureFilter],
      * which [AppConfig.textureFilter] sets; use [SamplerFilter.NEAREST] for pixel art. Use
      * [SamplerAddress.REPEAT] for a texture that a `Sprite` with a tile size or
      * `Canvas.drawTiled` repeats across a larger area.
@@ -166,7 +199,8 @@ public class Assets internal constructor(
      * A texture has one address, fixed when it loads, so a file used both clamped and repeating is
      * loaded twice, as two textures, and the cache keeps both.
      *
-     * For a `Sprite` that shows the whole file, [region] returns it as a [TextureRegion] in one call.
+     * [region] keeps a cache of its own and packs the file into a shared texture, so a file loaded
+     * with both is uploaded twice, once on its own and once into the atlas.
      *
      * @throws FileException if the file does not exist or cannot be read.
      * @throws ImageException if the file is not a PNG or JPEG image, or is corrupt.
@@ -191,23 +225,60 @@ public class Assets internal constructor(
     }
 
     /**
-     * Returns the whole of the PNG or JPEG file at [path] as one [TextureRegion], for a `Sprite`
-     * that shows the file as a single picture. [filter] and [address] default as in [texture],
-     * and the cache rules are the same: the first call for a file, filter and address loads and
-     * uploads it, and every later call with all three returns an equal region. A file that is
-     * missing or not an image throws; [regionOrNull] returns `null` instead. To cut the file into
-     * smaller regions, load it with [texture].
+     * Returns the whole of the PNG or JPEG file at [path] as one [TextureRegion]: call it for a
+     * `Sprite`, particle or canvas draw that shows the file as a single picture; to tile the file
+     * or cut it into smaller regions, call [texture] instead.
+     *
+     * The file is packed into a shared texture, an atlas page, beside the other files loaded this
+     * way, so sprites that show different files in one layer draw in one call. Each page is 2048
+     * by 2048 texels with one [SamplerFilter], and every file keeps a one-texel border of its own
+     * edge texels around it, so it looks the same as it would on a texture of its own. A file gets
+     * a texture of its own, the region covering all of it, when [address] is
+     * [SamplerAddress.REPEAT], when it is larger than 2046 texels on a side, or when
+     * [AppConfig.atlas] is [TextureAtlas.NONE]; the region is drawn the same either way. Files
+     * loaded with different filters go to different pages. The region's [TextureRegion.texture]
+     * is therefore a page that other files share; cut regions from [texture] rather than from it.
+     *
+     * [filter] and [address] default as in [texture]. The first call for a file and filter loads and
+     * uploads it, and every later call with both returns the same region; [regionOrNull] shares that
+     * cache. A file that is missing or not an image throws; [regionOrNull] returns `null` instead.
      *
      * @throws FileException if the file does not exist or cannot be read.
      * @throws ImageException if the file is not a PNG or JPEG image, or is corrupt.
-     * @throws klyph.platform.SdlException if the GPU texture cannot be created.
+     * @throws klyph.platform.SdlException if a GPU texture cannot be created or written.
      * @throws IllegalStateException if these assets are closed.
      */
     public fun region(
         path: String,
         filter: SamplerFilter = textureFilter,
         address: SamplerAddress = SamplerAddress.CLAMP,
-    ): TextureRegion = texture(path, filter = filter, address = address).asRegion()
+    ): TextureRegion {
+        checkOpen()
+        val resolved = resolve(path)
+        return if (isPacked(address)) {
+            cachedRegions.getOrNull(resolved, filter) ?: packed(resolved, filter, decodeFile(resolved))
+        } else {
+            textureAt(resolved, filter, address).asRegion()
+        }
+    }
+
+    /** Returns whether [region] packs a file loaded with [address] into an atlas page: with the atlas on, unless it repeats. */
+    private fun isPacked(address: SamplerAddress): Boolean = atlas == TextureAtlas.AUTOMATIC && address != SamplerAddress.REPEAT
+
+    /**
+     * Packs [image], the file at the already [resolved] path, into an atlas page sampled with
+     * [filter], or uploads it as the file's own clamped texture when it is too large for a page,
+     * and caches and returns its region.
+     */
+    private fun packed(resolved: String, filter: SamplerFilter, image: Image): TextureRegion {
+        val region = pages?.add(image, filter) ?: run {
+            val texture = cached.getOrNull(resolved, filter) ?: upload(image, filter, SamplerAddress.CLAMP)
+            cached.put(resolved, filter, texture)
+            texture.asRegion()
+        }
+        cachedRegions.put(resolved, filter, region)
+        return region
+    }
 
     /**
      * Uploads [image], such as one drawn in code, into a new texture sampled with [filter] and
@@ -262,17 +333,26 @@ public class Assets internal constructor(
 
     /**
      * Returns the whole of the PNG or JPEG file at [path] as one [TextureRegion] as [region] does,
-     * defaults included, or `null` if the file does not exist, cannot be read, or is not a
-     * decodable image. A failed load is not cached, so a later call tries the file again.
+     * packed into an atlas page by the same rules and from the same cache, defaults included, or
+     * `null` if the file does not exist, cannot be read, or is not a decodable image. A failed load
+     * is not cached, so a later call tries the file again.
      *
-     * @throws klyph.platform.SdlException if the GPU texture cannot be created.
+     * @throws klyph.platform.SdlException if a GPU texture cannot be created or written.
      * @throws IllegalStateException if these assets are closed.
      */
     public fun regionOrNull(
         path: String,
         filter: SamplerFilter = textureFilter,
         address: SamplerAddress = SamplerAddress.CLAMP,
-    ): TextureRegion? = textureOrNull(path, filter = filter, address = address)?.asRegion()
+    ): TextureRegion? {
+        checkOpen()
+        val resolved = resolve(path)
+        return if (isPacked(address)) {
+            cachedRegions.getOrNull(resolved, filter) ?: decodeFileOrNull(resolved)?.let { packed(resolved, filter, it) }
+        } else {
+            textureOrNullAt(resolved, filter, address)?.asRegion()
+        }
+    }
 
     /**
      * Returns a sprite sheet that cuts the texture of the file at [path], loaded with [filter] as
@@ -371,7 +451,7 @@ public class Assets internal constructor(
     private inline fun parseFont(bytes: ByteArray, resolved: String, crossinline loadPage: (String) -> Texture): Font {
         // parseBmFont rejects a binary BMFont with a message naming the path.
         val folder = resolved.substring(0, maxOf(resolved.lastIndexOf('/'), resolved.lastIndexOf('\\')) + 1)
-        return parseBmFont(bytes.decodeToString(), resolved) { file -> loadPage(if (isAbsolute(file)) file else folder + file) }
+        return parseBmFont(bytes.decodeToString(), resolved) { file -> loadPage(if (Files.isAbsolute(file)) file else folder + file) }
     }
 
     /**
@@ -462,28 +542,147 @@ public class Assets internal constructor(
         return track
     }
 
+    /** Maps read by [tileMap] and [tileMapOrNull], by resolved path and the filter of their tileset image. */
+    private val cachedTileMaps = FileCache<TileMap>()
+
+    /**
+     * Returns the level in the Tiled map file at [path], such as `"level.tmj"`, reading it and
+     * loading its tileset image on the first call for that file and [filter] and returning the same
+     * [TileMap] on every later call. Draw a layer of it with `commands.spawnTileLayer(map["ground"])`
+     * and make walls of it with `commands.spawnSolids(map["ground"])`.
+     *
+     * In Tiled, save the map as JSON (`.tmj`) with Tile Layer Format CSV in its Map Properties, and
+     * keep the tileset image next to the map or the tileset file. klyph reads orthogonal, finite
+     * maps with one tileset, embedded or saved as a JSON `.tsj` file; tile layers stored as CSV or
+     * uncompressed base64; the tileset's margin and spacing; and the tile properties `solid` and
+     * `oneWay`, bool properties that `spawnSolids` turns into walls and one-way ledges. Object,
+     * image and group layers are skipped and named in [TileMap.skippedLayers].
+     *
+     * The tileset image loads as [texture] does, with [filter] and [SamplerAddress.CLAMP], so it
+     * shares the texture cache. [filter] defaults to [textureFilter]; [SamplerFilter.NEAREST] is the
+     * right one for tile art, whose tiles touch in the image and would bleed into each other with
+     * [SamplerFilter.LINEAR] unless the tileset has a spacing between its tiles.
+     *
+     * @throws FileException if the map file, or its tileset file, does not exist or cannot be read.
+     * @throws TileMapException if the file is not a map klyph reads, such as one with compressed
+     *   layers, an infinite map, a map that is not orthogonal or one with several tilesets, or its
+     *   tileset image cannot be loaded. The message names the file and layer and says what to change
+     *   in Tiled.
+     * @throws klyph.platform.SdlException if the tileset's GPU texture cannot be created.
+     * @throws IllegalStateException if these assets are closed.
+     */
+    public fun tileMap(path: String, filter: SamplerFilter = textureFilter): TileMap {
+        checkOpen()
+        val resolved = resolve(path)
+        cachedTileMaps.getOrNull(resolved, filter)?.let { return it }
+        val map = readTiledMap(path, resolved, Files.readText(resolved), Files::readText) { image ->
+            textureAt(image, filter, SamplerAddress.CLAMP)
+        }
+        cachedTileMaps.put(resolved, filter, map)
+        return map
+    }
+
+    /**
+     * Returns the level in the Tiled map file at [path] as [tileMap] does, defaults included, or
+     * `null` if the file or its tileset does not exist or cannot be read, or the file is not a map
+     * klyph reads. A failed load is not cached, so a later call tries the file again. Use [tileMap]
+     * while making a level: its exception says what is wrong.
+     *
+     * @throws klyph.platform.SdlException if the tileset's GPU texture cannot be created.
+     * @throws IllegalStateException if these assets are closed.
+     */
+    public fun tileMapOrNull(path: String, filter: SamplerFilter = textureFilter): TileMap? {
+        checkOpen()
+        val resolved = resolve(path)
+        cachedTileMaps.getOrNull(resolved, filter)?.let { return it }
+        val map = try {
+            readTiledMap(path, resolved, Files.readText(resolved), Files::readText) { image ->
+                textureAt(image, filter, SamplerAddress.CLAMP)
+            }
+        } catch (ignored: TileMapException) {
+            null
+        } catch (ignored: FileException) {
+            null
+        }
+        if (map != null) cachedTileMaps.put(resolved, filter, map)
+        return map
+    }
+
+    /**
+     * Returns the contents of the file at [path] decoded as UTF-8, resolving [path] as every
+     * loader here does: under [root] unless it is absolute. Nothing is cached. This is the seam for
+     * a loader of a format klyph does not read, such as a save file or another level editor's
+     * format, written as an extension function `Assets.x(path)` next to [tileMap].
+     *
+     * @throws FileException if the file does not exist or cannot be read.
+     * @throws IllegalStateException if these assets are closed.
+     */
+    public fun readText(path: String): String {
+        checkOpen()
+        return Files.readText(resolve(path))
+    }
+
+    /**
+     * Returns the contents of the file at [path] decoded as UTF-8 as [readText] does, or `null`
+     * if the file does not exist or cannot be read.
+     *
+     * @throws IllegalStateException if these assets are closed.
+     */
+    public fun readTextOrNull(path: String): String? {
+        checkOpen()
+        return Files.readTextOrNull(resolve(path))
+    }
+
+    /**
+     * Returns the bytes of the file at [path], resolving [path] as [readText] does, in a new array
+     * the caller owns. Nothing is cached. This is the seam for a loader of a binary format klyph
+     * does not read.
+     *
+     * @throws FileException if the file does not exist or cannot be read.
+     * @throws IllegalStateException if these assets are closed.
+     */
+    public fun readBytes(path: String): ByteArray {
+        checkOpen()
+        return Files.readBytes(resolve(path))
+    }
+
+    /**
+     * Returns the bytes of the file at [path] as [readBytes] does, or `null` if the file does not
+     * exist or cannot be read.
+     *
+     * @throws IllegalStateException if these assets are closed.
+     */
+    public fun readBytesOrNull(path: String): ByteArray? {
+        checkOpen()
+        return Files.readBytesOrNull(resolve(path))
+    }
+
     /**
      * Closes every texture these assets created, from files and from images, including the
-     * pages of every font and of [defaultFont], and forgets the fonts, sounds and music tracks
-     * they loaded. Later calls to the loading functions throw [IllegalStateException]. Calling it
-     * again has no effect.
+     * atlas pages of [region] and the pages of every font and of [defaultFont], and forgets the
+     * regions, fonts, sounds, music tracks and tile maps they loaded. Later calls to the loading
+     * functions and to [readText] and [readBytes] throw [IllegalStateException]. Calling it again
+     * has no effect.
      */
     override fun close() {
         if (isClosed) return
         isClosed = true
         cached.values.forEach { it.close() }
         uploaded.forEach { it.close() }
+        pages?.close()
         cached.clear()
+        cachedRegions.clear()
         uploaded.clear()
         cachedFonts.clear()
         cachedSounds.clear()
         cachedMusic.clear()
+        cachedTileMaps.clear()
         discs.clear()
     }
 
-    /** Returns `Assets(root=/games/shooter/assets/, textures=3, fonts=1, sounds=4, music=1)`. The format may change. */
+    /** Returns `Assets(root=/games/shooter/assets/, textures=3, pages=1, fonts=1, sounds=4, music=1)`. The format may change. */
     override fun toString(): String =
-        "Assets(root=$root, textures=${cached.size + uploaded.size}, fonts=${cachedFonts.size}, " +
+        "Assets(root=$root, textures=${cached.size + uploaded.size}, pages=${pages?.size ?: 0}, fonts=${cachedFonts.size}, " +
             "sounds=${cachedSounds.size}, music=${cachedMusic.size})"
 
     private fun checkOpen() {
@@ -507,12 +706,7 @@ public class Assets internal constructor(
     }
 
     /** Returns [path] under [root], or [path] itself if it is absolute. */
-    private fun resolve(path: String): String = if (isAbsolute(path)) path else root + path
-
-    private fun isAbsolute(path: String): Boolean =
-        path.startsWith('/') ||
-            path.startsWith('\\') ||
-            (path.length >= 2 && path[1] == ':' && path[0].isLetter())
+    private fun resolve(path: String): String = if (Files.isAbsolute(path)) path else root + path
 }
 
 /**

@@ -3,6 +3,7 @@ package samples.app
 import klyph.app.AppConfig
 import klyph.app.GpuSync
 import klyph.app.RenderTarget
+import klyph.app.TextureAtlas
 import klyph.platform.SamplerFilter
 import klyph.platform.Scancode
 import samples.Sample
@@ -26,6 +27,9 @@ class AppConfigs {
         // Frames last as long as they took; a frame delta gives every frame the same length, so runs repeat.
         assertPrints(config.frameDelta, "null")
         assertPrints(AppConfig(frameDelta = 16.milliseconds).frameDelta, "16ms")
+        // assets.region packs files into shared textures; NONE gives each its own, to compare while debugging.
+        assertPrints(config.atlas, "AUTOMATIC")
+        assertPrints(AppConfig(atlas = TextureAtlas.NONE).atlas, "NONE")
         assertFailsWith<IllegalArgumentException> { AppConfig(width = 0) }
     }
 

@@ -59,7 +59,8 @@ fun main() {
             println(
                 "Roller ran ${app.time.frameCount} frames: score ${run?.score ?: 0}, best ${game.bestScore}, " +
                     "${game.totalRings} rings, ${game.totalStomps} stomps, ${game.levelsCompleted} levels completed, " +
-                    "${game.gameOvers} game overs, autopilot ${if (isAutopilot) "on" else "off"}.",
+                    "${game.gameOvers} game overs, autopilot ${if (isAutopilot) "on" else "off"}, " +
+                    "last frame ${app.stats.spriteCount} quads in ${app.stats.drawCallCount} draw calls.",
             )
             if (isAutopilot) {
                 check(game.totalRings > 0 || game.totalStomps > 0) {

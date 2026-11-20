@@ -50,7 +50,8 @@ fun main() {
             val wave = app.resources.getOrNull<Wave>()?.number ?: 0
             println(
                 "Shooter ran ${app.time.frameCount} frames: score $score, wave $wave, best ${game.bestScore}, ${game.kills} enemies destroyed, " +
-                    "${game.deaths} ships lost, autopilot ${if (isAutopilot) "on" else "off"}.",
+                    "${game.deaths} ships lost, autopilot ${if (isAutopilot) "on" else "off"}, " +
+                    "last frame ${app.stats.spriteCount} quads in ${app.stats.drawCallCount} draw calls.",
             )
             if (isAutopilot) check(game.kills > 0) { "Autopilot destroyed no enemy in ${app.time.frameCount} frames." }
         }

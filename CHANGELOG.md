@@ -12,12 +12,23 @@ All notable changes to klyph are recorded here. The format follows
 - `Sprite.tiled(region, width, height, scale)`: a sprite that repeats its region at the region's own size.
 - `SceneStack.current`: the top scene without a null check, so a scene system reaches its own clock.
 - `Assets.region(path)` and `regionOrNull`: load an image as a `TextureRegion` in one call, for a `Sprite`.
+- `Assets.region` packs its files into shared atlas pages: sprites of different files in one layer draw in one call.
+- `AppConfig.atlas` and `KLYPH_ATLAS=0`: give every file its own texture again, to compare while debugging.
 - `Image.drawLine` and a source rectangle on `Image.draw`: paint a one-pixel line, or cut one picture out of a sheet image.
 - `KinematicBody.wasPushedOut` and `isStuck`: say when a move pushed the body out of a solid, or found no way out.
 - `AppConfig.frameDelta` and `KLYPH_FRAME_DELTA`: every frame lasts the same game time, so runs and screenshots repeat.
+- Moving platforms: a `Solid` with a `Velocity`, an error before, carries the bodies on it and pushes those in its way.
+- `KinematicBody.floorVelocityX` and `floorVelocityY`: the moving floor's speed, for a jump that keeps its momentum.
+- `KinematicBody.wasCarried` and `isCrushed`: say when the floor carried the body, or a moving solid crushed it.
+- `assets.tileMap(path)` and `tileMapOrNull`: load a level saved from the Tiled map editor as JSON.
+- `TileLayer`, `Tile` and `TileSet`: draw a grid of tiles, only the cells in view, and change cells as the game runs.
+- `Commands.spawnTileLayer` and `spawnSolids`: draw a map layer, and make its tiles marked `solid` or `oneWay` into solids.
+- `TileGrid.tileAt` and `solidRectangles`: ask which tile is under a point, or get a layer's walls as merged boxes.
+- `Assets.readText` and `readBytes`: read a file under the asset root, for a loader of your own format.
 
 ### Changed
 
+- Tiled sprites and `drawTiled` on a clamped texture: the error names the fix, loading with `SamplerAddress.REPEAT`.
 - `Camera.offsetX` and `offsetY` reset to 0 when a scene changes: a pause pushed over a shake is drawn centered.
 - `Image.fill`, `fillRect`, `fillCircle` and `draw` are extensions now: import them, as in `import klyph.platform.fill`.
 
