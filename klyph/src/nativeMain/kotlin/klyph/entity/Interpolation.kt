@@ -41,16 +41,20 @@ public object Interpolated : ComponentType<Interpolated>("Interpolated")
  *
  * For an [Interpolated] entity without a parent, from its second fixed step since it gained the
  * marker on, this is [alpha] of the way from its position at the start of the last step to its
- * current [Transform], where its sprite and text are drawn. For an entity with a parent it is the
- * position of its [WorldTransform] as of the last [propagateTransforms]. The engine runs that
- * after the fixed steps and again after `LATE_UPDATE`, so call it first if a system has moved the
- * parent since. For every other entity, and for a marked one before its second step, it is the
- * position of its [Transform].
+ * current [Transform], where its sprite and text are drawn. For every other entity without a
+ * parent, and for a marked one before its second step, it is the position of its [Transform].
+ *
+ * An entity with a parent is drawn at its [WorldTransform], without a blend, so [alpha] does not
+ * change its position. The call works that position out from the current [Transform]s of the
+ * entity and its ancestors, as [propagateTransforms] does, so a parent that a system moved earlier
+ * in the frame already counts, with no wait for the next propagation.
  *
  * Pass `Time.fixedStepAlpha` as [alpha], which must be from 0 to 1, or call
  * `App.drawnPositionOf`, which does. The [entity] must be alive and have a [Transform]. Each call
- * allocates a [Vec2], which is fine for a camera system that calls it once a frame. The shift a
- * `ParallaxLayer` adds to its sprite is not included.
+ * allocates a [Vec2] and costs a few times what the renderer spends drawing the entity's sprite,
+ * and a child adds a short walk up its parents. A camera system that calls it once a frame can
+ * afford that; `BENCHMARKS.md` in the repository records the figures. The shift a `ParallaxLayer`
+ * adds to its sprite is not included.
  *
  * @throws IllegalArgumentException if [alpha] is not between 0 and 1.
  * @throws NoSuchElementException if [entity] is not alive or has no [Transform].
@@ -60,9 +64,14 @@ public object Interpolated : ComponentType<Interpolated>("Interpolated")
 public fun World.drawnPositionOf(entity: Entity, alpha: Float): Vec2 {
     require(alpha in 0f..1f) { "Alpha $alpha is not between 0 and 1." }
     val local = get(entity, Transform)
-    val hierarchy = getOrNull(entity, WorldTransform)
-    val previous = if (hierarchy == null) getOrNull(entity, PreviousTransform) else null
-    return drawnTransform(local, hierarchy, previous, alpha) { x, y, _, _, _ -> Vec2(x, y) }
+    // The renderer draws a child at its WorldTransform, which the frame's last propagation writes
+    // from the Transforms up its chain. Composing them here gives that value now, so a parent
+    // moved since the previous propagation counts.
+    if (storeOrNull(Parent)?.getOrNull(entity) != null) {
+        return composeWorldTransform(entity) { x, y, _, _, _ -> Vec2(x, y) }
+    }
+    val previous = getOrNull(entity, PreviousTransform)
+    return drawnTransform(local, null, previous, alpha) { x, y, _, _, _ -> Vec2(x, y) }
 }
 
 /**
@@ -180,8 +189,11 @@ private fun World.dropStalePreviousTransforms(previous: ComponentStore<PreviousT
  * those of [hierarchy] if it is not `null`, else [alpha] of the way from [previous] to [local] if
  * [previous] is not `null` and is past its first step, else those of [local].
  *
- * The sprite pass, the text pass and [drawnPositionOf] all draw through this one function, so the
- * place a camera reads is the place the picture is. It is inline and allocates nothing.
+ * The sprite pass, the text pass and [drawnPositionOf] for an entity without a parent all draw
+ * through this one function, so the place a camera reads is the place the picture is. For an
+ * entity with a parent, [drawnPositionOf] skips it and reads [composeWorldTransform], which works
+ * out the [hierarchy] transform the next propagation will write. It is inline and allocates
+ * nothing.
  */
 internal inline fun <R> drawnTransform(
     local: Transform,

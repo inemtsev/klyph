@@ -2,6 +2,7 @@ package samples.platform
 
 import klyph.platform.Color
 import klyph.platform.Image
+import klyph.platform.drawLine
 import klyph.platform.withAlpha
 import samples.Sample
 import samples.assertPrints
@@ -66,5 +67,24 @@ class Images {
         // The part of the stamp outside the sheet is left out.
         sheet.draw(stamp, x = 3, y = 3)
         assertPrints(sheet[3, 3], "Color(#ff0000ff)")
+        // A source rectangle draws only part of an image, such as one picture cut out of a sheet.
+        val icon = Image(2, 2)
+        icon.draw(sheet, x = 0, y = 0, sourceX = 1, sourceY = 1, sourceWidth = 2, sourceHeight = 2)
+        assertPrints(icon[0, 0], "Color(#ff0000ff)")
+        assertPrints(icon[1, 1], "Color(#ffffffff)")
+    }
+
+    @Sample
+    fun drawLine() {
+        val image = Image(8, 8)
+        image.drawLine(x1 = 0, y1 = 0, x2 = 7, y2 = 3, color = Color.WHITE)
+        // Both ends are set, with one pixel in each column between them.
+        assertPrints(image[0, 0], "Color(#ffffffff)")
+        assertPrints(image[7, 3], "Color(#ffffffff)")
+        assertPrints(image[7, 0], "Color(#00000000)")
+        // The part of a line outside the image is left out.
+        image.drawLine(x1 = -4, y1 = 6, x2 = 20, y2 = 6, color = Color.RED)
+        assertPrints(image[0, 6], "Color(#ff0000ff)")
+        assertPrints(image[7, 6], "Color(#ff0000ff)")
     }
 }

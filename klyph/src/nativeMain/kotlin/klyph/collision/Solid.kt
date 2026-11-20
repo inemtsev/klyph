@@ -20,8 +20,8 @@ import klyph.entity.Velocity
  * that grows with the number of solids, and rebuilds when a solid was added, removed, moved,
  * resized or changed its [passable] or layers. A solid moved by a system therefore stops bodies
  * where it now is from the next fixed step on, but nothing carries a body along with it, and a
- * body the solid moved into passes through it. A solid with a [Velocity] is an error rather than a
- * moving platform that half works.
+ * body the solid moved into is pushed out of it at the next move, as [KinematicBody] describes. A
+ * solid with a [Velocity] is an error rather than a moving platform that half works.
  *
  * A solid is also an ordinary collider: it takes part in overlap detection and `Overlap` events
  * like any other, so a game may still use layers and masks to hear about touches. A solid of a

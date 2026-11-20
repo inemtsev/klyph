@@ -138,6 +138,73 @@ private fun World.propagateBelow(
     return written
 }
 
+/**
+ * Calls [use] with the position, rotation and scale that the next [propagateTransforms] gives the
+ * [WorldTransform] of [entity], worked out now from the current [Transform]s of the entity and its
+ * ancestors, and returns its result. A parent that moved since the last propagation counts, which
+ * a read of the [WorldTransform] would miss.
+ *
+ * The entity must be alive and have a [Transform] and a parent. The walk goes up the chain of
+ * parents until it reaches a root, whose [Transform] is the parent transform of the chain below it,
+ * or an ancestor with no [Transform], whose children compose with the identity. It then composes
+ * down to the entity one level at a time with the arithmetic of [propagateBelow], in the same
+ * order, so the result equals what the propagation writes to the bit. The chain waits in
+ * [World.transformStack], which a propagation never uses at the same time, so the call allocates
+ * nothing once the stack has grown to the depth of the hierarchy.
+ */
+internal inline fun <R> World.composeWorldTransform(
+    entity: Entity,
+    use: (x: Float, y: Float, rotation: Float, scaleX: Float, scaleY: Float) -> R,
+): R {
+    val parents = store(Parent)
+    val locals = store(Transform)
+    var chain = transformStack
+    var length = 0
+    var node = entity.raw
+    // The slot in locals of the transform the chain starts from: the root's, or -1 for the identity.
+    var base: Int
+    while (true) {
+        if (length == chain.size) chain = chain.copyOf(length * 2)
+        chain[length++] = node
+        val above = parents.items.itemAt<Parent>(slotOf(parents.sparse, parents.entities, node)).entity.raw
+        base = slotOf(locals.sparse, locals.entities, above)
+        // `above` ends the chain when it has no Transform, or has one and no parent of its own.
+        if (base < 0 || slotOf(parents.sparse, parents.entities, above) < 0) break
+        node = above
+    }
+    transformStack = chain
+    var x = 0f
+    var y = 0f
+    var rotation = 0f
+    var scaleX = 1f
+    var scaleY = 1f
+    if (base >= 0) {
+        val root = locals.items.itemAt<Transform>(base)
+        x = root.x
+        y = root.y
+        rotation = root.rotation
+        scaleX = root.scaleX
+        scaleY = root.scaleY
+    }
+    var level = length
+    while (level > 0) {
+        val local = locals.items.itemAt<Transform>(slotOf(locals.sparse, locals.entities, chain[--level]))
+        // Keep these lines in step with propagateBelow: TransformsTest compares both to the bit.
+        val cos = cos(rotation)
+        val sin = sin(rotation)
+        val lx = local.x * scaleX
+        val ly = local.y * scaleY
+        val worldX = x + lx * cos - ly * sin
+        val worldY = y + lx * sin + ly * cos
+        x = worldX
+        y = worldY
+        rotation += local.rotation
+        scaleX *= local.scaleX
+        scaleY *= local.scaleY
+    }
+    return use(x, y, rotation, scaleX, scaleY)
+}
+
 /** Removes the [WorldTransform] of every entity that no longer has a [Transform] or a parent. */
 private fun removeStaleWorldTransforms(
     worlds: ComponentStore<WorldTransform>,

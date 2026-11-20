@@ -4,7 +4,6 @@ import klyph.entity.Interpolated
 import klyph.entity.Transform
 import klyph.entity.World
 import klyph.entity.drawnPositionOf
-import klyph.entity.propagateTransforms
 import klyph.entity.snapInterpolation
 import samples.Sample
 import samples.assertPrints
@@ -26,19 +25,21 @@ class Interpolations {
     fun drawnPositionOf() {
         val world = World()
         val hero = world.create()
-        world.add(hero, Transform, Transform(x = 100f, y = 50f))
+        val heroTransform = Transform(x = 100f, y = 50f)
+        world.add(hero, Transform, heroTransform)
         world.add(hero, Interpolated, Interpolated)
         // In an app, the engine saves the hero's Transform at the start of each fixed step. From the
         // hero's second step on this returns the place between the last two steps. Before that there is
         // nothing to blend from, so the hero is drawn at its Transform.
         assertPrints(world.drawnPositionOf(hero, alpha = 0.5f), "Vec2(100.0, 50.0)")
 
-        // A child is drawn at its world transform, which propagateTransforms computes.
+        // A child is drawn at its world transform. The call works it out from the Transforms up the
+        // chain, so a hero moved a moment ago counts without waiting for the frame's propagation.
         val sword = world.create()
         world.add(sword, Transform, Transform(x = 20f))
         world.setParent(sword, hero)
-        world.propagateTransforms()
-        assertPrints(world.drawnPositionOf(sword, alpha = 0.5f), "Vec2(120.0, 50.0)")
+        heroTransform.x = 110f
+        assertPrints(world.drawnPositionOf(sword, alpha = 0.5f), "Vec2(130.0, 50.0)")
 
         assertFailsWith<IllegalArgumentException> { world.drawnPositionOf(hero, alpha = 2f) }
     }

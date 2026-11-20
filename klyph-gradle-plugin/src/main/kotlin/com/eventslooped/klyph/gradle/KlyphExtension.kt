@@ -110,7 +110,8 @@ public abstract class KlyphExtension @Inject constructor(
 
     /**
      * Returns the `KLYPH_*` environment for a run task: each variable comes from the Gradle
-     * property `klyph.<name>` or, failing that, from the shell, on top of [defaults].
+     * property `klyph.<name>`, the name in lower camel case such as `klyph.frameDelta`, or, failing
+     * that, from the shell, on top of [defaults].
      *
      * `KLYPH_MUSIC` is a path and resolves against the root project directory. The `run` and
      * `runRelease` tasks already use this; call it for extra `Exec` tasks of your own.

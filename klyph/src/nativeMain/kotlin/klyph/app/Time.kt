@@ -15,7 +15,8 @@ import kotlin.time.DurationUnit
  * result in either phase.
  *
  * A frame's duration is clamped to at most 250 milliseconds, so a breakpoint or a stalled window
- * shows up as one long frame instead of a jump in game time.
+ * shows up as one long frame instead of a jump in game time. With [AppConfig.frameDelta] set,
+ * every frame lasts exactly that long instead of the time it took.
  */
 public class Time internal constructor(fixedRate: Int) {
     private var frameDelta: Duration = Duration.ZERO

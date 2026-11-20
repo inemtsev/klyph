@@ -54,7 +54,7 @@ in the same PR rather than inventing a one-off.
 | `spawnX(...)` on `Commands` | Queues spawning an entity set up as `X` and returns its handle, as `spawn { }` does. | `commands.spawnBurst(x, y, emitter)` |
 | `onX { }` | Builder function that registers an action run when `X` happens. | `buildScene("title") { onEnter { } }` |
 | `xOrNull()` | Function or property: same as `x()` but returns `null` instead of throwing. May stand alone when absence is normal rather than an error. | `firstOrNull()`, `nodeOrNull(id)`, `parentOrNull(child)`, `scenes.currentOrNull`, `collisions.floorBelowOrNull(x, y, width, depth)` |
-| `x(path)` on `Assets` | Returns the asset at `path`, loading it on the first call and returning the cached instance after. Named after the type it returns. | `assets.texture("ship.png")`, `assets.musicTrack("music.ogg")` |
+| `x(path)` on `Assets` | Returns the asset at `path`, loading it on the first call and returning the cached instance after. Named after the type it returns, except `region`, which returns the whole of the cached `texture` and stands for `TextureRegion` because `assets.` already says what it is a region of and the tutorial's readers are children. | `assets.texture("ship.png")`, `assets.region("ship.png")`, `assets.musicTrack("music.ogg")` |
 | `createX(...)` | Makes a new `X` on every call, never cached; the caller owns it. | `assets.createTexture(image)` |
 | `xCount` | Property holding how many of `x` there are. Containers use `size` instead. | `spriteCount`, `drawCallCount`, `Time.frameCount` |
 | `xSeconds` | Extension property returning the `Duration` `x` as a `Float` in seconds, for arithmetic done every frame. The `Duration` stays the primary API. | `time.deltaSeconds`, `scene.elapsedSeconds` |
@@ -69,6 +69,7 @@ in the same PR rather than inventing a one-off.
 | `MutableX` | Mutable counterpart of a read-only interface `X`. | `MutableGraph` |
 | `AbstractX` | Skeletal implementation for users who extend `X`. | `AbstractGraph` |
 | `isX` / `hasX` | Boolean property or function. No `getIsX`, no bare adjectives. | `isEmpty`, `hasCycle` |
+| `wasX` | Boolean property for something done to the receiver in its last move, where `hasX` says what the receiver did itself. The next move resets it. | `wasPushedOut` |
 | `withX(value)` | Returns a copy of an immutable value with property `x` replaced and the rest kept. | `color.withAlpha(0f)` |
 | `sweepX(...)` | Moves shape `X`, or an entity's own `Collider`, along a straight line against the solids and returns where it first touches one as a `SweepHit`, or `null`; `sweepXTo(destination, ...)` adds every solid along the line. | `collisions.sweepBox(x = 0f, y = 0f, width = 16f, height = 16f, dx = 0f, dy = 40f)`, `collisions.sweepCollider(hero, dx = 40f, dy = 0f)` |
 | `slideX(..., result)` | Moves shape `X`, or an entity's own `Collider`, as a `KinematicBody` moves in one step, across and then up or down, stopping at the solids, without moving anything, and writes where it ends and what it touched into the reusable `result` it returns. Not to be confused with `moveBodies`, which moves the bodies themselves. | `collisions.slideBox(x = 0f, y = 0f, width = 16f, height = 16f, dx = 4f, dy = 6f, result = slide)` |

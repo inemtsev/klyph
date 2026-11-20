@@ -345,7 +345,7 @@ public class World(initialCapacity: Int = 1024) {
     internal fun <T : Any> storeOrNull(type: ComponentType<T>): ComponentStore<T>? =
         stores[type] as ComponentStore<T>?
 
-    /** Work stack of raw entity handles reused by [propagateTransforms] across frames. */
+    /** Work stack of raw entity handles reused by [propagateTransforms] and [composeWorldTransform] across frames. */
     internal var transformStack: LongArray = LongArray(32)
 
     /** Work queue of raw entity handles reused by [destroy] to collect a subtree. */

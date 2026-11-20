@@ -43,7 +43,9 @@ detection and rebuilt only when a solid changed, or before a sweep when the `Sol
 store's version moved), a `KinematicBody(dx, dy)` on a root entity with a box collider is moved by
 the engine in every fixed step and stopped `Collisions.CONTACT_GAP` short of solids, reporting
 `isOnFloor` (contact from the last move and `dy >= 0`), `isOnWall`/`wallNormalX`, `isOnCeiling`,
-`floorOrNull`, `hasLanded` and `landingSpeed`, with a `FLOOR_SNAP_DISTANCE` floor snap and
+`floorOrNull`, `hasLanded` and `landingSpeed`, and `wasPushedOut` and `isStuck` for a body that starts a
+move overlapping a solid (pushed out the shortest way in at most four pushes, else left in place),
+with a `FLOOR_SNAP_DISTANCE` floor snap and
 `dropThrough()`, `sweepBox`/`sweepBoxTo`/`sweepCollider` sweep a box against the solids as they
 are now (a thick-ray Amanatides and Woo walk shared with the body move), `floorBelowOrNull` probes
 for a floor under a line, and `slideBox`/`slideCollider` make the body's move into a reusable
@@ -54,7 +56,8 @@ whole world, for a sky), `WORLD` or `SCREEN` space queued during RENDER, and `ap
 `app.assets.font` or come built in as `app.assets.defaultFont`, a texture's `SamplerFilter`,
 chosen when it loads (`AppConfig.textureFilter`, LINEAR unless set and read back as `Assets.textureFilter`, is what every
 texture, sprite sheet and font gets when its call passes none), picks linear or nearest sampling, its `SamplerAddress`, chosen the same way, picks
-clamped (the default) or repeating addressing, `Assets` caches a texture by path, filter and address,
+clamped (the default) or repeating addressing, `Assets` caches a texture by path, filter and address, `app.assets.region(path)` returns the whole of one as a
+`TextureRegion` (`texture` is for tiling and hand-cut regions),
 and a `Sprite` with `tileWidth` or `tileHeight` (world units before the entity's scale, 0 stretches
 that axis) or `Canvas.drawTiled` repeats a texture loaded with `address = SamplerAddress.REPEAT`
 across a larger area, the region having to cover the whole texture (a `check` naming the entity when
@@ -90,13 +93,16 @@ plans the copies at the start of `SpriteRenderer.extract`, which also sizes the 
 are written before the ordinary sprites of their group, and a `check` naming the entity rejects a layer on a
 child or with a negative or non-finite factor or repeat; `app.drawnPositionOf(entity)` (`World.drawnPositionOf(entity, alpha)`) returns
 where the renderer draws an entity this frame, through the internal `drawnTransform` that the sprite
-pass and the text pass share, so a camera that follows an `Interpolated` entity moves with its
-picture, and `World.snapInterpolation(entity)`, called after moving the `Transform`, copies it over
+pass and the text pass share (a child's world transform is composed on the call from its chain's
+current transforms by the internal `composeWorldTransform`, so a parent moved since the last
+propagation counts), so a camera that follows an `Interpolated` entity moves with its picture, and
+`World.snapInterpolation(entity)`, called after moving the `Transform`, copies it over
 the saved previous transform so a respawn is drawn at the new place at once; `TextShadow` draws under text
 through `Text.shadow` or `drawText(shadow = …)`; `app.assets.whitePixel` and `app.assets.disc(d)`
 are ready-made regions, and a region's `aspectRatio`, its width over its height, sizes a `Sprite` by one side
 without distorting it; `AppConfig.fromEnvironment()` reads the `KLYPH_*` limits and switches,
-including `KLYPH_SCREENSHOT` and `KLYPH_FULLSCREEN`;
+including `KLYPH_SCREENSHOT`, `KLYPH_FULLSCREEN` and `KLYPH_FRAME_DELTA` (`AppConfig.frameDelta`,
+which replaces the measured frame delta so that runs repeat);
 every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` beside `Vec2` and
 `Rect`),
 `sandbox` (executable; a smoke test that opens a window and clears it each frame), `games:shooter`
@@ -165,6 +171,7 @@ CI job (no display, no GPU) uses it; the Windows job runs it in bash like its ot
 ./gradlew :benchmarks:benchmarkHierarchy -Pklyph.sprites=5000 -Pklyph.children=8
 ./gradlew :benchmarks:benchmarkCollisionsOffscreen -Pklyph.sprites=10000 -Pklyph.cell=64
 ./gradlew :benchmarks:benchmarkParticlesOffscreen -Pklyph.sprites=100000   # 100 emitters of 1000
+./gradlew :benchmarks:benchmarkDrawnOffscreen -Pklyph.sprites=10000   # drawnPositionOf for each of 10000 interpolated sprites
 ./gradlew :benchmarks:benchmarkMixer                            # headless, no window or device
 ./gradlew :benchmarks:benchmarkMixer -Pklyph.music=games/shooter/assets/music.ogg
 ./gradlew :benchmarks:benchmarkList
@@ -173,8 +180,9 @@ CI job (no display, no GPU) uses it; the Windows job runs it in bash like its ot
 `:sandbox:run` runs the debug smoke test and `:games:shooter:run` the debug game; the `benchmark*`
 tasks run the release build. Every `KLYPH_*` variable below can be given as a Gradle property
 instead (`-Pklyph.sprites=…`, `-Pklyph.frames=…`, `-Pklyph.offscreen=1`, `-Pklyph.vsync=1`,
-`-Pklyph.validation=1`, `-Pklyph.autopilot=1`, `-Pklyph.music=…`), which is how the IntelliJ run configurations in
-`.run/` pass them. `sprites`, `hierarchy`, `collisions` and `particles` each have a
+`-Pklyph.validation=1`, `-Pklyph.autopilot=1`, `-Pklyph.music=…`, and `-Pklyph.frameDelta=0.016` for
+`KLYPH_FRAME_DELTA`, a name of several words being camelCase), which is how the IntelliJ run configurations in
+`.run/` pass them. `sprites`, `hierarchy`, `collisions`, `particles` and `drawn` each have a
 `benchmark<Name>` task in a window and a `benchmark<Name>Offscreen` task, which sets
 `KLYPH_OFFSCREEN=1` and 2000 frames; a run's summary skips a warm-up of one second or a quarter
 of the frame limit, whichever is shorter;
@@ -187,7 +195,7 @@ sprites`.
 exits once `Time.elapsed` reaches `s` seconds, `KLYPH_VSYNC=1` caps at the display rate,
 `KLYPH_VALIDATION=1` turns on the GPU validation layer (slow; use it after touching the platform
 module), `KLYPH_OFFSCREEN=1` draws into a texture and waits for the GPU each frame so the display
-is out of the loop. These five, `KLYPH_OVERLAY`, `KLYPH_SCREENSHOT` and `KLYPH_FULLSCREEN` are
+is out of the loop. These five, `KLYPH_OVERLAY`, `KLYPH_SCREENSHOT`, `KLYPH_FULLSCREEN` and `KLYPH_FRAME_DELTA` are
 read by `AppConfig.fromEnvironment`, which
 the sandbox, benchmarks and both games call, and the engine quits by itself at `AppConfig.frameLimit` or
 `timeLimit`. `KLYPH_AUTOPILOT=1` makes the
@@ -199,7 +207,15 @@ Gradle. `KLYPH_CELL=<units>` sets the collision grid's cell size in the `collisi
 `KLYPH_SCREENSHOT=<frame>:<path>` (`AppConfig.screenshot`) saves frame `<frame>`, counted from 1
 like `KLYPH_FRAMES`, as a PNG at `<path>`; through Gradle a relative path resolves against the
 repository root; a malformed value is ignored. `KLYPH_FULLSCREEN=1` (`AppConfig.windowMode`)
-starts in fullscreen. In the sandbox F11 toggles fullscreen and C cycles the cursor. macOS has no
+starts in fullscreen. `KLYPH_FRAME_DELTA=<seconds>` (`AppConfig.frameDelta`, above 0, at most 0.25 so no
+`Time` clamp changes it, and at most `maxFixedStepsPerFrame` steps of `1.seconds / fixedRate` so the
+`FixedStepper` drops no step, which is 4 steps of 16.666666 ms by default) replaces the measured frame
+delta in `FrameLoop`, so every frame advances `Time` by exactly that and the fixed steps fall in the
+same frames on every run; the clamp, the accumulator, rendering and presenting work as before, and a
+game's random sources, `ParticleEmitter.random` included, stay its own business. Two sandbox runs
+with `-Pklyph.frameDelta=0.016` and the same
+`-Pklyph.screenshot` give PNGs that `cmp` finds equal, so use it to compare the picture of two builds.
+In the sandbox F11 toggles fullscreen and C cycles the cursor. macOS has no
 `timeout`, so bound
 runs with `KLYPH_FRAMES`. Do not pipe `./gradlew` output into
 another command: the daemon inherits the pipe and the shell never sees EOF. Redirect to a file.
@@ -254,12 +270,13 @@ to `mavenLocal`.
 ## Frame order
 
 `runApp` runs STARTUP once and applies the scene transitions queued so far. Each frame then runs:
-drop last frame's events, advance the top scene's `Scene.elapsed` by the frame's clamped delta
-(`SceneStack.advanceClock`, never by a fixed step), refresh audio, translate platform events into `app.input` and
+drop last frame's events, advance the top scene's `Scene.elapsed` by the frame's clamped delta, the
+time it took or `AppConfig.frameDelta` when set (`SceneStack.advanceClock`, never by a fixed
+step), refresh audio, translate platform events into `app.input` and
 `app.events`, toggle the overlay, INPUT, FIXED_UPDATE zero or more times (interpolated transforms
 recorded before each step, then every `Velocity` applied to its `Transform` after the step's
-systems and their commands, by the fixed step length, then every `KinematicBody` moved against the
-solids through `app.collisions.moveBodies`), propagate transforms, detect collisions and publish `Overlap` events,
+systems and their commands, by the fixed step length, then every `KinematicBody` pushed out of the
+solids it overlaps and moved against the solids through `app.collisions.moveBodies`), propagate transforms, detect collisions and publish `Overlap` events,
 UPDATE, count down `Lifetime` and advance `Fade`, advance particles, advance sprite animations
 (publishing `AnimationFinished`), LATE_UPDATE, propagate transforms, RENDER, queue the overlay on
 `app.canvas`, clamp `app.camera` to its bounds, plan the `ParallaxLayer` copies from it, draw sprites,
@@ -273,7 +290,9 @@ after each of the lifetime/fade, particle and animation steps (so what they dest
 the next step) and after the second propagation. Scene systems run after the App-level systems of
 the same phase. A pushed scene freezes the one below: its systems do not run, its `Scene.elapsed` stops, its velocities, kinematic bodies, lifetimes, fades,
 particle emitters, sprite animations and colliders stand still (its solids stop nothing) (the engine steps skip them and
-collision detection leaves them out), its entities keep rendering. `SceneStack.enter` sets `elapsed`
+collision detection leaves them out), its entities keep rendering. A frozen body keeps its flags: one
+that landed in the last step before the freeze still reads `hasLanded` through it, and its scene's
+systems see that landing in their first step back, as `Scene.elapsed` stands still. `SceneStack.enter` sets `elapsed`
 to zero for every push and replace and restores the old value if `onEnter` throws; a scene that left
 keeps its last value until it enters again. The engine steps ask the internal
 `SceneStack.isFrozen(owner)` for an entity's owner id, and entities of no scene are never frozen;

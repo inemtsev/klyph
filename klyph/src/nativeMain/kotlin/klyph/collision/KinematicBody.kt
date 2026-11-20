@@ -25,6 +25,16 @@ import kotlin.math.min
  * are no slopes and no moving platforms. [Collisions.slideBox] and [Collisions.slideCollider] make
  * the same move without a body, for planning ahead.
  *
+ * Before it moves, a body whose box overlaps a solid, because it was placed there or a solid was
+ * moved onto it, is pushed out. Each push takes the shortest way out of one solid, up, down, left
+ * or right, and ends [Collisions.CONTACT_GAP] units from its face, where a stop would have left the
+ * body. A body that overlaps several solids is pushed out of them one after the other, at most four
+ * pushes in all. A [Passable.FROM_BELOW] solid never pushes, and nor does a solid outside the body's
+ * mask. [wasPushedOut] says the move began with a push. When four pushes leave the body overlapping
+ * a solid, such as one squeezed between a wall and a solid moved against it, it is left where it
+ * was and [isStuck] is `true`. The move then goes on from there, and the solids the body overlaps
+ * do not stop it.
+ *
  * After the move, [isOnFloor], [isOnWall], [isOnCeiling], [wallNormalX] and [floorOrNull] say what
  * the body touched, and [hasLanded] and [landingSpeed] say whether it has just come down onto a
  * floor. A body that stood on a floor before the move and is not moving up looks
@@ -34,11 +44,10 @@ import kotlin.math.min
  * The engine adds no gravity: a `FIXED_UPDATE` system adds it to [dy], as in
  * `body.dy += 1800f * time.deltaSeconds`, and sets [dx] from the input. A body stops only at solids
  * whose collider's layers are in its own collider's mask. Bodies do not stop each other. A body
- * that starts a move inside a solid, because it was placed there or the solid was moved onto it,
- * is not stopped by that solid and can move out of it. A body owned by a scene frozen under a
- * pushed scene stands still and keeps its state. A body whose entity also has a `Velocity` or a
- * [Solid], has no `Transform` or [Collider], has a collider that is not a box, has a parent or has a
- * speed that is not finite makes the next move throw [IllegalStateException] naming the entity.
+ * owned by a scene frozen under a pushed scene stands still and keeps its state. A body whose
+ * entity also has a `Velocity` or a [Solid], has no `Transform` or [Collider], has a collider that
+ * is not a box, has a parent or has a speed that is not finite makes the next move throw
+ * [IllegalStateException] naming the entity.
  *
  * Interpolated bodies are drawn blended between their last two steps, as with `Velocity`. A body
  * moved by setting its `Transform`, such as a respawn, is drawn sliding from the old place to the
@@ -47,7 +56,8 @@ import kotlin.math.min
  *
  * [toString] gives
  * `KinematicBody(dx=0.0, dy=0.0, isOnFloor=true, isOnWall=false, wallNormalX=0.0, isOnCeiling=false)`,
- * followed by `, hasLanded=true, landingSpeed=450.0` after a move that landed.
+ * followed by `, hasLanded=true, landingSpeed=450.0` after a move that landed, `, wasPushedOut=true`
+ * after one that began with a push and `, isStuck=true` after one that left the body stuck.
  *
  * @sample samples.collision.Bodies.kinematicBody
  */
@@ -93,6 +103,11 @@ public class KinematicBody(
      * sound or raise dust. A body walking down a small step keeps its floor through the floor
      * check, so it does not land. The first move of a body placed on a floor counts as a landing.
      *
+     * While the body's scene is frozen under a pushed scene nothing moves the body, so the flag
+     * holds, as the scene's clock does. A body that landed in the last step before the freeze still
+     * reads `true` when the scene is on top again, and the scene's systems see the landing in their
+     * first step back, which is the next step the scene runs.
+     *
      * @sample samples.collision.Bodies.hasLanded
      */
     public var hasLanded: Boolean = false
@@ -104,6 +119,28 @@ public class KinematicBody(
      * so this is where the speed of the fall is kept, such as for dust only after a long fall.
      */
     public var landingSpeed: Float = 0f
+        internal set
+
+    /**
+     * Whether the last move began by pushing the body out of a solid it overlapped, such as after
+     * it was placed inside a floor or a solid was moved onto it: `true` for each move that did,
+     * `false` again after the next one that did not. The class description says how a push works.
+     *
+     * @sample samples.collision.Bodies.wasPushedOut
+     */
+    public var wasPushedOut: Boolean = false
+        internal set
+
+    /**
+     * Whether the last move found the body overlapping a solid that pushing could not take it out
+     * of, such as a body squeezed between a wall and a solid moved against it, and left it where it
+     * was: `true` for each move that did, `false` again after the next one that did not. The move
+     * went on from there, and a solid the body overlaps does not stop it, so a stuck body can still
+     * leave by its own speed. A game can react by moving, crushing or respawning it.
+     *
+     * @sample samples.collision.Bodies.isStuck
+     */
+    public var isStuck: Boolean = false
         internal set
 
     /** The raw handle of the solid under the body after the last move, or [NO_FLOOR]. */
@@ -139,7 +176,10 @@ public class KinematicBody(
     /** Returns `KinematicBody(dx=0.0, dy=0.0, isOnFloor=true, …)`. The format may change. */
     override fun toString(): String {
         val contacts = "KinematicBody(dx=$dx, dy=$dy, isOnFloor=$isOnFloor, isOnWall=$isOnWall, wallNormalX=$wallNormalX, isOnCeiling=$isOnCeiling"
-        return if (hasLanded) "$contacts, hasLanded=true, landingSpeed=$landingSpeed)" else "$contacts)"
+        val landing = if (hasLanded) ", hasLanded=true, landingSpeed=$landingSpeed" else ""
+        val pushed = if (wasPushedOut) ", wasPushedOut=true" else ""
+        val stuck = if (isStuck) ", isStuck=true" else ""
+        return "$contacts$landing$pushed$stuck)"
     }
 
     /** Component key for [KinematicBody]. */
@@ -189,7 +229,10 @@ internal fun SolidGrid.moveBodies(world: World, deltaSeconds: Float, scenes: Sce
     }
 }
 
-/** Moves [body] across, then up or down, then checks for a floor below, as [moveBodies] describes. */
+/**
+ * Pushes [body] out of the solids it overlaps, moves it across, then up or down, then checks for a
+ * floor below, as [moveBodies] describes.
+ */
 private fun SolidGrid.moveBody(body: KinematicBody, transform: Transform, collider: Collider, shape: Shape.Box, deltaSeconds: Float) {
     val scaleX = if (collider.scalesWithTransform) transform.scaleX else 1f
     val scaleY = if (collider.scalesWithTransform) transform.scaleY else 1f
@@ -197,6 +240,10 @@ private fun SolidGrid.moveBody(body: KinematicBody, transform: Transform, collid
     val offsetY = collider.offsetY * scaleY
     val halfWidth = shape.width * abs(scaleX) * 0.5f
     val halfHeight = shape.height * abs(scaleY) * 0.5f
+    // The sweeps below skip the solids a box starts inside, so the body is first pushed out of them.
+    val pushes = pushOut(transform, offsetX, offsetY, halfWidth, halfHeight, collider.mask.bits)
+    body.wasPushedOut = pushes > 0
+    body.isStuck = pushes == STUCK
     // Standing means touching a floor and not sent up since, so a standing body is not rising.
     val wasOnFloor = body.isOnFloor
     val startSpeedY = body.dy
@@ -229,6 +276,78 @@ private fun SolidGrid.moveBody(body: KinematicBody, transform: Transform, collid
     // The drop ends once the feet are below the line, on another floor, or rising.
     if (dropLine != Float.NEGATIVE_INFINITY && (moved.y + offsetY + halfHeight > dropLine || moved.isOnFloor || startSpeedY < 0f)) {
         body.dropLine = Float.NEGATIVE_INFINITY
+    }
+}
+
+/** The most pushes [pushOut] makes before it gives up on a body. */
+private const val MAX_PUSHES: Int = 4
+
+/** What [pushOut] returns for a body that [MAX_PUSHES] pushes did not take out of the solids it overlaps. */
+private const val STUCK: Int = -1
+
+/**
+ * Pushes the box centered on [transform]'s position plus ([offsetX], [offsetY]), [halfWidth] and
+ * [halfHeight] from its center to its edges, out of the solids on a layer in [mask] that it overlaps,
+ * as the class description of [KinematicBody] explains, and moves [transform] by each push. Each push
+ * takes the box the shortest way, up, down, left or right, clear of the first solid it overlaps,
+ * ties going to up, down, left and right in that order, and ends a contact gap from the solid, where
+ * a sweep would have stopped it. One-way solids never overlap here: a sweep without a move only meets
+ * them when the box moves down.
+ *
+ * Returns how many pushes it took, 0 when the box overlapped nothing, or [STUCK] when [MAX_PUSHES]
+ * pushes still left it overlapping a solid, after putting [transform] back where it was. Allocates
+ * nothing.
+ */
+private fun SolidGrid.pushOut(
+    transform: Transform,
+    offsetX: Float,
+    offsetY: Float,
+    halfWidth: Float,
+    halfHeight: Float,
+    mask: Int,
+): Int {
+    val gap = Collisions.CONTACT_GAP
+    val startX = transform.x
+    val startY = transform.y
+    var pushes = 0
+    while (true) {
+        val centerX = transform.x + offsetX
+        val centerY = transform.y + offsetY
+        val minX = centerX - halfWidth
+        val minY = centerY - halfHeight
+        val maxX = centerX + halfWidth
+        val maxY = centerY + halfHeight
+        if (!sweep(minX, minY, maxX, maxY, 0f, 0f, mask, skipsOverlaps = false)) return pushes
+        if (pushes == MAX_PUSHES) {
+            transform.x = startX
+            transform.y = startY
+            return STUCK
+        }
+        val solid = hitSolid
+        // How far the box must move each way to end clear of the solid, and the shortest of them.
+        val up = maxY - topOf(solid)
+        val down = bottomOf(solid) - minY
+        val left = maxX - leftOf(solid)
+        val right = rightOf(solid) - minX
+        var least = up
+        var pushX = 0f
+        var pushY = -up - gap
+        if (down < least) {
+            least = down
+            pushY = down + gap
+        }
+        if (left < least) {
+            least = left
+            pushX = -left - gap
+            pushY = 0f
+        }
+        if (right < least) {
+            pushX = right + gap
+            pushY = 0f
+        }
+        transform.x += pushX
+        transform.y += pushY
+        pushes++
     }
 }
 

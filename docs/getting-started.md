@@ -130,7 +130,6 @@ import klyph.entity.Transform
 import klyph.input.axis
 import klyph.platform.Scancode
 import klyph.render.Sprite
-import klyph.render.asRegion
 import kotlin.math.sqrt
 ```
 
@@ -148,7 +147,7 @@ fun main() {
         // World (0, 0) is the window's top-left corner, so this is the middle of the window.
         val ship = world.create()
         world.add(ship, Transform, Transform(x = window.width / 2f, y = window.height / 2f))
-        world.add(ship, Sprite, Sprite(assets.texture("ship.png").asRegion()))
+        world.add(ship, Sprite, Sprite(assets.region("ship.png")))
         world.add(ship, Interpolated, Interpolated)
 
         addSystem(Phase.INPUT) { app ->
@@ -183,8 +182,9 @@ What each part does:
 - The ship is an **entity** with three **components**: a `Transform` that places it, a `Sprite`
   that draws a texture at that place, and the `Interpolated` marker. Entities and components are
   covered in [Entities, systems and scenes](entities-systems-and-scenes.md).
-- `assets.texture("ship.png")` loads the file from the `assets/` folder next to the executable.
-  The plugin copies your project's `assets/` there on every build.
+- `assets.region("ship.png")` loads the file from the `assets/` folder next to the executable and
+  returns the whole picture as the region the `Sprite` draws. The plugin copies your project's
+  `assets/` there on every build.
 - The camera starts at zoom 1, where one world unit is one point, the unit window sizes are given
   in, and world (0, 0) is the window's top-left corner with y pointing down.
 - The movement system runs in `FIXED_UPDATE`, which runs 60 times a second of game time whatever
@@ -218,6 +218,7 @@ and take screenshots without code changes. Through Gradle, pass each variable as
 |---|---|---|
 | `KLYPH_FRAMES=<n>` | `-Pklyph.frames=<n>` | Quits after `n` frames. |
 | `KLYPH_SECONDS=<s>` | `-Pklyph.seconds=<s>` | Quits once game time reaches `s` seconds, such as `2.5`. |
+| `KLYPH_FRAME_DELTA=<s>` | `-Pklyph.frameDelta=0.016` | Makes every frame advance game time by exactly `s` seconds, so two runs match. `s` is at most the time of `maxFixedStepsPerFrame` fixed steps, four steps of 1/60 s by default, and at most 0.25. |
 | `KLYPH_VSYNC=1` or `0` | `-Pklyph.vsync=1` | Waits for the display's refresh, or presents as fast as possible. |
 | `KLYPH_OFFSCREEN=1` | `-Pklyph.offscreen=1` | Draws into a texture and waits for the GPU each frame, for measuring. |
 | `KLYPH_VALIDATION=1` | `-Pklyph.validation=1` | Turns on the GPU validation layer, which is slow. |
@@ -237,7 +238,7 @@ not set keeps the value of `base`; a value outside the listed ones stops the gam
 
 - **The build cannot find SDL3** on Linux: install the package from the table above, or build
   SDL and pass `-Psdl3.prefix=<folder>`, the folder that holds `include/SDL3/SDL.h`.
-- **`assets.texture` throws `FileException`**: the file is not in `assets/` or the name differs in
+- **`assets.region` throws `FileException`**: the file is not in `assets/` or the name differs in
   case. Linux file names are case-sensitive.
 - **No sound and one line on standard error**: the machine has no audio device. The game runs on
   silently; [Audio](audio.md) explains this.

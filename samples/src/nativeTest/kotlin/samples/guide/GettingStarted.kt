@@ -12,7 +12,6 @@ import klyph.entity.Transform
 import klyph.input.axis
 import klyph.platform.Scancode
 import klyph.render.Sprite
-import klyph.render.asRegion
 import kotlin.math.sqrt
 // end snippet
 
@@ -42,7 +41,7 @@ class GettingStarted {
                 // World (0, 0) is the window's top-left corner, so this is the middle of the window.
                 val ship = world.create()
                 world.add(ship, Transform, Transform(x = window.width / 2f, y = window.height / 2f))
-                world.add(ship, Sprite, Sprite(assets.texture("ship.png").asRegion()))
+                world.add(ship, Sprite, Sprite(assets.region("ship.png")))
                 world.add(ship, Interpolated, Interpolated)
 
                 addSystem(Phase.INPUT) { app ->

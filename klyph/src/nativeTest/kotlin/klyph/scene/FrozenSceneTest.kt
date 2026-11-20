@@ -1,5 +1,6 @@
 package klyph.scene
 
+import klyph.app.Phase
 import klyph.collision.Collider
 import klyph.collision.Collisions
 import klyph.collision.KinematicBody
@@ -30,6 +31,7 @@ import klyph.render.asRegion
 import klyph.render.fromGrid
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Duration
@@ -213,6 +215,63 @@ class FrozenSceneTest {
         assertTrue(!running.isOnFloor)
         assertEquals(600f, running.dy)
         assertEquals(0, collisions.solidCount)
+    }
+
+    @Test
+    fun hasLandedOfAFrozenBodyHoldsAcrossTheFreezeAndIsSeenInTheFirstStepBack() {
+        val h = SceneHarness()
+        val collisions = Collisions()
+        val step = 1f / 60f
+        lateinit var body: KinematicBody
+        val seen = ArrayList<Boolean>()
+        val play = h.scene(
+            "play",
+            enter = {
+                body = KinematicBody(dy = 600f)
+                h.world.create().also {
+                    h.world.add(it, Transform, Transform(x = 0f, y = 80f))
+                    h.world.add(it, Collider, Collider(Shape.Box(width = 10f, height = 10f)))
+                    h.world.add(it, KinematicBody, body)
+                }
+                h.world.create().also {
+                    h.world.add(it, Transform, Transform(x = 0f, y = 105f))
+                    h.world.add(it, Collider, Collider(Shape.Box(width = 50f, height = 10f)))
+                    h.world.add(it, Solid, Solid())
+                }
+            },
+        ) {
+            addSystem(Phase.FIXED_UPDATE, h.system { seen += body.hasLanded })
+        }
+        // One fixed step as the loop runs it: the scene's systems first, then the engine's move.
+        fun fixedStep() {
+            h.run(Phase.FIXED_UPDATE)
+            collisions.moveBodies(h.world, step, h.stack)
+        }
+        h.stack.push(play)
+        h.applyTransitions()
+
+        fixedStep()
+        assertFalse(body.hasLanded)
+        fixedStep()
+        assertTrue(body.hasLanded, "The second step brings it down onto the floor.")
+        assertEquals(600f, body.landingSpeed)
+
+        h.stack.push(h.scene("pause"))
+        h.applyTransitions()
+        repeat(10) { fixedStep() }
+        assertTrue(body.hasLanded, "Nothing moves a frozen body, so the flag holds through the freeze.")
+        assertEquals(600f, body.landingSpeed)
+        assertEquals(listOf(false, false), seen, "The systems of the frozen scene do not run.")
+
+        h.stack.pop()
+        h.applyTransitions()
+        assertTrue(body.hasLanded, "It still reads true when the scene is on top again, before any step.")
+        fixedStep()
+        assertEquals(listOf(false, false, true), seen, "The first step back sees the landing from before the freeze.")
+        assertFalse(body.hasLanded, "That step's move is no landing, the body stands.")
+        assertTrue(body.isOnFloor)
+        fixedStep()
+        assertEquals(listOf(false, false, true, false), seen)
     }
 
     @Test

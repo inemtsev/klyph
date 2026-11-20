@@ -14,18 +14,19 @@ The snippets on this page are code for the setup block of `runApp`, where `asset
 `app.assets` loads files from the `assets/` folder next to the executable, which the Gradle
 plugin fills from your project's `assets/` on every build. `AppConfig(assetRoot = ...)` points it
 somewhere else. Every loader caches: the first call for a path reads and uploads the file, later
-calls return the same object.
+calls reuse it.
 
 | Call | Returns |
 |---|---|
-| `assets.texture(path, filter, address)` | A `Texture` from a PNG or JPEG file. |
+| `assets.region(path, filter, address)` | The whole of a PNG or JPEG file as a `TextureRegion`, the picture a `Sprite` shows. |
+| `assets.texture(path, filter, address)` | A `Texture` from a PNG or JPEG file, to cut regions from or to repeat. |
 | `assets.spriteSheet(path, columns, rows, filter)` | The texture cut into a grid of equal cells. |
 | `assets.image(path)` | An `Image` you can read and change, not cached and not uploaded. |
 | `assets.createTexture(image, filter, address)` | A new texture from an `Image`, every call. |
 | `assets.font(path, filter)`, `assets.sound(path)`, `assets.musicTrack(path)` | Fonts, sounds and music, covered on their pages. |
 
 Each loader that reads a file throws `FileException` when the file is missing and `ImageException`
-when it is not a valid image. Every one has an `OrNull` sibling, such as `textureOrNull`, that
+when it is not a valid image. Every one has an `OrNull` sibling, such as `regionOrNull`, that
 returns `null` instead, for files that may or may not be there.
 
 ## Sprites
@@ -37,10 +38,10 @@ over its height: `Sprite(region, width = height * region.aspectRatio, height = h
 
 <!-- snippet: sprite -->
 ```kotlin
-val ship = assets.texture("ship.png")
+val ship = assets.region("ship.png")
 commands.spawn {
     add(Transform, Transform(x = 640f, y = 360f))
-    add(Sprite, Sprite(ship.asRegion()))
+    add(Sprite, Sprite(ship))
 }
 ```
 
@@ -50,7 +51,7 @@ The other properties tint, order and mirror it. `color` multiplies every texel, 
 
 <!-- snippet: sprite-options -->
 ```kotlin
-val ship = assets.texture("ship.png").asRegion()
+val ship = assets.region("ship.png")
 commands.spawn {
     add(Transform, Transform(x = 646f, y = 368f, rotation = 0.3f, scaleX = 0.5f, scaleY = 0.5f))
     add(Sprite, Sprite(ship, color = Color.BLACK.withAlpha(0.4f), layer = -1, isFlippedX = true))
@@ -66,7 +67,7 @@ squashed on landing keeps his feet on the floor. A `Collider` does not follow th
 
 <!-- snippet: origin -->
 ```kotlin
-val hero = assets.texture("hero.png").asRegion()
+val hero = assets.region("hero.png")
 commands.spawn {
     // The origin (0.5, 1) is the middle of the bottom edge, so the Transform is at the hero's feet.
     add(Transform, Transform(x = 640f, y = 500f))
@@ -90,8 +91,8 @@ drawing work.
 ## Regions and sprite sheets
 
 A `TextureRegion` is a rectangle of a texture in texels, measured from its top-left corner.
-`texture.asRegion()` covers the whole texture and `texture.region(x, y, width, height)` a part of
-it:
+`assets.region(path)` covers the whole of a file, `texture.asRegion()` the whole of a texture you
+hold already, and `texture.region(x, y, width, height)` a part of one:
 
 <!-- snippet: region -->
 ```kotlin
@@ -284,12 +285,14 @@ tiling, which [Scrolling worlds](scrolling.md) covers.
 ## Textures without files
 
 Some art is easier to make in code. `Image` is a grid of pixels you can set one at a time or paint
-in bulk: `fill` sets every pixel to a color, `fillRect` a rectangle of them, `fillCircle` paints a
-soft-edged disc, and `draw(image, x, y)` lays another image over it, blending by alpha. The shapes
-and `draw` leave out whatever falls outside the image. `assets.createTexture(image)` uploads the
-result. Two regions come ready-made: `assets.whitePixel`, one white texel to stretch into bars and
-backgrounds, and `assets.disc(diameter)`, a white disc with a soft edge for particles, bullets and
-shadows, cached by diameter. Tint both with the sprite's color.
+in bulk: `fill` sets every pixel to a color, `fillRect` a rectangle of them, `drawLine` a line one
+pixel wide, `fillCircle` paints a soft-edged disc, and `draw(image, x, y)` lays another image over
+it, blending by alpha. Give `draw` a source rectangle with `sourceX`, `sourceY`, `sourceWidth` and
+`sourceHeight` to lay only that part of the image, such as one picture cut out of a sheet. The
+shapes and `draw` leave out whatever falls outside the image. `assets.createTexture(image)` uploads
+the result. Two regions come ready-made: `assets.whitePixel`, one white texel to stretch into bars
+and backgrounds, and `assets.disc(diameter)`, a white disc with a soft edge for particles, bullets
+and shadows, cached by diameter. Tint both with the sprite's color.
 
 <!-- snippet: generated -->
 ```kotlin

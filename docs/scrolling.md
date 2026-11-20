@@ -38,6 +38,10 @@ Call `drawnPositionOf` from `LATE_UPDATE`, after the hero has moved. It throws
 `world.drawnPositionOf(entity, alpha)`, with `alpha` from 0 to 1 as the blend between the last two
 steps.
 
+An entity with a parent is drawn at its world position and is never blended. `drawnPositionOf`
+works that position out from the `Transform`s up its chain when you call it, so a parent that moved
+earlier in the frame is already counted.
+
 ## Shaking the view
 
 `camera.offsetX` and `offsetY` shift the view without moving the camera, so a shake never fights
@@ -116,7 +120,7 @@ effect on it. A frame draws every `BACKGROUND` quad before any world quad, whate
 
 <!-- snippet: sky -->
 ```kotlin
-val sky = assets.texture("sky.png").asRegion()
+val sky = assets.region("sky.png")
 addSystem(Phase.RENDER) { app ->
     // The whole window in points, from its top-left corner, under everything the world draws.
     app.canvas.drawSprite(
@@ -169,7 +173,7 @@ the strip never ends. An axis with no repeat is drawn once, wherever it is.
 
 <!-- snippet: hills -->
 ```kotlin
-val hills = Sprite(assets.texture("hills.png").asRegion(), layer = -2, originY = 1f)
+val hills = Sprite(assets.region("hills.png"), layer = -2, originY = 1f)
 commands.spawn {
     // The bottom edge of the strip stands on the horizon, at y = 400.
     add(Transform, Transform(x = 0f, y = 400f))
@@ -241,7 +245,7 @@ the sprite, that is half its height.
 
 <!-- snippet: feet-origin -->
 ```kotlin
-val art = assets.texture("hero.png").asRegion()
+val art = assets.region("hero.png")
 // The origin (0.5, 1) is the middle of the bottom edge, so the Transform is at the hero's feet.
 val sprite = Sprite(art, originX = 0.5f, originY = 1f)
 val hero = commands.spawn {

@@ -6,6 +6,18 @@ All notable changes to klyph are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `Assets.region(path)` and `regionOrNull`: load an image as a `TextureRegion` in one call, for a `Sprite`.
+- `Image.drawLine` and a source rectangle on `Image.draw`: paint a one-pixel line, or cut one picture out of a sheet image.
+- `KinematicBody.wasPushedOut` and `isStuck`: say when a move pushed the body out of a solid, or found no way out.
+- `AppConfig.frameDelta` and `KLYPH_FRAME_DELTA`: every frame lasts the same game time, so runs and screenshots repeat.
+
+### Fixed
+
+- A `KinematicBody` that starts a move inside a solid is pushed out of it instead of passing through.
+- `drawnPositionOf` on a child: counts a parent moved earlier in the frame instead of lagging a frame behind.
+
 ## [1.2.0] - 2026-11-15
 
 Scrolling worlds: layers that move at their own speed, textures that repeat, a sky under the
