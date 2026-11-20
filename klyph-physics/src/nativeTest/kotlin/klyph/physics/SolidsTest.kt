@@ -315,4 +315,50 @@ class SolidsTest {
         assertTrue(grid.isSolidAt(36f, 36f))
         assertFalse(grid.isSolidAt(60f, 36f))
     }
+
+    @Test
+    fun particlesOutsideTheGridDoNotCrashAndStillMeetEdgeTiles() {
+        val grid = TestBodies.grid().apply { fill(0, 1); fill(9, 1) }
+        // Far outside on every side, including negative coordinates that would alias rows if unchecked.
+        for ((x, y) in listOf(-10f to 24f, -40f to -40f, 400f to 24f, 40f to 400f)) {
+            particle(x, y, radius = 2f)
+            resolve(grid)
+            assertEquals(x, particles.xOf(p))
+            assertEquals(y, particles.yOf(p))
+        }
+        // Just past the right edge of column 9 (x = 160), reaching in by its radius: still hits tile (9, 1)
+        // (and leaves through its open top, since the right face is on the grid edge).
+        particle(161f, 22f, radius = 3f)
+        resolve(grid)
+        assertEquals(13f, particles.yOf(p), 0.001f)
+    }
+
+    @Test
+    fun aMovingSolidStillPushesInOpenAirAndGridEditsRefreshProximity() {
+        val grid = TestBodies.grid()
+        grid.add(Solid.moving(left = 60f, top = 60f, right = 100f, bottom = 100f))
+        particle(80f, 98f, radius = 2f)
+        resolve(grid)
+        assertEquals(102f, particles.yOf(p), 0.001f, "moving solid pushes even when all grid tiles are empty")
+
+        grid.fill(2, 2)
+        particle(40f, 31f, radius = 2f)
+        resolve(grid)
+        assertEquals(30f, particles.yOf(p), 0.001f, "newly filled tile pushes")
+
+        grid.removeAt(2, 2)
+        particle(40f, 31f, radius = 2f)
+        resolve(grid)
+        assertEquals(31f, particles.yOf(p), 0.001f, "removed tile no longer pushes")
+    }
+
+    @Test
+    fun aParticleAsWideAsANonPowerOfTwoTileStillHitsAtTheCellBoundary() {
+        // tile = 24f: 119.999992f * (1f / 24f) rounds up to 5.0f in float32 while floor(x / 24f) is 4.
+        // With radius = 24f, x - r = 95.999992f reaches into column 3 (right = 96f).
+        val grid = SolidGrid(columns = 10, rows = 4, tileSize = 24f).apply { fill(3, 1) }
+        particle(119.999992f, 36f, radius = 24f)
+        resolve(grid)
+        assertTrue(particles.xOf(p) >= 120f, "pushed clear of column 3: x=${particles.xOf(p)}")
+    }
 }

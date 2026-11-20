@@ -186,6 +186,10 @@ public class SolidGrid(
     }
 
     private val cells = arrayOfNulls<Solid>(columns * rows)
+    private val invTile = 1f / tileSize
+    private val maxNearRadius = tileSize * 0.999f
+    private val near = BooleanArray(columns * rows)
+    private var nearVersion = -1
 
     internal val dynamic: ArrayList<Solid> = ArrayList()
 
@@ -285,30 +289,68 @@ public class SolidGrid(
      * tiles has no seams.
      */
     internal fun collide(particles: Particles, events: Events, restingMove: Float = 0f) {
-        val tile = tileSize
+        if (nearVersion != version) refreshNear()
         val x = particles.x
         val y = particles.y
         val filtered = particles.anyFiltered
+        val hasDynamic = dynamic.isNotEmpty()
         for (p in 0 until particles.end) {
             if (particles.invMass[p] == 0f || filtered && particles.mask[p] and PhysicsLayers.SOLIDS_BIT == 0) continue
             // a soft body's particles look a little further, as near a solid they touch it, for events
             val r = particles.radius[p] + events.touchReach(particles.owner[p])
-            if (r == 0f) {
-                val solid = at(floor(x[p] / tile).toInt(), floor(y[p] / tile).toInt())
-                if (solid != null) push(particles, p, solid, events, restingMove)
-            } else {
-                // A round particle can reach into the tiles around the one its centre is in.
-                val col0 = floor((x[p] - r) / tile).toInt()
-                val col1 = floor((x[p] + r) / tile).toInt()
-                val row0 = floor((y[p] - r) / tile).toInt()
-                val row1 = floor((y[p] + r) / tile).toInt()
-                for (row in row0..row1) for (col in col0..col1) {
-                    val solid = at(col, row) ?: continue
-                    push(particles, p, solid, events, restingMove)
-                }
+            if (!isFarFromGrid(x[p], y[p], r)) collideGrid(particles, p, r, events, restingMove)
+            if (hasDynamic) {
+                for (k in 0 until dynamic.size) push(particles, p, dynamic[k], events, restingMove)
             }
-            for (k in 0 until dynamic.size) push(particles, p, dynamic[k], events, restingMove)
         }
+    }
+
+    /** Whether a particle at ([px], [py]) reaching [r] out cannot overlap any filled grid cell. */
+    @Suppress("NOTHING_TO_INLINE")
+    private inline fun isFarFromGrid(px: Float, py: Float, r: Float): Boolean {
+        if (r >= maxNearRadius) return false
+        val gx = px * invTile
+        val gy = py * invTile
+        val inX = gx >= 0f && gx < columns
+        val inY = gy >= 0f && gy < rows
+        return inX && inY && !near[gy.toInt() * columns + gx.toInt()]
+    }
+
+    private fun collideGrid(particles: Particles, p: Int, r: Float, events: Events, restingMove: Float) {
+        val tile = tileSize
+        val px = particles.x[p]
+        val py = particles.y[p]
+        if (r == 0f) {
+            val solid = at(floor(px / tile).toInt(), floor(py / tile).toInt())
+            if (solid != null) push(particles, p, solid, events, restingMove)
+            return
+        }
+        // A round particle can reach into the tiles around the one its centre is in.
+        val col0 = floor((px - r) / tile).toInt()
+        val col1 = floor((px + r) / tile).toInt()
+        val row0 = floor((py - r) / tile).toInt()
+        val row1 = floor((py + r) / tile).toInt()
+        for (row in row0..row1) for (col in col0..col1) {
+            val solid = at(col, row) ?: continue
+            push(particles, p, solid, events, restingMove)
+        }
+    }
+
+    /** Marks every tile that holds a solid or sits beside one, so open-air particles skip tile lookups. */
+    private fun refreshNear() {
+        near.fill(false)
+        for (row in 0 until rows) for (col in 0 until columns) {
+            if (cells[row * columns + col] != null) markNear(col, row)
+        }
+        nearVersion = version
+    }
+
+    private fun markNear(col: Int, row: Int) {
+        val r0 = if (row > 0) row - 1 else 0
+        val r1 = if (row + 1 < rows) row + 1 else rows - 1
+        val c0 = if (col > 0) col - 1 else 0
+        val c1 = if (col + 1 < columns) col + 1 else columns - 1
+        for (nr in r0..r1) for (nc in c0..c1) near[nr * columns + nc] = true
     }
 
     /**
