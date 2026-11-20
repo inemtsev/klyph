@@ -31,9 +31,9 @@ fun main() {
 The whole build file is three lines:
 
 ```kotlin
-plugins { id("com.eventslooped.klyph") version "1.2.0" }
+plugins { id("com.eventslooped.klyph") version "1.3.0" }
 klyph { entryPoint = "mygame.main" }
-kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:1.2.0") } }
+kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.klyph:klyph:1.3.0") } }
 ```
 
 `./gradlew run` plays it. `./gradlew distribute` zips it with SDL3 for your players. The
@@ -65,6 +65,8 @@ template" and you have a window, a ship that flies, and CI on three desktops.
   jump and land on solids and one-way ledges, with sweeps for what lies ahead.
 - **Scrolling.** Parallax layers, repeating textures, sprite origins, a background sky, camera
   shake and a scene clock.
+- **Levels that move.** Tile maps painted in the Tiled editor, with their walls merged into
+  solids, platforms that carry whoever stands on them, and an automatic texture atlas.
 - **A Gradle plugin** that finds or downloads SDL3, runs your game and packages it.
 
 ## Fast and stable
