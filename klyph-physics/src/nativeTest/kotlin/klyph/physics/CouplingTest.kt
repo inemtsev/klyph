@@ -257,4 +257,20 @@ class CouplingTest {
         assertTrue(world.particles.yOf(missed) > 400f, "between them, a grain falls through to the floor")
         assertTrue(world.rigidBodies.isAlive(shelves))
     }
+
+    @Test
+    fun couplingSkipsGrainsAndSoftBodiesOutsideTheRigidBoundsButKeepsThoseWithinMargin() {
+        val world = PhysicsWorld(PhysicsConfig(gravity = Vec2.ZERO))
+        world.rigidBody(Shape.circle(10f), 100f, 100f, kind = BodyKind.STATIC)
+        // Rigid box reaches [89, 111] (reach 10 + MARGIN 1).
+        // Distant grain and soft body are far outside it and should not be filed.
+        world.particles.add(500f, 500f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        world.softBody(dome, 500f, 500f)
+        // A grain whose radius + MARGIN reaches into [89, 111] (at x = 113.5, radius 2 -> left = 110.5 <= 111).
+        world.particles.add(113.5f, 100f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        val coupling = Coupling(world)
+        coupling.beginStep(dt)
+        assertEquals(2, coupling.broadphase.count, "only the rigid body and the nearby grain are filed")
+        assertEquals(1, coupling.broadphase.pairCount)
+    }
 }

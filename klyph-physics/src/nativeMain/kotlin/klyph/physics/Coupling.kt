@@ -44,6 +44,12 @@ internal class Coupling(private val world: PhysicsWorld) {
     private var nearY = 0f
     private var nearDistanceSquared = 0f
 
+    // Union box of every rigid body filed this step: soft bodies and grains outside it cannot overlap any.
+    private var rigidLeft = 0f
+    private var rigidTop = 0f
+    private var rigidRight = 0f
+    private var rigidBottom = 0f
+
     /** Files every rigid body and everything soft in the broadphase, grown by the [dt] seconds ahead. */
     fun beginStep(dt: Float) {
         val bp = broadphase
@@ -51,13 +57,47 @@ internal class Coupling(private val world: PhysicsWorld) {
         active = false
         if (bodies.size == 0) return
         var rigid = 0
+        var ul = Float.MAX_VALUE
+        var ut = Float.MAX_VALUE
+        var ur = -Float.MAX_VALUE
+        var ub = -Float.MAX_VALUE
         for (b in 0 until bodies.end) {
             if (!bodies.isAlive(b) || bodies.reach[b] == 0f) continue
-            bp.addMoving(id(b, RIGID), bodies.x[b], bodies.y[b], bodies.vx[b] * dt, bodies.vy[b] * dt, bodies.reach[b] + MARGIN)
+            val bx = bodies.x[b]
+            val by = bodies.y[b]
+            val dx = bodies.vx[b] * dt
+            val dy = bodies.vy[b] * dt
+            val reach = bodies.reach[b] + MARGIN
+            val bl = min(bx, bx + dx) - reach
+            val bt = min(by, by + dy) - reach
+            val br = max(bx, bx + dx) + reach
+            val bb = max(by, by + dy) + reach
+            bp.add(id(b, RIGID), bl, bt, br, bb)
+            ul = min(ul, bl)
+            ut = min(ut, bt)
+            ur = max(ur, br)
+            ub = max(ub, bb)
             rigid++
         }
         if (rigid == 0) return
+        rigidLeft = ul
+        rigidTop = ut
+        rigidRight = ur
+        rigidBottom = ub
         val ahead = dt / world.substepLength
+        fileSoftBodies(ahead)
+        fileGrains(ahead)
+        if (bp.count > 1) bp.build()
+        active = bp.pairCount > 0
+        if (tiedTo.size < ps.end) tiedTo = IntArray(max(ps.end, 2 * tiedTo.size))
+        tiedTo.fill(-1, 0, ps.end)
+        val tied = world.attachments
+        for (a in 0 until tied.end) if (tied.isAlive(a) && tied.particle(a) < ps.end) tiedTo[tied.particle(a)] = tied.body(a)
+    }
+
+    /** Files every soft body whose swept box overlaps the rigid bodies' union box. */
+    private fun fileSoftBodies(ahead: Float) {
+        val bp = broadphase
         for (s in 0 until soft.end) {
             if (!soft.isAlive(s)) continue
             var l = Float.MAX_VALUE
@@ -76,18 +116,37 @@ internal class Coupling(private val world: PhysicsWorld) {
                 r = max(r, max(x, toX) + grow)
                 b = max(b, max(y, toY) + grow)
             }
-            bp.add(id(s, SOFT), l - MARGIN, t - MARGIN, r + MARGIN, b + MARGIN, passive = true)
+            val bl = l - MARGIN
+            val bt = t - MARGIN
+            val br = r + MARGIN
+            val bb = b + MARGIN
+            if (!missesRigidBounds(bl, bt, br, bb)) bp.add(id(s, SOFT), bl, bt, br, bb, passive = true)
         }
+    }
+
+    /** Files every colliding grain whose swept box overlaps the rigid bodies' union box. */
+    private fun fileGrains(ahead: Float) {
+        val bp = broadphase
         for (p in 0 until ps.end) {
             if (!ps.isGrain(p)) continue
-            bp.addMoving(id(p, PARTICLE), ps.x[p], ps.y[p], (ps.x[p] - ps.prevX[p]) * ahead, (ps.y[p] - ps.prevY[p]) * ahead, max(ps.radius[p], SKIN) + MARGIN, passive = true)
+            val gx = ps.x[p]
+            val gy = ps.y[p]
+            val mx = (gx - ps.prevX[p]) * ahead
+            val my = (gy - ps.prevY[p]) * ahead
+            val grow = max(ps.radius[p], SKIN) + MARGIN
+            val gl = min(gx, gx + mx) - grow
+            val gt = min(gy, gy + my) - grow
+            val gr = max(gx, gx + mx) + grow
+            val gb = max(gy, gy + my) + grow
+            if (!missesRigidBounds(gl, gt, gr, gb)) bp.add(id(p, PARTICLE), gl, gt, gr, gb, passive = true)
         }
-        if (bp.count > 1) bp.build()
-        active = bp.pairCount > 0
-        if (tiedTo.size < ps.end) tiedTo = IntArray(max(ps.end, 2 * tiedTo.size))
-        tiedTo.fill(-1, 0, ps.end)
-        val tied = world.attachments
-        for (a in 0 until tied.end) if (tied.isAlive(a) && tied.particle(a) < ps.end) tiedTo[tied.particle(a)] = tied.body(a)
+    }
+
+    @Suppress("NOTHING_TO_INLINE")
+    private inline fun missesRigidBounds(left: Float, top: Float, right: Float, bottom: Float): Boolean {
+        val outsideX = left > rigidRight || right < rigidLeft
+        val outsideY = top > rigidBottom || bottom < rigidTop
+        return outsideX || outsideY
     }
 
     /** One pass over every pair of a rigid body and something soft that the broadphase found this step. */
