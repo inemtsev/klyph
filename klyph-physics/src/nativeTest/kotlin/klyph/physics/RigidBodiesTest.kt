@@ -175,4 +175,44 @@ class RigidBodiesTest {
         bodies.remove(falling)
         assertFalse(bodies.isDynamic(falling.index))
     }
+
+    @Test
+    fun removingABodyDropsItsJointsSoAReusedSlotDoesNotInheritThem() {
+        val world = space()
+        val bodies = world.rigidBodies
+        val crate = world.rigidBody(Shape.box(40f, 40f), 100f, 100f)
+        val wheel = world.rigidBody(Shape.circle(15f), 110f, 100f)
+        val hinge = world.joints.hinge(crate, wheel, 110f, 100f)
+        val keep = world.rigidBody(Shape.box(20f, 20f), 400f, 100f)
+        val other = world.joints.hinge(keep, JointEnd.WORLD, 400f, 100f)
+        bodies.remove(wheel)
+        assertFalse(world.joints.isAlive(hinge))
+        assertTrue(world.joints.isAlive(other))
+        // The next body takes wheel's slot, is not pulled to the old anchor, and collides with the crate.
+        val newcomer = world.rigidBody(Shape.circle(15f), 110f, 100f)
+        assertEquals(wheel, newcomer)
+        repeat(30) { world.step(dt) }
+        val dx = bodies.xOf(newcomer) - bodies.xOf(crate)
+        val dy = bodies.yOf(newcomer) - bodies.yOf(crate)
+        assertTrue(dx * dx + dy * dy > 25f * 25f, "new body is pushed out of the crate instead of staying hinged: ($dx, $dy)")
+    }
+
+    @Test
+    fun removingABodyDropsItsAttachmentsSoAReusedSlotDoesNotInheritThem() {
+        val world = space()
+        val bodies = world.rigidBodies
+        val crate = world.rigidBody(Shape.box(20f, 20f), 100f, 100f)
+        val other = world.rigidBody(Shape.box(20f, 20f), 300f, 100f)
+        val p = world.particles.add(100f, 100f, mass = Particles.STATIC)
+        val q = world.particles.add(300f, 100f, mass = Particles.STATIC)
+        val tie = world.attach(p, crate)
+        val kept = world.attach(q, other)
+        bodies.remove(crate)
+        assertFalse(world.attachments.isAlive(tie))
+        assertTrue(world.attachments.isAlive(kept))
+        val newcomer = world.rigidBody(Shape.box(20f, 20f), 200f, 100f)
+        assertEquals(crate, newcomer)
+        repeat(10) { world.step(dt) }
+        assertEquals(200f, bodies.xOf(newcomer), 0.01f, "new body is not pulled to the old attachment")
+    }
 }

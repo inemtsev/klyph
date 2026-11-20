@@ -373,15 +373,26 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
     }
 
     /**
-     * Removes [body]; its slot may be handed out again. What rested on it wakes and falls. Removing a body
-     * that is gone does nothing.
+     * Removes [body] and every joint, attachment and grab that holds it, so that the body that takes its
+     * slot, which may be handed out again, inherits none. What rested on it wakes and falls. Removing a
+     * body that is gone does nothing.
      */
     public fun remove(body: RigidBody) {
         remove(body.index)
     }
 
+    // What holds on to these bodies, and must let go of one that is removed: its slot is handed out
+    // again, and the next body must not inherit what held this one.
+    private val holders = ArrayList<RigidBodyHolder>(3)
+
+    /** Makes [holder] let go of every body that is removed from now on. */
+    internal fun register(holder: RigidBodyHolder) {
+        holders.add(holder)
+    }
+
     internal fun remove(b: Int) {
         if (!isAlive(b)) return
+        for (i in 0 until holders.size) holders[i].letGo(b)
         // what rested on it wakes and falls: a body that sleeps did so with everything it touched, and
         // a static or kinematic one may hold up any sleeping body
         if (kind[b] == DYNAMIC) wake(b) else wakeAll()
@@ -814,4 +825,10 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
         internal const val DYNAMIC = 1
         internal const val KINEMATIC = 2
     }
+}
+
+/** Something that holds on to rigid bodies: joints, attachments, the hand. */
+internal interface RigidBodyHolder {
+    /** Lets go of everything that holds rigid body [b], which is being removed. */
+    fun letGo(b: Int)
 }

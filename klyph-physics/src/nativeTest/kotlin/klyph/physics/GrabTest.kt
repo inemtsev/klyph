@@ -154,4 +154,21 @@ class GrabTest {
         assertEquals(200f, bodies.xOf(heavy), 1f, "a heavy body follows as well as a light one")
         assertEquals(150f, bodies.yOf(heavy), 1f)
     }
+
+    @Test
+    fun aGrabbedBodyThatIsRemovedIsLetGoBeforeItsSlotIsReused() {
+        val world = PhysicsWorld(PhysicsConfig(gravity = Vec2.ZERO))
+        val bodies = world.rigidBodies
+        val box = world.rigidBody(Shape.box(20f, 20f), 100f, 100f)
+        world.grab(100f, 100f)
+        assertEquals(box, world.hand.bodyOrNull)
+        bodies.remove(box)
+        assertNull(world.hand.bodyOrNull)
+        val reused = world.rigidBody(Shape.box(20f, 20f), 200f, 200f)
+        assertEquals(box, reused)
+        world.moveGrab(400f, 400f)
+        repeat(10) { world.step(dt) }
+        assertEquals(200f, bodies.xOf(reused), 0.01f)
+        assertEquals(200f, bodies.yOf(reused), 0.01f)
+    }
 }

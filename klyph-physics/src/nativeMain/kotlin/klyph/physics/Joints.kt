@@ -56,6 +56,15 @@ public class Joints internal constructor(private val particles: Particles, priva
                 }
             },
         )
+        bodies.register(
+            object : RigidBodyHolder {
+                override fun letGo(b: Int) {
+                    for (j in 0 until slots.end) if (slots.isAlive(j)) {
+                        if (bodyA[j] == b || endB[j] == b) remove(j)
+                    }
+                }
+            },
+        )
     }
 
     private var kind = arrayOfNulls<JointKind>(8)

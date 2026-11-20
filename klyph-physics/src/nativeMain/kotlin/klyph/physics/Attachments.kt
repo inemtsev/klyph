@@ -24,6 +24,13 @@ public class Attachments internal constructor(private val particles: Particles, 
                 }
             },
         )
+        bodies.register(
+            object : RigidBodyHolder {
+                override fun letGo(b: Int) {
+                    for (a in 0 until slots.end) if (slots.isAlive(a) && body[a] == b) remove(a)
+                }
+            },
+        )
     }
 
     // The particle, the body, the point on the body from its centre of mass in its own frame, how

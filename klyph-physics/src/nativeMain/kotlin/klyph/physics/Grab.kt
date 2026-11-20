@@ -24,6 +24,26 @@ public class Grab internal constructor(private val world: PhysicsWorld) {
     internal var body: Int = -1
         private set
 
+    init {
+        world.rigidBodies.register(
+            object : RigidBodyHolder {
+                override fun letGo(b: Int) {
+                    if (body == b) body = -1
+                }
+            },
+        )
+        world.particles.register(
+            object : ParticleHolder {
+                override fun letGo(p: Int) {
+                    if (particle == p) {
+                        particle = -1
+                        pin = -1
+                    }
+                }
+            },
+        )
+    }
+
     /** The particle held, or `null` when the hand holds no particle. */
     public val particleOrNull: Particle? get() = if (particle >= 0) Particle(particle) else null
 
