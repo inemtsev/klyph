@@ -81,7 +81,7 @@ private fun Commands.spawnSolid(block: Block) {
 
 /**
  * Spawns a static sprite of [width] by [height] whose top-left corner is at ([left], [top]),
- * showing [region] stretched, or repeated every [tileWidth] by [tileHeight] units when given, and tinted by [color].
+ * showing [region] stretched and tinted by [color].
  */
 private fun Commands.spawnBlock(
     region: TextureRegion,
@@ -91,20 +91,7 @@ private fun Commands.spawnBlock(
     height: Float,
     layer: Int,
     color: Color = Color.WHITE,
-    tileWidth: Float = 0f,
-    tileHeight: Float = 0f,
-) {
-    spawn {
-        add(Transform, Transform(left, top))
-        add(
-            Sprite,
-            Sprite(
-                region, width, height, color = color, layer = layer,
-                tileWidth = tileWidth, tileHeight = tileHeight, originX = 0f, originY = 0f,
-            ),
-        )
-    }
-}
+) = spawnFromCorner(left, top, Sprite(region, width, height, color = color, layer = layer))
 
 /**
  * Spawns a static sprite of [width] by [height] whose top-left corner is at ([left], [top]) and
@@ -112,7 +99,17 @@ private fun Commands.spawnBlock(
  * starting from that corner. A repeat that does not fit whole is cut short at the right and the bottom.
  */
 private fun Commands.spawnTiled(region: TextureRegion, left: Float, top: Float, width: Float, height: Float, layer: Int) =
-    spawnBlock(region, left, top, width, height, layer, tileWidth = region.width * Tuning.PIXEL, tileHeight = region.height * Tuning.PIXEL)
+    spawnFromCorner(left, top, Sprite.tiled(region, width, height, scale = Tuning.PIXEL).apply { this.layer = layer })
+
+/** Spawns a static entity showing [sprite], whose origin it moves to the top-left corner, at ([left], [top]). */
+private fun Commands.spawnFromCorner(left: Float, top: Float, sprite: Sprite) {
+    sprite.originX = 0f
+    sprite.originY = 0f
+    spawn {
+        add(Transform, Transform(left, top))
+        add(Sprite, sprite)
+    }
+}
 
 /**
  * Spawns the picture of [building] from its roof down past the bottom of the world: a face of

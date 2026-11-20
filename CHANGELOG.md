@@ -8,10 +8,18 @@ All notable changes to klyph are recorded here. The format follows
 
 ### Added
 
+- `ParallaxLayer.anchorX` and `anchorY`: place a layer where it should be when the camera starts, with no arithmetic.
+- `Sprite.tiled(region, width, height, scale)`: a sprite that repeats its region at the region's own size.
+- `SceneStack.current`: the top scene without a null check, so a scene system reaches its own clock.
 - `Assets.region(path)` and `regionOrNull`: load an image as a `TextureRegion` in one call, for a `Sprite`.
 - `Image.drawLine` and a source rectangle on `Image.draw`: paint a one-pixel line, or cut one picture out of a sheet image.
 - `KinematicBody.wasPushedOut` and `isStuck`: say when a move pushed the body out of a solid, or found no way out.
 - `AppConfig.frameDelta` and `KLYPH_FRAME_DELTA`: every frame lasts the same game time, so runs and screenshots repeat.
+
+### Changed
+
+- `Camera.offsetX` and `offsetY` reset to 0 when a scene changes: a pause pushed over a shake is drawn centered.
+- `Image.fill`, `fillRect`, `fillCircle` and `draw` are extensions now: import them, as in `import klyph.platform.fill`.
 
 ### Fixed
 

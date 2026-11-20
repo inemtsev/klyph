@@ -45,8 +45,9 @@ earlier in the frame is already counted.
 ## Shaking the view
 
 `camera.offsetX` and `offsetY` shift the view without moving the camera, so a shake never fights
-`follow` or the bounds. Set them to a new small value every frame while the shake lasts, and back to
-0 when it ends. The camera keeps whatever offset it was last given.
+`follow` or the bounds. They keep their value from frame to frame until you change them or a scene
+transition applies: at the end of a frame that pushes, pops or replaces a scene, the engine sets both
+to 0. Set them to a new small value every frame while the shake lasts, and back to 0 when it ends.
 
 <!-- snippet: shake -->
 ```kotlin
@@ -66,7 +67,9 @@ addSystem(Phase.LATE_UPDATE) { app ->
 
 The snippet starts a shake on a hard landing and lets it fade in a third of a second. `follow` keeps
 easing toward the hero meanwhile, and `x` and `y` never hold the shake. Both systems belong to the
-app, so a pause scene pushed mid-shake does not freeze the view off-center.
+app, so the shake goes on under a pause scene. Add them to the level's scene instead and a pause
+pushed mid-shake is drawn centered: the push sets the offset to 0, and the frozen level does not set
+it again until the pause pops.
 
 The order of the camera's steps decides what a shake can show. `follow` eases `x` and `y`, the clamp
 keeps them inside `bounds`, and the offset is added last. Nothing clamps the offset, so the view can
@@ -146,7 +149,8 @@ a sprite with a `ParallaxLayer`.
 A `ParallaxLayer` makes a sprite follow the camera at a fraction of the world's speed, so far hills
 drift while the ground moves past. Add it to an entity with a `Transform`, a `Sprite` and no parent.
 A factor says how much of the camera's movement the sprite shows. The constructor takes `factorX`,
-`factorY`, which starts as `factorX`, and then `repeatX` and `repeatY`, which come up below.
+`factorY`, which starts as `factorX`, then `repeatX` and `repeatY`, and last `anchorX` and
+`anchorY`, which come up below.
 
 | Factor | The layer is |
 |---|---|
@@ -156,11 +160,14 @@ A factor says how much of the camera's movement the sprite shows. The constructo
 | 1 | Part of the world: it moves as a sprite without the component does. |
 | 1.5 | Nearer than the world, such as a fence in front, so it scrolls faster. |
 
-A layer is drawn at its `Transform` plus `1 - factor` times the camera's position, on each axis. The
-camera's position is read after the clamp to the bounds, with its offset added, so a layer with a
-factor of 0 does not shake with the screen and one with a factor of 1 does. To start a layer at a
-chosen place, subtract that shift from the place. At a factor of 0 the `Transform` is the offset
-from the center of the screen.
+A layer is drawn at `transform + (1 - factor) * (view - anchor)` on each axis. The view is the
+point the camera looks at, read after the clamp to the bounds with the offset added, so a layer with
+a factor of 0 does not shake with the screen and one with a factor of 1 does. The anchor, `anchorX`
+and `anchorY`, is the view at which the layer sits exactly at its `Transform`. Set it to where the
+camera looks when the level starts, and give the `Transform` the place the layer should be then;
+as the camera moves on, the layer moves `1 - factor` of the way with it. The anchor is 0 unless
+given, and with no anchor a layer with a factor of 0 takes its `Transform` as the offset from the
+center of the screen.
 
 A layer zooms with the camera like any sprite, which a `BACKGROUND` quad does not. It sorts with the
 other sprites by `Sprite.layer`, so give the backdrop negative layers to keep the world in front.
@@ -175,11 +182,12 @@ the strip never ends. An axis with no repeat is drawn once, wherever it is.
 ```kotlin
 val hills = Sprite(assets.region("hills.png"), layer = -2, originY = 1f)
 commands.spawn {
-    // The bottom edge of the strip stands on the horizon, at y = 400.
+    // At the start a copy is centered on x = 0, its bottom edge on the horizon at y = 400.
     add(Transform, Transform(x = 0f, y = 400f))
     add(Sprite, hills)
     // Half the world's speed along x, the world's own height along y, a copy every strip width.
-    add(ParallaxLayer, ParallaxLayer(0.5f, factorY = 1f, repeatX = hills.width))
+    // The camera starts looking at x = 480, and there the strip is drawn at its Transform.
+    add(ParallaxLayer, ParallaxLayer(0.5f, factorY = 1f, repeatX = hills.width, anchorX = 480f))
 }
 ```
 
@@ -187,7 +195,7 @@ Along a repeating axis the `Transform` only decides where the copies start. At m
 `ParallaxLayer.MAX_COPIES`, 256, copies of one sprite are drawn, so a period far smaller than the
 view leaves the far copies out. A small texture across a large area is a job for `tileWidth`, in the
 next section. Drawing a layer throws `IllegalStateException`, naming the entity, if it has a parent
-or a negative or infinite factor or repeat.
+or a negative or infinite factor or repeat, or an infinite anchor.
 
 ## Repeating textures
 
@@ -204,7 +212,8 @@ blend with those at the opposite edge, and a texture drawn once would get a fain
 `width` and `height` are. The sprite shows `width / tileWidth` repeats across and
 `height / tileHeight` down, and a count that is not whole cuts the last repeat short. The repeats
 start at the sprite's top-left corner. A tile size of 0, the default, stretches the texture along
-that axis.
+that axis. `Sprite.tiled(region, width, height, scale)` sets both to the region's size times
+`scale`, so `scale = 2f` below would give the same floor.
 
 <!-- snippet: tiled-floor -->
 ```kotlin
@@ -273,15 +282,20 @@ After the scene leaves, it keeps its last value.
 cycle when a pause ends, because that clock never stopped. A bob computed from the scene's clock
 goes on from where it was.
 
+A scene system reads its own scene as `app.scenes.current`: a scene's systems run only while it is
+on top, so the scene on top is always theirs. App-level systems can find the stack empty and read
+`currentOrNull` instead.
+
 <!-- snippet: scene-clock -->
 ```kotlin
-lateinit var play: Scene
-play = buildScene("play") {
+val play = buildScene("play") {
     addSystem(Phase.UPDATE) { app ->
+        // A scene's systems run only while it is on top, so current is this scene.
+        val scene = app.scenes.current
         // The clock stops under a pause scene, so the bob goes on from where it stopped.
-        app.world.get(lantern, Transform).y = 300f + sin(play.elapsedSeconds * 3f) * 6f
+        app.world.get(lantern, Transform).y = 300f + sin(scene.elapsedSeconds * 3f) * 6f
         // The round lasts a minute of play, not a minute of pause.
-        if (play.elapsed >= 60.seconds) app.scenes.replace(gameOver)
+        if (scene.elapsed >= 60.seconds) app.scenes.replace(gameOver)
     }
 }
 ```

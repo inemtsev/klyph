@@ -13,6 +13,7 @@ import klyph.platform.ImageException
 import klyph.platform.SamplerAddress
 import klyph.platform.SamplerFilter
 import klyph.platform.createTexture
+import klyph.platform.fillCircle
 import klyph.render.SpriteSheet
 import klyph.render.Texture
 import klyph.render.TextureRegion

@@ -178,8 +178,9 @@ internal class SpriteRenderer(
      * @throws IllegalArgumentException if [fixedStepAlpha] is below 0 or above 1.
      * @throws IllegalStateException if a sprite with a tile size has a texture that does not repeat
      *   or a region that does not cover its whole texture, or a tile size is negative, or if a
-     *   sprite's origin is infinite or not a number, or if a [ParallaxLayer] has a parent or a factor
-     *   or repeat that is negative, infinite or not a number. The message names the entity.
+     *   sprite's origin is infinite or not a number, or if a [ParallaxLayer] has a parent, a factor
+     *   or repeat that is negative, infinite or not a number, or an anchor that is infinite or not a
+     *   number. The message names the entity.
      */
     public fun extract(world: World, camera: Camera, fixedStepAlpha: Float = 1f): Int =
         extract(world, camera, fixedStepAlpha, null, null)

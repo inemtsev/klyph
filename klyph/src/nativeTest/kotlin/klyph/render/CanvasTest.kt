@@ -257,8 +257,10 @@ class CanvasTest {
         assertEquals(2, canvas.quadCount)
         assertSame(DrawSpace.SCREEN, canvas.quads.spaceAt(0))
         // The line is 32 wide at scale 2 and ends at x = 100: A covers 68..84, B 84..100.
-        assertEquals(listOf(76f, 18f), canvas.floats(0, 0, 2))
-        assertEquals(listOf(92f, 18f), canvas.floats(1, 0, 2))
+        assertNear(listOf(76f, 18f), canvas.quadAt(0).positionOf(0.5f, 0.5f))
+        assertNear(listOf(92f, 18f), canvas.quadAt(1).positionOf(0.5f, 0.5f))
+        // Every glyph is written at the anchor, with the anchor as its origin.
+        assertEquals(listOf(100f, 10f), canvas.floats(1, 0, 2))
         assertEquals(listOf(16f, 16f), canvas.floats(1, 4, 6))
     }
 
@@ -270,9 +272,9 @@ class CanvasTest {
         canvas.drawText(builtIn.font, "AB", x = 100f, y = 10f, scale = 2f, layer = 5, shadow = shadow)
         assertEquals(4, canvas.quadCount, "Every glyph twice: the shadow pass, then the text.")
         // The text's A covers 100..116 and 10..26, centred on (108, 18); the shadow is 3 right and 4 down.
-        assertEquals(listOf(111f, 22f), canvas.floats(0, 0, 2))
-        assertEquals(listOf(127f, 22f), canvas.floats(1, 0, 2))
-        assertEquals(listOf(108f, 18f), canvas.floats(2, 0, 2))
+        assertNear(listOf(111f, 22f), canvas.quadAt(0).positionOf(0.5f, 0.5f))
+        assertNear(listOf(127f, 22f), canvas.quadAt(1).positionOf(0.5f, 0.5f))
+        assertNear(listOf(108f, 18f), canvas.quadAt(2).positionOf(0.5f, 0.5f))
         assertEquals(listOf(0f, 0f, 0f, 1f), canvas.floats(0, 12, 16))
         assertEquals(listOf(1f, 1f, 1f, 1f), canvas.floats(2, 12, 16))
         for (quad in 0 until 4) assertEquals(5, canvas.quads.layers[quad])

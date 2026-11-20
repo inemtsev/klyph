@@ -7,7 +7,7 @@ import klyph.entity.World
 import kotlin.time.Duration
 
 /**
- * Holds the scenes of an app as a stack. Only the scene on top, [currentOrNull], runs its systems
+ * Holds the scenes of an app as a stack. Only the scene on top, [current], runs its systems
  * and advances its [Scene.elapsed] clock. A pushed scene freezes the one below: its systems do not
  * run, its clock stops, its particle emitters, sprite animations and colliders stand still, its
  * entities keep rendering. Frozen emitters neither advance nor emit, so their particles stay where
@@ -21,7 +21,9 @@ import kotlin.time.Duration
  * engine applies the queued transitions in the order they were queued at the end of the frame,
  * after the sprite pass, so every system of a frame sees the same scene. Transitions queued in the
  * `setup` block of `runApp` or in [Phase.STARTUP] apply after STARTUP, before the first frame.
- * [currentOrNull], [size], [isEmpty] and [contains] describe the stack as it stands, without the
+ * Before the transitions of a frame apply, the engine sets `App.camera`'s `offsetX` and `offsetY`
+ * to 0, so a scene pushed over a shaking one, or uncovered by a pop, is drawn centered.
+ * [current], [size], [isEmpty] and [contains] describe the stack as it stands, without the
  * queued transitions.
  *
  * Applying a transition:
@@ -72,6 +74,20 @@ public class SceneStack internal constructor() {
     private val transitions = ArrayList<Transition>()
     private var nextOwner = World.NO_OWNER + 1
     private var isApplying = false
+
+    /**
+     * The scene on top of the stack, whose systems run.
+     *
+     * A scene's systems run only while it is on top, so inside one of them this is always that
+     * scene, and a system reaches its own [Scene.elapsed] through it. App-level systems and the
+     * `setup` block of `runApp` can find the stack empty; they read [currentOrNull] instead.
+     *
+     * @throws NoSuchElementException if the stack is empty.
+     *
+     * @sample samples.scene.Scenes.current
+     */
+    public val current: Scene
+        get() = scenes.lastOrNull() ?: throw NoSuchElementException("Scene stack is empty.")
 
     /** The scene on top of the stack, whose systems run, or `null` if the stack is empty. */
     public val currentOrNull: Scene? get() = scenes.lastOrNull()
@@ -159,6 +175,9 @@ public class SceneStack internal constructor() {
         if (scenes.isEmpty()) return
         scenes[scenes.lastIndex].elapsed += delta
     }
+
+    /** Returns `true` while a push, pop or replace is queued and not yet applied. */
+    internal val hasQueuedTransitions: Boolean get() = transitions.isNotEmpty()
 
     /**
      * Applies every queued transition in order through [host], including those queued while they

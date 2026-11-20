@@ -30,7 +30,7 @@ systems get `app.assets`, which loads from `assets/` next to the executable unle
 keyboard, mouse and gamepad state updated at the start of INPUT, `app.commands`, the world command
 queue applied after every system, `app.resources`, shared state keyed by class, `app.audio`,
 sound effects and music, with sounds and tracks loaded through `app.assets.sound` and
-`app.assets.musicTrack`, `app.scenes`, a scene stack whose top scene's systems run and whose scenes own
+`app.assets.musicTrack`, `app.scenes`, a scene stack whose top scene (`current`, or `currentOrNull` when it may be empty) runs its systems and whose scenes own
 the entities they spawn and each keep a clock, `Scene.elapsed` (`elapsedSeconds` as a `Float`), that
 counts only the time the scene is on top (`Time.elapsed` runs whatever scene is on top, and `Time.elapsedSeconds` and
 `fixedDeltaSeconds` are the `Float` seconds of `elapsed` and `fixedDelta`, as `deltaSeconds` is of `delta`), `app.collisions`,
@@ -59,13 +59,15 @@ texture, sprite sheet and font gets when its call passes none), picks linear or 
 clamped (the default) or repeating addressing, `Assets` caches a texture by path, filter and address, `app.assets.region(path)` returns the whole of one as a
 `TextureRegion` (`texture` is for tiling and hand-cut regions),
 and a `Sprite` with `tileWidth` or `tileHeight` (world units before the entity's scale, 0 stretches
-that axis) or `Canvas.drawTiled` repeats a texture loaded with `address = SamplerAddress.REPEAT`
+that axis; `Sprite.tiled(region, width, height, scale)` sets both to the region's size times `scale`) or `Canvas.drawTiled` repeats a texture loaded with `address = SamplerAddress.REPEAT`
 across a larger area, the region having to cover the whole texture (a `check` naming the entity when
 the sprite is drawn, a `require` in `drawTiled`), with the sprite renderer holding one sampler for
 each filter and address pair, a `Sprite`'s `originX` and `originY` (fractions of the quad's size from its
 top-left corner, 0.5 by default, as `Canvas.drawSprite`'s) set where its `Transform` lies on the quad and
 are what rotation, scale and flips pivot about, carried in the last two floats of the record's size row
-(`Text`, particle and plain `QuadBuffer.add` quads write 0.5, a flipped axis records `1 - origin` so the
+(particle and plain `QuadBuffer.add` quads write 0.5, a `Text` glyph is written at the text's
+position with that point as its origin, in the glyph's own fractions and so mostly outside 0 to 1, so
+the vertex shader turns it about the text's position and nothing is rotated on the CPU, a flipped axis records `1 - origin` so the
 picture mirrors about the origin, and a non-finite origin is a `check` failure naming the entity when the
 sprite is drawn), and `app.window` has `cursor` (`CursorMode`,
 hidden only while over the window), `setCursor(image, hotspotX, hotspotY)`, `mode` (`WindowMode`,
@@ -85,13 +87,15 @@ left, `ParticleEmitter.burst(region, count, …)` makes such a one-shot emitter 
 toward a point, `Camera.bounds` keeps the view inside a `Rect`, and `Camera.offsetX`/`offsetY` shift
 the view on top of both for a shake (`worldToScreen`, `screenToWorld` and the projection add them;
 `follow`, `lookAt` and `clampToBounds` never read or change them, so the view can show past the
-bounds by the offset); a `ParallaxLayer(factorX, factorY = factorX, repeatX = 0f, repeatY = 0f)` on a root entity
-with a `Transform` and a `Sprite` is drawn at its transform plus `1 - factor` times the view (the camera after
+bounds by the offset; both keep their value until the game changes them or a scene transition
+applies, which zeroes them, so a scene pushed over a shake is drawn centered); a `ParallaxLayer(factorX, factorY = factorX, repeatX = 0f, repeatY = 0f, anchorX = 0f,
+anchorY = 0f)` on a root entity with a `Transform` and a `Sprite` is drawn at its transform plus `1 - factor` times
+the view less the anchor (the view at which it sits at its transform; the view is the camera after
 its bounds clamp plus `offsetX`/`offsetY`, so a factor-0 sky does not shake), and with a repeat once for each
 period the bounding box of the view touches, at most `ParallaxLayer.MAX_COPIES`; the internal `ParallaxPlan`
 plans the copies at the start of `SpriteRenderer.extract`, which also sizes the record buffers, layer sprites
 are written before the ordinary sprites of their group, and a `check` naming the entity rejects a layer on a
-child or with a negative or non-finite factor or repeat; `app.drawnPositionOf(entity)` (`World.drawnPositionOf(entity, alpha)`) returns
+child, with a negative or non-finite factor or repeat or with a non-finite anchor; `app.drawnPositionOf(entity)` (`World.drawnPositionOf(entity, alpha)`) returns
 where the renderer draws an entity this frame, through the internal `drawnTransform` that the sprite
 pass and the text pass share (a child's world transform is composed on the call from its chain's
 current transforms by the internal `composeWorldTransform`, so a parent moved since the last
@@ -111,7 +115,7 @@ every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` 
 `Wave` resource and shown in the HUD, drifters and divers that swoop at the ship, and every fifth
 wave is a boss with 12 hit points, a health bar drawn in world space and bullets on the
 `ENEMY_BULLET` layer; `KLYPH_AUTOPILOT=1` plays itself, with 4 enemies a wave so a 90 second run
-reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the brick, cap, window and girder tiles and the one-off art are painted into `Image`s at startup with `Image.fillRect`, `fillCircle` and `set`; the one-off art (air conditioner, skyline, clouds, pylon, star) is then drawn into one sheet image with `Image.draw` (alpha blending, clipped like the shapes) and uploaded as one texture, a `SheetLayout` setting the pieces in a row with their edge texels repeated one texel outwards, each building being `Sprite`s that repeat the tiles (`SamplerAddress.REPEAT` textures, one each because a tiled sprite repeats a whole texture, `tileWidth`/`tileHeight`) with props standing on `originY = 1f`, the sky is one `DrawSpace.BACKGROUND` quad, the clouds and skyline are `ParallaxLayer` sprites, the camera follows `app.drawnPositionOf(hero)` and shakes through `Camera.offsetX`, a respawn calls `snapInterpolation`, and the title's hero, the pickups and the end screens read their scene's `elapsed`; the autopilot plans again every fixed step, probing for the roof's end with `floorBelowOrNull` and for walls ahead with `sweepCollider` and following jump arcs with `slideCollider`, and fails at exit if it took no ring and stomped no enemy), `benchmarks`
+reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the brick, cap, window and girder tiles and the one-off art are painted into `Image`s at startup with `Image.fillRect`, `fillCircle` and `set`; the one-off art (air conditioner, skyline, clouds, pylon, star) is then drawn into one sheet image with `Image.draw` (alpha blending, clipped like the shapes) and uploaded as one texture, a `SheetLayout` setting the pieces in a row with their edge texels repeated one texel outwards, each building being `Sprite`s that repeat the tiles (`SamplerAddress.REPEAT` textures, one each because a tiled sprite repeats a whole texture, `Sprite.tiled`) with props standing on `originY = 1f`, the sky is one `DrawSpace.BACKGROUND` quad, the clouds and skyline are `ParallaxLayer` sprites anchored at the camera's start, the camera follows `app.drawnPositionOf(hero)` and shakes through `Camera.offsetX`, a respawn calls `snapInterpolation`, and the title's hero, the pickups and the end screens read their scene's `elapsed`; the autopilot plans again every fixed step, probing for the roof's end with `floorBelowOrNull` and for walls ahead with `sweepCollider` and following jump arcs with `slideCollider`, and fails at exit if it took no ring and stomped no enemy), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`), and
@@ -121,7 +125,12 @@ reference in `klyph-gradle-plugin/README.md`; an included build through `pluginM
 their targets, SDL3 link flags, asset sync, `run`, `runRelease` and `distribute` from it; its
 library mode, `com.eventslooped.klyph.library`, does the same without executables or their tasks
 for the engine modules; it is a separate Gradle build, so its unit and TestKit tests run with
-`./gradlew -p klyph-gradle-plugin check`, not with the root `check`). `./gradlew check`
+`./gradlew -p klyph-gradle-plugin check`, not with the root `check`), and `tools/detekt-rules`
+(klyph's own detekt rules, the `api-style` rule set: `FunctionKDocStartsWithVerb`,
+`BooleanBehaviorParameter` and `StatefulClassWithoutToString`, the API_STYLE rules stock detekt
+cannot express, written against the PSI alone; a separate JVM build the root settings include with
+`includeBuild`, so the `detektPlugins` dependency `klyph.lint` declares resolves to its jar; its
+tests run with `./gradlew -p tools/detekt-rules check`, not with the root `check`). `./gradlew check`
 runs every module's tests and samples plus the interop-import rule; a single module's tests run
 with `:<module>:macosArm64Test`. GPU, window, event and audio device functions, `runApp`, `App` and
 `Assets` have no samples because they need a display or a device; `Audio` has samples because it
@@ -137,7 +146,9 @@ metadata), `klyph.publish` their Maven publications, `CompileShadersTask` the sh
 (`dev.detekt`, whose version is in `gradle/libs.versions.toml` with every other third-party
 version), whose `detekt` task, part of `check`, reads `config/detekt/detekt.yml` and the module's
 `detekt-baseline.xml` (`./gradlew detektBaseline` rewrites them) and runs without type resolution
-on Kotlin/Native. `klyph.docs`, applied through
+on Kotlin/Native, with the `api-style` rules of `tools/detekt-rules` on for `klyph` and
+`klyph-platform` only (excluded by path in `detekt.yml`, whose `config.excludes` keeps their
+section out of validation because the plugin build, which reads the same file, does not load them). `klyph.docs`, applied through
 `klyph.publish`, configures Dokka for the two published modules: `@sample` bodies from
 `samples/src/nativeTest/kotlin`, module documentation from `docs/klyph.md` and
 `docs/klyph-platform.md`, and source links to GitHub. `./gradlew dokkaGenerate` writes the
@@ -172,6 +183,7 @@ CI job (no display, no GPU) uses it; the Windows job runs it in bash like its ot
 ./gradlew :benchmarks:benchmarkCollisionsOffscreen -Pklyph.sprites=10000 -Pklyph.cell=64
 ./gradlew :benchmarks:benchmarkParticlesOffscreen -Pklyph.sprites=100000   # 100 emitters of 1000
 ./gradlew :benchmarks:benchmarkDrawnOffscreen -Pklyph.sprites=10000   # drawnPositionOf for each of 10000 interpolated sprites
+./gradlew :benchmarks:benchmarkOverlapsOffscreen -Pklyph.sprites=10000   # Overlap.otherOrNull against contains plus otherThan
 ./gradlew :benchmarks:benchmarkMixer                            # headless, no window or device
 ./gradlew :benchmarks:benchmarkMixer -Pklyph.music=games/shooter/assets/music.ogg
 ./gradlew :benchmarks:benchmarkList
@@ -182,7 +194,7 @@ tasks run the release build. Every `KLYPH_*` variable below can be given as a Gr
 instead (`-Pklyph.sprites=…`, `-Pklyph.frames=…`, `-Pklyph.offscreen=1`, `-Pklyph.vsync=1`,
 `-Pklyph.validation=1`, `-Pklyph.autopilot=1`, `-Pklyph.music=…`, and `-Pklyph.frameDelta=0.016` for
 `KLYPH_FRAME_DELTA`, a name of several words being camelCase), which is how the IntelliJ run configurations in
-`.run/` pass them. `sprites`, `hierarchy`, `collisions`, `particles` and `drawn` each have a
+`.run/` pass them. `sprites`, `hierarchy`, `collisions`, `particles`, `drawn` and `overlaps` each have a
 `benchmark<Name>` task in a window and a `benchmark<Name>Offscreen` task, which sets
 `KLYPH_OFFSCREEN=1` and 2000 frames; a run's summary skips a warm-up of one second or a quarter
 of the frame limit, whichever is shorter;
@@ -281,7 +293,7 @@ UPDATE, count down `Lifetime` and advance `Fade`, advance particles, advance spr
 (publishing `AnimationFinished`), LATE_UPDATE, propagate transforms, RENDER, queue the overlay on
 `app.canvas`, clamp `app.camera` to its bounds, plan the `ParallaxLayer` copies from it, draw sprites,
 `Text`, particles and `app.canvas` (BACKGROUND runs with the screen projection, WORLD runs with the
-camera's, then SCREEN runs with the screen projection again) and present, apply scene transitions, quit if `AppConfig.frameLimit`
+camera's, then SCREEN runs with the screen projection again) and present, apply scene transitions (zeroing `app.camera`'s `offsetX`/`offsetY` when one applied), quit if `AppConfig.frameLimit`
 or `timeLimit` is reached. Inside FIXED_UPDATE, `isJustPressed` and `isJustReleased` count fixed
 steps instead of frames: `ButtonStates` stamps each change with the number of the step that will see
 it, from the `StepClock` the loop advances through `Input.beginFixedStep`, so the first step after a

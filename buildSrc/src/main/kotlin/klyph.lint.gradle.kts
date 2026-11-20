@@ -28,6 +28,11 @@ detekt {
 // version of the plugin itself.
 dependencies.addProvider("detektPlugins", detekt.toolVersion.map { "dev.detekt:detekt-rules-libraries:$it" })
 
+// klyph's own rule set, api-style: the API_STYLE.md rules stock detekt cannot express. The root
+// settings include its build, tools/detekt-rules, which Gradle builds before the first detekt run.
+// config/detekt/detekt.yml keeps it to the library modules.
+dependencies.add("detektPlugins", "com.eventslooped.klyph.tools:detekt-rules")
+
 // The compiled shaders (compileShaders) are generated into src.
 tasks.withType<Detekt>().configureEach {
     exclude("**/generated/**")

@@ -83,6 +83,10 @@ jobs:
       - name: Test and publish the Gradle plugin to mavenLocal
         run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
 
+      # The tests of klyph's own detekt rules; check above only builds their jar for detekt.
+      - name: Test the detekt rules
+        run: ./gradlew --no-daemon -p tools/detekt-rules check
+
       # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
       # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.
       # The runner has no display or GPU, so the game is linked, not run.
@@ -201,6 +205,10 @@ jobs:
       - name: Test and publish the Gradle plugin to mavenLocal
         run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
 
+      # The tests of klyph's own detekt rules; check above only builds their jar for detekt.
+      - name: Test the detekt rules
+        run: ./gradlew --no-daemon -p tools/detekt-rules check
+
       # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
       # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.
       # The script passes $SDL3_PREFIX on as sdl3.prefix, the SDL built above.
@@ -305,6 +313,10 @@ jobs:
       # The plugin's unit and TestKit tests, then its jar and marker to ~/.m2 for the consumer test.
       - name: Test and publish the Gradle plugin to mavenLocal
         run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
+
+      # The tests of klyph's own detekt rules; check above only builds their jar for detekt.
+      - name: Test the detekt rules
+        run: ./gradlew --no-daemon -p tools/detekt-rules check
 
       # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
       # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.

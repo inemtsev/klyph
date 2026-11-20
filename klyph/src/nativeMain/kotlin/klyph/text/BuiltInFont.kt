@@ -2,6 +2,7 @@ package klyph.text
 
 import klyph.platform.Color
 import klyph.platform.Image
+import klyph.platform.fill
 import klyph.render.Texture
 import klyph.render.TextureRegion
 

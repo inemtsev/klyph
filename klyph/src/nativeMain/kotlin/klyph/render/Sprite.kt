@@ -40,7 +40,8 @@ import klyph.platform.Color
  * enlarges the repeats along with the rest of the quad. A count that is not whole cuts the last
  * repeat short, and the repeats start at the quad's top-left corner wherever the origin puts it.
  * A tile size of 0, the default, stretches the region across that dimension as usual, so setting
- * only [tileWidth] repeats the texture along the quad and stretches it down.
+ * only [tileWidth] repeats the texture along the quad and stretches it down. [Sprite.tiled] makes a
+ * sprite that repeats its region at the region's own size, or a multiple of it.
  *
  * Repeating needs a texture created with [klyph.platform.SamplerAddress.REPEAT], such as one
  * loaded with `App.assets.texture(path, address = SamplerAddress.REPEAT)`, and a [region] that
@@ -103,6 +104,33 @@ public class Sprite(
             "flippedY=$isFlippedY, visible=$isVisible, region=$region)"
     }
 
-    /** Component key for [Sprite]. */
-    public companion object : ComponentType<Sprite>("Sprite")
+    /** Component key for [Sprite], and a factory of sprites that repeat their region. */
+    public companion object : ComponentType<Sprite>("Sprite") {
+        /**
+         * Creates a sprite of [width] by [height] world units that repeats [region] at the region's
+         * own size times [scale], one repeat every `region.width * scale` units across and
+         * `region.height * scale` down, so the art keeps its size whatever the size of the quad.
+         *
+         * The result is the sprite the constructor makes with [Sprite.tileWidth] and
+         * [Sprite.tileHeight] set to those sizes, and the rest of its properties at their defaults;
+         * set them on the result before it is added, such as its [Sprite.layer] or its origin. As
+         * for any sprite with a tile size, the region must cover the whole of a texture created with
+         * [klyph.platform.SamplerAddress.REPEAT], which the engine checks when it draws the sprite.
+         *
+         * Has no sample because creating a [Texture] needs a GPU device, which samples cannot open.
+         *
+         * @throws IllegalArgumentException if [scale] is not positive and finite, or if the tile size
+         * it gives, `region.width * scale` by `region.height * scale`, is not positive and finite,
+         * such as when a huge [scale] overflows to infinity.
+         */
+        public fun tiled(region: TextureRegion, width: Float, height: Float, scale: Float = 1f): Sprite {
+            require(scale > 0f && scale.isFinite()) { "Tile scale $scale is not positive and finite." }
+            val tileWidth = region.width * scale
+            val tileHeight = region.height * scale
+            require(tileWidth > 0f && tileWidth.isFinite() && tileHeight > 0f && tileHeight.isFinite()) {
+                "Tile size ${tileWidth}x$tileHeight from scale $scale is not positive and finite."
+            }
+            return Sprite(region, width, height, tileWidth = tileWidth, tileHeight = tileHeight)
+        }
+    }
 }

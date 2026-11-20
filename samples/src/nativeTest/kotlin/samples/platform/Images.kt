@@ -2,7 +2,11 @@ package samples.platform
 
 import klyph.platform.Color
 import klyph.platform.Image
+import klyph.platform.draw
 import klyph.platform.drawLine
+import klyph.platform.fill
+import klyph.platform.fillCircle
+import klyph.platform.fillRect
 import klyph.platform.withAlpha
 import samples.Sample
 import samples.assertPrints

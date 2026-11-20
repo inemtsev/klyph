@@ -44,13 +44,13 @@ internal val collisionBenchmark: Benchmark = Benchmark(
 }
 
 /** The width and height of the square the circles move in, in world units. */
-private const val AREA = 4000f
+internal const val AREA = 4000f
 
 /**
  * Adds [count] circles with radii from 4 to 12 at random positions in the area, each moving at 20
  * to 100 world units per second in a random direction, with seed 42 so every run is the same.
  */
-private fun spawnCircles(world: World, region: TextureRegion, count: Int) {
+internal fun spawnCircles(world: World, region: TextureRegion, count: Int) {
     val random = Random(42)
     repeat(count) {
         val entity = world.create()

@@ -23,7 +23,7 @@ kotlin {
 
 // Names registered in klyph.benchmarks.Main; each gets a `benchmark<Name>` task. Windowed
 // benchmarks also get `benchmark<Name>Offscreen`; headless ones open no window, so they do not.
-val benchmarkNames = listOf("sprites", "hierarchy", "collisions", "particles", "drawn")
+val benchmarkNames = listOf("sprites", "hierarchy", "collisions", "particles", "drawn", "overlaps")
 val headlessBenchmarkNames = listOf("mixer")
 
 // Benchmarks always run the host's release executable, which the klyph plugin creates once this

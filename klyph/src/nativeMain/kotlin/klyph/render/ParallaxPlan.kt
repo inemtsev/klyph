@@ -185,9 +185,9 @@ internal class ParallaxPlan {
             val halfHeight = max(originY, 1f - originY) * abs(sprite.height * scaleY)
             val halfX = reachAlong(rotation, halfWidth, halfHeight)
             val halfY = reachAlong(rotation, halfHeight, halfWidth)
-            val countX = planAxis(x + (1f - layer.factorX) * centerX, layer.repeatX, minX, maxX, halfX)
+            val countX = planAxis(x + (1f - layer.factorX) * (centerX - layer.anchorX), layer.repeatX, minX, maxX, halfX)
             val startX = axisStart
-            val countY = planAxis(y + (1f - layer.factorY) * centerY, layer.repeatY, minY, maxY, halfY)
+            val countY = planAxis(y + (1f - layer.factorY) * (centerY - layer.anchorY), layer.repeatY, minY, maxY, halfY)
             val total = min(countX * countY, ParallaxLayer.MAX_COPIES)
             if (total == 0) return@drawnTransform
             copies[slot] = total
@@ -258,8 +258,8 @@ private fun floorMod(value: Float, period: Float): Float {
 
 /**
  * Checks that this layer, which belongs to [entity], can be drawn: the entity has no [parent],
- * neither factor is negative, infinite or not a number, and neither repeat is. The messages name
- * the entity, as those of a tiled sprite do.
+ * neither factor is negative, infinite or not a number, neither repeat is, and neither anchor is
+ * infinite or not a number. The messages name the entity, as those of a tiled sprite do.
  *
  * @throws IllegalStateException if one of those does not hold.
  */
@@ -270,6 +270,9 @@ internal fun ParallaxLayer.checkDrawable(entity: Entity, parent: Entity?) {
     }
     check(isNotNegativeAndFinite(repeatX) && isNotNegativeAndFinite(repeatY)) {
         "$entity has a ParallaxLayer with repeat ${repeatX}x$repeatY, which is negative, infinite or not a number."
+    }
+    check(anchorX.isFinite() && anchorY.isFinite()) {
+        "$entity has a ParallaxLayer with anchor ${anchorX}x$anchorY, which is infinite or not a number."
     }
 }
 

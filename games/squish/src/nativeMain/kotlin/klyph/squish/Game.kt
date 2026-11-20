@@ -7,6 +7,7 @@ import klyph.audio.Sound
 import klyph.entity.Entity
 import klyph.platform.Color
 import klyph.platform.Image
+import klyph.platform.fillCircle
 import klyph.math.degrees
 import klyph.render.TextureRegion
 import klyph.render.asRegion

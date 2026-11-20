@@ -42,6 +42,8 @@ import klyph.render.advanceFades
 import klyph.render.advanceSpriteAnimations
 import klyph.render.clampToBounds
 import klyph.render.lookAt
+import klyph.scene.SceneHost
+import klyph.scene.SceneStack
 import kotlin.time.Duration
 import kotlin.time.TimeSource
 
@@ -93,6 +95,10 @@ import kotlin.time.TimeSource
  * every phase of the frame, FIXED_UPDATE included, reads the same value. The scene transitions
  * queued during a frame apply at its end, after
  * drawing, and those queued in `setup` or STARTUP apply after STARTUP, before the first frame.
+ * Before the transitions of a frame apply, the engine sets [App.camera]'s `offsetX` and `offsetY`
+ * to 0, so a scene pushed over a shaking one, or uncovered by a pop, is drawn centered unless its
+ * `onEnter` action or its systems set an offset again. Otherwise an offset keeps its value from
+ * frame to frame until the game changes it.
  * After the last frame every scene leaves the stack, top first, running its `onExit` action and
  * losing its entities, and then SHUTDOWN runs.
  *
@@ -228,6 +234,20 @@ private fun pointsOf(pixels: Int, density: Float): Float = (pixels / density).co
  */
 internal fun AppConfig.frameDeltaOf(measured: Duration): Duration = frameDelta ?: measured
 
+/**
+ * Applies the transitions queued on this stack through [host] at the end of a frame. When any is
+ * queued, it first sets [camera]'s offset to 0, so the scene that ends up on top is drawn centered
+ * unless its `onEnter` action sets an offset; a frame that changes no scene leaves the offset as
+ * the game set it.
+ */
+internal fun SceneStack.applyFrameTransitions(host: SceneHost, camera: Camera) {
+    if (hasQueuedTransitions) {
+        camera.offsetX = 0f
+        camera.offsetY = 0f
+    }
+    applyTransitions(host)
+}
+
 /** Runs [app]'s phases: startup, frames until a quit request, shutdown. */
 private class FrameLoop(
     private val app: App,
@@ -335,7 +355,7 @@ private class FrameLoop(
         pass.render(app.world, app.camera, app.canvas, app.clearColor, time.fixedStepAlpha, stats)
         lap(Phase.RENDER.ordinal, mark)
 
-        app.applySceneTransitions()
+        app.applyFrameTransitions()
         time.endFrame()
         if (isLimitReached()) app.quit()
         stats.entityCount = app.world.entityCount

@@ -11,6 +11,7 @@ import klyph.math.Rect
 import klyph.math.Vec2
 import klyph.platform.Color
 import klyph.platform.Image
+import klyph.platform.SamplerAddress
 import klyph.platform.SamplerFilter
 import klyph.platform.Scancode
 import klyph.platform.withAlpha
@@ -58,6 +59,17 @@ class SpritesAndAnimation {
             // The origin (0.5, 1) is the middle of the bottom edge, so the Transform is at the hero's feet.
             add(Transform, Transform(x = 640f, y = 500f))
             add(Sprite, Sprite(hero, originX = 0.5f, originY = 1f))
+        }
+        // end snippet
+    }
+
+    fun App.spawnBrickWall() {
+        // snippet: tiled
+        val bricks = assets.texture("bricks.png", filter = SamplerFilter.NEAREST, address = SamplerAddress.REPEAT)
+        commands.spawn {
+            add(Transform, Transform(x = 640f, y = 600f))
+            // A wall of 1280 by 240 units with the 16 by 16 bricks drawn at twice their size, 32 by 32.
+            add(Sprite, Sprite.tiled(bricks.asRegion(), width = 1280f, height = 240f, scale = 2f))
         }
         // end snippet
     }

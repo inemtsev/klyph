@@ -98,11 +98,12 @@ class Scrolling {
         // snippet: hills
         val hills = Sprite(assets.region("hills.png"), layer = -2, originY = 1f)
         commands.spawn {
-            // The bottom edge of the strip stands on the horizon, at y = 400.
+            // At the start a copy is centered on x = 0, its bottom edge on the horizon at y = 400.
             add(Transform, Transform(x = 0f, y = 400f))
             add(Sprite, hills)
             // Half the world's speed along x, the world's own height along y, a copy every strip width.
-            add(ParallaxLayer, ParallaxLayer(0.5f, factorY = 1f, repeatX = hills.width))
+            // The camera starts looking at x = 480, and there the strip is drawn at its Transform.
+            add(ParallaxLayer, ParallaxLayer(0.5f, factorY = 1f, repeatX = hills.width, anchorX = 480f))
         }
         // end snippet
     }
@@ -136,17 +137,19 @@ class Scrolling {
         return hero
     }
 
-    fun App.bobLantern(lantern: Entity, gameOver: Scene) {
+    fun App.bobLantern(lantern: Entity, gameOver: Scene): Scene {
         // snippet: scene-clock
-        lateinit var play: Scene
-        play = buildScene("play") {
+        val play = buildScene("play") {
             addSystem(Phase.UPDATE) { app ->
+                // A scene's systems run only while it is on top, so current is this scene.
+                val scene = app.scenes.current
                 // The clock stops under a pause scene, so the bob goes on from where it stopped.
-                app.world.get(lantern, Transform).y = 300f + sin(play.elapsedSeconds * 3f) * 6f
+                app.world.get(lantern, Transform).y = 300f + sin(scene.elapsedSeconds * 3f) * 6f
                 // The round lasts a minute of play, not a minute of pause.
-                if (play.elapsed >= 60.seconds) app.scenes.replace(gameOver)
+                if (scene.elapsed >= 60.seconds) app.scenes.replace(gameOver)
             }
         }
         // end snippet
+        return play
     }
 }

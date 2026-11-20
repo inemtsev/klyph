@@ -1,7 +1,6 @@
 package samples.scene
 
 import klyph.app.Phase
-import klyph.scene.Scene
 import klyph.scene.buildScene
 import klyph.scene.elapsedSeconds
 import samples.Sample
@@ -39,15 +38,25 @@ class Scenes {
     @Sample
     fun elapsed() {
         val gameOver = buildScene("gameOver") {}
-        lateinit var play: Scene
-        play = buildScene("play") {
+        val play = buildScene("play") {
             addSystem(Phase.UPDATE) { app ->
                 // The round ends after one minute of play. The clock stands still while a pause scene is on top.
-                if (play.elapsed >= 60.seconds) app.scenes.replace(gameOver)
+                if (app.scenes.current.elapsed >= 60.seconds) app.scenes.replace(gameOver)
             }
         }
         // The engine runs the clock while the scene is on top of the stack, so a new scene reads zero.
         assertPrints(play.elapsed, "0s")
         assertPrints(play.elapsedSeconds, "0.0")
+    }
+
+    @Sample
+    fun current() {
+        val ready = buildScene("ready") {
+            addSystem(Phase.UPDATE) { app ->
+                // A scene's systems run only while it is on top, so current is the scene they belong to.
+                if (app.scenes.current.elapsed >= 3.seconds) app.scenes.pop()
+            }
+        }
+        assertPrints(ready, "Scene(name=ready, systems=1)")
     }
 }

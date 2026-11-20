@@ -119,7 +119,7 @@ class SpriteRecordTest {
     }
 
     @Test
-    fun textAndParticleRecordsHaveTheCenterAsTheirOrigin() {
+    fun particleRecordsHaveTheCenterAsTheirOriginAndTextRecordsTheAnchor() {
         val world = World()
         val label = world.create()
         world.add(label, Transform, Transform(x = 10f, y = 20f))
@@ -138,10 +138,13 @@ class SpriteRecordTest {
         assertEquals(2, world.extractTexts(1f, quads))
         assertEquals(2, world.extractParticles(quads))
         assertEquals(4, quads.count)
-        for (quad in 0 until quads.count) {
-            val origin = (6 until 8).map { quads.records[quad * SPRITE_RECORD_FLOATS + it] }
-            assertEquals(listOf(0.5f, 0.5f), origin, "Quad $quad")
-        }
+        val floats = { quad: Int, from: Int, until: Int -> (from until until).map { quads.records[quad * SPRITE_RECORD_FLOATS + it] } }
+        // A glyph sits at the text's anchor, and its origin is the anchor in the glyph's own fractions:
+        // A's top-left corner is 1 right of and 2 below it in an 8 by 10 glyph, outside 0..1.
+        for (quad in 0 until 2) assertEquals(listOf(10f, 20f), floats(quad, 0, 2), "Quad $quad")
+        assertNear(listOf(-1f / 8f, -2f / 10f), floats(0, 6, 8))
+        assertNear(listOf(11f, 22f), ShaderQuad(floats(0, 0, SPRITE_RECORD_FLOATS)).positionOf(0f, 0f))
+        for (quad in 2 until 4) assertEquals(listOf(0.5f, 0.5f), floats(quad, 6, 8), "Quad $quad")
     }
 
     @Test

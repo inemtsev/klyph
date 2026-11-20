@@ -70,4 +70,6 @@ internal class ComponentStore<T : Any>(capacity: Int) {
         size = last
         return true
     }
+
+    override fun toString(): String = "ComponentStore(size=$size)"
 }

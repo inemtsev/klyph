@@ -35,13 +35,6 @@ private val NEAR_CLOUDS = listOf(
 
 private val FAR_CLOUD_TINT = Color(0xF4F0FFC8u)
 
-/**
- * Returns the transform x that puts a layer with [factor] at [x] while the camera is at [startX],
- * where the level's left edge holds it at the start. A [ParallaxLayer] draws its sprite at its
- * transform plus `1 - factor` times the camera's x.
- */
-private fun layerX(x: Float, factor: Float, startX: Float): Float = x - (1f - factor) * startX
-
 /** App-level RENDER system: draws the sky across the whole window, under everything else. */
 fun drawSky(app: App) {
     app.canvas.drawSprite(
@@ -51,8 +44,9 @@ fun drawSky(app: App) {
 }
 
 /**
- * Spawns the far clouds, the distant city and the near clouds, placed for a camera that starts at
- * [startX]. They belong to no scene when this runs at startup, so every screen shows them.
+ * Spawns the far clouds, the distant city and the near clouds, each where its spot says while the
+ * camera looks at [startX], the layers' anchor. They belong to no scene when this runs at startup,
+ * so every screen shows them.
  */
 fun Commands.spawnBackdrop(art: Art, startX: Float) {
     spawnClouds(art, FAR_CLOUDS, Tuning.FAR_CLOUD_PARALLAX, FAR_CLOUD_TINT, Tuning.LAYER_FAR_CLOUDS, startX)
@@ -69,9 +63,9 @@ private fun Commands.spawnClouds(art: Art, clouds: List<CloudSpot>, parallax: Fl
     for (cloud in clouds) {
         spawn {
             val y = cloud.y - Tuning.WORLD_HEIGHT / 2
-            add(Transform, Transform(layerX(cloud.x, parallax, startX), y, scaleX = cloud.scale, scaleY = cloud.scale))
+            add(Transform, Transform(cloud.x, y, scaleX = cloud.scale, scaleY = cloud.scale))
             add(Sprite, Sprite(art.clouds[cloud.variant], color = color, layer = layer, originX = 0f, originY = 0f))
-            add(ParallaxLayer, ParallaxLayer(factorX = parallax, factorY = 0f, repeatX = Tuning.CLOUD_PERIOD))
+            add(ParallaxLayer, ParallaxLayer(factorX = parallax, factorY = 0f, repeatX = Tuning.CLOUD_PERIOD, anchorX = startX))
         }
     }
 }
@@ -81,8 +75,8 @@ private fun Commands.spawnSkyline(skyline: TextureRegion, startX: Float) {
     val width = skyline.width * Tuning.SKYLINE_SCALE
     val height = skyline.height * Tuning.SKYLINE_SCALE
     spawn {
-        add(Transform, Transform(layerX(0f, Tuning.SKYLINE_PARALLAX, startX), Tuning.WORLD_HEIGHT))
+        add(Transform, Transform(0f, Tuning.WORLD_HEIGHT))
         add(Sprite, Sprite(skyline, width, height, layer = Tuning.LAYER_SKYLINE, originX = 0f, originY = 1f))
-        add(ParallaxLayer, ParallaxLayer(factorX = Tuning.SKYLINE_PARALLAX, factorY = 1f, repeatX = width))
+        add(ParallaxLayer, ParallaxLayer(factorX = Tuning.SKYLINE_PARALLAX, factorY = 1f, repeatX = width, anchorX = startX))
     }
 }

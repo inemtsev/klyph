@@ -9,6 +9,10 @@ pluginManagement {
     }
 }
 
+// klyph's own detekt rules (tools/detekt-rules), which klyph.lint adds to detektPlugins by their
+// coordinates; including the build substitutes its jar for them.
+includeBuild("tools/detekt-rules")
+
 dependencyResolutionManagement {
     repositories {
         mavenCentral()

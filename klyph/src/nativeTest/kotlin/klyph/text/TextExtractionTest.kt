@@ -12,6 +12,7 @@ import klyph.platform.withAlpha
 import klyph.render.DrawSpace
 import klyph.render.QuadBuffer
 import klyph.render.SPRITE_RECORD_FLOATS
+import klyph.render.ShaderQuad
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.test.Test
@@ -24,9 +25,13 @@ class TextExtractionTest {
     private fun QuadBuffer.floats(index: Int, from: Int, until: Int): List<Float> =
         (from until until).map { records[index * SPRITE_RECORD_FLOATS + it] }
 
-    private fun assertNear(expected: List<Float>, actual: List<Float>) {
+    /** Returns where the vertex shader puts the centre of quad [index], as x and y. */
+    private fun QuadBuffer.centerOf(index: Int): List<Float> =
+        ShaderQuad(floats(index, 0, SPRITE_RECORD_FLOATS)).positionOf(0.5f, 0.5f)
+
+    private fun assertNear(expected: List<Float>, actual: List<Float>, message: String? = null) {
         assertEquals(expected.size, actual.size)
-        for (i in expected.indices) assertTrue(abs(expected[i] - actual[i]) < 1e-4f, "Expected $expected, got $actual.")
+        for (i in expected.indices) assertTrue(abs(expected[i] - actual[i]) < 1e-4f, "${message ?: ""} Expected $expected, got $actual.")
     }
 
     @Test
@@ -44,13 +49,13 @@ class TextExtractionTest {
         val first = QuadBuffer()
         world.extractTexts(0.5f, first)
         // Glyph A at scale 1: left 1, top 2, 8 x 10 texels, centre (+5, +7).
-        assertEquals(listOf(105f, 7f), first.floats(0, 0, 2), "No sweep from the spawn point at x = 0.")
+        assertNear(listOf(105f, 7f), first.centerOf(0), "No sweep from the spawn point at x = 0.")
 
         world.recordPreviousTransforms()
         transform.x = 110f
         val second = QuadBuffer()
         world.extractTexts(0.5f, second)
-        assertEquals(listOf(110f, 7f), second.floats(0, 0, 2), "From the second step on, it blends halfway from 100 to 110.")
+        assertNear(listOf(110f, 7f), second.centerOf(0), "From the second step on, it blends halfway from 100 to 110.")
     }
 
     @Test
@@ -98,10 +103,10 @@ class TextExtractionTest {
         // Glyph A at scale 1 is centred (+5, +7) from the anchor, as above.
         for ((index, entity) in entities.withIndex()) {
             val drawn = world.drawnPositionOf(entity, alpha)
-            assertEquals(listOf(drawn.x + 5f, drawn.y + 7f), quads.floats(index, 0, 2), "Quad $index, entity $entity")
+            assertNear(listOf(drawn.x + 5f, drawn.y + 7f), quads.centerOf(index), "Quad $index, entity $entity")
         }
         // The anchors are 137.5, 50, 70 and 210, so the loop above is checking real places and not the function against itself.
-        assertEquals(listOf(142.5f, 55f, 75f, 215f), entities.indices.map { quads.floats(it, 0, 1).single() })
+        assertNear(listOf(142.5f, 55f, 75f, 215f), entities.indices.map { quads.centerOf(it)[0] })
     }
 
     @Test
@@ -117,8 +122,8 @@ class TextExtractionTest {
 
         assertEquals(2, world.extractTexts(1f, quads))
         // The glyph centre is (+5, +7) times the entity's scale of 2; the shadow is 1 by 3 further, also times 2.
-        assertEquals(listOf(112f, 70f), quads.floats(0, 0, 2))
-        assertEquals(listOf(110f, 64f), quads.floats(1, 0, 2))
+        assertNear(listOf(112f, 70f), quads.centerOf(0))
+        assertNear(listOf(110f, 64f), quads.centerOf(1))
         // The shadow's alpha is its own times the text's, rounded to a byte.
         val shadowAlpha = text.shadow!!.color.withAlpha(text.shadow!!.color.alpha * text.color.alpha).alpha
         assertTrue(shadowAlpha in 0.39f..0.41f)
@@ -141,10 +146,11 @@ class TextExtractionTest {
         assertEquals(2, world.extractTexts(1f, quads))
         assertEquals(2, quads.count)
         // Glyph A: offset (1, 2), 8 x 10 texels, at scale 2: left 2, top 4, 16 x 20, centre (+10, +14).
-        assertEquals(listOf(110f, 64f, 0f), quads.floats(0, 0, 3))
+        assertNear(listOf(110f, 64f), quads.centerOf(0))
         assertEquals(listOf(16f, 20f), quads.floats(0, 4, 6))
         // The second line starts one line height of 16, times 2, lower.
-        assertEquals(listOf(110f, 96f, 0f), quads.floats(1, 0, 3))
+        assertNear(listOf(110f, 96f), quads.centerOf(1))
+        assertEquals(0f, quads.floats(1, 2, 3).single())
         assertEquals(listOf(1f, 0f, 0f, 1f), quads.floats(1, 12, 16))
         assertEquals(3, quads.layers[0])
         assertSame(DrawSpace.WORLD, quads.spaceAt(0))
@@ -165,10 +171,14 @@ class TextExtractionTest {
 
         assertEquals(2, world.extractTexts(1f, quads))
         // Centre (5, 7) from the anchor; x doubled.
-        assertEquals(listOf(110f, 57f), quads.floats(0, 0, 2))
+        assertNear(listOf(110f, 57f), quads.centerOf(0))
         assertEquals(listOf(16f, 10f), quads.floats(0, 4, 6))
         // Centre (5, 7) turned a quarter clockwise is (-7, 5).
-        assertNear(listOf(93f, 55f, (PI / 2).toFloat()), quads.floats(1, 0, 3))
+        assertNear(listOf(93f, 55f), quads.centerOf(1))
+        // The glyph is written at the anchor with the anchor as its origin, so the shader turns it about the anchor:
+        // the top-left corner is 1 right of and 2 below the anchor in an 8 by 10 glyph.
+        assertEquals(listOf(100f, 50f, (PI / 2).toFloat()), quads.floats(1, 0, 3))
+        assertNear(listOf(-1f / 8f, -2f / 10f), quads.floats(1, 6, 8))
     }
 
     @Test
@@ -184,7 +194,7 @@ class TextExtractionTest {
         val quads = QuadBuffer()
 
         assertEquals(1, world.extractTexts(1f, quads))
-        assertEquals(listOf(205f, 307f), quads.floats(0, 0, 2))
+        assertNear(listOf(205f, 307f), quads.centerOf(0))
     }
 
     @Test

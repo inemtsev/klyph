@@ -78,7 +78,17 @@ commands.spawn {
 To cover an area with one small texture, give the sprite a `tileWidth` or `tileHeight`, the size in
 world units of one repeat. The texture then repeats across the sprite instead of stretching. It
 must be loaded with `address = SamplerAddress.REPEAT`; [Scrolling worlds](scrolling.md) has the
-rules for tiling.
+rules for tiling. `Sprite.tiled` sets both tile sizes to the region's own size, times `scale`:
+
+<!-- snippet: tiled -->
+```kotlin
+val bricks = assets.texture("bricks.png", filter = SamplerFilter.NEAREST, address = SamplerAddress.REPEAT)
+commands.spawn {
+    add(Transform, Transform(x = 640f, y = 600f))
+    // A wall of 1280 by 240 units with the 16 by 16 bricks drawn at twice their size, 32 by 32.
+    add(Sprite, Sprite.tiled(bricks.asRegion(), width = 1280f, height = 240f, scale = 2f))
+}
+```
 
 Within one layer, sprites are grouped by texture, so where two sprites with different textures
 overlap in the same layer, which one is on top is not defined. Give them different layers. Each

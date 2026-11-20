@@ -65,4 +65,4 @@ internal val drawnBenchmark: Benchmark = Benchmark(
 
 /** Returns how many garbage collections the process has run so far. */
 @OptIn(NativeRuntimeApi::class, ExperimentalStdlibApi::class)
-private fun collectionCount(): Long = GC.lastGCInfo?.epoch ?: 0L
+internal fun collectionCount(): Long = GC.lastGCInfo?.epoch ?: 0L

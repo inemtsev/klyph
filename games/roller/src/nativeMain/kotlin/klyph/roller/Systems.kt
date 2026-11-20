@@ -268,8 +268,7 @@ fun tumble(app: App) {
 
 /** Spins the rings, bobs the hearts, and turns the enemies the way they go, by the play scene's clock. */
 fun animatePickups(app: App) {
-    // A scene's systems run only while it is on top, so there is always a scene here.
-    val scene = app.scenes.currentOrNull ?: return
+    val scene = app.scenes.current
     val seconds = scene.elapsedSeconds
     val world = app.world
     world.forEach(Ring, Transform) { _, ring, transform ->
@@ -455,6 +454,7 @@ fun Run.followCamera(app: App) {
     if (shake > 0f) {
         shake -= dt
         // The strength fades to 0 with the shake, so the frame it ends in puts the offset back to 0.
+        // A scene transition zeroes it too, so a pause or end screen pushed mid-shake is centered.
         val strength = Tuning.CAMERA_SHAKE * max(0f, shake) / Tuning.CAMERA_SHAKE_SECONDS
         camera.offsetX = (game.random.nextFloat() * 2f - 1f) * strength
     }
