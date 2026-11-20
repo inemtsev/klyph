@@ -22,6 +22,8 @@ public class Attachments internal constructor(private val particles: Particles, 
                 override fun letGo(p: Int) {
                     for (a in 0 until slots.end) if (slots.isAlive(a) && particle[a] == p) remove(a)
                 }
+
+                override fun letGoAll() = clear()
             },
         )
         bodies.register(
@@ -29,6 +31,8 @@ public class Attachments internal constructor(private val particles: Particles, 
                 override fun letGo(b: Int) {
                     for (a in 0 until slots.end) if (slots.isAlive(a) && body[a] == b) remove(a)
                 }
+
+                override fun letGoAll() = clear()
             },
         )
     }
@@ -99,6 +103,10 @@ public class Attachments internal constructor(private val particles: Particles, 
 
     internal fun remove(a: Int) {
         slots.remove(a)
+    }
+
+    internal fun clear() {
+        slots.clear()
     }
 
     /** Returns `true` if [attachment] is still there. */

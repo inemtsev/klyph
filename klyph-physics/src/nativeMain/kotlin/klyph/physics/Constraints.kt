@@ -28,6 +28,8 @@ public class Constraints internal constructor(private val particles: Particles) 
         particles.register(
             object : ParticleHolder {
                 override fun letGo(p: Int) = forgetParticle(p)
+
+                override fun letGoAll() = clear()
             },
         )
     }

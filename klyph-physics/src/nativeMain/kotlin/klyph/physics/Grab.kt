@@ -30,6 +30,10 @@ public class Grab internal constructor(private val world: PhysicsWorld) {
                 override fun letGo(b: Int) {
                     if (body == b) body = -1
                 }
+
+                override fun letGoAll() {
+                    body = -1
+                }
             },
         )
         world.particles.register(
@@ -39,6 +43,11 @@ public class Grab internal constructor(private val world: PhysicsWorld) {
                         particle = -1
                         pin = -1
                     }
+                }
+
+                override fun letGoAll() {
+                    particle = -1
+                    pin = -1
                 }
             },
         )

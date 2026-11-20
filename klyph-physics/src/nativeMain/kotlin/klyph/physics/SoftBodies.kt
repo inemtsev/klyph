@@ -39,6 +39,22 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
     private var linkPool = IntArray(64)
     private var linkUsed = 0
 
+    init {
+        world.particles.register(
+            object : ParticleHolder {
+                override fun letGo(p: Int) = Unit
+
+                override fun letGoAll() = clear()
+            },
+        )
+    }
+
+    internal fun clear() {
+        slots.clear()
+        particleUsed = 0
+        linkUsed = 0
+    }
+
     /** Number of soft bodies alive. */
     public val size: Int get() = slots.count
 

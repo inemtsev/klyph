@@ -1,9 +1,11 @@
 package klyph.physics
 
+import klyph.math.Vec2
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ParticlesTest {
@@ -130,5 +132,45 @@ class ParticlesTest {
         assertFalse(particles.isGrain(skin.index))
         particles.remove(grain)
         assertFalse(particles.isGrain(grain.index))
+    }
+
+    @Test
+    fun clearingParticlesDropsConstraintsAttachmentsParticleJointsSoftBodiesAndGrab() {
+        val world = PhysicsWorld(PhysicsConfig(gravity = Vec2.ZERO))
+        val ps = world.particles
+        val a = ps.add(0f, 0f)
+        val b = ps.add(10f, 0f)
+        val c = ps.add(20f, 0f)
+        world.constraints.distance(a, b)
+        world.constraints.pin(a)
+        world.constraints.bend(a, b, c)
+        world.constraints.area(listOf(a, b, ps.add(0f, 10f)))
+        val body = world.rigidBody(Shape.box(20f, 20f), 100f, 100f)
+        val otherBody = world.rigidBody(Shape.box(20f, 20f), 200f, 100f)
+        world.attach(b, body)
+        val particleJoint = world.joints.hinge(body, c, 20f, 0f)
+        val bodyJoint = world.joints.hinge(body, otherBody, 150f, 100f)
+        val blob = world.softBody(TestBodies.dome(), 300f, 100f)
+        world.grab(0f, 0f)
+
+        ps.clear()
+
+        assertEquals(0, world.constraints.linkCount)
+        assertEquals(0, world.constraints.pinCount)
+        assertEquals(0, world.constraints.bendCount)
+        assertEquals(0, world.constraints.areaCount)
+        assertEquals(0, world.attachments.size)
+        assertFalse(world.joints.isAlive(particleJoint))
+        assertTrue(world.joints.isAlive(bodyJoint), "body-to-body joints stay")
+        assertEquals(0, world.softBodies.size)
+        assertFalse(world.softBodies.isAlive(blob))
+        assertNull(world.hand.particleOrNull)
+
+        // New level's particles take slots 0..1 and stay untouched by the old level's constraints.
+        val nextA = ps.add(500f, 500f)
+        val nextB = ps.add(600f, 500f)
+        repeat(10) { world.step(TestBodies.DT) }
+        assertEquals(500f, ps.xOf(nextA), 0.01f)
+        assertEquals(600f, ps.xOf(nextB), 0.01f)
     }
 }

@@ -403,10 +403,13 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
         free[freeCount++] = b
     }
 
-    /** Removes every body. Slots start from 0 again. */
+    /** Removes every body and every joint, attachment and grab that holds them. Slots start from 0 again. */
     public fun clear() {
+        for (i in 0 until holders.size) holders[i].letGoAll()
         alive.fill(false, 0, end)
         asleep.fill(false, 0, end)
+        invMass.fill(0f, 0, end)
+        invInertia.fill(0f, 0, end)
         sleepingCount = 0
         end = 0
         freeCount = 0
@@ -831,4 +834,7 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
 internal interface RigidBodyHolder {
     /** Lets go of everything that holds rigid body [b], which is being removed. */
     fun letGo(b: Int)
+
+    /** Lets go of every rigid body, because the store is being cleared. */
+    fun letGoAll()
 }

@@ -215,4 +215,31 @@ class RigidBodiesTest {
         repeat(10) { world.step(dt) }
         assertEquals(200f, bodies.xOf(newcomer), 0.01f, "new body is not pulled to the old attachment")
     }
+
+    @Test
+    fun clearingBodiesDropsJointsAttachmentsAndGrab() {
+        val world = space()
+        val bodies = world.rigidBodies
+        val a = world.rigidBody(Shape.box(40f, 40f), 100f, 100f)
+        val b = world.rigidBody(Shape.circle(15f), 110f, 100f)
+        val hinge = world.joints.hinge(a, b, 110f, 100f)
+        val p = world.particles.add(100f, 100f, mass = Particles.STATIC)
+        val tie = world.attach(p, a)
+        world.grab(100f, 100f)
+
+        bodies.clear()
+
+        assertEquals(0, world.joints.size)
+        assertFalse(world.joints.isAlive(hinge))
+        assertEquals(0, world.attachments.size)
+        assertFalse(world.attachments.isAlive(tie))
+        assertEquals(null, world.hand.bodyOrNull)
+
+        val nextA = world.rigidBody(Shape.box(40f, 40f), 300f, 300f)
+        val nextB = world.rigidBody(Shape.circle(15f), 310f, 300f)
+        repeat(30) { world.step(dt) }
+        val dx = bodies.xOf(nextB) - bodies.xOf(nextA)
+        val dy = bodies.yOf(nextB) - bodies.yOf(nextA)
+        assertTrue(dx * dx + dy * dy > 25f * 25f, "new bodies collide instead of inheriting the old joint")
+    }
 }

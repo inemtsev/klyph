@@ -54,6 +54,10 @@ public class Joints internal constructor(private val particles: Particles, priva
                 override fun letGo(p: Int) {
                     for (j in 0 until slots.end) if (slots.isAlive(j) && endB[j] == particle(p)) remove(j)
                 }
+
+                override fun letGoAll() {
+                    for (j in 0 until slots.end) if (slots.isAlive(j) && endB[j] < WORLD) remove(j)
+                }
             },
         )
         bodies.register(
@@ -63,6 +67,8 @@ public class Joints internal constructor(private val particles: Particles, priva
                         if (bodyA[j] == b || endB[j] == b) remove(j)
                     }
                 }
+
+                override fun letGoAll() = clear()
             },
         )
     }
@@ -257,6 +263,11 @@ public class Joints internal constructor(private val particles: Particles, priva
         slots.remove(j)
         onBody[bodyA[j]]--
         if (endB[j] >= 0) onBody[endB[j]]--
+    }
+
+    internal fun clear() {
+        slots.clear()
+        onBody.fill(0)
     }
 
     /** Returns `true` if [joint] is still there: not removed and not broken. */
