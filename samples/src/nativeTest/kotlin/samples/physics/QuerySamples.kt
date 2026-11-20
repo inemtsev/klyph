@@ -7,6 +7,7 @@ import klyph.physics.PhysicsWorld
 import klyph.physics.QueryTargets
 import klyph.physics.RayHit
 import klyph.physics.Shape
+import klyph.physics.rigidBody
 import samples.Sample
 import samples.assertPrints
 

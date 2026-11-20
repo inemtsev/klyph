@@ -6,6 +6,9 @@ import klyph.physics.SoftBodyShape
 import klyph.physics.SoftBodyTuning
 import klyph.physics.SolidGrid
 import klyph.physics.SolidTags
+import klyph.physics.centerXOf
+import klyph.physics.maxYOf
+import klyph.physics.softBody
 import samples.Sample
 import samples.assertPrints
 import kotlin.test.assertTrue

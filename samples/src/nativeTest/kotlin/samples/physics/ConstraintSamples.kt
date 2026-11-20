@@ -5,6 +5,7 @@ import klyph.physics.chain
 import klyph.physics.cloth
 import klyph.physics.rope
 import klyph.physics.PhysicsWorld
+import klyph.physics.restLength
 import samples.Sample
 import samples.assertPrints
 import kotlin.test.assertTrue

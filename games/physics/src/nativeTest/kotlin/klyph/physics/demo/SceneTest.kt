@@ -4,6 +4,13 @@ import klyph.physics.Particle
 import klyph.physics.PhysicsWorld
 import klyph.physics.Ring
 import klyph.physics.SoftBody
+import klyph.physics.centerXOf
+import klyph.physics.length
+import klyph.physics.maxXOf
+import klyph.physics.maxYOf
+import klyph.physics.minXOf
+import klyph.physics.minYOf
+import klyph.physics.restLength
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.test.Test

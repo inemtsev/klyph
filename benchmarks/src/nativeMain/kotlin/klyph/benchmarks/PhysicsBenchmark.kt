@@ -6,6 +6,8 @@ import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
 import klyph.physics.SoftBodyShape
 import klyph.physics.SolidGrid
+import klyph.physics.rigidBody
+import klyph.physics.softBody
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource

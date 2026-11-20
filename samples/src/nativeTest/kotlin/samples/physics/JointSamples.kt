@@ -5,6 +5,8 @@ import klyph.physics.JointEnd
 import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
 import klyph.physics.rope
+import klyph.physics.attach
+import klyph.physics.rigidBody
 import samples.Sample
 import samples.assertPrints
 import kotlin.math.PI

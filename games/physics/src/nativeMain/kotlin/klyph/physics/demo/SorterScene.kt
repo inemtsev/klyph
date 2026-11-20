@@ -12,6 +12,10 @@ import klyph.physics.TouchKind
 import klyph.physics.TouchSide
 import klyph.physics.Touches
 import klyph.physics.DebugDraw
+import klyph.physics.centerXOf
+import klyph.physics.centerYOf
+import klyph.physics.rigidBody
+import klyph.physics.softBody
 import klyph.platform.Color
 import klyph.render.Canvas
 import kotlin.math.atan2

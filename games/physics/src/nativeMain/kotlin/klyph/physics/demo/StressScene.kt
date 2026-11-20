@@ -5,6 +5,8 @@ import klyph.physics.ParticleCollision
 import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
 import klyph.physics.DebugDraw
+import klyph.physics.rigidBody
+import klyph.physics.softBody
 import klyph.platform.Color
 import klyph.render.Canvas
 import kotlin.time.TimeSource

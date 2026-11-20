@@ -3,6 +3,8 @@ package klyph.physics.demo
 import klyph.physics.Particle
 import klyph.physics.PhysicsWorld
 import klyph.physics.RigidBody
+import klyph.physics.centerXOf
+import klyph.physics.centerYOf
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

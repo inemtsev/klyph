@@ -8,6 +8,7 @@ import klyph.physics.Motion
 import klyph.physics.PhysicsLayers
 import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
+import klyph.physics.rigidBody
 import samples.Sample
 import samples.assertPrints
 import kotlin.math.PI

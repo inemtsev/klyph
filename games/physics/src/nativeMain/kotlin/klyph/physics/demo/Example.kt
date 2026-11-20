@@ -11,6 +11,7 @@ import klyph.physics.Shape
 import klyph.physics.DebugDraw
 import klyph.physics.PhysicsBody
 import klyph.physics.addPhysics
+import klyph.physics.rigidBody
 import klyph.platform.Color
 import klyph.render.Sprite
 import klyph.render.lookAt

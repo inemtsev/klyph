@@ -10,6 +10,7 @@ import klyph.physics.PhysicsWorld
 import klyph.physics.RigidBody
 import klyph.physics.Shape
 import klyph.physics.DebugDraw
+import klyph.physics.rigidBody
 import klyph.platform.Color
 import klyph.render.Canvas
 import kotlin.math.cos

@@ -8,6 +8,9 @@ import klyph.physics.SoftBodyTuning
 import klyph.physics.SolidShape
 import klyph.physics.SolidTags
 import klyph.physics.DebugDraw
+import klyph.physics.centerXOf
+import klyph.physics.minYOf
+import klyph.physics.softBody
 import klyph.platform.Color
 import klyph.render.Canvas
 import kotlin.math.PI

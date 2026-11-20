@@ -302,13 +302,7 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
         }
     }
 
-    /** Returns the mean position of [body]'s ring particles, across. */
-    public fun centerXOf(body: SoftBody): Float = centerX(body.index)
-
     internal fun centerX(body: Int): Float = ringMean(body) { world.particles.x(it) }
-
-    /** Returns the mean position of [body]'s ring particles, down. */
-    public fun centerYOf(body: SoftBody): Float = centerY(body.index)
 
     internal fun centerY(body: Int): Float = ringMean(body) { world.particles.y(it) }
 
@@ -322,23 +316,11 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
 
     internal fun meanVelocityY(body: Int): Float = ringMean(body) { world.velocityY(it) }
 
-    /** Returns the left edge of [body]'s ring. */
-    public fun minXOf(body: SoftBody): Float = minX(body.index)
-
     internal fun minX(body: Int): Float = ringExtreme(body, -1f) { world.particles.x(it) }
-
-    /** Returns the right edge of [body]'s ring. */
-    public fun maxXOf(body: SoftBody): Float = maxX(body.index)
 
     internal fun maxX(body: Int): Float = ringExtreme(body, 1f) { world.particles.x(it) }
 
-    /** Returns the top edge of [body]'s ring. */
-    public fun minYOf(body: SoftBody): Float = minY(body.index)
-
     internal fun minY(body: Int): Float = ringExtreme(body, -1f) { world.particles.y(it) }
-
-    /** Returns the bottom edge of [body]'s ring. */
-    public fun maxYOf(body: SoftBody): Float = maxY(body.index)
 
     internal fun maxY(body: Int): Float = ringExtreme(body, 1f) { world.particles.y(it) }
 
@@ -475,4 +457,52 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
 
         override fun toString(): String = "Ring(size=$size)"
     }
+}
+
+/** Returns the mean position of [body]'s ring particles, across. */
+public fun SoftBodies.centerXOf(body: SoftBody): Float {
+    val ring = ringOf(body)
+    var sum = 0f
+    for (i in 0 until ring.size) sum += ring.xAt(i)
+    return sum / ring.size
+}
+
+/** Returns the mean position of [body]'s ring particles, down. */
+public fun SoftBodies.centerYOf(body: SoftBody): Float {
+    val ring = ringOf(body)
+    var sum = 0f
+    for (i in 0 until ring.size) sum += ring.yAt(i)
+    return sum / ring.size
+}
+
+/** Returns the left edge of [body]'s ring. */
+public fun SoftBodies.minXOf(body: SoftBody): Float {
+    val ring = ringOf(body)
+    var best = ring.xAt(0)
+    for (i in 1 until ring.size) best = min(best, ring.xAt(i))
+    return best
+}
+
+/** Returns the right edge of [body]'s ring. */
+public fun SoftBodies.maxXOf(body: SoftBody): Float {
+    val ring = ringOf(body)
+    var best = ring.xAt(0)
+    for (i in 1 until ring.size) best = max(best, ring.xAt(i))
+    return best
+}
+
+/** Returns the top edge of [body]'s ring. */
+public fun SoftBodies.minYOf(body: SoftBody): Float {
+    val ring = ringOf(body)
+    var best = ring.yAt(0)
+    for (i in 1 until ring.size) best = min(best, ring.yAt(i))
+    return best
+}
+
+/** Returns the bottom edge of [body]'s ring. */
+public fun SoftBodies.maxYOf(body: SoftBody): Float {
+    val ring = ringOf(body)
+    var best = ring.yAt(0)
+    for (i in 1 until ring.size) best = max(best, ring.yAt(i))
+    return best
 }

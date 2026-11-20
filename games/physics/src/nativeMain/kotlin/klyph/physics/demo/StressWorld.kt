@@ -6,6 +6,8 @@ import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
 import klyph.physics.RigidBody
 import klyph.physics.SoftBodyShape
+import klyph.physics.rigidBody
+import klyph.physics.softBody
 
 /**
  * The world the performance targets are measured on: up to [BOXES] rigid boxes in a block on the

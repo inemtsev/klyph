@@ -7,6 +7,7 @@ import klyph.physics.Shape
 import klyph.physics.SolidGrid
 import klyph.physics.SolidTags
 import klyph.physics.TouchSide
+import klyph.physics.rigidBody
 import samples.Sample
 import samples.assertPrints
 import kotlin.time.Duration.Companion.seconds

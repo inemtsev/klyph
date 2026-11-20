@@ -206,55 +206,6 @@ public class PhysicsWorld(
     }
 
     /**
-     * Adds a soft body of [shape] with its middle at [centerX] and its bottom on [baseY], and returns
-     * its handle in [softBodies].
-     *
-     * @sample samples.physics.SoftBodySamples.add
-     */
-    public fun softBody(
-        shape: SoftBodyShape,
-        centerX: Float,
-        baseY: Float,
-        tuning: SoftBodyTuning = SoftBodyTuning(),
-        material: Material = Material.DEFAULT,
-    ): SoftBody = softBodies.add(shape, centerX, baseY, tuning, material = material)
-
-    /**
-     * Adds a rigid body made of [shape] with the shape's origin at ([x], [y]), turned by [angle]
-     * radians, and returns its handle in [rigidBodies]. Its mass and inertia come from the shape's
-     * size and [density].
-     *
-     * @throws IllegalArgumentException if [density] is not more than 0.
-     *
-     * @sample samples.physics.RigidBodySamples.rigidBody
-     */
-    public fun rigidBody(
-        shape: Shape,
-        x: Float,
-        y: Float,
-        angle: Float = 0f,
-        density: Float = RigidBodies.DENSITY,
-        material: Material = Material.DEFAULT,
-        kind: BodyKind = BodyKind.DYNAMIC,
-    ): RigidBody = rigidBodies.add(listOf(shape), x, y, angle, density, material, kind)
-
-    /**
-     * Adds a rigid body made of several [shapes], such as a hammer of two boxes, and returns its
-     * handle: see [RigidBodies.add].
-     *
-     * @throws IllegalArgumentException if [shapes] is empty or [density] is not more than 0.
-     */
-    public fun rigidBody(
-        shapes: List<Shape>,
-        x: Float,
-        y: Float,
-        angle: Float = 0f,
-        density: Float = RigidBodies.DENSITY,
-        material: Material = Material.DEFAULT,
-        kind: BodyKind = BodyKind.DYNAMIC,
-    ): RigidBody = rigidBodies.add(shapes, x, y, angle, density, material, kind)
-
-    /**
      * Returns whether the ray from ([fromX], [fromY]) to ([toX], [toY]) hits anything of [targets],
      * and writes the first hit into [hit]: what it hit, the point, the surface's normal there and how
      * far along the ray.
@@ -300,17 +251,6 @@ public class PhysicsWorld(
         found: Overlaps,
         targets: QueryTargets = QueryTargets.EVERYTHING,
     ): Int = queries.queryBox(left, top, right, bottom, found, targets)
-
-    /**
-     * Holds [particle] to [body] at the point where the particle is now, as softly as [compliance],
-     * so each drags the other, as a rope tied to a crate does. Returns the handle in [attachments].
-     *
-     * @throws IllegalArgumentException if [particle] or [body] is gone, or [compliance] is negative.
-     *
-     * @sample samples.physics.AttachmentSamples.attach
-     */
-    public fun attach(particle: Particle, body: RigidBody, compliance: Float = 0f): Attachment =
-        attachments.attach(particle, body, compliance)
 
     /** Returns the velocity of [particle] across, in units per second, over the last substep. */
     public fun velocityXOf(particle: Particle): Float = particles.movedX(particle.index) / substepLength
@@ -368,3 +308,64 @@ public class PhysicsWorld(
         }
     }
 }
+
+/**
+ * Adds a soft body of [shape] with its middle at [centerX] and its bottom on [baseY], and returns
+ * its handle in [PhysicsWorld.softBodies].
+ *
+ * @sample samples.physics.SoftBodySamples.add
+ */
+public fun PhysicsWorld.softBody(
+    shape: SoftBodyShape,
+    centerX: Float,
+    baseY: Float,
+    tuning: SoftBodyTuning = SoftBodyTuning(),
+    material: Material = Material.DEFAULT,
+): SoftBody = softBodies.add(shape, centerX, baseY, tuning, material = material)
+
+/**
+ * Adds a rigid body made of [shape] with the shape's origin at ([x], [y]), turned by [angle]
+ * radians, and returns its handle in [PhysicsWorld.rigidBodies]. Its mass and inertia come from
+ * the shape's size and [density].
+ *
+ * @throws IllegalArgumentException if [density] is not more than 0.
+ *
+ * @sample samples.physics.RigidBodySamples.rigidBody
+ */
+public fun PhysicsWorld.rigidBody(
+    shape: Shape,
+    x: Float,
+    y: Float,
+    angle: Float = 0f,
+    density: Float = RigidBodies.DENSITY,
+    material: Material = Material.DEFAULT,
+    kind: BodyKind = BodyKind.DYNAMIC,
+): RigidBody = rigidBodies.add(listOf(shape), x, y, angle, density, material, kind)
+
+/**
+ * Adds a rigid body made of several [shapes], such as a hammer of two boxes, and returns its
+ * handle: see [RigidBodies.add].
+ *
+ * @throws IllegalArgumentException if [shapes] is empty or [density] is not more than 0.
+ */
+public fun PhysicsWorld.rigidBody(
+    shapes: List<Shape>,
+    x: Float,
+    y: Float,
+    angle: Float = 0f,
+    density: Float = RigidBodies.DENSITY,
+    material: Material = Material.DEFAULT,
+    kind: BodyKind = BodyKind.DYNAMIC,
+): RigidBody = rigidBodies.add(shapes, x, y, angle, density, material, kind)
+
+/**
+ * Holds [particle] to [body] at the point where the particle is now, as softly as [compliance],
+ * so each drags the other, as a rope tied to a crate does. Returns the handle in
+ * [PhysicsWorld.attachments].
+ *
+ * @throws IllegalArgumentException if [particle] or [body] is gone, or [compliance] is negative.
+ *
+ * @sample samples.physics.AttachmentSamples.attach
+ */
+public fun PhysicsWorld.attach(particle: Particle, body: RigidBody, compliance: Float = 0f): Attachment =
+    attachments.attach(particle, body, compliance)

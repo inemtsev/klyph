@@ -32,6 +32,9 @@ import klyph.physics.addPhysics
 import klyph.physics.cloth
 import klyph.physics.physics
 import klyph.physics.rope
+import klyph.physics.attach
+import klyph.physics.rigidBody
+import klyph.physics.softBody
 import klyph.platform.Color
 import klyph.platform.Scancode
 import klyph.render.Sprite

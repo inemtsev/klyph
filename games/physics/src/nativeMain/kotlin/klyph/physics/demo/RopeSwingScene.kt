@@ -10,6 +10,7 @@ import klyph.physics.Strand
 import klyph.physics.DebugDraw
 import klyph.physics.chain
 import klyph.physics.rope
+import klyph.physics.softBody
 import klyph.platform.Color
 import klyph.render.Canvas
 

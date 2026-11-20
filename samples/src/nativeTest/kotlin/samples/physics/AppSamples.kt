@@ -6,6 +6,7 @@ import klyph.physics.Physics
 import klyph.physics.PhysicsBody
 import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
+import klyph.physics.rigidBody
 import samples.Sample
 import samples.assertPrints
 import kotlin.test.assertTrue

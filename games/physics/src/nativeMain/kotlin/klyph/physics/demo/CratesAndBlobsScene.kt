@@ -12,6 +12,9 @@ import klyph.physics.SoftBodyShape
 import klyph.physics.Strand
 import klyph.physics.DebugDraw
 import klyph.physics.rope
+import klyph.physics.attach
+import klyph.physics.rigidBody
+import klyph.physics.softBody
 import klyph.platform.Color
 import klyph.render.Canvas
 import kotlin.math.PI

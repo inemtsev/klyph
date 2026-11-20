@@ -5,6 +5,7 @@ import klyph.physics.Material
 import klyph.physics.PhysicsConfig
 import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
+import klyph.physics.rigidBody
 import samples.Sample
 import samples.assertPrints
 import kotlin.test.assertTrue

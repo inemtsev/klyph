@@ -26,26 +26,26 @@ public class Strand internal constructor(
     /** The particle at the end. */
     public val last: Particle get() = particles.last()
 
-    /** Returns how long it is now in [world], along its particles. */
-    public fun length(world: PhysicsWorld): Float {
-        val ps = world.particles
-        var sum = 0f
-        for (i in 1 until particles.size) {
-            val dx = ps.xOf(particles[i]) - ps.xOf(particles[i - 1])
-            val dy = ps.yOf(particles[i]) - ps.yOf(particles[i - 1])
-            sum += sqrt(dx * dx + dy * dy)
-        }
-        return sum
-    }
-
-    /** Returns how long it is at rest in [world]: the sum of its links' rest lengths. */
-    public fun restLength(world: PhysicsWorld): Float {
-        var sum = 0f
-        for (link in links) sum += world.constraints.restLengthOf(link)
-        return sum
-    }
-
     override fun toString(): String = "Strand(particles=${particles.size}, links=${links.size}, bends=${bends.size})"
+}
+
+/** Returns how long this strand is now in [world], along its particles. */
+public fun Strand.length(world: PhysicsWorld): Float {
+    val ps = world.particles
+    var sum = 0f
+    for (i in 1 until particles.size) {
+        val dx = ps.xOf(particles[i]) - ps.xOf(particles[i - 1])
+        val dy = ps.yOf(particles[i]) - ps.yOf(particles[i - 1])
+        sum += sqrt(dx * dx + dy * dy)
+    }
+    return sum
+}
+
+/** Returns how long this strand is at rest in [world]: the sum of its links' rest lengths. */
+public fun Strand.restLength(world: PhysicsWorld): Float {
+    var sum = 0f
+    for (link in links) sum += world.constraints.restLengthOf(link)
+    return sum
 }
 
 /**
