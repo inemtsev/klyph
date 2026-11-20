@@ -79,6 +79,8 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
      * returns its handle. Each ring particle weighs [particleMass]; the core is [SoftBodyShape.coreMass]
      * times that. Pass the arguments after [baseY] by name.
      *
+     * @throws IllegalArgumentException if [particleMass] is not more than 0.
+     *
      * @sample samples.physics.SoftBodySamples.add
      */
     public fun add(
@@ -98,6 +100,7 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
         particleMass: Float = 1f,
         material: Material = Material.DEFAULT,
     ): Int {
+        require(particleMass > 0f) { "Particle mass $particleMass is not more than 0." }
         val n = shape.ringCount
         var minX = shape.ringX[0]
         var maxX = minX

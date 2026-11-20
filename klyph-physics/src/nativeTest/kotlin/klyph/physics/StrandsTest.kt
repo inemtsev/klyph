@@ -139,7 +139,22 @@ class StrandsTest {
         val world = PhysicsWorld()
         assertFailsWith<IllegalArgumentException> { world.rope(0f, 0f, 10f, 0f, segments = 0) }
         assertFailsWith<IllegalArgumentException> { world.rope(5f, 5f, 5f, 5f, segments = 3) }
+        assertFailsWith<IllegalArgumentException> { world.rope(0f, 0f, 10f, 0f, segments = 3, mass = 0f) }
+        assertFailsWith<IllegalArgumentException> { world.rope(0f, 0f, 10f, 0f, segments = 3, radius = -1f) }
+        assertFailsWith<IllegalArgumentException> { world.rope(0f, 0f, 10f, 0f, segments = 3, compliance = -1f) }
+        assertFailsWith<IllegalArgumentException> { world.rope(0f, 0f, 10f, 0f, segments = 3, bendCompliance = -1f) }
+        assertFailsWith<IllegalArgumentException> { world.rope(0f, 0f, 10f, 0f, segments = 3, tearAt = 0.5f) }
+        assertFailsWith<IllegalArgumentException> { world.rope(0f, 0f, 10f, 0f, segments = 3, tearAt = -1f) }
         assertFailsWith<IllegalArgumentException> { world.cloth(0f, 0f, columns = 1, rows = 5, spacing = 8f) }
+        assertFailsWith<IllegalArgumentException> { world.cloth(0f, 0f, columns = 3, rows = 3, spacing = 8f, mass = 0f) }
+        assertFailsWith<IllegalArgumentException> { world.cloth(0f, 0f, columns = 3, rows = 3, spacing = 8f, radius = -1f) }
+        assertFailsWith<IllegalArgumentException> { world.cloth(0f, 0f, columns = 3, rows = 3, spacing = 8f, compliance = -1f) }
+        assertFailsWith<IllegalArgumentException> { world.cloth(0f, 0f, columns = 3, rows = 3, spacing = 8f, shearCompliance = -1f) }
+        assertFailsWith<IllegalArgumentException> { world.cloth(0f, 0f, columns = 3, rows = 3, spacing = 8f, bendCompliance = -1f) }
+        assertFailsWith<IllegalArgumentException> { world.cloth(0f, 0f, columns = 3, rows = 3, spacing = 8f, tearAt = 0.5f) }
+        assertEquals(0, world.particles.size, "failed builders leave no particles behind")
+        assertEquals(0, world.constraints.linkCount, "failed builders leave no links behind")
+        assertEquals(0, world.constraints.bendCount, "failed builders leave no bends behind")
         val rope = world.rope(0f, 0f, 10f, 0f, segments = 2)
         assertFailsWith<IllegalArgumentException> { world.constraints.setTear(rope.links[0], 0.5f) }
     }

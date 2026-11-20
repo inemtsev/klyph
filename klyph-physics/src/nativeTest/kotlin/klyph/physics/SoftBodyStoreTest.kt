@@ -4,6 +4,7 @@ import klyph.math.Vec2
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -126,5 +127,15 @@ class SoftBodyStoreTest {
         repeat(30) { world.step(dt) }
         assertEquals(1f, bodies.maxEdgeStretchOf(ball), 0.01f)
         assertEquals(800f, bodies.areaOf(box), 8f)
+    }
+
+    @Test
+    fun invalidParticleMassLeavesNoSoftBodyOrParticlesBehind() {
+        assertFailsWith<IllegalArgumentException> { bodies.add(dome(), 0f, 0f, particleMass = 0f) }
+        assertFailsWith<IllegalArgumentException> { bodies.add(dome(), 0f, 0f, particleMass = -1f) }
+        assertEquals(0, bodies.size)
+        assertEquals(0, world.particles.size)
+        assertEquals(0, world.constraints.linkCount)
+        assertEquals(0, world.constraints.areaCount)
     }
 }

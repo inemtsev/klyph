@@ -173,9 +173,10 @@ public class Joints internal constructor(private val particles: Particles, priva
         Joint(weld(a.index, b.code, x, y, compliance, breakForce))
 
     internal fun weld(a: Int, b: Int, x: Float, y: Float, compliance: Float = 0f, breakForce: Float = Float.POSITIVE_INFINITY): Int {
+        requireCompliance(compliance)
         require(breakForce > 0f) { "Break force $breakForce is not more than 0." }
         val j = add(JointKind.WELD, a, b, x, y, x, y)
-        this.compliance[j] = requireCompliance(compliance)
+        this.compliance[j] = compliance
         this.breakForce[j] = breakForce
         return j
     }
@@ -192,8 +193,9 @@ public class Joints internal constructor(private val particles: Particles, priva
         Joint(distance(a.index, b.code, ax, ay, bx, by, compliance))
 
     internal fun distance(a: Int, b: Int, ax: Float, ay: Float, bx: Float, by: Float, compliance: Float = 0f): Int {
+        requireCompliance(compliance)
         val j = add(JointKind.DISTANCE, a, b, ax, ay, bx, by)
-        this.compliance[j] = requireCompliance(compliance)
+        this.compliance[j] = compliance
         length[j] = sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
         return j
     }

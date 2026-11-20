@@ -108,7 +108,9 @@ public enum class PinnedEnds {
  * [tearAt] times its rest length breaks (0, the default, never). Its particles are as round as
  * [radius], and collide as [collision] says. Pass the arguments after the ends by name.
  *
- * @throws IllegalArgumentException if [segments] is less than 1 or the two ends are the same point.
+ * @throws IllegalArgumentException if [segments] is less than 1, the two ends are the same point,
+ * [mass] is not more than 0, [radius] is negative, [compliance] or a non-`NaN` [bendCompliance] is
+ * negative or not finite, or [tearAt] is neither 0 nor more than 1.
  *
  * @sample samples.physics.StrandSamples.rope
  */
@@ -171,6 +173,11 @@ private fun PhysicsWorld.strand(
 ): Strand {
     require(segments >= 1) { "Strand of $segments segments has fewer than 1." }
     require(fromX != toX || fromY != toY) { "Strand ends are both ($fromX, $fromY)." }
+    require(mass > 0f) { "Particle mass $mass is not more than 0." }
+    require(radius >= 0f) { "Particle radius $radius is negative." }
+    requireStrandCompliance(compliance)
+    requireOptionalCompliance(bendCompliance)
+    require(tearAt == 0f || tearAt > 1f) { "Tear stretch $tearAt is neither 0 for never nor more than 1." }
     val ps = particles
     val cs = constraints
     val pinStart = pinned == PinnedEnds.START || pinned == PinnedEnds.BOTH
@@ -211,7 +218,9 @@ private fun PhysicsWorld.strand(
  * past [tearAt] times their rest length break, and a bend across a broken link goes with it, so it
  * tears cleanly. Pass the arguments after [top] by name.
  *
- * @throws IllegalArgumentException if the sheet is smaller than 2 by 2 or [spacing] is not more than 0.
+ * @throws IllegalArgumentException if the sheet is smaller than 2 by 2, [spacing] is not finite and
+ * more than 0, [mass] is not more than 0, [radius] is negative, [compliance], [shearCompliance] or a
+ * non-`NaN` [bendCompliance] is negative or not finite, or [tearAt] is neither 0 nor more than 1.
  *
  * @sample samples.physics.StrandSamples.cloth
  */
@@ -233,7 +242,13 @@ public fun PhysicsWorld.cloth(
 ): Cloth {
     val cols = columns
     require(cols >= 2 && rows >= 2) { "Cloth of ${cols}x$rows particles is smaller than 2x2." }
-    require(spacing > 0f) { "Cloth spacing $spacing is not more than 0." }
+    require(spacing > 0f && spacing.isFinite()) { "Cloth spacing $spacing is not finite and more than 0." }
+    require(mass > 0f) { "Particle mass $mass is not more than 0." }
+    require(radius >= 0f) { "Particle radius $radius is negative." }
+    requireStrandCompliance(compliance)
+    requireStrandCompliance(shearCompliance)
+    requireOptionalCompliance(bendCompliance)
+    require(tearAt == 0f || tearAt > 1f) { "Tear stretch $tearAt is neither 0 for never nor more than 1." }
     val ps = particles
     val cs = constraints
     val grid = List(cols * rows) { k ->
@@ -269,4 +284,12 @@ public fun PhysicsWorld.cloth(
         for (col in 0 until cols) for (row in 1 until rows - 1) bends += cs.bend(at(col, row - 1), at(col, row), at(col, row + 1), bendCompliance)
     }
     return Cloth(cols, rows, grid, links, bends)
+}
+
+private fun requireStrandCompliance(compliance: Float) {
+    require(compliance >= 0f && compliance.isFinite()) { "Compliance $compliance is negative or not finite." }
+}
+
+private fun requireOptionalCompliance(compliance: Float) {
+    if (!compliance.isNaN()) requireStrandCompliance(compliance)
 }

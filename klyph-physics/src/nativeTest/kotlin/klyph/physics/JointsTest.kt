@@ -8,6 +8,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration
@@ -309,5 +310,16 @@ class JointsTest {
         world.rigidBodies.moveTo(box, 320f, 100f, world.rigidBodies.angleOf(box) + 0.5f)
         assertEquals(-sin(0.5f), world.joints.axisXOf(rail), 1e-4f)
         assertEquals(cos(0.5f), world.joints.axisYOf(rail), 1e-4f)
+    }
+
+    @Test
+    fun invalidComplianceLeavesNoOrphanWeldOrDistanceJoint() {
+        val world = PhysicsWorld()
+        val a = world.rigidBody(Shape.box(20f, 20f), 100f, 100f)
+        val b = world.rigidBody(Shape.box(20f, 20f), 140f, 100f)
+        assertFailsWith<IllegalArgumentException> { world.joints.weld(a, b, 120f, 100f, compliance = -1f) }
+        assertFailsWith<IllegalArgumentException> { world.joints.distance(a, b, 100f, 100f, 140f, 100f, compliance = -1f) }
+        assertEquals(0, world.joints.size)
+        assertFalse(world.joints.connected(a.index, b.index))
     }
 }
