@@ -12,14 +12,19 @@ class ParallaxLayers {
         // Far hills: they follow the camera at a third of the world's speed, both ways, and repeat
         // every 1024 units along x, so the view never runs out of them.
         val hills = ParallaxLayer(factorX = 0.33f, repeatX = 1024f)
-        assertPrints(hills, "ParallaxLayer(factor=0.33x0.33, repeat=1024.0x0.0)")
+        assertPrints(hills, "ParallaxLayer(factor=0.33x0.33, repeat=1024.0x0.0, anchor=0.0x0.0)")
 
         // A sky that stays where it is on the screen, and a fence nearer than the world, which
         // scrolls faster than it along x and with it along y.
         val sky = ParallaxLayer(0f)
         val fence = ParallaxLayer(factorX = 1.5f, factorY = 1f, repeatX = 256f)
-        assertPrints(sky, "ParallaxLayer(factor=0.0x0.0, repeat=0.0x0.0)")
-        assertPrints(fence, "ParallaxLayer(factor=1.5x1.0, repeat=256.0x0.0)")
+        assertPrints(sky, "ParallaxLayer(factor=0.0x0.0, repeat=0.0x0.0, anchor=0.0x0.0)")
+        assertPrints(fence, "ParallaxLayer(factor=1.5x1.0, repeat=256.0x0.0, anchor=0.0x0.0)")
+
+        // A cloud that should be at its Transform when the game starts, with the camera looking at
+        // (480, 270): that point is its anchor, and from there it drifts at a fifth of the speed.
+        val cloud = ParallaxLayer(factorX = 0.2f, factorY = 0f, anchorX = 480f, anchorY = 270f)
+        assertPrints(cloud, "ParallaxLayer(factor=0.2x0.0, repeat=0.0x0.0, anchor=480.0x270.0)")
 
         // It goes on an entity with a Transform and a Sprite, and no parent. A Sprite needs a
         // texture, which needs a GPU, so this entity has only its Transform.

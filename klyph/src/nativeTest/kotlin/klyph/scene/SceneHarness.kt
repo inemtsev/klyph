@@ -6,9 +6,12 @@ import klyph.app.Phase
 import klyph.app.Schedule
 import klyph.app.System
 import klyph.app.Time
+import klyph.app.applyFrameTransitions
 import klyph.entity.Commands
 import klyph.entity.Entity
 import klyph.entity.World
+import klyph.input.Input
+import klyph.render.Camera
 import kotlin.time.Duration
 
 /** A handle no test world ever issues, so it is never alive; stands for "not spawned yet". */
@@ -32,6 +35,12 @@ internal class SceneHarness : SceneHost {
     val schedule = Schedule()
     val stack = SceneStack()
     val log = mutableListOf<String>()
+
+    /** Stands for `App.input`, which [frame] finishes through [camera] before INPUT as the frame loop does. */
+    val input = Input()
+
+    /** Stands for `App.camera`, whose offset [frame] clears when it applies a transition, as the frame loop does. */
+    val camera = Camera(viewportWidth = 800f, viewportHeight = 600f)
 
     /** The frame clock [frame] with a duration drives, at the fixed rate of [FIXED_RATE] steps a second. */
     val time = Time(FIXED_RATE)
@@ -67,21 +76,27 @@ internal class SceneHarness : SceneHost {
         schedule.run(phase, world, commands, stack.currentOrNull, stack.currentOwner) { (it as TestSystem).action() }
     }
 
-    /** Runs each phase of a frame once, with no frame clock, and then applies the queued transitions as the frame loop does. */
+    /**
+     * Runs each phase of a frame once, with no frame clock, finishing the input before INPUT, and
+     * then applies the queued transitions as the frame loop does.
+     */
     fun frame() {
+        input.endFrame(camera)
         for (phase in FRAME_PHASES) run(phase)
-        stack.applyTransitions(this)
+        stack.applyFrameTransitions(this, camera)
     }
 
     /**
      * Runs one frame that lasted [delta] in the order `FrameLoop.frame` does: starts the frame on
-     * [time], advances the clock of the top scene, runs INPUT, one FIXED_UPDATE for every fixed step
-     * [delta] covers, UPDATE, LATE_UPDATE and RENDER, applies the queued transitions and ends the
-     * frame. Returns the number of fixed steps.
+     * [time], advances the clock of the top scene, finishes the input, runs INPUT, one FIXED_UPDATE
+     * for every fixed step [delta] covers, UPDATE, LATE_UPDATE and RENDER, applies the queued
+     * transitions, clearing the camera's offset when any is queued, and ends the frame. Returns the
+     * number of fixed steps.
      */
     fun frame(delta: Duration): Int {
         time.beginFrame(delta)
         stack.advanceClock(time.delta)
+        input.endFrame(camera)
         run(Phase.INPUT)
         val steps = stepper.accumulate(time.delta)
         repeat(steps) {
@@ -92,7 +107,7 @@ internal class SceneHarness : SceneHost {
         run(Phase.UPDATE)
         run(Phase.LATE_UPDATE)
         run(Phase.RENDER)
-        stack.applyTransitions(this)
+        stack.applyFrameTransitions(this, camera)
         time.endFrame()
         return steps
     }

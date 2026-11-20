@@ -13,11 +13,14 @@ import klyph.entity.ComponentType
  * [factorY] are the factors along each axis; [factorY] starts as [factorX], so
  * `ParallaxLayer(0.5f)` scrolls at half speed both ways.
  *
- * The sprite is drawn at its transform's position plus `1 - factor` times the point the camera
- * looks at, on each axis, which the camera then takes away again. At a factor of 1 the sprite is
- * where its transform says, and at 0 the transform is an offset from the center of the screen.
- * To start a layer at a chosen place in the world, subtract `1 - factor` times the point the
- * camera looks at when the game starts from that place, and give the rest as the transform.
+ * The sprite is drawn at `transform + (1 - factor) * (view - anchor)` on each axis, where `view`
+ * is the point the camera looks at and [anchorX] and [anchorY] are the anchor. While the camera
+ * looks at the anchor the sprite is where its transform says, whatever the factor, and as the
+ * camera moves away it moves `1 - factor` of the way with it. So to have a layer start at a chosen
+ * place in the world, give that place as the transform and the point the camera looks at when the
+ * game starts as the anchor. The anchor is 0 unless given, which draws the sprite at its transform
+ * plus `1 - factor` times the view; at a factor of 1 the sprite is where its transform says, and at
+ * 0 the transform is an offset from the center of the screen plus the anchor.
  * The point the camera looks at is [Camera.x] and [Camera.y] after the clamp to [Camera.bounds],
  * plus [Camera.offsetX] and [Camera.offsetY], so a sprite with a factor of 0 does not shake with
  * the screen and one with a factor of 1 does. An `Interpolated` entity is blended between its last
@@ -40,14 +43,16 @@ import klyph.entity.ComponentType
  * large area instead.
  *
  * Drawing the sprite throws [IllegalStateException], naming its entity, when the entity has a
- * parent, when [factorX] or [factorY] is negative, infinite or not a number, or when [repeatX] or
- * [repeatY] is negative, infinite or not a number. Every parameter has the type `Float`, so pass
- * every argument after the first by name.
+ * parent, when [factorX] or [factorY] is negative, infinite or not a number, when [repeatX] or
+ * [repeatY] is negative, infinite or not a number, or when [anchorX] or [anchorY] is infinite or
+ * not a number. Every parameter has the type `Float`, so pass every argument after the first by
+ * name.
  *
- * [toString] gives both pairs, for example `ParallaxLayer(factor=0.5x0.5, repeat=1024.0x0.0)`.
+ * [toString] gives the three pairs, for example
+ * `ParallaxLayer(factor=0.5x0.5, repeat=1024.0x0.0, anchor=480.0x0.0)`.
  *
- * @throws IllegalStateException when the sprite is drawn, if its entity has a parent or a factor or
- *   a repeat is negative, infinite or not a number.
+ * @throws IllegalStateException when the sprite is drawn, if its entity has a parent, a factor or
+ *   a repeat is negative, infinite or not a number, or an anchor is infinite or not a number.
  *
  * @sample samples.render.ParallaxLayers.parallaxLayer
  */
@@ -71,9 +76,18 @@ public class ParallaxLayer(
      * Never negative.
      */
     public var repeatY: Float = 0f,
+    /**
+     * The x in world units of the point the camera looks at when the sprite is drawn at its
+     * transform's x, or 0, the default. Usually where the camera looks when the game starts. Any
+     * finite value.
+     */
+    public var anchorX: Float = 0f,
+    /** The anchor along y, as [anchorX] is along x; 0 unless given. */
+    public var anchorY: Float = 0f,
 ) {
-    /** Returns `ParallaxLayer(factor=0.5x0.5, repeat=1024.0x0.0)`. The format may change. */
-    override fun toString(): String = "ParallaxLayer(factor=${factorX}x$factorY, repeat=${repeatX}x$repeatY)"
+    /** Returns `ParallaxLayer(factor=0.5x0.5, repeat=1024.0x0.0, anchor=480.0x0.0)`. The format may change. */
+    override fun toString(): String =
+        "ParallaxLayer(factor=${factorX}x$factorY, repeat=${repeatX}x$repeatY, anchor=${anchorX}x$anchorY)"
 
     /** Component key for [ParallaxLayer], and its limit on copies. */
     public companion object : ComponentType<ParallaxLayer>("ParallaxLayer") {

@@ -116,7 +116,9 @@ addSystem(Phase.UPDATE) { app ->
 }
 ```
 
-The engine computes `worldPosition` at the start of INPUT, through the camera as it stood then.
+The engine computes `worldPosition` at the start of INPUT, through the camera as it stood then,
+its shake offset included. The offset keeps its value until the game changes it or a scene
+transition sets it to 0, so the cursor and the picture agree during a shake.
 A camera that follows the player in LATE_UPDATE moves after that, so the value is one frame
 behind the picture. When it matters, as for a cursor drawn in the world, convert the position
 yourself after the camera has moved:

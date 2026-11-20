@@ -103,12 +103,16 @@ public class Camera(
      * to [bounds], so the view can show past the bounds by the offset. It is measured along the
      * world's axes whatever the [rotation].
      *
-     * To shake the view, set [offsetX] and [offsetY] to a new small value every frame while the
-     * shake lasts, and back to 0 when it ends. [follow] keeps easing toward its target meanwhile,
-     * and nothing has to be taken out of [x] and [y] first. Any system may set the offset, because
-     * the engine reads it when it draws the frame. `Mouse.worldPosition`, computed at INPUT through
-     * [screenToWorld], includes the offset too, so during a shake the cursor points at the world
-     * point it is really over, which moves with the view.
+     * Both offsets keep their value until the game changes them or a scene transition applies: at
+     * the end of a frame that pushes, pops or replaces a scene, the engine sets the offsets of
+     * `App.camera` to 0 before the scene's `onEnter` action runs, so a scene pushed over a shaking
+     * one, or uncovered by a pop, is drawn centered. To shake the view, set [offsetX] and [offsetY]
+     * to a new small value every frame while the shake lasts, and back to 0 when it ends. [follow]
+     * keeps easing toward its target meanwhile, and nothing has to be taken out of [x] and [y]
+     * first. Any system may set the offset, because the engine reads it when it draws the frame.
+     * `Mouse.worldPosition`, computed at INPUT through [screenToWorld], includes the offset too, so
+     * during a shake the cursor points at the world point it is really over, which moves with the
+     * view.
      *
      * @sample samples.render.Cameras.offset
      */

@@ -98,7 +98,69 @@ class ParallaxLayerTest {
         assertEquals(0.4f, layer.factorY)
         assertEquals(0f, layer.repeatX)
         assertEquals(0f, layer.repeatY)
+        assertEquals(0f, layer.anchorX)
+        assertEquals(0f, layer.anchorY)
         assertEquals(0.1f, ParallaxLayer(0.4f, 0.1f).factorY)
+    }
+
+    @Test
+    fun anAnchoredLayerIsAtItsTransformWhileTheViewIsAtTheAnchor() {
+        val world = World()
+        val layer = ParallaxLayer(0.3f, factorY = 0.5f, anchorX = 480f, anchorY = 270f)
+        val entity = world.layer(layer, x = 300f, y = 40f)
+        assertEquals(listOf(300f to 40f), world.positionsOf(entity, camera(x = 480f, y = 270f)))
+        // A view 1000 to the right and 100 lower moves it 0.7 and 0.5 of that way.
+        assertEquals(listOf(1000f to 90f), world.positionsOf(entity, camera(x = 1480f, y = 370f)))
+        // The offset is part of the view, so a shake at the anchor moves the layer by 1 - factor of it.
+        val shaken = camera(x = 470f, y = 270f).apply { offsetX = 10f; offsetY = 50f }
+        assertEquals(listOf(300f to 65f), world.positionsOf(entity, shaken))
+    }
+
+    @Test
+    fun theCopiesOfAnAnchoredLayerRepeatFromItsTransformAtTheAnchorAndMoveOnAwayFromIt() {
+        val world = World()
+        val entity = world.layer(ParallaxLayer(0.5f, factorY = 1f, repeatX = 200f, anchorX = 480f), x = 300f, y = 25f)
+        // At the anchor the copies sit at 300 + 200k; the view is 80..880 and the sprite 100 wide, so 30..930.
+        assertEquals(listOf(100f, 300f, 500f, 700f, 900f), world.positionsOf(entity, camera(x = 480f)).map { it.first })
+        assertTrue(world.positionsOf(entity, camera(x = 480f)).all { it.second == 25f })
+        // 360 to the right the strip has moved 180, to 480 + 200k, and copies from 390 to 1290 touch the view.
+        val away = world.positionsOf(entity, camera(x = 840f)).map { it.first }
+        assertEquals(listOf(480f, 680f, 880f, 1080f, 1280f), away)
+    }
+
+    @Test
+    fun anAnchorOfZeroDrawsWhereTheFormulaWithoutAnAnchorDoes() {
+        val random = Random(29)
+        repeat(200) { trial ->
+            val world = World()
+            val factorX = random.nextFloat() * 2f
+            val factorY = random.nextFloat() * 2f
+            val x = random.nextFloat() * 4000f - 2000f
+            val y = random.nextFloat() * 4000f - 2000f
+            val entity = world.layer(ParallaxLayer(factorX, factorY), x = x, y = y)
+            val camera = camera(x = random.nextFloat() * 8000f - 4000f, y = random.nextFloat() * 8000f - 4000f)
+            camera.offsetX = random.nextFloat() * 20f - 10f
+            camera.offsetY = random.nextFloat() * 20f - 10f
+            // The placement of 1.2: the transform plus 1 - factor times the view, to the bit.
+            val viewX = camera.x + camera.offsetX
+            val viewY = camera.y + camera.offsetY
+            val old = (x + (1f - factorX) * viewX) to (y + (1f - factorY) * viewY)
+            assertEquals(listOf(old), world.positionsOf(entity, camera), "Trial $trial.")
+        }
+    }
+
+    @Test
+    fun anAnchorIsTheSameAsMovingTheTransformByTheShiftAtTheAnchor() {
+        val world = World()
+        // The roller's old way: a transform of 300 - (1 - factor) * 480, with no anchor.
+        val byHand = world.layer(ParallaxLayer(0.3f, repeatX = 150f), x = 300f - 0.7f * 480f)
+        val anchored = world.layer(ParallaxLayer(0.3f, repeatX = 150f, anchorX = 480f), x = 300f)
+        for (cameraX in listOf(480f, 0f, 1234f, -700f)) {
+            val expected = world.positionsOf(byHand, camera(x = cameraX))
+            val actual = world.positionsOf(anchored, camera(x = cameraX))
+            assertEquals(expected.size, actual.size, "Camera at $cameraX.")
+            for ((a, b) in expected.zip(actual)) assertTrue(isNear(a, b), "Camera at $cameraX: $a and $b.")
+        }
     }
 
     @Test
@@ -359,7 +421,13 @@ class ParallaxLayerTest {
             val world = World()
             val sprite = Sprite(region, width = random.nextFloat() * 380f + 20f, height = random.nextFloat() * 380f + 20f)
             val turn = if (random.nextBoolean()) 0f else random.nextFloat() * 6f - 3f
-            val layer = ParallaxLayer(random.nextFloat() * 2f, random.nextFloat() * 2f, repeatX = random.nextFloat() * 470f + 30f)
+            val layer = ParallaxLayer(
+                random.nextFloat() * 2f,
+                random.nextFloat() * 2f,
+                repeatX = random.nextFloat() * 470f + 30f,
+                anchorX = if (random.nextBoolean()) 0f else random.nextFloat() * 4000f - 2000f,
+                anchorY = if (random.nextBoolean()) 0f else random.nextFloat() * 4000f - 2000f,
+            )
             // A repeat on both axes needs coarser periods for the copies to stay under the limit.
             if (random.nextBoolean()) {
                 layer.repeatX = random.nextFloat() * 350f + 150f
@@ -416,8 +484,8 @@ class ParallaxLayerTest {
         val sn = abs(sin(transform.rotation.toDouble()))
         val spriteX = (cs * width + sn * height) / 2
         val spriteY = (sn * width + cs * height) / 2
-        val x = transform.x + (1.0 - layer.factorX) * centerX
-        val y = transform.y + (1.0 - layer.factorY) * centerY
+        val x = transform.x + (1.0 - layer.factorX) * (centerX - layer.anchorX)
+        val y = transform.y + (1.0 - layer.factorY) * (centerY - layer.anchorY)
         val columns = axisCopies(x, layer.repeatX.toDouble(), centerX, viewX + spriteX)
         val rows = axisCopies(y, layer.repeatY.toDouble(), centerY, viewY + spriteY)
         val inner = HashSet<Pair<Float, Float>>()
@@ -505,6 +573,25 @@ class ParallaxLayerTest {
     }
 
     @Test
+    fun anAnchorThatIsInfiniteOrNotANumberFailsAndNamesTheEntity() {
+        val cases = listOf(
+            ParallaxLayer(0.5f, anchorX = Float.NaN) to "NaNx0.0",
+            ParallaxLayer(0.5f, anchorY = Float.POSITIVE_INFINITY) to "0.0xInfinity",
+            ParallaxLayer(0.5f, anchorX = Float.NEGATIVE_INFINITY, anchorY = 3f) to "-Infinityx3.0",
+        )
+        for ((layer, shown) in cases) {
+            val world = World()
+            val entity = world.layer(layer)
+            val error = assertFailsWith<IllegalStateException>(shown) { world.recordsOf(entity, camera()) }
+            assertEquals("Entity(0:0) has a ParallaxLayer with anchor $shown, which is infinite or not a number.", error.message)
+        }
+        // A negative anchor is a place like any other.
+        val world = World()
+        val entity = world.layer(ParallaxLayer(0.5f, anchorX = -500f, anchorY = -1e6f))
+        assertEquals(1, world.recordsOf(entity, camera()).size)
+    }
+
+    @Test
     fun theMessageNamesTheEntityThatHasTheLayer() {
         val world = World()
         world.layer(ParallaxLayer(1f))
@@ -541,9 +628,12 @@ class ParallaxLayerTest {
     }
 
     @Test
-    fun toStringShowsBothPairs() {
-        assertEquals("ParallaxLayer(factor=0.5x0.5, repeat=1024.0x0.0)", ParallaxLayer(0.5f, repeatX = 1024f).toString())
-        assertEquals("ParallaxLayer(factor=0.0x1.0, repeat=0.0x64.0)", ParallaxLayer(0f, 1f, repeatY = 64f).toString())
+    fun toStringShowsTheThreePairs() {
+        assertEquals("ParallaxLayer(factor=0.5x0.5, repeat=1024.0x0.0, anchor=0.0x0.0)", ParallaxLayer(0.5f, repeatX = 1024f).toString())
+        assertEquals(
+            "ParallaxLayer(factor=0.0x1.0, repeat=0.0x64.0, anchor=480.0x-20.0)",
+            ParallaxLayer(0f, 1f, repeatY = 64f, anchorX = 480f, anchorY = -20f).toString(),
+        )
         assertEquals("ComponentType(ParallaxLayer)", ParallaxLayer.toString())
     }
 }

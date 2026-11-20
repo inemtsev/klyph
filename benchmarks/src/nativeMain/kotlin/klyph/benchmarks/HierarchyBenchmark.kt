@@ -54,7 +54,7 @@ internal class Spin(var radiansPerSecond: Float) {
 }
 
 /** The number of entities spawned at each level of the tree. */
-private class TreeShape(val parents: Int, val children: Int, val grandchildren: Int, val childrenPerParent: Int) {
+internal class TreeShape(val parents: Int, val children: Int, val grandchildren: Int, val childrenPerParent: Int) {
     val total: Int get() = parents + children + grandchildren
 
     override fun toString(): String =
@@ -80,7 +80,7 @@ private const val GRANDCHILD_RING = 12f
  * Sizes and ring radii are the pixel constants above times [pointsPerPixel], so the GPU fills as
  * many pixels on every display as on a density-1 window.
  */
-private fun spawnTree(
+internal fun spawnTree(
     world: World,
     region: TextureRegion,
     total: Int,

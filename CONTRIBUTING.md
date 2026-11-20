@@ -65,7 +65,7 @@ opting the game in.
 | `sandbox` | Smoke test: opens a window and clears it each frame. |
 | `benchmarks` | Named benchmarks, such as `sprites` and `mixer`. |
 | `docs` | The guide pages, rendered into the Dokka site. |
-| `tools` | The consumer test, the release secrets script, the SDL3 bump script and the template that becomes `klyph-template`. |
+| `tools` | The consumer test, the release secrets script, the SDL3 bump script, the template that becomes `klyph-template`, and `detekt-rules`, klyph's own detekt rules, a separate Gradle build the root settings include. |
 
 ## Requirements
 
@@ -86,10 +86,12 @@ opting the game in.
 ./gradlew check                        # every module's tests and samples, and the interop rule
 ./gradlew :klyph:macosArm64Test        # one module's tests on the host target
 ./gradlew -p klyph-gradle-plugin check # the Gradle plugin's unit and TestKit tests
+./gradlew -p tools/detekt-rules check  # the tests of klyph's own detekt rules
 ./gradlew dokkaGenerate                # the API reference, in build/dokka/html
 ```
 
-Run `./gradlew check` and the plugin's `check` before opening a pull request. Engine tests live in
+Run `./gradlew check` and the plugin's `check` before opening a pull request, and the rules'
+`check` after changing them. Engine tests live in
 `klyph/src/nativeTest/kotlin` and `klyph-platform/src/nativeTest/kotlin`, samples in
 `samples/src/nativeTest/kotlin`, and the plugin's tests in `klyph-gradle-plugin/src/test` and
 `klyph-gradle-plugin/src/functionalTest`. Only `klyph-platform` may import `kotlinx.cinterop`,
@@ -116,6 +118,16 @@ plugin; the executables and samples are excluded by path): KDoc on every public 
 first sentence that ends, KDoc links only to public declarations, no Manager, Helper, Util,
 Wrapper, Data or Info in a class name, and no public `data class`, the last from detekt's
 `libraries` rule set, which both builds add to `detektPlugins`.
+
+The API_STYLE rules stock detekt cannot express are klyph's own, the `api-style` rule set in
+[tools/detekt-rules](tools/detekt-rules), on for `klyph` and `klyph-platform` only:
+`FunctionKDocStartsWithVerb` (a public function's KDoc opens with a third-person verb such as
+Returns or Creates), `BooleanBehaviorParameter` (no `Boolean` parameter on a public function or
+constructor, except a constructor `val` or `var` and an override's parameters) and
+`StatefulClassWithoutToString` (a public class that declares a `var` overrides `toString`). They
+read syntax only, like the rest. The rules are a separate Gradle build that the root settings
+include, so `check` builds them before detekt runs; their tests run with
+`./gradlew -p tools/detekt-rules check`.
 
 ## Games and benchmarks
 

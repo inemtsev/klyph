@@ -2,6 +2,10 @@ package klyph.roller
 
 import klyph.platform.Color
 import klyph.platform.Image
+import klyph.platform.draw
+import klyph.platform.fill
+import klyph.platform.fillCircle
+import klyph.platform.fillRect
 import klyph.platform.lerp
 import kotlin.math.abs
 import kotlin.math.sqrt

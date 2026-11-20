@@ -534,4 +534,31 @@ class SceneStackTest {
         assertEquals(0, h.stack.size)
         assertEquals(World.NO_OWNER, h.stack.currentOwner)
     }
+
+    @Test
+    fun currentThrowsOnAnEmptyStack() {
+        val h = SceneHarness()
+        val e = assertFailsWith<NoSuchElementException> { h.stack.current }
+        assertEquals("Scene stack is empty.", e.message)
+    }
+
+    @Test
+    fun currentIsTheTopSceneInsideItsSystems() {
+        val h = SceneHarness()
+        val seen = mutableListOf<Scene>()
+        val play = h.scene("play") {
+            addSystem(Phase.UPDATE, h.system { seen += h.stack.current })
+        }
+        val pause = h.scene("pause") {
+            addSystem(Phase.UPDATE, h.system { seen += h.stack.current })
+        }
+        h.stack.push(play)
+        h.applyTransitions()
+        h.frame()
+        h.stack.push(pause)
+        h.frame()
+        h.frame()
+        assertEquals(listOf(play, play, pause), seen)
+        assertSame(pause, h.stack.current)
+    }
 }

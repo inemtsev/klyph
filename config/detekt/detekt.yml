@@ -13,6 +13,9 @@
 #   KDoc on every public declaration, KDoc first sentences that end, KDoc links to public things,
 #   no Manager/Helper/Util/Wrapper/Data/Info in class names, no public data class (from the
 #   libraries rule set, a separate detekt artifact both builds add to detektPlugins).
+# - klyph's own rules, the api-style rule set from tools/detekt-rules, check the API_STYLE.md rules
+#   stock detekt cannot express, for klyph and klyph-platform only: verb-first function KDoc, no
+#   Boolean behavior parameters, toString on classes that hold var state.
 # Findings older than this file are in each module's detekt-baseline.xml.
 
 config:
@@ -20,7 +23,9 @@ config:
   warningsAsErrors: false
   checkExhaustiveness: false
   # when writing own rules with new properties, exclude the property path e.g.: ['my_rule_set', '.*>.*>[my_property]']
-  excludes: []
+  # The klyph-gradle-plugin build reads this file without loading klyph's own rules
+  # (tools/detekt-rules) and would reject their section, so validation skips it in both builds.
+  excludes: ['api-style.*']
 
 processors:
   active: true
@@ -327,6 +332,20 @@ libraries:
     allowOmitUnit: false
   LibraryEntitiesShouldNotBePublic:
     active: false
+
+# klyph's own rules (tools/detekt-rules), which only the engine build loads, for klyph and
+# klyph-platform.
+api-style:
+  active: true
+  BooleanBehaviorParameter:
+    active: true
+    excludes: ['**/games/**', '**/sandbox/**', '**/benchmarks/**', '**/samples/**', '**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/nativeTest/**', '**/functionalTest/**']
+  FunctionKDocStartsWithVerb:
+    active: true
+    excludes: ['**/games/**', '**/sandbox/**', '**/benchmarks/**', '**/samples/**', '**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/nativeTest/**', '**/functionalTest/**']
+  StatefulClassWithoutToString:
+    active: true
+    excludes: ['**/games/**', '**/sandbox/**', '**/benchmarks/**', '**/samples/**', '**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/nativeTest/**', '**/functionalTest/**']
 
 naming:
   active: true

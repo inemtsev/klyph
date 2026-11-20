@@ -1,0 +1,8 @@
+api-style:
+  active: true
+  BooleanBehaviorParameter:
+    active: true
+  FunctionKDocStartsWithVerb:
+    active: true
+  StatefulClassWithoutToString:
+    active: true

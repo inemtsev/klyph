@@ -71,6 +71,37 @@ class SpriteTilingTest {
     }
 
     @Test
+    fun tiledRepeatsTheRegionAtItsOwnSizeTimesTheScale() {
+        val atOwnSize = Sprite.tiled(ground.asRegion(), width = 80f, height = 48f)
+        assertEquals(80f, atOwnSize.width)
+        assertEquals(48f, atOwnSize.height)
+        assertEquals(16f, atOwnSize.tileWidth)
+        assertEquals(16f, atOwnSize.tileHeight)
+        assertEquals(listOf(0f, 0f, 5f, 3f), uvOf(atOwnSize))
+        // At twice its size the 16 texel region repeats every 32 units: 2.5 across, 1.5 down.
+        assertEquals(listOf(0f, 0f, 2.5f, 1.5f), uvOf(Sprite.tiled(ground.asRegion(), width = 80f, height = 48f, scale = 2f)))
+    }
+
+    @Test
+    fun tiledRejectsAScaleThatIsNotPositiveAndFinite() {
+        for (scale in listOf(0f, -1f, Float.POSITIVE_INFINITY, Float.NaN)) {
+            val error = assertFailsWith<IllegalArgumentException> {
+                Sprite.tiled(ground.asRegion(), width = 80f, height = 48f, scale = scale)
+            }
+            assertEquals("Tile scale $scale is not positive and finite.", error.message)
+        }
+    }
+
+    @Test
+    fun tiledRejectsAScaleWhoseTileSizeIsNotFinite() {
+        val scale = Float.MAX_VALUE / 2f
+        val error = assertFailsWith<IllegalArgumentException> {
+            Sprite.tiled(ground.asRegion(), width = 80f, height = 48f, scale = scale)
+        }
+        assertEquals("Tile size InfinityxInfinity from scale $scale is not positive and finite.", error.message)
+    }
+
+    @Test
     fun flipsSwapTheWrappedPairs() {
         assertEquals(listOf(5f, 0f, 0f, 3f), uvOf(tiled(80f, 48f, 16f, 16f, isFlippedX = true)))
         assertEquals(listOf(0f, 3f, 5f, 0f), uvOf(tiled(80f, 48f, 16f, 16f, isFlippedY = true)))

@@ -61,7 +61,8 @@ public class App internal constructor(
      *
      * The engine keeps its viewport equal to the window's size in points and never moves it; move,
      * zoom or rotate it from a system, such as a [Phase.LATE_UPDATE] system that follows the player,
-     * and shake it with its `offsetX` and `offsetY`.
+     * and shake it with its `offsetX` and `offsetY`. They keep their value until the game changes
+     * them or a scene transition applies, which sets both to 0.
      */
     public val camera: Camera,
     /**
@@ -116,7 +117,7 @@ public class App internal constructor(
     /**
      * The keyboard, mouse and gamepad state as of this frame. The engine updates it at the start of
      * [Phase.INPUT], before any system runs, and computes `input.mouse.worldPosition` through
-     * [camera] as it stands then.
+     * [camera] as it stands then, offset included.
      */
     public val input: Input = Input()
 
@@ -215,6 +216,11 @@ public class App internal constructor(
     /** Applies the transitions queued on [scenes]. */
     internal fun applySceneTransitions() {
         scenes.applyTransitions(sceneHost)
+    }
+
+    /** Applies the transitions queued on [scenes] at the end of a frame, centering [camera] first when any is queued. */
+    internal fun applyFrameTransitions() {
+        scenes.applyFrameTransitions(sceneHost, camera)
     }
 
     /** Makes every scene leave [scenes], top first, before [Phase.SHUTDOWN]. */

@@ -81,6 +81,15 @@ fun main() {
             val label = app.world.create()
             app.world.add(label, Transform, Transform(x = 40f, y = 120f))
             app.world.add(label, Text, Text(app.assets.defaultFont, "world text\nsecond line", scale = 2f))
+            // Turned labels, one stretched with a shadow, so a run covers glyphs the vertex shader rotates.
+            val turned = app.world.create()
+            app.world.add(turned, Transform, Transform(x = 420f, y = 300f, rotation = 20f.degrees, scaleX = 1.5f))
+            val font = app.assets.defaultFont
+            val turnedText = Text(font, "turned text\ncentered", scale = 2f, align = TextAlign.CENTER, shadow = TextShadow())
+            app.world.add(turned, Text, turnedText)
+            val tilted = app.world.create()
+            app.world.add(tilted, Transform, Transform(x = 760f, y = 220f, rotation = (-35f).degrees))
+            app.world.add(tilted, Text, Text(font, "tilted, right aligned", scale = 2f, align = TextAlign.RIGHT))
             addBackdrop(app)
             addFountain(app)
         }

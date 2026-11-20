@@ -6,7 +6,7 @@ import klyph.platform.Sdl
 import kotlin.system.exitProcess
 
 /** Every benchmark this executable can run, in the order they are listed. */
-internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, collisionBenchmark, particleBenchmark, drawnBenchmark, mixerBenchmark)
+internal val benchmarks: List<Benchmark> = listOf(spriteBenchmark, hierarchyBenchmark, collisionBenchmark, particleBenchmark, drawnBenchmark, overlapBenchmark, parentsBenchmark, mixerBenchmark)
 
 /**
  * Runs the benchmark named by the first argument. Without an argument, prints the available

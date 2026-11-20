@@ -54,8 +54,7 @@ fun Run.drawHud(app: App) {
 
 /** Draws the game's name, the hero, how to start, the best score so far and the controls. */
 fun drawTitle(app: App) {
-    // A scene's systems run only while it is on top, so there is always a scene here.
-    val seconds = app.scenes.currentOrNull?.elapsedSeconds ?: return
+    val seconds = app.scenes.current.elapsedSeconds
     val game = app.game
     val width = app.window.width.toFloat()
     val height = app.window.height.toFloat()
@@ -102,7 +101,7 @@ fun drawPause(app: App) {
  * and the total, which counts up from the score, then the best score and the way on.
  */
 fun drawComplete(app: App) {
-    val scene = app.scenes.currentOrNull ?: return
+    val scene = app.scenes.current
     val game = app.game
     val run = app.run
     val text = game.text
@@ -136,7 +135,7 @@ fun drawComplete(app: App) {
 
 /** Draws the game over screen over the frozen level: the score, the best score and the way on. */
 fun drawGameOver(app: App) {
-    val scene = app.scenes.currentOrNull ?: return
+    val scene = app.scenes.current
     val game = app.game
     val run = app.run
     val text = game.text

@@ -9,15 +9,16 @@ import klyph.platform.Color
 import klyph.platform.withAlpha
 import klyph.render.DrawSpace
 import klyph.render.QuadBuffer
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * Appends one quad per visible glyph of [text] laid out with [font] at [scale] and [align], with
  * the anchor at ([x], [y]), the block scaled by [scaleX] and [scaleY] and turned by [rotation]
  * radians about the anchor. With a [shadow], first appends the same glyphs in the shadow's color,
- * its alpha times [color]'s, with the anchor moved by the shadow's offset along the block's own
- * axes, so the shadow draws under the text in [layer]. Returns the number of quads added.
+ * its alpha times [color]'s, moved by the shadow's offset along the block's own axes, so the
+ * shadow draws under the text in [layer]. Returns the number of quads added.
+ *
+ * Every glyph is written at the anchor with the anchor as its origin, so the vertex shader turns
+ * it about the anchor as it turns a sprite about its origin, and nothing is rotated here.
  */
 internal fun QuadBuffer.addText(
     font: Font,
@@ -37,26 +38,25 @@ internal fun QuadBuffer.addText(
     val before = count
     if (shadow != null) {
         val shadowColor = shadow.color.withAlpha(shadow.color.alpha * color.alpha)
-        val dx = shadow.offsetX * scaleX
-        val dy = shadow.offsetY * scaleY
-        if (rotation == 0f) {
-            addGlyphs(font, text, x + dx, y + dy, rotation, scaleX, scaleY, scale, align, shadowColor, layer, space)
-        } else {
-            val c = cos(rotation)
-            val s = sin(rotation)
-            addGlyphs(font, text, x + dx * c - dy * s, y + dx * s + dy * c, rotation, scaleX, scaleY, scale, align, shadowColor, layer, space)
-        }
+        val offsetX = shadow.offsetX * scaleX
+        val offsetY = shadow.offsetY * scaleY
+        addGlyphs(font, text, x, y, offsetX, offsetY, rotation, scaleX, scaleY, scale, align, shadowColor, layer, space)
     }
-    addGlyphs(font, text, x, y, rotation, scaleX, scaleY, scale, align, color, layer, space)
+    addGlyphs(font, text, x, y, 0f, 0f, rotation, scaleX, scaleY, scale, align, color, layer, space)
     return count - before
 }
 
-/** Appends one quad per visible glyph of [text], as [addText] does without a shadow. */
+/**
+ * Appends one quad per visible glyph of [text], as [addText] does without a shadow, each glyph
+ * moved by ([offsetX], [offsetY]) along the block's own axes before the turn.
+ */
 private fun QuadBuffer.addGlyphs(
     font: Font,
     text: CharSequence,
     x: Float,
     y: Float,
+    offsetX: Float,
+    offsetY: Float,
     rotation: Float,
     scaleX: Float,
     scaleY: Float,
@@ -66,32 +66,18 @@ private fun QuadBuffer.addGlyphs(
     layer: Int,
     space: DrawSpace,
 ) {
-    if (rotation == 0f) {
-        font.layout(text, scale, align) { region, left, top ->
-            val width = region.width * scale
-            val height = region.height * scale
-            add(
-                region,
-                x + (left + 0.5f * width) * scaleX,
-                y + (top + 0.5f * height) * scaleY,
-                width * scaleX,
-                height * scaleY,
-                0f,
-                color,
-                layer,
-                space,
-            )
-        }
-    } else {
-        val c = cos(rotation)
-        val s = sin(rotation)
-        font.layout(text, scale, align) { region, left, top ->
-            val width = region.width * scale
-            val height = region.height * scale
-            val cx = (left + 0.5f * width) * scaleX
-            val cy = (top + 0.5f * height) * scaleY
-            add(region, x + cx * c - cy * s, y + cx * s + cy * c, width * scaleX, height * scaleY, rotation, color, layer, space)
-        }
+    font.layout(text, scale, align) { region, left, top ->
+        val width = region.width * scale * scaleX
+        val height = region.height * scale * scaleY
+        // The glyph's top-left corner lies this far from the anchor along the block's axes. The origin is
+        // the anchor as a fraction of the glyph's size, outside 0..1 for every glyph that does not cover
+        // the anchor; the shader only multiplies and subtracts with it. A glyph of no width or height
+        // draws nothing, and its origin is 0 so the record holds no NaN.
+        val cornerX = left * scaleX + offsetX
+        val cornerY = top * scaleY + offsetY
+        val originX = if (width == 0f) 0f else -cornerX / width
+        val originY = if (height == 0f) 0f else -cornerY / height
+        addAt(region, x, y, width, height, rotation, originX, originY, color, layer, space)
     }
 }
 
