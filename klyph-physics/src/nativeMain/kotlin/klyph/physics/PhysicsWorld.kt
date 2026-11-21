@@ -313,6 +313,9 @@ public class PhysicsWorld(
  * Adds a soft body of [shape] with its middle at [centerX] and its bottom on [baseY], and returns
  * its handle in [PhysicsWorld.softBodies].
  *
+ * @throws IllegalArgumentException if [centerX] or [baseY] is not finite, or any placed edge or
+ * spoke has length not finite and more than 0.
+ *
  * @sample samples.physics.SoftBodySamples.add
  */
 public fun PhysicsWorld.softBody(

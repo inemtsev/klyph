@@ -133,6 +133,9 @@ class SoftBodyStoreTest {
     fun invalidParticleMassLeavesNoSoftBodyOrParticlesBehind() {
         assertFailsWith<IllegalArgumentException> { bodies.add(dome(), 0f, 0f, particleMass = 0f) }
         assertFailsWith<IllegalArgumentException> { bodies.add(dome(), 0f, 0f, particleMass = -1f) }
+        assertFailsWith<IllegalArgumentException> { world.softBody(dome(), Float.NaN, 0f) }
+        assertFailsWith<IllegalArgumentException> { world.softBody(dome(), 0f, Float.POSITIVE_INFINITY) }
+        assertFailsWith<IllegalArgumentException> { world.softBody(dome(), 1e8f, 0f) }
         assertEquals(0, bodies.size)
         assertEquals(0, world.particles.size)
         assertEquals(0, world.constraints.linkCount)

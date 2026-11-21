@@ -80,7 +80,8 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
      * returns its handle. Each ring particle weighs [particleMass]; the core is [SoftBodyShape.coreMass]
      * times that. Pass the arguments after [baseY] by name.
      *
-     * @throws IllegalArgumentException if [particleMass] is not more than 0.
+     * @throws IllegalArgumentException if [particleMass] is not more than 0, [centerX] or [baseY] is not
+     * finite, or any placed edge or spoke has length not finite and more than 0.
      *
      * @sample samples.physics.SoftBodySamples.add
      */
@@ -101,6 +102,7 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
         particleMass: Float = 1f,
         material: Material = Material.DEFAULT,
     ): Int {
+        require(centerX.isFinite() && baseY.isFinite()) { "Soft body position ($centerX, $baseY) is not finite." }
         require(particleMass > 0f) { "Particle mass $particleMass is not more than 0." }
         val n = shape.ringCount
         var minX = shape.ringX[0]
@@ -113,6 +115,7 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
         }
         val dx = centerX - (minX + maxX) / 2f
         val dy = baseY - maxY
+        requirePlacement(shape, dx, dy)
         val body = slots.take()
         if (body == start.size) grow()
         ensurePools(n + 1, 2 * n)
@@ -431,6 +434,25 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
             if (v * direction > best * direction) best = v
         }
         return best
+    }
+
+    private fun requirePlacement(shape: SoftBodyShape, dx: Float, dy: Float) {
+        val cx = shape.coreX + dx
+        val cy = shape.coreY + dy
+        require(cx.isFinite() && cy.isFinite()) { "Soft body core ($cx, $cy) is not finite." }
+        val n = shape.ringCount
+        for (i in 0 until n) {
+            val ax = shape.ringX[i] + dx
+            val ay = shape.ringY[i] + dy
+            val j = (i + 1) % n
+            val bx = shape.ringX[j] + dx
+            val by = shape.ringY[j] + dy
+            require(ax.isFinite() && ay.isFinite()) { "Soft body point ($ax, $ay) is not finite." }
+            val edge = sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by))
+            require(edge > 0f && edge.isFinite()) { "Soft body edge $i has length $edge, not finite and more than 0." }
+            val spoke = sqrt((ax - cx) * (ax - cx) + (ay - cy) * (ay - cy))
+            require(spoke > 0f && spoke.isFinite()) { "Soft body spoke $i has length $spoke, not finite and more than 0." }
+        }
     }
 
     private fun ensurePools(particles: Int, links: Int) {

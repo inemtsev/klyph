@@ -108,9 +108,10 @@ public enum class PinnedEnds {
  * [tearAt] times its rest length breaks (0, the default, never). Its particles are as round as
  * [radius], and collide as [collision] says. Pass the arguments after the ends by name.
  *
- * @throws IllegalArgumentException if [segments] is less than 1, the two ends are the same point,
- * [mass] is not more than 0, [radius] is negative, [compliance] or a non-`NaN` [bendCompliance] is
- * negative or not finite, or [tearAt] is neither 0 nor more than 1.
+ * @throws IllegalArgumentException if [segments] is less than 1, either end is not finite, the two
+ * ends are the same point, any segment has length not finite and more than 0, [mass] is not more
+ * than 0, [radius] is negative, [compliance] or a non-`NaN` [bendCompliance] is negative or not
+ * finite, or [tearAt] is neither 0 nor more than 1.
  *
  * @sample samples.physics.StrandSamples.rope
  */
@@ -172,7 +173,7 @@ private fun PhysicsWorld.strand(
     slack: Boolean,
 ): Strand {
     require(segments >= 1) { "Strand of $segments segments has fewer than 1." }
-    require(fromX != toX || fromY != toY) { "Strand ends are both ($fromX, $fromY)." }
+    requireStrandPositions(fromX, fromY, toX, toY, segments)
     require(mass > 0f) { "Particle mass $mass is not more than 0." }
     require(radius >= 0f) { "Particle radius $radius is negative." }
     requireStrandCompliance(compliance)
@@ -218,8 +219,9 @@ private fun PhysicsWorld.strand(
  * past [tearAt] times their rest length break, and a bend across a broken link goes with it, so it
  * tears cleanly. Pass the arguments after [top] by name.
  *
- * @throws IllegalArgumentException if the sheet is smaller than 2 by 2, [spacing] is not finite and
- * more than 0, [mass] is not more than 0, [radius] is negative, [compliance], [shearCompliance] or a
+ * @throws IllegalArgumentException if the sheet is smaller than 2 by 2, [left] or [top] is not
+ * finite, [spacing] is not finite and more than 0, any placed link has length not finite and more
+ * than 0, [mass] is not more than 0, [radius] is negative, [compliance], [shearCompliance] or a
  * non-`NaN` [bendCompliance] is negative or not finite, or [tearAt] is neither 0 nor more than 1.
  *
  * @sample samples.physics.StrandSamples.cloth
@@ -242,6 +244,7 @@ public fun PhysicsWorld.cloth(
 ): Cloth {
     val cols = columns
     require(cols >= 2 && rows >= 2) { "Cloth of ${cols}x$rows particles is smaller than 2x2." }
+    require(left.isFinite() && top.isFinite()) { "Cloth origin ($left, $top) is not finite." }
     require(spacing > 0f && spacing.isFinite()) { "Cloth spacing $spacing is not finite and more than 0." }
     require(mass > 0f) { "Particle mass $mass is not more than 0." }
     require(radius >= 0f) { "Particle radius $radius is negative." }
@@ -249,6 +252,7 @@ public fun PhysicsWorld.cloth(
     requireStrandCompliance(shearCompliance)
     requireOptionalCompliance(bendCompliance)
     require(tearAt == 0f || tearAt > 1f) { "Tear stretch $tearAt is neither 0 for never nor more than 1." }
+    requireClothPositions(left, top, cols, rows, spacing)
     val ps = particles
     val cs = constraints
     val grid = List(cols * rows) { k ->
@@ -292,4 +296,48 @@ private fun requireStrandCompliance(compliance: Float) {
 
 private fun requireOptionalCompliance(compliance: Float) {
     if (!compliance.isNaN()) requireStrandCompliance(compliance)
+}
+
+private fun requireStrandPositions(fromX: Float, fromY: Float, toX: Float, toY: Float, segments: Int) {
+    require(fromX.isFinite() && fromY.isFinite()) { "Strand start ($fromX, $fromY) is not finite." }
+    require(toX.isFinite() && toY.isFinite()) { "Strand end ($toX, $toY) is not finite." }
+    require(fromX != toX || fromY != toY) { "Strand ends are both ($fromX, $fromY)." }
+    var prevX = 0f
+    var prevY = 0f
+    for (i in 0..segments) {
+        val t = i.toFloat() / segments
+        val px = fromX + (toX - fromX) * t
+        val py = fromY + (toY - fromY) * t
+        require(px.isFinite() && py.isFinite()) { "Strand point ($px, $py) is not finite." }
+        if (i > 0) {
+            val dx = px - prevX
+            val dy = py - prevY
+            val len = sqrt(dx * dx + dy * dy)
+            require(len > 0f && len.isFinite()) { "Strand segment $i has length $len, not finite and more than 0." }
+        }
+        prevX = px
+        prevY = py
+    }
+}
+
+private fun requireClothPositions(left: Float, top: Float, cols: Int, rows: Int, spacing: Float) {
+    val maxDx = requireClothAxis(left, cols, spacing, "column")
+    val maxDy = requireClothAxis(top, rows, spacing, "row")
+    val diag = sqrt(maxDx * maxDx + maxDy * maxDy)
+    require(diag > 0f && diag.isFinite()) { "Cloth shear length $diag is not finite and more than 0." }
+}
+
+private fun requireClothAxis(origin: Float, count: Int, spacing: Float, axis: String): Float {
+    var prev = origin
+    var maxStep = 0f
+    for (i in 1 until count) {
+        val pos = origin + i * spacing
+        require(pos.isFinite()) { "Cloth $axis $i position $pos is not finite." }
+        val step = pos - prev
+        val len = sqrt(step * step)
+        require(len > 0f && len.isFinite()) { "Cloth $axis $i step $len is not finite and more than 0." }
+        if (step > maxStep) maxStep = step
+        prev = pos
+    }
+    return maxStep
 }

@@ -152,6 +152,12 @@ class StrandsTest {
         assertFailsWith<IllegalArgumentException> { world.cloth(0f, 0f, columns = 3, rows = 3, spacing = 8f, shearCompliance = -1f) }
         assertFailsWith<IllegalArgumentException> { world.cloth(0f, 0f, columns = 3, rows = 3, spacing = 8f, bendCompliance = -1f) }
         assertFailsWith<IllegalArgumentException> { world.cloth(0f, 0f, columns = 3, rows = 3, spacing = 8f, tearAt = 0.5f) }
+        assertFailsWith<IllegalArgumentException> { world.rope(Float.NaN, 0f, 10f, 0f, segments = 3) }
+        assertFailsWith<IllegalArgumentException> { world.rope(0f, 0f, Float.POSITIVE_INFINITY, 0f, segments = 2) }
+        assertFailsWith<IllegalArgumentException> { world.rope(1e8f, 0f, 1e8f + 8f, 0f, segments = 16) }
+        assertFailsWith<IllegalArgumentException> { world.chain(1e8f, 0f, 1e8f + 8f, 0f, segments = 16) }
+        assertFailsWith<IllegalArgumentException> { world.cloth(Float.NaN, 0f, columns = 3, rows = 3, spacing = 8f) }
+        assertFailsWith<IllegalArgumentException> { world.cloth(1e8f, 0f, columns = 3, rows = 3, spacing = 1f) }
         assertEquals(0, world.particles.size, "failed builders leave no particles behind")
         assertEquals(0, world.constraints.linkCount, "failed builders leave no links behind")
         assertEquals(0, world.constraints.bendCount, "failed builders leave no bends behind")
