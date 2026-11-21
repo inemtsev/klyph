@@ -383,7 +383,7 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
 
     // What holds on to these bodies, and must let go of one that is removed: its slot is handed out
     // again, and the next body must not inherit what held this one.
-    private val holders = ArrayList<RigidBodyHolder>(3)
+    private val holders = ArrayList<RigidBodyHolder>(5)
 
     /** Makes [holder] let go of every body that is removed from now on. */
     internal fun register(holder: RigidBodyHolder) {
@@ -830,7 +830,7 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
     }
 }
 
-/** Something that holds on to rigid bodies: joints, attachments, the hand. */
+/** Something that holds on to rigid bodies: joints, attachments, the hand, events, contacts. */
 internal interface RigidBodyHolder {
     /** Lets go of everything that holds rigid body [b], which is being removed. */
     fun letGo(b: Int)

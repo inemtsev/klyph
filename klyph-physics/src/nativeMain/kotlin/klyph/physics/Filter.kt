@@ -240,6 +240,49 @@ internal class TouchPairs {
         count = 0
     }
 
+    /**
+     * Drops every touch involving [kind] and [index] (or any handle of [kind] when [index] is
+     * negative). Removed keys are added to [removed] if given. Allocates nothing.
+     */
+    fun removeInvolving(kind: Int, index: Int, removed: TouchPairs? = null) {
+        if (count == 0) return
+        var any = false
+        for (i in 0 until count) {
+            if (involves(keys[i], kind, index)) {
+                any = true
+                break
+            }
+        }
+        if (!any) return
+        val mask = table.size - 1
+        for (i in 0 until count) {
+            var slot = hash(keys[i]) and mask
+            while (table[slot] != EMPTY) {
+                table[slot] = EMPTY
+                slot = (slot + 1) and mask
+            }
+        }
+        var kept = 0
+        for (i in 0 until count) {
+            val k = keys[i]
+            if (involves(k, kind, index)) {
+                removed?.add(k)
+            } else {
+                keys[kept++] = k
+                var slot = hash(k) and mask
+                while (table[slot] != EMPTY) slot = (slot + 1) and mask
+                table[slot] = k
+            }
+        }
+        count = kept
+    }
+
+    private fun involves(key: Long, kind: Int, index: Int): Boolean =
+        matchesSide(kindA(key), a(key), kind, index) || matchesSide(kindB(key), b(key), kind, index)
+
+    private fun matchesSide(sideKind: Int, sideIndex: Int, kind: Int, index: Int): Boolean =
+        sideKind == kind && (index < 0 || sideIndex == index)
+
     private fun grow() {
         val old = keys
         val n = count

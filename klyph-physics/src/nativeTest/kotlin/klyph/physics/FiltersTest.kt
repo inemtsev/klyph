@@ -386,4 +386,92 @@ class FiltersTest {
         assertTrue(begun > 100, "plenty began: $begun")
         assertTrue(touching.any { it.contains("${TouchSide.of(blob)}") }, "and the blob is touching something: $touching")
     }
+
+    @Test
+    fun removingABodyAndReusingItsSlotBeforeTheNextStepReportsBothEndAndBegin() {
+        val world = room()
+        val bodies = world.rigidBodies
+        val a = world.rigidBody(Shape.box(40f, 20f), 320f, floor - 10f, kind = BodyKind.STATIC)
+        val b = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 30f)
+        steps(world, 1f)
+        assertEquals(0, world.events.contactsBegun.size)
+
+        bodies.remove(b)
+        val c = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 30f)
+        assertEquals(b, c, "c reuses b's slot")
+        world.step(dt)
+
+        assertTrue(world.events.contactsEnded.has(TouchSide.of(a), TouchSide.of(b)), "removed body's touch ended")
+        assertTrue(world.events.contactsBegun.has(TouchSide.of(a), TouchSide.of(c)), "newcomer's touch began")
+    }
+
+    @Test
+    fun removingABodyInASensorAndReusingItsSlotReportsExitAndEntry() {
+        val world = room()
+        val bodies = world.rigidBodies
+        val s = sensor(world, 320f, floor - 20f)
+        val b = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 20f, kind = BodyKind.STATIC)
+        world.step(dt)
+        assertTrue(world.events.sensorsEntered.has(TouchSide.of(s), TouchSide.of(b)))
+
+        bodies.remove(b)
+        val c = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 20f, kind = BodyKind.STATIC)
+        assertEquals(b, c, "c reuses b's slot")
+        world.step(dt)
+
+        assertTrue(world.events.sensorsExited.has(TouchSide.of(s), TouchSide.of(b)), "removed body exited sensor")
+        assertTrue(world.events.sensorsEntered.has(TouchSide.of(s), TouchSide.of(c)), "newcomer entered sensor")
+    }
+
+    @Test
+    fun clearingBodiesDropsOldTouchesSoNewBodiesBeginFresh() {
+        val world = room()
+        val bodies = world.rigidBodies
+        val a = world.rigidBody(Shape.box(40f, 20f), 320f, floor - 10f, kind = BodyKind.STATIC)
+        val b = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 30f)
+        steps(world, 1f)
+
+        bodies.clear()
+        val nextA = world.rigidBody(Shape.box(40f, 20f), 320f, floor - 10f, kind = BodyKind.STATIC)
+        val nextB = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 30f)
+        assertEquals(a, nextA)
+        assertEquals(b, nextB)
+        world.step(dt)
+
+        assertTrue(world.events.contactsBegun.has(TouchSide.of(nextA), TouchSide.of(nextB)))
+        assertEquals(0, world.events.contactsEnded.size)
+    }
+
+    @Test
+    fun removingASoftBodyAndReusingItsSlotReportsBothEndAndBegin() {
+        val world = room()
+        val first = world.softBody(TestBodies.dome(), 320f, floor)
+        steps(world, 0.5f)
+        assertEquals(0, world.events.contactsBegun.size)
+
+        world.softBodies.remove(first)
+        val second = world.softBody(TestBodies.dome(), 320f, floor)
+        assertEquals(first, second, "second reuses first's slot")
+        world.step(dt)
+
+        assertTrue(world.events.contactsEnded.has(TouchSide.of(first), TouchSide.SOLIDS))
+        assertTrue(world.events.contactsBegun.has(TouchSide.of(second), TouchSide.SOLIDS))
+    }
+
+    @Test
+    fun removingAParticleInASensorAndReusingItsSlotReportsExitAndEntry() {
+        val world = room()
+        val s = sensor(world, 320f, floor - 20f)
+        val p = world.particles.add(320f, floor - 20f, mass = Particles.STATIC, radius = 3f, collision = ParticleCollision.EVERYTHING)
+        world.step(dt)
+        assertTrue(world.events.sensorsEntered.has(TouchSide.of(s), TouchSide.of(p)))
+
+        world.particles.remove(p)
+        val q = world.particles.add(320f, floor - 20f, mass = Particles.STATIC, radius = 3f, collision = ParticleCollision.EVERYTHING)
+        assertEquals(p, q, "q reuses p's slot")
+        world.step(dt)
+
+        assertTrue(world.events.sensorsExited.has(TouchSide.of(s), TouchSide.of(p)))
+        assertTrue(world.events.sensorsEntered.has(TouchSide.of(s), TouchSide.of(q)))
+    }
 }

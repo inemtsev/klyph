@@ -87,6 +87,49 @@ public class Events internal constructor(private val particles: Particles, priva
     private var sensing = TouchPairs()
     private var sensedBefore = TouchPairs()
 
+    // touches and sensor overlaps ended because one of their sides was removed before the next step
+    private val removedTouches = TouchPairs()
+    private val removedSensing = TouchPairs()
+
+    init {
+        particles.register(
+            object : ParticleHolder {
+                override fun letGo(p: Int) = letGo(TouchKind.PARTICLE, p)
+
+                override fun letGoAll() = letGoAll(TouchKind.PARTICLE)
+            },
+        )
+        bodies.register(
+            object : RigidBodyHolder {
+                override fun letGo(b: Int) = letGo(TouchKind.RIGID_BODY, b)
+
+                override fun letGoAll() = letGoAll(TouchKind.RIGID_BODY)
+            },
+        )
+    }
+
+    /**
+     * Drops active touches and sensor overlaps of [kind] [index] when it is removed, remembering them
+     * so the next step still reports them as ended while a newcomer reusing the slot begins fresh.
+     */
+    internal fun letGo(kind: TouchKind, index: Int) {
+        touching.removeInvolving(kind.ordinal, index, removedTouches)
+        sensing.removeInvolving(kind.ordinal, index, removedSensing)
+        lastTouch = -1L
+    }
+
+    /** Drops every touch and sensor overlap of [kind] when its whole store is cleared. */
+    internal fun letGoAll(kind: TouchKind) {
+        val k = kind.ordinal
+        touching.removeInvolving(k, -1)
+        touchedBefore.removeInvolving(k, -1)
+        sensing.removeInvolving(k, -1)
+        sensedBefore.removeInvolving(k, -1)
+        removedTouches.removeInvolving(k, -1)
+        removedSensing.removeInvolving(k, -1)
+        lastTouch = -1L
+    }
+
     /**
      * Returns `true` if [particle] stood on a floor at any time during the last step.
      *
@@ -176,8 +219,12 @@ public class Events internal constructor(private val particles: Particles, priva
         }
         for (i in 0 until touching.count) if (!touchedBefore.contains(touching.key(i))) contactsBegun.add(touching.key(i))
         for (i in 0 until touchedBefore.count) if (!touching.contains(touchedBefore.key(i))) contactsEnded.add(touchedBefore.key(i))
+        for (i in 0 until removedTouches.count) contactsEnded.add(removedTouches.key(i))
+        removedTouches.clear()
         for (i in 0 until sensing.count) if (!sensedBefore.contains(sensing.key(i))) sensorsEntered.add(sensing.key(i))
         for (i in 0 until sensedBefore.count) if (!sensing.contains(sensedBefore.key(i))) sensorsExited.add(sensedBefore.key(i))
+        for (i in 0 until removedSensing.count) sensorsExited.add(removedSensing.key(i))
+        removedSensing.clear()
     }
 
     /**

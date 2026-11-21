@@ -8,6 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 
 class RigidBodiesTest {
     private val dt = TestBodies.DT
@@ -241,5 +242,22 @@ class RigidBodiesTest {
         val dx = bodies.xOf(nextB) - bodies.xOf(nextA)
         val dy = bodies.yOf(nextB) - bodies.yOf(nextA)
         assertTrue(dx * dx + dy * dy > 25f * 25f, "new bodies collide instead of inheriting the old joint")
+    }
+
+    @Test
+    fun removingABodyForgetsItsContactFrictionAnchorsBeforeSlotReuse() {
+        val world = PhysicsWorld(PhysicsConfig(gravity = Vec2(0f, 1000f), timeToSleep = Duration.INFINITE))
+        val bodies = world.rigidBodies
+        val sticky = Material(friction = 1f, staticFriction = 5f, restitution = 0f)
+        world.rigidBody(Shape.box(200f, 20f), 200f, 200f, material = sticky, kind = BodyKind.STATIC)
+        val b = world.rigidBody(Shape.box(20f, 20f), 200f, 180f, material = sticky)
+        repeat(10) { world.step(dt) }
+
+        bodies.remove(b)
+        val c = world.rigidBody(Shape.box(20f, 20f), 203f, 180f, material = sticky)
+        assertEquals(b, c, "c reuses b's slot")
+        world.step(dt)
+
+        assertEquals(203f, bodies.xOf(c), 0.05f, "newcomer should not be pulled back to the removed body's friction anchor")
     }
 }

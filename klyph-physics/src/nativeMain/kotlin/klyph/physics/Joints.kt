@@ -38,8 +38,8 @@ public enum class JointKind {
  *
  * Two bodies joined to each other don't collide with each other: a wheel can sit inside its axle box.
  *
- * Each joint is a [Joint] handle; a removed one's slot is reused. One whose body or particle has
- * been removed is skipped.
+ * Each joint is a [Joint] handle; a removed one's slot is reused. Removing a body or particle
+ * removes every joint that holds it.
  *
  * [toString] gives how many joints there are, for example `Joints(size=12)`.
  *

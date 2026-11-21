@@ -50,6 +50,7 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
     }
 
     internal fun clear() {
+        world.events.letGoAll(TouchKind.SOFT_BODY)
         slots.clear()
         particleUsed = 0
         linkUsed = 0
@@ -161,6 +162,7 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
 
     internal fun remove(body: Int) {
         if (!isAlive(body)) return
+        world.events.letGo(TouchKind.SOFT_BODY, body)
         for (i in 0..ringCounts[body]) world.particles.removeAt(particle(body, i))
         slots.remove(body)
     }

@@ -136,7 +136,7 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
 
     // What holds on to these particles, and must let go of one that is removed: its slot is handed
     // out again, and the next particle must not inherit what held this one. None for particles on their own.
-    private val holders = ArrayList<ParticleHolder>(5)
+    private val holders = ArrayList<ParticleHolder>(6)
 
     /** Makes [holder] let go of every particle that is removed from now on. */
     internal fun register(holder: ParticleHolder) {
@@ -519,7 +519,7 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
     }
 }
 
-/** Something that holds on to particles: constraints, soft bodies, attachments, joints, the hand. */
+/** Something that holds on to particles: constraints, soft bodies, attachments, joints, the hand, events. */
 internal interface ParticleHolder {
     /** Lets go of everything that holds particle [p], which is being removed. */
     fun letGo(p: Int)

@@ -7,7 +7,7 @@ import kotlin.math.sqrt
  * pulls its particle and the point of its body together, the XPBD way, as softly as its compliance
  * says, so the particle is dragged along by the body and the body is tugged by the particle, moving
  * and turning it. 0 is a firm hold. Each is an [Attachment] handle; a removed one's slot is reused,
- * and one whose particle or body has been removed is skipped.
+ * and removing its particle or body removes the attachment.
  *
  * [toString] gives how many there are, for example `Attachments(size=2)`.
  *

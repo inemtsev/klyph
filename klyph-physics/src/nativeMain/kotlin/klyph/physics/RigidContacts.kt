@@ -114,6 +114,16 @@ internal class RigidContacts(private val world: PhysicsWorld) {
     // its tangent: a pair's on its first point.
     private var slip = FloatArray(64)
 
+    init {
+        bodies.register(
+            object : RigidBodyHolder {
+                override fun letGo(b: Int) = forgetBody(b)
+
+                override fun letGoAll() = forgetAll()
+            },
+        )
+    }
+
 
     /** Where contact [c]'s point on its first body is in the world now. */
     public fun pointX(c: Int): Float = bodies.worldX(a[c], r1x[c], r1y[c])
@@ -797,6 +807,21 @@ internal class RigidContacts(private val world: PhysicsWorld) {
     /** Lets every edge contact of the last substep be found as new: the edges were numbered afresh. */
     private fun forgetEdges() {
         for (k in 0 until oldCount) if (oldB[k] < 0 && oldFeature[k] and KIND != ON_SOLID) oldSlipped[k] = true
+    }
+
+    /** Lets every contact involving [body] be found as new, so a body reusing its slot inherits no friction anchors. */
+    private fun forgetBody(body: Int) {
+        for (k in 0 until count) if (a[k] == body || b[k] == body) slipped[k] = true
+        for (k in 0 until oldCount) if (oldA[k] == body || oldB[k] == body) oldSlipped[k] = true
+        pairMemory.forgetAll()
+    }
+
+    /** Forgets every contact after [RigidBodies.clear], so new bodies inherit no old friction anchors. */
+    private fun forgetAll() {
+        count = 0
+        oldCount = 0
+        tableBuilt = false
+        pairMemory.forgetAll()
     }
 
 
