@@ -7,7 +7,10 @@ import klyph.physics.SoftBodyTuning
 import klyph.physics.SolidGrid
 import klyph.physics.SolidTags
 import klyph.physics.centerXOf
+import klyph.physics.floorTagsOf
+import klyph.physics.isOnFloor
 import klyph.physics.maxYOf
+import klyph.physics.meanVelocityXOf
 import klyph.physics.softBody
 import samples.Sample
 import samples.assertPrints

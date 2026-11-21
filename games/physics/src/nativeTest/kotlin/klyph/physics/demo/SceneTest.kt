@@ -5,9 +5,12 @@ import klyph.physics.PhysicsWorld
 import klyph.physics.Ring
 import klyph.physics.SoftBody
 import klyph.physics.centerXOf
+import klyph.physics.isFinite
 import klyph.physics.length
+import klyph.physics.maxEdgeStretchOf
 import klyph.physics.maxXOf
 import klyph.physics.maxYOf
+import klyph.physics.meanVelocityYOf
 import klyph.physics.minXOf
 import klyph.physics.minYOf
 import klyph.physics.restLength

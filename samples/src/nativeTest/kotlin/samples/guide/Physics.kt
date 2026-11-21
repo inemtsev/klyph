@@ -29,11 +29,13 @@ import klyph.physics.SolidShape
 import klyph.physics.SolidTags
 import klyph.physics.TouchSide
 import klyph.physics.addPhysics
-import klyph.physics.cloth
-import klyph.physics.physics
-import klyph.physics.rope
 import klyph.physics.attach
+import klyph.physics.cloth
+import klyph.physics.floorTagsOf
+import klyph.physics.isOnFloor
+import klyph.physics.physics
 import klyph.physics.rigidBody
+import klyph.physics.rope
 import klyph.physics.softBody
 import klyph.platform.Color
 import klyph.platform.Scancode

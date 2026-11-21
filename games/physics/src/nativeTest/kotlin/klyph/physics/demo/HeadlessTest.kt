@@ -8,6 +8,7 @@ import klyph.physics.SolidGrid
 import klyph.physics.SolidShape
 import klyph.physics.centerXOf
 import klyph.physics.centerYOf
+import klyph.physics.isFinite
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.sqrt

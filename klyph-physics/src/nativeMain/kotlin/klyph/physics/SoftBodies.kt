@@ -311,13 +311,7 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
 
     internal fun centerY(body: Int): Float = ringMean(body) { world.particles.y(it) }
 
-    /** Returns the mean velocity of [body]'s ring particles across, in units per second. */
-    public fun meanVelocityXOf(body: SoftBody): Float = meanVelocityX(body.index)
-
     internal fun meanVelocityX(body: Int): Float = ringMean(body) { world.velocityX(it) }
-
-    /** Returns the mean velocity of [body]'s ring particles down, in units per second. */
-    public fun meanVelocityYOf(body: SoftBody): Float = meanVelocityY(body.index)
 
     internal fun meanVelocityY(body: Int): Float = ringMean(body) { world.velocityY(it) }
 
@@ -334,17 +328,11 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
 
     internal fun area(body: Int): Float = world.constraints.currentArea(areaOf[body])
 
-    /** Returns the longest edge of [body]'s ring as a multiple of its rest length: 1 at rest, large when it is tearing. */
-    public fun maxEdgeStretchOf(body: SoftBody): Float = maxEdgeStretch(body.index)
-
     internal fun maxEdgeStretch(body: Int): Float {
         var worst = 0f
         for (i in 0 until ringCounts[body]) worst = max(worst, 1f + world.constraints.strain(linkPool[linkStart[body] + i]))
         return worst
     }
-
-    /** Returns `true` if every coordinate of [body]'s particles is a real number. */
-    public fun isFinite(body: SoftBody): Boolean = isFinite(body.index)
 
     internal fun isFinite(body: Int): Boolean {
         val ps = world.particles
@@ -355,16 +343,10 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
         return true
     }
 
-    /** Returns `true` if any particle of [body] stood on a floor during the last step. */
-    public fun isOnFloor(body: SoftBody): Boolean = isOnFloor(body.index)
-
     internal fun isOnFloor(body: Int): Boolean {
         for (i in 0..ringCounts[body]) if (world.events.isOnFloor(particle(body, i))) return true
         return false
     }
-
-    /** Returns how many particles of [body] stood on a floor during the last step. */
-    public fun floorContactCountOf(body: SoftBody): Int = floorContactCount(body.index)
 
     internal fun floorContactCount(body: Int): Int {
         var n = 0
@@ -372,16 +354,10 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
         return n
     }
 
-    /**
-     * Returns the tags of every floor a particle of [body] stood on during the last step, together;
-     * [SolidTags.NONE] for none.
-     *
-     * @sample samples.physics.SoftBodySamples.floorTagsOf
-     */
-    public fun floorTagsOf(body: SoftBody): SolidTags {
+    internal fun floorTags(body: Int): Int {
         var tags = 0
-        for (i in 0..ringCounts[body.index]) tags = tags or world.particles.floorTag[particle(body.index, i)]
-        return SolidTags(tags)
+        for (i in 0..ringCounts[body]) tags = tags or world.particles.floorTag[particle(body, i)]
+        return tags
     }
 
     internal fun touched(body: Int, tag: Int): Boolean {
@@ -484,49 +460,45 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
 }
 
 /** Returns the mean position of [body]'s ring particles, across. */
-public fun SoftBodies.centerXOf(body: SoftBody): Float {
-    val ring = ringOf(body)
-    var sum = 0f
-    for (i in 0 until ring.size) sum += ring.xAt(i)
-    return sum / ring.size
-}
+public fun SoftBodies.centerXOf(body: SoftBody): Float = centerX(body.index)
 
 /** Returns the mean position of [body]'s ring particles, down. */
-public fun SoftBodies.centerYOf(body: SoftBody): Float {
-    val ring = ringOf(body)
-    var sum = 0f
-    for (i in 0 until ring.size) sum += ring.yAt(i)
-    return sum / ring.size
-}
+public fun SoftBodies.centerYOf(body: SoftBody): Float = centerY(body.index)
+
+/** Returns the mean velocity of [body]'s ring particles across, in units per second. */
+public fun SoftBodies.meanVelocityXOf(body: SoftBody): Float = meanVelocityX(body.index)
+
+/** Returns the mean velocity of [body]'s ring particles down, in units per second. */
+public fun SoftBodies.meanVelocityYOf(body: SoftBody): Float = meanVelocityY(body.index)
 
 /** Returns the left edge of [body]'s ring. */
-public fun SoftBodies.minXOf(body: SoftBody): Float {
-    val ring = ringOf(body)
-    var best = ring.xAt(0)
-    for (i in 1 until ring.size) best = min(best, ring.xAt(i))
-    return best
-}
+public fun SoftBodies.minXOf(body: SoftBody): Float = minX(body.index)
 
 /** Returns the right edge of [body]'s ring. */
-public fun SoftBodies.maxXOf(body: SoftBody): Float {
-    val ring = ringOf(body)
-    var best = ring.xAt(0)
-    for (i in 1 until ring.size) best = max(best, ring.xAt(i))
-    return best
-}
+public fun SoftBodies.maxXOf(body: SoftBody): Float = maxX(body.index)
 
 /** Returns the top edge of [body]'s ring. */
-public fun SoftBodies.minYOf(body: SoftBody): Float {
-    val ring = ringOf(body)
-    var best = ring.yAt(0)
-    for (i in 1 until ring.size) best = min(best, ring.yAt(i))
-    return best
-}
+public fun SoftBodies.minYOf(body: SoftBody): Float = minY(body.index)
 
 /** Returns the bottom edge of [body]'s ring. */
-public fun SoftBodies.maxYOf(body: SoftBody): Float {
-    val ring = ringOf(body)
-    var best = ring.yAt(0)
-    for (i in 1 until ring.size) best = max(best, ring.yAt(i))
-    return best
-}
+public fun SoftBodies.maxYOf(body: SoftBody): Float = maxY(body.index)
+
+/** Returns the longest edge of [body]'s ring as a multiple of its rest length: 1 at rest, large when it is tearing. */
+public fun SoftBodies.maxEdgeStretchOf(body: SoftBody): Float = maxEdgeStretch(body.index)
+
+/** Returns `true` if every coordinate of [body]'s particles is a real number. */
+public fun SoftBodies.isFinite(body: SoftBody): Boolean = isFinite(body.index)
+
+/** Returns `true` if any particle of [body] stood on a floor during the last step. */
+public fun SoftBodies.isOnFloor(body: SoftBody): Boolean = isOnFloor(body.index)
+
+/** Returns how many particles of [body] stood on a floor during the last step. */
+public fun SoftBodies.floorContactCountOf(body: SoftBody): Int = floorContactCount(body.index)
+
+/**
+ * Returns the tags of every floor a particle of [body] stood on during the last step, together;
+ * [SolidTags.NONE] for none.
+ *
+ * @sample samples.physics.SoftBodySamples.floorTagsOf
+ */
+public fun SoftBodies.floorTagsOf(body: SoftBody): SolidTags = SolidTags(floorTags(body.index))

@@ -5,6 +5,7 @@ import klyph.physics.PhysicsWorld
 import klyph.physics.RigidBody
 import klyph.physics.centerXOf
 import klyph.physics.centerYOf
+import klyph.physics.maxEdgeStretchOf
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

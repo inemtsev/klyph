@@ -8,6 +8,7 @@ import klyph.physics.SoftBodyShape
 import klyph.physics.SoftBodyTuning
 import klyph.physics.SolidShape
 import klyph.physics.DebugDraw
+import klyph.physics.floorContactCountOf
 import klyph.platform.Color
 import klyph.render.Canvas
 import kotlin.random.Random

@@ -209,6 +209,7 @@
     <ID>TooManyFunctions:RigidBodies.kt:RigidBodies</ID>
     <ID>TooManyFunctions:RigidContacts.kt:RigidContacts</ID>
     <ID>TooManyFunctions:SoftBodies.kt:SoftBodies</ID>
+    <ID>TooManyFunctions:SoftBodies.kt:klyph.physics.SoftBodies.kt</ID>
     <ID>TooManyFunctions:Solids.kt:SolidGrid</ID>
   </CurrentIssues>
 </SmellBaseline>

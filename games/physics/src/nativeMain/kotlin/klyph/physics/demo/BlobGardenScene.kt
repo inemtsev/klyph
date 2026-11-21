@@ -9,6 +9,9 @@ import klyph.physics.SolidShape
 import klyph.physics.SolidTags
 import klyph.physics.DebugDraw
 import klyph.physics.centerXOf
+import klyph.physics.floorContactCountOf
+import klyph.physics.floorTagsOf
+import klyph.physics.isOnFloor
 import klyph.physics.minYOf
 import klyph.physics.softBody
 import klyph.platform.Color
