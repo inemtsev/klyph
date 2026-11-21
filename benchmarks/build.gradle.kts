@@ -14,6 +14,7 @@ klyph {
 kotlin {
     sourceSets.nativeMain.dependencies {
         implementation(project(":klyph"))
+        implementation(project(":klyph-physics"))
     }
     // Drives the platform plumbing directly, as the engine does; games never opt in.
     sourceSets.all {
@@ -24,7 +25,7 @@ kotlin {
 // Names registered in klyph.benchmarks.Main; each gets a `benchmark<Name>` task. Windowed
 // benchmarks also get `benchmark<Name>Offscreen`; headless ones open no window, so they do not.
 val benchmarkNames = listOf("sprites", "hierarchy", "collisions", "particles", "drawn", "overlaps", "parents", "tiles")
-val headlessBenchmarkNames = listOf("mixer")
+val headlessBenchmarkNames = listOf("mixer", "physics")
 
 // Benchmarks always run the host's release executable, which the klyph plugin creates once this
 // script has run. The environment is the plugin's KLYPH_* passthrough (-Pklyph.sprites and the

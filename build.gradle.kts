@@ -29,6 +29,7 @@ dokka {
 dependencies {
     dokka(project(":klyph"))
     dokka(project(":klyph-platform"))
+    dokka(project(":klyph-physics"))
 }
 
 // The guide, in reading order. Each page becomes guide/<name>.html in the site, after Dokka has
@@ -45,6 +46,7 @@ val guidePages: List<String> = listOf(
     "audio",
     "collisions-and-particles",
     "platformers",
+    "physics",
     "scrolling",
     "tilemaps",
     "text-canvas-and-overlay",

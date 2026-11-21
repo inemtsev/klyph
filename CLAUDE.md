@@ -138,19 +138,29 @@ including `KLYPH_SCREENSHOT`, `KLYPH_FULLSCREEN`, `KLYPH_ATLAS` and `KLYPH_FRAME
 which replaces the measured frame delta so that runs repeat);
 every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` beside `Vec2` and
 `Rect`),
+`klyph-physics` (the physics engine, depending on `klyph`, package `klyph.physics`: one
+`PhysicsWorld` stepped by a `Duration` in substeps, XPBD, its stores (`particles`, `rigidBodies`,
+`softBodies`, `constraints`, `joints`, `attachments`) handing out value-class handles (`Particle`,
+`RigidBody`, `SoftBody`, `Link`, `Pin`, `Area`, `Bend`, `Joint`, `Attachment`) over plain arrays, so a
+step allocates nothing (`AllocationTest` checks that with the GC's statistics); the old `Int`-slot
+functions stay `internal` for the solver and its tests; `SolidGrid` is the level, `Events` what the
+last step did, `addPhysics` and `PhysicsBody` the bridge to `App` and the entity world, and
+`DebugDraw` draws it; collision filters are `klyph.collision.CollisionLayers`, with the level on
+`PhysicsLayers.SOLIDS`, layer 30; `docs/physics.md` is its guide page and `docs/physics/` the
+explainers, read on GitHub),
 `sandbox` (executable; a smoke test that opens a window and clears it each frame), `games:shooter`
 (executable in `games/shooter`; the reference game sample, keyboard with mouse aim or gamepad, its art and sounds in
 `games/shooter/assets/` synced next to the binary after every link; enemies come in waves kept in a
 `Wave` resource and shown in the HUD, drifters and divers that swoop at the ship, and every fifth
 wave is a boss with 12 hit points, a health bar drawn in world space and bullets on the
 `ENEMY_BULLET` layer; `KLYPH_AUTOPILOT=1` plays itself, with 4 enemies a wave so a 90 second run
-reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, and whose `Shuttle`, a girder over the widest gap, is a play-scene `Solid` with a `Velocity` and its own tiled `Sprite`, marked `Interpolated` and turned at the ends of its track by `moveShuttles`, which the hero rides and jumps off with `floorVelocityX` added, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the brick, cap, window and girder tiles and the one-off art are painted into `Image`s at startup with `Image.fillRect`, `fillCircle` and `set`; the one-off art (air conditioner, skyline, clouds, pylon, star) is then drawn into one sheet image with `Image.draw` (alpha blending, clipped like the shapes) and uploaded as one texture, a `SheetLayout` setting the pieces in a row with their edge texels repeated one texel outwards, each building being `Sprite`s that repeat the tiles (`SamplerAddress.REPEAT` textures, one each because a tiled sprite repeats a whole texture, `Sprite.tiled`) with props standing on `originY = 1f`, the sky is one `DrawSpace.BACKGROUND` quad, the clouds and skyline are `ParallaxLayer` sprites anchored at the camera's start, the camera follows `app.drawnPositionOf(hero)` and shakes through `Camera.offsetX`, a respawn calls `snapInterpolation`, and the title's hero, the pickups and the end screens read their scene's `elapsed`; the autopilot plans again every fixed step, probing for the roof's end with `floorBelowOrNull` and for walls ahead with `sweepCollider` and following jump arcs with `slideCollider`, and fails at exit if it took no ring and stomped no enemy), `benchmarks`
+reaches the boss, and `KLYPH_FRAMES` or `KLYPH_SECONDS` bounds a run), `games:squish` (executable in `games/squish`; a bug-squishing game for young children, same layout and variables as the shooter; the system cursor is hidden because the swatter is the pointer, and F11 toggles fullscreen), `games:roller` (executable in `games/roller`; Rooftop Roller, a side-scrolling platformer of one level, a ninja on rollerblades with momentum, variable jumps, coyote time and a jump buffer, rings, hearts, stompable blobs and helicopters, same layout and variables as squish; the level is Kotlin data (`Level.kt`) whose roofs and ledges become invisible `Solid`s, and whose `Shuttle`, a girder over the widest gap, is a play-scene `Solid` with a `Velocity` and its own tiled `Sprite`, marked `Interpolated` and turned at the ends of its track by `moveShuttles`, which the hero rides and jumps off with `floorVelocityX` added, the hero is a `KinematicBody` whose acceleration, gravity, jumps, coyote time and jump buffer are the game's own (`Systems.kt`), the blobs and helicopters walk and fly their patrols by their `Transform`s, the brick, cap, window and girder tiles and the one-off art are painted into `Image`s at startup with `Image.fillRect`, `fillCircle` and `set`; the one-off art (air conditioner, skyline, clouds, pylon, star) is then drawn into one sheet image with `Image.draw` (alpha blending, clipped like the shapes) and uploaded as one texture, a `SheetLayout` setting the pieces in a row with their edge texels repeated one texel outwards, each building being `Sprite`s that repeat the tiles (`SamplerAddress.REPEAT` textures, one each because a tiled sprite repeats a whole texture, `Sprite.tiled`) with props standing on `originY = 1f`, the sky is one `DrawSpace.BACKGROUND` quad, the clouds and skyline are `ParallaxLayer` sprites anchored at the camera's start, the camera follows `app.drawnPositionOf(hero)` and shakes through `Camera.offsetX`, a respawn calls `snapInterpolation`, and the title's hero, the pickups and the end screens read their scene's `elapsed`; the autopilot plans again every fixed step, probing for the roof's end with `floorBelowOrNull` and for walls ahead with `sweepCollider` and following jump arcs with `slideCollider`, and fails at exit if it took no ring and stomped no enemy), `games:physics` (executable in `games/physics`, package `klyph.physics.demo`; the physics playground of eighteen scenes, from a blob garden to a stress test of 1 000 crates, 5 000 grains and 50 blobs, drawn with `DebugDraw`; keys switch scenes and debug views, the mouse grabs and spawns; its scene tests, `HeadlessTest`, `MouseTest` and `SceneTest`, take about ten minutes on the debug build, so `check` skips them unless `-Pklyph.physics.sceneTests=1` is set), `benchmarks`
 (executable; named benchmarks, run from the release build), `samples` (the `@sample` functions from
 API_STYLE.md section 8, run as tests; `@Sample` is a typealias of `kotlin.test.Test` and
 `assertPrints` lives in `samples/src/nativeTest/kotlin/samples/Harness.kt`), and
 `klyph-gradle-plugin` (the `com.eventslooped.klyph` Gradle plugin games apply, with its own
 reference in `klyph-gradle-plugin/README.md`; an included build through `pluginManagement` in
-`settings.gradle.kts`, so `sandbox`, `games:shooter`, `games:squish`, `games:roller` and `benchmarks` apply it by id and take
+`settings.gradle.kts`, so `sandbox`, `games:shooter`, `games:squish`, `games:roller`, `games:physics` and `benchmarks` apply it by id and take
 their targets, SDL3 link flags, asset sync, `run`, `runRelease` and `distribute` from it; its
 library mode, `com.eventslooped.klyph.library`, does the same without executables or their tasks
 for the engine modules; it is a separate Gradle build, so its unit and TestKit tests run with
@@ -163,7 +173,7 @@ tests run with `./gradlew -p tools/detekt-rules check`, not with the root `check
 runs every module's tests and samples plus the interop-import rule; a single module's tests run
 with `:<module>:macosArm64Test`. GPU, window, event and audio device functions, `runApp`, `App` and
 `Assets` have no samples because they need a display or a device; `Audio` has samples because it
-also mixes without a device. `buildSrc` serves the engine modules (`klyph-platform`, `klyph`,
+also mixes without a device. `buildSrc` serves the engine modules (`klyph-platform`, `klyph`, `klyph-physics`,
 `samples`) and depends on the plugin's classes through `buildSrc/settings.gradle.kts`, which
 includes `klyph-gradle-plugin` too (Gradle builds it once for both): `klyph.native` applies
 the plugin's library mode, which configures their targets, finds SDL3 (`klyph.sdl3IncludeDir`
@@ -178,9 +188,9 @@ version), whose `detekt` task, part of `check`, reads `config/detekt/detekt.yml`
 on Kotlin/Native, with the `api-style` rules of `tools/detekt-rules` on for `klyph` and
 `klyph-platform` only (excluded by path in `detekt.yml`, whose `config.excludes` keeps their
 section out of validation because the plugin build, which reads the same file, does not load them). `klyph.docs`, applied through
-`klyph.publish`, configures Dokka for the two published modules: `@sample` bodies from
-`samples/src/nativeTest/kotlin`, module documentation from `docs/klyph.md` and
-`docs/klyph-platform.md`, and source links to GitHub. `./gradlew dokkaGenerate` writes the
+`klyph.publish`, configures Dokka for the three published modules: `@sample` bodies from
+`samples/src/nativeTest/kotlin`, module documentation from `docs/klyph.md`,
+`docs/klyph-platform.md` and `docs/klyph-physics.md`, and source links to GitHub. `./gradlew dokkaGenerate` writes the
 aggregated site to `build/dokka/html`, with `docs/index.md` as its landing page; it is not part of
 `check`. The guide pages under `docs/` are rendered by the root `renderGuide` task into
 `build/guide/` and copied by `installGuide` into `build/dokka/html/guide/`; their Kotlin snippets
@@ -217,6 +227,7 @@ CI job (no display, no GPU) uses it; the Windows job runs it in bash like its ot
 ./gradlew :benchmarks:benchmarkParentsOffscreen -Pklyph.sprites=10000   # World.parentOrNull for every child of the hierarchy tree
 ./gradlew :benchmarks:benchmarkMixer                            # headless, no window or device
 ./gradlew :benchmarks:benchmarkMixer -Pklyph.music=games/shooter/assets/music.ogg
+./gradlew :benchmarks:benchmarkPhysics                          # the physics stress world, headless
 ./gradlew :benchmarks:benchmarkList
 ```
 
@@ -297,7 +308,7 @@ the order given (the rules and their error texts live once, in the plugin's `Kly
 `klyph.native`, `klyph.publish` and `benchmarks` read the result through `klyph.hostTarget`,
 `klyph.configuredTargets` and `klyph.supportedTargets`).
 Value classes in `nativeMain` carry no `@JvmInline`: the shared native metadata compilation
-rejects it. `klyph` and `klyph-platform` publish as `com.eventslooped.klyph:<module>:<version>`, the
+rejects it. `klyph`, `klyph-platform` and `klyph-physics` publish as `com.eventslooped.klyph:<module>:<version>`, the
 root build file's default (`-Pklyph.version=<v>` overrides), through `com.vanniktech.maven.publish`, configured in
 `buildSrc/src/main/kotlin/klyph.publish.gradle.kts`. The plugin publishes as
 `com.eventslooped.klyph:klyph-gradle-plugin` with the same version and override; the root

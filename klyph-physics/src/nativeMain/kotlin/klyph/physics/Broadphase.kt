@@ -1,0 +1,274 @@
+package klyph.physics
+
+import kotlin.math.max
+import kotlin.math.min
+
+/**
+ * Finds which boxes might touch, fast and without allocating: a spatial hash grid.
+ *
+ * Every step, [clear] it, [add] a box for everything that can collide, [build] it once, then read the
+ * candidate pairs with [pairCount], [pairA] and [pairB]. A pair is only a candidate: its boxes overlap,
+ * so the narrowphase has to look closer.
+ *
+ * Space is cut into square cells [cellSize] wide, with no edge: a cell is hashed into a bucket of a
+ * table, so the world can be any size. Each box is filed under every cell it covers, the filings are
+ * sorted by bucket into one array by counting, and only boxes filed under the same cell are compared.
+ * Two boxes that share several cells are only compared in the top-left one, so no pair comes twice.
+ * Boxes added as passive are never compared with each other: they're filed after the rest of their
+ * cell, so the comparing stops where they start. With [activeWithActive] false, the others aren't
+ * paired with each other either, only with the passive.
+ *
+ * A [cellSize] of [AUTO], the default, sizes the cells anew at every [build] to the boxes in it: as
+ * wide as the average box's longer side. Then a heap of sand gets cells a grain wide, and a stack of
+ * crates cells a crate wide, and neither has to be tuned.
+ */
+internal class Broadphase(
+    cellSize: Float = AUTO,
+    initialCapacity: Int = 64,
+    /** Whether two boxes that aren't passive are paired: false, and every pair is one of each. */
+    public val activeWithActive: Boolean = true,
+) {
+    init {
+        require(cellSize >= 0f && cellSize.isFinite()) { "cellSize is $cellSize: it must be more than 0, or AUTO." }
+    }
+
+    /** Whether the cells are sized to the boxes at every [build]. */
+    public val isAuto: Boolean = cellSize == AUTO
+
+    /** The side of a cell: as given, or with [AUTO] as the last [build] chose. */
+    public var cellSize: Float = if (isAuto) DEFAULT_CELL else cellSize
+        private set
+
+    private var inverseCell = 1f / this.cellSize
+
+    private var ids = IntArray(initialCapacity)
+    private var passive = BooleanArray(initialCapacity)
+    private var minX = FloatArray(initialCapacity)
+    private var minY = FloatArray(initialCapacity)
+    private var maxX = FloatArray(initialCapacity)
+    private var maxY = FloatArray(initialCapacity)
+    private var col0 = IntArray(initialCapacity)
+    private var row0 = IntArray(initialCapacity)
+    private var col1 = IntArray(initialCapacity)
+    private var row1 = IntArray(initialCapacity)
+
+    /** Where each bucket's filings start; bucket `b` holds filings `start[b] until start[b + 1]`. */
+    private var start = IntArray(17)
+    private var mask = 15
+
+    /**
+     * The filings, in bucket order, copied next to each other so a bucket is read in one sweep: per
+     * filing [FILED_INTS] ints (the box, the cell it's filed under, its top-left cell) and its edges.
+     */
+    private var filed = IntArray(FILED_INTS * initialCapacity)
+    private var filedBox = FloatArray(4 * initialCapacity)
+
+    /** The candidate pairs, two ids each, for loops that can't afford a call a pair: see [pairA]. */
+    internal var pairs = IntArray(2 * initialCapacity)
+        private set
+
+    /** How many boxes were added since the last [clear]. */
+    public var count: Int = 0
+        private set
+
+    /** How many candidate pairs the last [build] found. */
+    public var pairCount: Int = 0
+        private set
+
+    /** How many times boxes were filed under a cell in the last [build]: one per cell each box covers. */
+    public var filedCount: Int = 0
+        private set
+
+    /** Forgets every box and pair, keeping the memory for the next step. */
+    public fun clear() {
+        count = 0
+        pairCount = 0
+        filedCount = 0
+    }
+
+    /**
+     * Adds a box from ([left], [top]) to ([right], [bottom]) for the thing called [id]. Two [passive]
+     * boxes are never paired, nor even compared: a box is paired only with one that isn't passive.
+     */
+    public fun add(id: Int, left: Float, top: Float, right: Float, bottom: Float, passive: Boolean = false) {
+        if (count == ids.size) grow()
+        val e = count++
+        ids[e] = id
+        this.passive[e] = passive
+        minX[e] = min(left, right)
+        minY[e] = min(top, bottom)
+        maxX[e] = max(left, right)
+        maxY[e] = max(top, bottom)
+    }
+
+    /**
+     * Adds the box a round thing sweeps through this step: a circle of [radius] at ([x], [y]) that will
+     * move by ([dx], [dy]). Growing the box by the motion means a fast thing finds what it will hit
+     * before it gets there, with one build per step.
+     */
+    public fun addMoving(id: Int, x: Float, y: Float, dx: Float, dy: Float, radius: Float, passive: Boolean = false) {
+        add(id, min(x, x + dx) - radius, min(y, y + dy) - radius, max(x, x + dx) + radius, max(y, y + dy) + radius, passive)
+    }
+
+    /** Files every box under its cells and finds every pair of boxes that overlap. */
+    public fun build() {
+        val n = count
+        if (isAuto && n > 0) {
+            var sum = 0f
+            for (e in 0 until n) sum += max(maxX[e] - minX[e], maxY[e] - minY[e])
+            cellSize = max(sum / n, MIN_CELL)
+            inverseCell = 1f / cellSize
+        }
+        var total = 0
+        for (e in 0 until n) {
+            col0[e] = cell(minX[e])
+            row0[e] = cell(minY[e])
+            col1[e] = cell(maxX[e])
+            row1[e] = cell(maxY[e])
+            total += (col1[e] - col0[e] + 1) * (row1[e] - row0[e] + 1)
+        }
+        filedCount = total
+        if (FILED_INTS * total > filed.size) {
+            val size = max(total, 2 * filed.size / FILED_INTS)
+            filed = IntArray(FILED_INTS * size)
+            filedBox = FloatArray(4 * size)
+        }
+        // At least a bucket per filing keeps the buckets short.
+        var buckets = mask + 1
+        while (buckets < total) buckets *= 2
+        if (buckets + 1 > start.size) start = IntArray(buckets + 1)
+        mask = buckets - 1
+
+        // A counting sort: count each bucket's filings, add the counts up so start[b] is where bucket b
+        // ends, then file each box just before its bucket's end, last box first. That leaves start[b]
+        // where bucket b begins, and start[b + 1] where it ends, with its boxes in the order they came:
+        // the passive ones last, as they're filed first.
+        start.fill(0, 0, buckets)
+        for (e in 0 until n) {
+            for (row in row0[e]..row1[e]) for (col in col0[e]..col1[e]) start[bucket(col, row)]++
+        }
+        for (b in 1 until buckets) start[b] += start[b - 1]
+        start[buckets] = total
+        for (e in n - 1 downTo 0) if (passive[e]) file(e)
+        for (e in n - 1 downTo 0) if (!passive[e]) file(e)
+        findPairs(buckets)
+    }
+
+    /** Files box [e] under each of its cells, just before where its bucket's filings so far begin. */
+    private fun file(e: Int) {
+        for (row in row1[e] downTo row0[e]) for (col in col1[e] downTo col0[e]) {
+            val k = --start[bucket(col, row)]
+            val i = FILED_INTS * k
+            filed[i] = e
+            filed[i + 1] = col
+            filed[i + 2] = row
+            filed[i + 3] = col0[e]
+            filed[i + 4] = row0[e]
+            filed[i + 5] = if (passive[e]) 1 else 0
+            filedBox[4 * k] = minX[e]
+            filedBox[4 * k + 1] = minY[e]
+            filedBox[4 * k + 2] = maxX[e]
+            filedBox[4 * k + 3] = maxY[e]
+        }
+    }
+
+    /**
+     * Compares every two boxes filed under the same cell, but only in the top-left cell the two share,
+     * so a pair is never found twice.
+     */
+    private fun findPairs(buckets: Int) {
+        pairCount = 0
+        val f = filed
+        val box = filedBox
+        for (bucket in 0 until buckets) {
+            val end = start[bucket + 1]
+            for (k in start[bucket] until end - 1) {
+                val i = FILED_INTS * k
+                // the passive come last in a bucket: from here on, none is paired with another
+                if (f[i + 5] == 1) break
+                val col = f[i + 1]
+                val row = f[i + 2]
+                val left = box[4 * k]
+                val top = box[4 * k + 1]
+                val right = box[4 * k + 2]
+                val bottom = box[4 * k + 3]
+                for (m in k + 1 until end) {
+                    val j = FILED_INTS * m
+                    if (!activeWithActive && f[j + 5] == 0) continue
+                    // another cell that landed in the same bucket
+                    if (f[j + 1] != col || f[j + 2] != row) continue
+                    // not the top-left cell the two share: they meet there too, and are compared there
+                    if (max(f[i + 3], f[j + 3]) != col || max(f[i + 4], f[j + 4]) != row) continue
+                    if (left > box[4 * m + 2] || box[4 * m] > right || top > box[4 * m + 3] || box[4 * m + 1] > bottom) continue
+                    val a = f[i]
+                    val b = f[j]
+                    if (a < b) addPair(ids[a], ids[b]) else addPair(ids[b], ids[a])
+                }
+            }
+        }
+    }
+
+    /** The id of the first of candidate pair [i]: the one added earlier. */
+    public fun pairA(i: Int): Int = pairs[2 * i]
+
+    /** The id of the second of candidate pair [i]. */
+    public fun pairB(i: Int): Int = pairs[2 * i + 1]
+
+    private fun addPair(a: Int, b: Int) {
+        if (2 * pairCount + 2 > pairs.size) pairs = pairs.copyOf(pairs.size * 2)
+        pairs[2 * pairCount] = a
+        pairs[2 * pairCount + 1] = b
+        pairCount++
+    }
+
+    /** The column or row of the cell [v] is in: `floor(v / cellSize)`, without a call to floor. */
+    private fun cell(v: Float): Int {
+        val scaled = v * inverseCell
+        val i = scaled.toInt()
+        return if (scaled < i) i - 1 else i
+    }
+
+    /** Which bucket cell ([col], [row]) is filed in. Different cells may share one; [overlaps] sorts them out. */
+    private fun bucket(col: Int, row: Int): Int = ((col * 73_856_093) xor (row * 19_349_663)) and mask
+
+    /** The box of entry [e] in the order boxes were added, for drawing: its id, then its edges. */
+    public fun id(e: Int): Int = ids[e]
+
+    /** The left edge of filed box [e], as filed: [addMoving] grows a box by its move. */
+    public fun left(e: Int): Float = minX[e]
+
+    /** The top edge of filed box [e], as filed: [addMoving] grows a box by its move. */
+    public fun top(e: Int): Float = minY[e]
+
+    /** The right edge of filed box [e], as filed: [addMoving] grows a box by its move. */
+    public fun right(e: Int): Float = maxX[e]
+
+    /** The bottom edge of filed box [e], as filed: [addMoving] grows a box by its move. */
+    public fun bottom(e: Int): Float = maxY[e]
+
+    public companion object {
+        /** A [cellSize] that sizes the cells to the boxes at every [build]. */
+        public const val AUTO: Float = 0f
+
+        private const val DEFAULT_CELL = 16f
+
+        /** The smallest cell [AUTO] chooses, so a heap of points isn't cut finer than a unit. */
+        private const val MIN_CELL = 1f
+
+        private const val FILED_INTS = 6
+    }
+
+    private fun grow() {
+        val size = ids.size * 2
+        ids = ids.copyOf(size)
+        passive = passive.copyOf(size)
+        minX = minX.copyOf(size)
+        minY = minY.copyOf(size)
+        maxX = maxX.copyOf(size)
+        maxY = maxY.copyOf(size)
+        col0 = col0.copyOf(size)
+        row0 = row0.copyOf(size)
+        col1 = col1.copyOf(size)
+        row1 = row1.copyOf(size)
+    }
+}

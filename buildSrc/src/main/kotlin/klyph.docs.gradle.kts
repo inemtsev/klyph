@@ -1,4 +1,4 @@
-// Convention plugin for the modules in the API reference (klyph, klyph-platform): Dokka over their
+// Convention plugin for the modules in the API reference (klyph, klyph-platform, klyph-physics): Dokka over their
 // sources, with @sample bodies taken from the samples module and source links to GitHub. The root
 // project applies org.jetbrains.dokka too and aggregates these modules into one site, which
 // `./gradlew dokkaGenerate` writes to build/dokka/html. Dokka is not part of `check`.
@@ -14,7 +14,7 @@ dokka {
     dokkaSourceSets.configureEach {
         // Module documentation; Dokka takes the "# Module <name>" section matching this module
         // from each file. The site's landing page, docs/index.md, is the root project's include.
-        includes.from(rootDir.resolve("docs/klyph.md"), rootDir.resolve("docs/klyph-platform.md"))
+        includes.from(rootDir.resolve("docs/klyph.md"), rootDir.resolve("docs/klyph-platform.md"), rootDir.resolve("docs/klyph-physics.md"))
         sourceLink {
             localDirectory.set(projectDir.resolve("src"))
             remoteUrl("https://github.com/inemtsev/klyph/tree/main/$repositoryPath/src")

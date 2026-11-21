@@ -62,6 +62,7 @@ in the same PR rather than inventing a one-off.
 | `xSeconds` | Extension property returning the `Duration` `x` as a `Float` in seconds, for arithmetic done every frame. The `Duration` stays the primary API. | `time.deltaSeconds`, `scene.elapsedSeconds` |
 | `SubjectVerbed` event | An event that reports a change is a past participle. An event that reports a state every frame, such as an overlap, is a noun. | `KeyPressed`, `MouseWheelScrolled`, `WindowResized`; `Overlap` |
 | `xOf(argument)` | Member or extension that returns the `x` associated with [argument]. Not a factory. | `neighborsOf(node)`, `childrenOf(parent)`, `durationOf(phase)` |
+| `xAt(index)` | Member that returns the `x` at a position in an ordered collection it holds, from 0. Throws `IndexOutOfBoundsException` outside it. | `touches.brokenJointAt(0)`, `overlaps.rigidBodyAt(i)`, `ring.xAt(i)` |
 | `xOrElse { }` | Same as `x()` but calls the lambda instead of throwing. | `getOrElse { default }` |
 | `xOrDefault(value)` | Same as `x()` but returns the value instead of throwing. | `getOrDefault(key, 0)` |
 | `xTo(destination, ...)` | Writes results into a caller-supplied mutable collection and returns it. | `mapTo(list) { }` |

@@ -1,0 +1,215 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:Broadphase.kt:Broadphase$left > box[4 * m + 2] || box[4 * m] > right || top > box[4 * m + 3] || box[4 * m + 1] > bottom</ID>
+    <ID>ComplexCondition:BroadphaseTest.kt:BroadphaseTest$a[0] &lt;= b[2] &amp;&amp; b[0] &lt;= a[2] &amp;&amp; a[1] &lt;= b[3] &amp;&amp; b[1] &lt;= a[3]</ID>
+    <ID>ComplexCondition:BroadphaseTest.kt:BroadphaseTest$p[0] &lt;= q[2] &amp;&amp; q[0] &lt;= p[2] &amp;&amp; p[1] &lt;= q[3] &amp;&amp; q[1] &lt;= p[3]</ID>
+    <ID>ComplexCondition:Bullets.kt:Bullets$!bs.alive[other] || bs.bullet[other] || bs.sensor[other] || bs.filtered(b, other) || world.joints.connected(b, other)</ID>
+    <ID>ComplexCondition:Collisions.kt:Collisions$x &lt; left[body] - reach || x > right[body] + reach || y &lt; top[body] - reach || y > bottom[body] + reach</ID>
+    <ID>ComplexCondition:Constraints.kt:Constraints$(m == a || m == b) &amp;&amp; (bendA[bend] == a || bendA[bend] == b || bendC[bend] == a || bendC[bend] == b)</ID>
+    <ID>ComplexCondition:Coupling.kt:Coupling$x &lt; bx - reach || x > bx + reach || y &lt; by - reach || y > by + reach</ID>
+    <ID>ComplexCondition:Coupling.kt:Coupling$x &lt; left || x > right || y &lt; top || y > bottom || !Outline.contains(ring, x, y)</ID>
+    <ID>ComplexCondition:Joints.kt:Joints$a == p &amp;&amp; b == q || a == q &amp;&amp; b == p</ID>
+    <ID>ComplexCondition:Joints.kt:Joints$p >= onBody.size || q >= onBody.size || onBody[p] == 0 || onBody[q] == 0</ID>
+    <ID>ComplexCondition:Narrowphase.kt:Narrowphase$d1 &lt; lo &amp;&amp; d2 &lt; lo || d1 > hi &amp;&amp; d2 > hi</ID>
+    <ID>ComplexCondition:Queries.kt:Queries$cx + reach &lt; left || cx - reach > right || cy + reach &lt; top || cy - reach > bottom</ID>
+    <ID>ComplexCondition:Queries.kt:Queries$face &lt; 0 || enter &lt; 0f || enter > leave || enter > bestT</ID>
+    <ID>ComplexCondition:Queries.kt:Queries$maxX &lt; left || minX > right || maxY &lt; top || minY > bottom</ID>
+    <ID>ComplexCondition:Queries.kt:Queries$ox > left &amp;&amp; ox &lt; right &amp;&amp; oy > top &amp;&amp; oy &lt; bottom</ID>
+    <ID>ComplexCondition:Queries.kt:Queries$s.right &lt; left || s.left > right || s.bottom &lt; top || s.top > bottom</ID>
+    <ID>ComplexCondition:Queries.kt:Queries$sb.maxX(b) &lt; left || sb.minX(b) > right || sb.maxY(b) &lt; top || sb.minY(b) > bottom</ID>
+    <ID>ComplexCondition:Queries.kt:Queries$x &lt; sb.minX(b) || x > sb.maxX(b) || y &lt; sb.minY(b) || y > sb.maxY(b)</ID>
+    <ID>ComplexCondition:RigidContacts.kt:RigidContacts$k >= 0 &amp;&amp; abs(relX - memory.relXOf(k)) &lt; KEEP_MOVE &amp;&amp; abs(relY - memory.relYOf(k)) &lt; KEEP_MOVE &amp;&amp; abs(relTurn - memory.relTurnOf(k)) &lt; KEEP_TURN</ID>
+    <ID>ComplexCondition:RigidContacts.kt:RigidContacts$oldA[k] == p &amp;&amp; oldB[k] == q &amp;&amp; oldShapeKey[k] == shapes &amp;&amp; oldFeature[k] == id</ID>
+    <ID>ComplexCondition:SolidEdges.kt:SolidEdges$f.x1 == f.x2 &amp;&amp; (f.x1 == 0f || f.x1 == width) || f.y1 == f.y2 &amp;&amp; (f.y1 == 0f || f.y1 == height)</ID>
+    <ID>ComplexCondition:SolidEdges.kt:SolidEdges$j &lt; 0 || j == i || !sameWay(open[last], open[j]) || open[j].solid.material != open[i].solid.material || steps > open.size</ID>
+    <ID>ComplexCondition:Solids.kt:Solid$x &lt;= left - r || x >= right + r || y &lt;= top - r || y >= bottom + r</ID>
+    <ID>CyclomaticComplexMethod:Broadphase.kt:Broadphase$private fun findPairs</ID>
+    <ID>CyclomaticComplexMethod:Broadphase.kt:Broadphase$public fun build</ID>
+    <ID>CyclomaticComplexMethod:BroadphaseTest.kt:BroadphaseTest$@Test fun withAutoCellsAndPassiveBoxesItStillFindsWhatBruteForceFinds</ID>
+    <ID>CyclomaticComplexMethod:Bullets.kt:Bullets$fun sweepParticles</ID>
+    <ID>CyclomaticComplexMethod:Bullets.kt:Bullets$private fun gather</ID>
+    <ID>CyclomaticComplexMethod:Collisions.kt:Collisions$private fun particleAgainstBody</ID>
+    <ID>CyclomaticComplexMethod:Constraints.kt:Constraints$internal fun tear</ID>
+    <ID>CyclomaticComplexMethod:Coupling.kt:Coupling$fun beginStep</ID>
+    <ID>CyclomaticComplexMethod:Coupling.kt:Coupling$private fun cornersAgainstSoftBody</ID>
+    <ID>CyclomaticComplexMethod:Coupling.kt:Coupling$private fun particleAgainstBody</ID>
+    <ID>CyclomaticComplexMethod:DebugDraw.kt:DebugDraw$public fun constraints</ID>
+    <ID>CyclomaticComplexMethod:DebugDraw.kt:DebugDraw$public fun contacts</ID>
+    <ID>CyclomaticComplexMethod:DebugDraw.kt:DebugDraw$public fun joints</ID>
+    <ID>CyclomaticComplexMethod:Narrowphase.kt:Narrowphase$private fun clip</ID>
+    <ID>CyclomaticComplexMethod:Narrowphase.kt:Narrowphase$private fun cores</ID>
+    <ID>CyclomaticComplexMethod:Particles.kt:Particles$internal fun applyFriction</ID>
+    <ID>CyclomaticComplexMethod:Queries.kt:Queries$fun queryBox: Int</ID>
+    <ID>CyclomaticComplexMethod:Queries.kt:Queries$fun queryPoint: Int</ID>
+    <ID>CyclomaticComplexMethod:Queries.kt:Queries$private fun coreOverlapsBox: Boolean</ID>
+    <ID>CyclomaticComplexMethod:Queries.kt:Queries$private fun rayBox: Float</ID>
+    <ID>CyclomaticComplexMethod:Queries.kt:Queries$private fun rayShape: Boolean</ID>
+    <ID>CyclomaticComplexMethod:Queries.kt:Queries$private fun raySoft</ID>
+    <ID>CyclomaticComplexMethod:QueriesTest.kt:QueriesTest$@Test fun boxQueriesMatchBruteForce</ID>
+    <ID>CyclomaticComplexMethod:RigidContacts.kt:RigidContacts$@Suppress("NOTHING_TO_INLINE") private inline fun bodyAgainstBody</ID>
+    <ID>CyclomaticComplexMethod:RigidContacts.kt:RigidContacts$private fun bodyAgainstEdge</ID>
+    <ID>CyclomaticComplexMethod:RigidContacts.kt:RigidContacts$private fun cornerAgainstShape</ID>
+    <ID>CyclomaticComplexMethod:RigidContacts.kt:RigidContacts$private fun remember</ID>
+    <ID>CyclomaticComplexMethod:RigidContacts.kt:RigidContacts$private fun wakeIfHit</ID>
+    <ID>CyclomaticComplexMethod:Sleeping.kt:Sleeping$fun update</ID>
+    <ID>CyclomaticComplexMethod:SolidEdges.kt:SolidEdges$private fun build</ID>
+    <ID>CyclomaticComplexMethod:Solids.kt:SolidGrid$private fun isBuried: Boolean</ID>
+    <ID>CyclomaticComplexMethod:Strands.kt:public fun PhysicsWorld.cloth: Cloth</ID>
+    <ID>LargeClass:RigidContacts.kt:RigidContacts</ID>
+    <ID>LongMethod:Narrowphase.kt:Narrowphase$private fun clip</ID>
+    <ID>LongMethod:Queries.kt:Queries$private fun rayShape: Boolean</ID>
+    <ID>LongMethod:RigidContacts.kt:RigidContacts$@Suppress("NOTHING_TO_INLINE") // a call costs more than the copying: see the performance page private inline fun keep</ID>
+    <ID>LongMethod:SolidEdges.kt:SolidEdges$private fun build</ID>
+    <ID>LoopWithTooManyJumpStatements:Broadphase.kt:Broadphase$for</ID>
+    <ID>LoopWithTooManyJumpStatements:BroadphaseTest.kt:BroadphaseTest$for</ID>
+    <ID>LoopWithTooManyJumpStatements:Bullets.kt:Bullets$for</ID>
+    <ID>LoopWithTooManyJumpStatements:Collisions.kt:Collisions$for</ID>
+    <ID>LoopWithTooManyJumpStatements:Constraints.kt:Constraints$for</ID>
+    <ID>LoopWithTooManyJumpStatements:Coupling.kt:Coupling$for</ID>
+    <ID>LoopWithTooManyJumpStatements:DebugDraw.kt:DebugDraw$for</ID>
+    <ID>LoopWithTooManyJumpStatements:Particles.kt:Particles$for</ID>
+    <ID>LoopWithTooManyJumpStatements:Queries.kt:Queries$for</ID>
+    <ID>LoopWithTooManyJumpStatements:QueriesTest.kt:QueriesTest$while</ID>
+    <ID>LoopWithTooManyJumpStatements:RigidBodies.kt:RigidBodies$for</ID>
+    <ID>LoopWithTooManyJumpStatements:RigidContacts.kt:RigidContacts$for</ID>
+    <ID>LoopWithTooManyJumpStatements:Sleeping.kt:Sleeping$for</ID>
+    <ID>LoopWithTooManyJumpStatements:StackingTest.kt:StackingTest$for</ID>
+    <ID>MaxLineLength:Bullets.kt:Bullets$if (!bs.alive[other] || bs.bullet[other] || bs.sensor[other] || bs.filtered(b, other) || world.joints.connected(b, other)) continue</ID>
+    <ID>MaxLineLength:Bullets.kt:Bullets$if (!narrow.collide(sa, poseX, poseY, poseCos, poseSin, sb, bs.x[other], bs.y[other], bs.cos[other], bs.sin[other], manifold)) continue</ID>
+    <ID>MaxLineLength:Bullets.kt:Bullets$if (particles.flags[p] and Particles.BULLET == 0 || particles.invMass[p] == 0f || particles.mask[p] and PhysicsLayers.SOLIDS_BIT == 0) continue</ID>
+    <ID>MaxLineLength:CollisionTest.kt:CollisionTest$val grains = (0 until 200).map { ps.add(40f + (it % 20) * 6f, 40f + (it / 20) * 6f, radius = 2f, collision = ParticleCollision.EVERYTHING) }</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$bp.addMoving(particleId(p), ps.x[p], ps.y[p], (ps.x[p] - ps.prevX[p]) * ahead, (ps.y[p] - ps.prevY[p]) * ahead, ps.radius[p] + MARGIN)</ID>
+    <ID>MaxLineLength:Collisions.kt:Collisions$ps.touch(b, nx, ny, reach - distance, Material.mixFriction(friction[b], friction[a]), Material.mixFriction(staticFriction[b], staticFriction[a]), a, -1, 0f)</ID>
+    <ID>MaxLineLength:Constraints.kt:Constraints$if (ringUsed + ring.size > ringParticles.size) ringParticles = ringParticles.copyOf(maxOf(ringParticles.size * 2, ringUsed + ring.size))</ID>
+    <ID>MaxLineLength:Constraints.kt:Constraints$public</ID>
+    <ID>MaxLineLength:Constraints.kt:Constraints$require(a != b &amp;&amp; b != c &amp;&amp; a != c) { "Bend particles ${Particle(a)}, ${Particle(b)} and ${Particle(c)} are not three different ones." }</ID>
+    <ID>MaxLineLength:Coupling.kt:Coupling$bp.addMoving(id(p, PARTICLE), ps.x[p], ps.y[p], (ps.x[p] - ps.prevX[p]) * ahead, (ps.y[p] - ps.prevY[p]) * ahead, max(ps.radius[p], SKIN) + MARGIN, passive = true)</ID>
+    <ID>MaxLineLength:Coupling.kt:Coupling$if ((ps.anyFiltered || bodies.anyFiltered) &amp;&amp; !PhysicsLayers.collides(ps.category[p], ps.mask[p], bodies.category[body], bodies.mask[body])) return</ID>
+    <ID>MaxLineLength:Coupling.kt:Coupling$if ((ps.anyFiltered || bodies.anyFiltered) &amp;&amp; !PhysicsLayers.collides(soft.category(s), soft.mask(s), bodies.category[body], bodies.mask[body])) return</ID>
+    <ID>MaxLineLength:CouplingTest.kt:CouplingTest$assertFalse(bodies.shapesOf(crate)[0].contains(ps.xOf(p) - bodies.xOf(crate), ps.yOf(p) - bodies.yOf(crate)), "particle $i of the blob is inside the crate")</ID>
+    <ID>MaxLineLength:CouplingTest.kt:CouplingTest$assertTrue(abs(bodies.xOf(top) - 400f) > 20f || abs(bodies.angleOf(top)) > 0.5f, "the top crate was knocked off: at ${bodies.xOf(top)}, turned ${bodies.angleOf(top)}")</ID>
+    <ID>MaxLineLength:CouplingTest.kt:CouplingTest$assertTrue(ps.yOf(g) &lt; floor - 20f + 0.5f || ps.xOf(g) !in 270f..370f, "grain $g is in the crate at (${ps.xOf(g)}, ${ps.yOf(g)})")</ID>
+    <ID>MaxLineLength:CouplingTest.kt:CouplingTest$val grains = List(60) { world.particles.add(300f + (it % 10) * 4f, 300f - (it / 10) * 4f, radius = 2f, collision = ParticleCollision.EVERYTHING) }</ID>
+    <ID>MaxLineLength:DebugDraw.kt:DebugDraw$canvas.drawSprite(pixel, x = x, y = y, width = width, height = height, rotation = angle, color = color, layer = layer, space = DrawSpace.WORLD)</ID>
+    <ID>MaxLineLength:DebugDraw.kt:DebugDraw$canvas.drawText(labelFont, text, x, y, color, scale = 1f, align = TextAlign.CENTER, layer = layer + 5, space = DrawSpace.WORLD, shadow = LABEL_SHADOW)</ID>
+    <ID>MaxLineLength:Events.kt:Events$val key = TouchPairs.ordered(kindA.ordinal, if (kindA == TouchKind.SOLIDS) 0 else a, kindB.ordinal, if (kindB == TouchKind.SOLIDS) 0 else b)</ID>
+    <ID>MaxLineLength:EventsTest.kt:EventsTest$assertTrue(world.events.wasOnFloor(world.softBodies.particlesOf(blob)[0]) || world.events.wasOnFloor(world.softBodies.particlesOf(blob)[TestBodies.ARC_SEGMENTS]))</ID>
+    <ID>MaxLineLength:FiltersTest.kt:FiltersTest$assertTrue(PhysicsLayers.collide(bodies.layersOf(a), bodies.maskOf(a), bodies.layersOf(b), bodies.maskOf(b)), "bodies $a and $b collided, but their layers say they don't")</ID>
+    <ID>MaxLineLength:FiltersTest.kt:FiltersTest$assertTrue(world.softBodies.maxYOf(above) > floor - 3f, "the top blob sank through the other to the floor: ${world.softBodies.maxYOf(above)}")</ID>
+    <ID>MaxLineLength:FiltersTest.kt:FiltersTest$for ((step, event) in log) if (event.startsWith("+")) assertTrue(lowest[step]!! > floor - 10f - 16f, "began at step $step at ${lowest[step]}, off the floor")</ID>
+    <ID>MaxLineLength:FiltersTest.kt:FiltersTest$for (row in 0 until 4) for (k in 0 until 4 - row) boxes += world.rigidBody(Shape.box(24f, 24f), 320f - (3 - row) * 12f + k * 24f, floor - 12f - row * 24f)</ID>
+    <ID>MaxLineLength:FiltersTest.kt:FiltersTest$if (step % 60 == 30) bodies.forEach { b -> bodies.setVelocity(b, (random.nextFloat() - 0.5f) * 300f, -300f * random.nextFloat()) }</ID>
+    <ID>MaxLineLength:FiltersTest.kt:FiltersTest$val b = world.rigidBody(shape, 60f + random.nextFloat() * 520f, 40f + random.nextFloat() * 300f, angle = random.nextFloat() * 6f)</ID>
+    <ID>MaxLineLength:FiltersTest.kt:FiltersTest$val shape = if (it % 2 == 0) Shape.box(10f + random.nextFloat() * 20f, 10f + random.nextFloat() * 20f) else Shape.circle(5f + random.nextFloat() * 10f)</ID>
+    <ID>MaxLineLength:FiltersTest.kt:FiltersTest$val shape = if (it % 2 == 0) Shape.box(14f + random.nextFloat() * 14f, 14f + random.nextFloat() * 14f) else Shape.circle(7f + random.nextFloat() * 7f)</ID>
+    <ID>MaxLineLength:FiltersTest.kt:FiltersTest$world.rigidBody(Shape.box(width, height), x, y, kind = BodyKind.STATIC).also { world.rigidBodies.setResponse(it, ContactResponse.SENSE) }</ID>
+    <ID>MaxLineLength:FiltersTest.kt:FiltersTest$world.rigidBody(shape, 120f + random.nextFloat() * 400f, 100f + random.nextFloat() * 280f, material = Material(restitution = random.nextFloat() * 0.6f))</ID>
+    <ID>MaxLineLength:FrictionTest.kt:FrictionTest$world.solids = SolidGrid(60, 12, tile).apply { for (c in 0 until columns) fill(c, 11, material = Material(friction = 0.5f, staticFriction = 0.5f)) }</ID>
+    <ID>MaxLineLength:Joints.kt:Joints$if (motorMax[j] > 0f) motorTarget[j] = (if (kind[j] == JointKind.HINGE) angleBefore(j) else positionBefore(j)) + motorSpeed[j] * h</ID>
+    <ID>MaxLineLength:Joints.kt:Joints$public</ID>
+    <ID>MaxLineLength:Joints.kt:Joints$require(kind[j] == JointKind.HINGE || kind[j] == JointKind.SLIDER) { "Joint ${Joint(j)} is a ${kind[j]}, and only a hinge or a slider has a motor." }</ID>
+    <ID>MaxLineLength:Joints.kt:Joints$require(kind[j] == JointKind.HINGE || kind[j] == JointKind.SLIDER) { "Joint ${Joint(j)} is a ${kind[j]}, and only a hinge or a slider has limits." }</ID>
+    <ID>MaxLineLength:JointsTest.kt:JointsTest$if (lifts) assertTrue(angle > 0.5f, "a strong motor lifts it: $angle") else assertTrue(angle &lt; 0f, "a weak one can't hold it up: $angle")</ID>
+    <ID>MaxLineLength:JointsTest.kt:JointsTest$val axles = Array(2) { world.joints.hinge(chassis, wheels[it], world.rigidBodies.xOf(wheels[it]), world.rigidBodies.yOf(wheels[it])) }</ID>
+    <ID>MaxLineLength:Narrowphase.kt:Narrowphase$/** How far apart the two cores are at their nearest, every edge of one against every edge of the other; the points into the near- fields. */</ID>
+    <ID>MaxLineLength:Narrowphase.kt:Narrowphase$internal</ID>
+    <ID>MaxLineLength:Narrowphase.kt:Narrowphase$private</ID>
+    <ID>MaxLineLength:Narrowphase.kt:Narrowphase$public</ID>
+    <ID>MaxLineLength:NarrowphaseTest.kt:NarrowphaseTest$if (deepest &lt; -0.3f) assertTrue(overlap(a, 0f, 0f, aa, b, bx, by, ba, 0f), "$where: a contact ${-deepest} deep, but they don't overlap")</ID>
+    <ID>MaxLineLength:Outline.kt:Outline$val t = if (lengthSquared &lt; 1e-9f) 0f else (((px - body.xAt(e)) * ex + (py - body.yAt(e)) * ey) / lengthSquared).coerceIn(0f, 1f)</ID>
+    <ID>MaxLineLength:PhysicsTest.kt:PhysicsTest$/** The bridge's [Physics], here because a test that links klyph needs the demo's SDL. Entities follow their bodies: a [Physics] step moves every linked [Transform] to where its body went. */</ID>
+    <ID>MaxLineLength:Queries.kt:Queries$if (segmentNearBox(ring.xAt(i), ring.yAt(i), ring.xAt(j) - ring.xAt(i), ring.yAt(j) - ring.yAt(i), left, top, right, bottom)) return true</ID>
+    <ID>MaxLineLength:Queries.kt:Queries$private</ID>
+    <ID>MaxLineLength:QueriesTest.kt:QueriesTest$3 -> Shape.polygon(listOf(Vec2(0f, 0f), Vec2(10f + random.nextFloat() * 20f, 0f), Vec2(random.nextFloat() * 15f, 8f + random.nextFloat() * 20f)))</ID>
+    <ID>MaxLineLength:QueriesTest.kt:QueriesTest$assertEquals(0, n, "seed $seed ray $rays: something at $t along, before the ray's ${if (didHit) "hit at $end" else "end"}")</ID>
+    <ID>MaxLineLength:QueriesTest.kt:QueriesTest$assertFalse(world.raycast(hit.x, hit.y, hit.x + rx, hit.y + ry, hit), "it hit ${hit.kind} ${hit.rigidBodyOrNull ?: hit.softBodyOrNull ?: hit.solidOrNull} at ${hit.fraction}")</ID>
+    <ID>MaxLineLength:QueriesTest.kt:QueriesTest$assertTrue(hit.normalX * (tx - ox) + hit.normalY * (ty - oy) &lt; 0f, "seed $seed ray $rays: the normal faces away from the ray")</ID>
+    <ID>MaxLineLength:QueriesTest.kt:QueriesTest$closest = minOf(closest, if (Outline.contains(sb.ringOf(b), x, y)) 0f else sqrt(Outline.nearestPoint(sb.ringOf(b), x, y, nearest)))</ID>
+    <ID>MaxLineLength:QueriesTest.kt:QueriesTest$for (k in 0 until atPoint.rigidBodyCount) assertTrue(found.contains(atPoint.rigidBodyAt(k)), "box $attempt missed rigid body ${atPoint.rigidBodyAt(k)} at ($x, $y)")</ID>
+    <ID>MaxLineLength:QueriesTest.kt:QueriesTest$for (k in 0 until atPoint.softBodyCount) assertTrue(found.contains(atPoint.softBodyAt(k)), "box $attempt missed soft body ${atPoint.softBodyAt(k)} at ($x, $y)")</ID>
+    <ID>MaxLineLength:QueriesTest.kt:QueriesTest$for (k in 0 until atPoint.solidCount) assertTrue((0 until found.solidCount).any { found.solidAt(it) === atPoint.solidAt(k) }, "box $attempt missed a solid at ($x, $y)")</ID>
+    <ID>MaxLineLength:QueriesTest.kt:QueriesTest$world.rigidBody(shapes, 40f + random.nextFloat() * 560f, 40f + random.nextFloat() * 320f, angle = random.nextFloat() * 6f, kind = kind)</ID>
+    <ID>MaxLineLength:QueriesTest.kt:QueriesTest$world.softBody(SoftBodyShape.circle(14f + random.nextFloat() * 10f, 20, coreMass = 4f), 60f + random.nextFloat() * 520f, 60f + random.nextFloat() * 300f)</ID>
+    <ID>MaxLineLength:RigidBodies.kt:RigidBodies$internal</ID>
+    <ID>MaxLineLength:RigidBodies.kt:RigidBodies$public</ID>
+    <ID>MaxLineLength:RigidBodies.kt:RigidBodies$val b = addAt(x + c * mass.centerX - s * mass.centerY, y + s * mass.centerX + c * mass.centerY, angle, mass.mass, mass.inertia, kind)</ID>
+    <ID>MaxLineLength:RigidContacts.kt:RigidContacts$/** Strikes contact [c]'s bodies apart with the impulse [amount] along its normal, at its points [w1x], [w1y] and [w2x], [w2y] from their centres. */</ID>
+    <ID>MaxLineLength:RigidContacts.kt:RigidContacts$if</ID>
+    <ID>MaxLineLength:RigidContacts.kt:RigidContacts$if (!narrow.collide(shape, bodies.x[body], bodies.y[body], bodies.cos[body], bodies.sin[body], box, cx, cy, 1f, 0f, manifold)) continue</ID>
+    <ID>MaxLineLength:RigidContacts.kt:RigidContacts$if (!narrow.collide(sp, bodies.x[p], bodies.y[p], bodies.cos[p], bodies.sin[p], sq, bodies.x[q], bodies.y[q], bodies.cos[q], bodies.sin[q], manifold)) continue</ID>
+    <ID>MaxLineLength:RigidContacts.kt:RigidContacts$if (along &lt; (if (ed.solidPastStart[e]) -MAX_DEPTH else 0f) || along > length + (if (ed.solidPastEnd[e]) MAX_DEPTH else 0f)) continue</ID>
+    <ID>MaxLineLength:RigidContacts.kt:RigidContacts$if (b[c] &lt; 0) events.touch(TouchKind.RIGID_BODY, a[c], TouchKind.SOLIDS, -1) else events.touch(TouchKind.RIGID_BODY, a[c], TouchKind.RIGID_BODY, b[c])</ID>
+    <ID>MaxLineLength:RigidContacts.kt:RigidContacts$if (lambdaN[c] > 0f &amp;&amp; lambdaN[t] > 0f) bouncePair(c, t, bounceSpeed) else bounce(if (lambdaN[c] > 0f) c else t, bounceSpeed)</ID>
+    <ID>MaxLineLength:RigidContacts.kt:RigidContacts$narrow.collide(sp, bodies.prevX[p], bodies.prevY[p], prevCosP, prevSinP, sq, bodies.prevX[q], bodies.prevY[q], prevCosQ, prevSinQ, manifold)</ID>
+    <ID>MaxLineLength:RigidContacts.kt:RigidContacts$private</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$assertTrue("in a line" in assertFailsWith&lt;IllegalArgumentException> { Shape.polygon(listOf(Vec2(0f, 0f), Vec2(5f, 0f), Vec2(10f, 0f), Vec2(10f, 10f))) }.message!!)</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$val error = assertFailsWith&lt;IllegalArgumentException> { Shape.polygon(listOf(Vec2(0f, 0f), Vec2(20f, 0f), Vec2(10f, 5f), Vec2(20f, 10f), Vec2(0f, 10f))) }</ID>
+    <ID>MaxLineLength:ShapeTest.kt:ShapeTest$val expected = 2f * (handle.inertia + 240f * (10f - centre) * (10f - centre) + head.inertia + 300f * (-15f - centre) * (-15f - centre))</ID>
+    <ID>MaxLineLength:ShortcutsTest.kt:ShortcutsTest$repeat(800) { grains += world.particles.add(150f + random.nextFloat() * 300f, 100f + random.nextFloat() * 300f, radius = 1.25f, collision = ParticleCollision.EVERYTHING) }</ID>
+    <ID>MaxLineLength:SoftBodies.kt:SoftBodies$if (particleUsed + particles > particlePool.size) particlePool = particlePool.copyOf(max(particlePool.size * 2, particleUsed + particles))</ID>
+    <ID>MaxLineLength:SolidEdges.kt:SolidEdges$if (j &lt; 0 || j == i || !sameWay(open[last], open[j]) || open[j].solid.material != open[i].solid.material || steps > open.size) break</ID>
+    <ID>MaxLineLength:StackingTest.kt:StackingTest$if (!narrow.collide(bodies.shapesOf(a)[0], bodies.xOf(a), bodies.yOf(a), bodies.angleOf(a), bodies.shapesOf(b)[0], bodies.xOf(b), bodies.yOf(b), bodies.angleOf(b), m)) continue</ID>
+    <ID>MaxLineLength:StackingTest.kt:StackingTest$val box = world.rigidBody(Shape.box(24f, 8f), x, x - 5 * tile + 10 * tile - 4f * sqrt(2f), angle = (PI / 4).toFloat(), material = material)</ID>
+    <ID>MaxLineLength:StackingTest.kt:StackingTest$val shapes = listOf(Shape.box(20f, 20f), Shape.circle(10f), Shape.capsule(20f, 6f), Shape.polygon(listOf(Vec2(-10f, 8f), Vec2(0f, -10f), Vec2(10f, 8f))))</ID>
+    <ID>MaxLineLength:Strands.kt:)</ID>
+    <ID>MaxLineLength:Strands.kt:for (col in 0 until cols) for (row in 1 until rows - 1) bends += cs.bend(at(col, row - 1), at(col, row), at(col, row + 1), bendCompliance)</ID>
+    <ID>MaxLineLength:Strands.kt:for (row in 0 until rows) for (col in 1 until cols - 1) bends += cs.bend(at(col - 1, row), at(col, row), at(col + 1, row), bendCompliance)</ID>
+    <ID>MaxLineLength:StrandsTest.kt:StrandsTest$for (link in cloth.links) assertTrue(world.constraints.strainOf(link) &lt; 0.05f, "link $link is stretched ${world.constraints.strainOf(link)}")</ID>
+    <ID>MaxLineLength:StrandsTest.kt:StrandsTest$for (link in cloth.links) if (cs.isAlive(link)) assertTrue(cs.strainOf(link) &lt; 0.6f, "nothing left hanging on by a thread: link $link at ${cs.strainOf(link)}")</ID>
+    <ID>MaxLineLength:TunnellingTest.kt:TunnellingTest$assertTrue(bodies.xOf(bullet) &lt; bodies.xOf(plate), "the bullet is still behind the plate: ${bodies.xOf(bullet)}, plate at ${bodies.xOf(plate)}")</ID>
+    <ID>NestedBlockDepth:Queries.kt:Queries$fun queryBox: Int</ID>
+    <ID>ReturnCount:Attachments.kt:Attachments$private fun solve</ID>
+    <ID>ReturnCount:Bullets.kt:Bullets$private fun hits: Boolean</ID>
+    <ID>ReturnCount:Bullets.kt:Bullets$private fun inSolid: Boolean</ID>
+    <ID>ReturnCount:Bullets.kt:Bullets$private fun sweep</ID>
+    <ID>ReturnCount:Collisions.kt:Collisions$private fun particleAgainstBody</ID>
+    <ID>ReturnCount:Constraints.kt:Constraints$private fun solveBend</ID>
+    <ID>ReturnCount:Constraints.kt:Constraints$private fun solveLink</ID>
+    <ID>ReturnCount:Constraints.kt:Constraints$private fun solvePin</ID>
+    <ID>ReturnCount:Coupling.kt:Coupling$private fun particleAgainstBody</ID>
+    <ID>ReturnCount:Events.kt:Events$private fun isFrozen: Boolean</ID>
+    <ID>ReturnCount:Grab.kt:Grab$internal fun beginStep</ID>
+    <ID>ReturnCount:Grab.kt:Grab$internal fun grab: Int</ID>
+    <ID>ReturnCount:Joints.kt:Joints$internal fun connected: Boolean</ID>
+    <ID>ReturnCount:Narrowphase.kt:Narrowphase$private fun cores</ID>
+    <ID>ReturnCount:Particles.kt:Particles$private fun slidePast</ID>
+    <ID>ReturnCount:Physics.kt:PhysicsBody$internal fun moveTo</ID>
+    <ID>ReturnCount:Queries.kt:Queries$private fun coreOverlapsBox: Boolean</ID>
+    <ID>ReturnCount:Queries.kt:Queries$private fun rayBox: Float</ID>
+    <ID>ReturnCount:Queries.kt:Queries$private fun rayShape: Boolean</ID>
+    <ID>ReturnCount:Queries.kt:Queries.Companion$fun rayCircle: Float</ID>
+    <ID>ReturnCount:Queries.kt:Queries.Companion$fun raySegment: Float</ID>
+    <ID>ReturnCount:Queries.kt:Queries.Companion$fun segmentNearBox: Boolean</ID>
+    <ID>ReturnCount:RigidContacts.kt:RigidContacts$@Suppress("NOTHING_TO_INLINE") private inline fun bodyAgainstBody</ID>
+    <ID>ReturnCount:RigidContacts.kt:RigidContacts$@Suppress("NOTHING_TO_INLINE") private inline fun hold</ID>
+    <ID>ReturnCount:RigidContacts.kt:RigidContacts$@Suppress("NOTHING_TO_INLINE") private inline fun pairPushes: Boolean</ID>
+    <ID>ReturnCount:RigidContacts.kt:RigidContacts$@Suppress("NOTHING_TO_INLINE") private inline fun recall: Int</ID>
+    <ID>ReturnCount:RigidContacts.kt:RigidContacts$private fun cornerAgainstShape</ID>
+    <ID>ReturnCount:RigidContacts.kt:RigidContacts$private fun wakeIfHit</ID>
+    <ID>ReturnCount:Sleeping.kt:Sleeping$fun update</ID>
+    <ID>ReturnCount:Solids.kt:Solid$internal fun overlaps: Boolean</ID>
+    <ID>ReturnCount:Solids.kt:SolidGrid$private fun isBuried: Boolean</ID>
+    <ID>ReturnCount:Solids.kt:SolidGrid$private fun tryCorner</ID>
+    <ID>ReturnCount:Solids.kt:SolidGrid$private fun trySlopeAbove</ID>
+    <ID>ReturnCount:Solids.kt:SolidGrid$public fun isSolidAt: Boolean</ID>
+    <ID>TooManyFunctions:Attachments.kt:Attachments</ID>
+    <ID>TooManyFunctions:Broadphase.kt:Broadphase</ID>
+    <ID>TooManyFunctions:Collisions.kt:Collisions</ID>
+    <ID>TooManyFunctions:Constraints.kt:Constraints</ID>
+    <ID>TooManyFunctions:DebugDraw.kt:DebugDraw</ID>
+    <ID>TooManyFunctions:Events.kt:Events</ID>
+    <ID>TooManyFunctions:Joints.kt:Joints</ID>
+    <ID>TooManyFunctions:Narrowphase.kt:Narrowphase</ID>
+    <ID>TooManyFunctions:Particles.kt:Particles</ID>
+    <ID>TooManyFunctions:PhysicsWorld.kt:PhysicsWorld</ID>
+    <ID>TooManyFunctions:Queries.kt:Overlaps</ID>
+    <ID>TooManyFunctions:Queries.kt:Queries</ID>
+    <ID>TooManyFunctions:RigidBodies.kt:RigidBodies</ID>
+    <ID>TooManyFunctions:RigidContacts.kt:RigidContacts</ID>
+    <ID>TooManyFunctions:SoftBodies.kt:SoftBodies</ID>
+    <ID>TooManyFunctions:SoftBodies.kt:klyph.physics.SoftBodies.kt</ID>
+    <ID>TooManyFunctions:Solids.kt:SolidGrid</ID>
+  </CurrentIssues>
+</SmellBaseline>

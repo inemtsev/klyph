@@ -1,0 +1,134 @@
+package klyph.physics.demo
+
+/**
+ * The sandbox's rules with no drawing or input code: which scene is on, whether time runs, stops,
+ * crawls or moves one step at a time, and what the mouse holds. The app turns keys and the mouse into
+ * these calls and calls [fixedStep] once per fixed step; a test drives exactly the same code.
+ *
+ * Slow motion steps the physics on one fixed step in [SLOW_MOTION_FACTOR] rather than with a
+ * smaller step, so a scene behaves the same at any speed.
+ */
+class Sandbox(private val scenes: List<Scene>) {
+    init {
+        require(scenes.isNotEmpty()) { "The sandbox needs at least one scene" }
+    }
+
+    /** Which scene is on, counting from 0. */
+    var index: Int = 0
+        private set
+
+    val scene: Scene get() = scenes[index]
+
+    val sceneCount: Int get() = scenes.size
+
+    /** The current scene's run, replaced on every switch and reset. */
+    var run: SceneRun = scenes[0].create()
+        private set
+
+    var isPaused: Boolean = false
+        private set
+
+    var isSlowMotion: Boolean = false
+        private set
+
+    /** Physics steps taken since the current run started. */
+    var stepCount: Long = 0
+        private set
+
+    /** Fixed steps seen in slow motion, to pick the ones that step the physics. */
+    private var slowTicks = 0
+
+    /** Switches to scene [i], counting from 0, from its start. Does nothing for a scene that does not exist. */
+    fun select(i: Int) {
+        if (i !in scenes.indices) return
+        index = i
+        reset()
+    }
+
+    fun next() = select((index + 1) % scenes.size)
+
+    fun previous() = select((index - 1 + scenes.size) % scenes.size)
+
+    /** Starts the current scene again. Pause and slow motion stay as they are. */
+    fun reset() {
+        run = scene.create()
+        stepCount = 0
+        slowTicks = 0
+    }
+
+    fun togglePause() {
+        isPaused = !isPaused
+    }
+
+    fun toggleSlowMotion() {
+        isSlowMotion = !isSlowMotion
+        slowTicks = 0
+    }
+
+    /**
+     * Takes hold of the rigid body at ([x], [y]) in the current run's world, or the particle nearest
+     * it if one is near enough, and returns whether it took anything. The left mouse button.
+     */
+    fun grab(x: Float, y: Float): Boolean {
+        val world = run.world
+        world.grab(x, y)
+        return world.hand.isHolding
+    }
+
+    /** Moves the hand to ([x], [y]): the grabbed particle follows. The mouse, while the button is down. */
+    fun moveGrab(x: Float, y: Float) {
+        run.world.moveGrab(x, y)
+    }
+
+    /** Lets go. The left mouse button coming up. */
+    fun release() {
+        run.world.release()
+    }
+
+    /** Adds the current scene's kind of thing at ([x], [y]). The right mouse button. */
+    fun spawn(x: Float, y: Float) = run.spawn(x, y)
+
+    /** Pauses, if it was not, and moves the physics on by exactly one step of [dt] seconds. */
+    fun stepOnce(dt: Float) {
+        isPaused = true
+        advance(dt)
+    }
+
+    /** Called once per fixed step of [dt] seconds; returns whether the physics moved. */
+    fun fixedStep(dt: Float): Boolean {
+        if (!beginStep(dt)) return false
+        run.world.step(stepOf(dt))
+        endStep(dt)
+        return true
+    }
+
+    /**
+     * The sandbox's part of a fixed step of [dt] seconds, before the world is stepped, for when
+     * something else steps it, such as `addPhysics`. Returns whether the physics moves this step: not
+     * while paused, and only one step in [SLOW_MOTION_FACTOR] in slow motion. If it does, the scene has
+     * steered and spawned for the step, and [run]'s world, which it may have swapped, should be stepped
+     * and then [endStep] called.
+     */
+    fun beginStep(dt: Float): Boolean {
+        if (isPaused) return false
+        if (isSlowMotion && slowTicks++ % SLOW_MOTION_FACTOR != 0) return false
+        run.beforeStep(dt)
+        return true
+    }
+
+    /** The sandbox's part of a fixed step of [dt] seconds after the world was stepped: see [beginStep]. */
+    fun endStep(dt: Float) {
+        run.afterStep(dt)
+        stepCount++
+    }
+
+    private fun advance(dt: Float) {
+        run.step(dt)
+        stepCount++
+    }
+
+    companion object {
+        /** In slow motion the physics moves on one fixed step in this many: a quarter of the speed. */
+        const val SLOW_MOTION_FACTOR = 4
+    }
+}

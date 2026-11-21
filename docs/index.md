@@ -23,18 +23,21 @@ the same list.
    events, shape queries and particle emitters.
 7. <a href="guide/platformers.html">Platformers</a>: solids, one-way ledges, kinematic bodies and sweep
    queries, with gravity, coyote time and a jump buffer written as game code.
-8. <a href="guide/scrolling.html">Scrolling worlds</a>: a camera that follows what the player sees and
+8. <a href="guide/physics.html">Physics</a>: the klyph-physics module, with rigid bodies, soft bodies,
+   ropes, cloth, joints, contacts and queries, stepped in the fixed step.
+9. <a href="guide/scrolling.html">Scrolling worlds</a>: a camera that follows what the player sees and
    shakes, a sky and parallax layers, repeating textures, sprite origins and the scene clock.
-9. <a href="guide/tilemaps.html">Tile maps</a>: levels painted in the Tiled editor, drawn as tile
-   layers, with solids from the tiles marked solid and tiles changed while the game runs.
-10. <a href="guide/text-canvas-and-overlay.html">Text, canvas and overlay</a>: fonts, the `Text` component,
+10. <a href="guide/tilemaps.html">Tile maps</a>: levels painted in the Tiled editor, drawn as tile
+    layers, with solids from the tiles marked solid and tiles changed while the game runs.
+11. <a href="guide/text-canvas-and-overlay.html">Text, canvas and overlay</a>: fonts, the `Text` component,
     drawing on `app.canvas` and the debug overlay.
-11. <a href="guide/shipping.html">Shipping</a>: the distribution zip, SDL3 at runtime, fullscreen, the cursor
+12. <a href="guide/shipping.html">Shipping</a>: the distribution zip, SDL3 at runtime, fullscreen, the cursor
     and screenshots on CI.
-12. <a href="guide/performance.html">Performance</a>: what each engine stage costs and how to keep a
+13. <a href="guide/performance.html">Performance</a>: what each engine stage costs and how to keep a
     frame cheap.
 
 ## API reference
 
-The two modules below hold every public declaration. A game depends on `klyph`; `klyph-platform`
+The modules below hold every public declaration. A game depends on `klyph`; `klyph-platform`
 comes with it and holds the colors, images, key names and window a game uses alongside it.
+`klyph-physics` is the physics engine, a separate dependency for games that want one.

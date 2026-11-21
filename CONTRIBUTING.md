@@ -58,13 +58,15 @@ opting the game in.
 |---|---|
 | `klyph-platform` | SDL3 bindings and the thin Kotlin API over them; the only module that touches C interop. |
 | `klyph` | The engine: entities, scenes, rendering, text, particles, collisions, audio. |
+| `klyph-physics` | The physics engine: rigid and soft bodies, particles, constraints, joints and solids, solved with XPBD, and its bridge to `klyph`'s app and entities. |
 | `samples` | The `@sample` functions referenced from KDoc, run as tests. |
 | `klyph-gradle-plugin` | The Gradle plugin games apply, a separate Gradle build included through `pluginManagement`. Its library mode configures the engine modules too, so the target rules and the SDL3 lookup live only here. |
 | `buildSrc` | The engine modules' convention plugins (`klyph.native`, `klyph.publish`, `klyph.docs`, `klyph.lint`) and the shader and guide tasks, built against the plugin above. |
 | `games/shooter`, `games/squish`, `games/roller` | The sample games. |
+| `games/physics` | The physics playground: eighteen scenes of `klyph-physics`. Its slow scene tests run only with `-Pklyph.physics.sceneTests=1`. |
 | `sandbox` | Smoke test: opens a window and clears it each frame. |
-| `benchmarks` | Named benchmarks, such as `sprites` and `mixer`. |
-| `docs` | The guide pages, rendered into the Dokka site. |
+| `benchmarks` | Named benchmarks, such as `sprites`, `mixer` and `physics`. |
+| `docs` | The guide pages, rendered into the Dokka site, and in `docs/physics` the physics explainers, read on GitHub. |
 | `tools` | The consumer test, the release secrets script, the SDL3 bump script, the template that becomes `klyph-template`, and `detekt-rules`, klyph's own detekt rules, a separate Gradle build the root settings include. |
 
 ## Requirements
@@ -92,7 +94,8 @@ opting the game in.
 
 Run `./gradlew check` and the plugin's `check` before opening a pull request, and the rules'
 `check` after changing them. Engine tests live in
-`klyph/src/nativeTest/kotlin` and `klyph-platform/src/nativeTest/kotlin`, samples in
+`klyph/src/nativeTest/kotlin`, `klyph-platform/src/nativeTest/kotlin` and
+`klyph-physics/src/nativeTest/kotlin`, samples in
 `samples/src/nativeTest/kotlin`, and the plugin's tests in `klyph-gradle-plugin/src/test` and
 `klyph-gradle-plugin/src/functionalTest`. Only `klyph-platform` may import `kotlinx.cinterop`,
 `sdl3`, `stb`, `vorbis`, `cnames` or `platform.*`; `check` fails on such an import anywhere else.
@@ -113,8 +116,8 @@ the baselines without them. detekt runs without type resolution everywhere (Kotl
 none, and in the plugin build it would fight the sam-with-receiver compiler plugin), so the rules
 that need it never fire. `MagicNumber` is off, since an engine's tuning values and maths are
 numbers, and lines may run to 140 columns. The rules of [API_STYLE.md](API_STYLE.md) that detekt
-can check from syntax alone are on for the library modules (`klyph`, `klyph-platform` and the
-plugin; the executables and samples are excluded by path): KDoc on every public declaration, a
+can check from syntax alone are on for the library modules (`klyph`, `klyph-platform`,
+`klyph-physics` and the plugin; the executables and samples are excluded by path): KDoc on every public declaration, a
 first sentence that ends, KDoc links only to public declarations, no Manager, Helper, Util,
 Wrapper, Data or Info in a class name, and no public `data class`, the last from detekt's
 `libraries` rule set, which both builds add to `detektPlugins`.
@@ -148,6 +151,7 @@ GPU each frame, so the display is out of the loop; use them for numbers.
 ./gradlew :benchmarks:benchmarkSpritesOffscreen -Pklyph.sprites=100000
 ./gradlew :benchmarks:benchmarkCollisionsOffscreen -Pklyph.sprites=10000
 ./gradlew :benchmarks:benchmarkMixer -Pklyph.music=games/shooter/assets/music.ogg
+./gradlew :benchmarks:benchmarkPhysics
 ./gradlew :benchmarks:benchmarkList
 ```
 

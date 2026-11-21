@@ -176,6 +176,30 @@ benchmark put a chain of bare children under each sprite and asked for the last 
 each: 65 ns for a chain of one child, then 80, 109 and 154 ns for chains of two, three and five.
 Each further level adds about 20 ns. Roots cost the same 38 ns as before the change.
 
+## Physics (2026-11-18)
+
+The `physics` benchmark steps the `klyph-physics` stress world headless, with no window, through the
+public API. The world is the physics playground's stress scene: a room 40 tiles of 16 wide, 1,000
+rigid 8x8 boxes stacked in a block on the left, 5,000 sand grains of radius 1.25 heaped on the
+right, and 50 soft balls of 13 particles dropped on the sand, stepped at 60 steps a second in 8
+substeps of 2 solver passes. Each kind is timed alone and then all together, 600 steps from the
+first, with sleeping off, so nothing gets cheaper by falling asleep. Reproduce with
+`./gradlew :benchmarks:benchmarkPhysics` (`-Pklyph.frames=<n>` sets the steps per workload).
+Apple M4 Max, release build, three runs; the lines are the second, and the other runs agree within
+0.2 ms on the averages.
+
+```
+boxes        average=6.16ms p99=7.47ms slowest=8.17ms (0 particles, 1000 rigid bodies, 0 soft bodies, 7262 rigid-body contacts at the end)
+sand         average=5.52ms p99=6.23ms slowest=6.47ms (5000 particles, 0 rigid bodies, 0 soft bodies, 0 rigid-body contacts at the end)
+soft bodies  average=1.18ms p99=1.56ms slowest=2.38ms (650 particles, 0 rigid bodies, 50 soft bodies, 0 rigid-body contacts at the end)
+everything   average=19.47ms p99=21.85ms slowest=23.35ms (5650 particles, 1000 rigid bodies, 50 soft bodies, 6109 rigid-body contacts at the end)
+```
+
+Everything together takes about 6.6 ms more than the parts added up, because the sand and the
+balls also collide with the boxes and with each other. That is more than a 60 FPS frame on one
+thread: the stress world is sized to find the limit, not as a budget for a game. A step allocates nothing, which the module's `AllocationTest` checks, so
+the physics never starts a collection.
+
 ## Benchmark warm-up (2026-11-03)
 
 The summary used to skip the first second and then add up whole seconds, so a run whose frame

@@ -50,6 +50,8 @@ template" and you have a window, a ship that flies, and CI on three desktops.
   that run as tests.
 - **[Three sample games](games/)**: a top-down shooter, a bug-squishing game for small children
   and a platformer. Each plays itself with `-Pklyph.autopilot=1`.
+- **[The physics playground](games/physics)**: eighteen scenes of the `klyph-physics` module, from
+  a blob garden to 5,000 grains of sand; `./gradlew :games:physics:run`.
 
 ## What you get
 
@@ -67,6 +69,9 @@ template" and you have a window, a ship that flies, and CI on three desktops.
   shake and a scene clock.
 - **Levels that move.** Tile maps painted in the Tiled editor, with their walls merged into
   solids, platforms that carry whoever stands on them, and an automatic texture atlas.
+- **Physics**, in the optional `klyph-physics` module. Rigid bodies that stack and tumble, soft
+  bodies that squash, sand, ropes and cloth that tear, joints and motors, solved with XPBD. The
+  [physics playground](games/physics) shows all of it in eighteen scenes.
 - **A Gradle plugin** that finds or downloads SDL3, runs your game and packages it.
 
 ## Fast and stable
