@@ -151,6 +151,26 @@ class PathfindingTest {
     }
 
     @Test
+    fun oneFieldAsksEachPassabilityTestAnew() {
+        val layer = layerOf(
+            ".,.",
+            ".#.",
+            "...",
+        )
+        val field = DistanceField()
+        val goals = listOf(cell(0, 0))
+        // The default walks the floor tile at (1, 0).
+        field.compute(layer, goals = goals)
+        assertEquals(listOf("0 1 2", "1 - 3", "2 3 4"), picture(field))
+        // Only empty cells may be walked, so the same field now goes round the floor tile.
+        field.compute(layer, goals = goals) { it.isEmpty }
+        assertEquals(listOf("0 - 6", "1 - 5", "2 3 4"), picture(field))
+        // Back to the default, the floor tile can be walked again.
+        field.compute(layer, goals = goals)
+        assertEquals(listOf("0 1 2", "1 - 3", "2 3 4"), picture(field))
+    }
+
+    @Test
     fun oneFieldIsReusedAcrossGridsAndChanges() {
         val field = DistanceField()
         assertEquals("DistanceField(size=0x0, reachable=0)", field.toString())
@@ -267,23 +287,32 @@ class PathfindingTest {
 
     @Test
     fun recomputingAGrownFieldAllocatesNothing() {
-        val layer = TileLayer(tileSet, columns = 256, rows = 256)
-        // Walls on every fourth column with a gap that moves, so the search winds through the grid.
-        for (column in 1 until 256 step 4) {
-            for (row in 0 until 256) if (row != column * 7 % 256) layer[column, row] = Tile.of(0)
-        }
+        val layer = windingLayer(size = 256)
+        // A smaller grid between the large ones: the field keeps its grown arrays for it.
+        val small = windingLayer(size = 64)
         val field = DistanceField()
         val goals = listOf(cell(0, 0), cell(255, 255))
+        val smallGoals = listOf(cell(0, 0), cell(63, 63))
         val walkable: (Tile) -> Boolean = { it.isEmpty }
         val objects = measure {
             repeat(10) {
+                field.compute(small, goals = smallGoals)
                 field.compute(layer, goals = goals)
                 field.compute(layer, goals = goals, neighbors = Neighbors.EIGHT)
                 field.compute(layer, goals = goals, isPassable = walkable)
             }
         }
         assertTrue(field[128, 128] > 0, "The goals reached ${field[128, 128]} at the middle of the grid.")
-        assertTrue(objects < 20, "30 recomputes allocated $objects objects")
+        assertTrue(objects < 20, "40 recomputes allocated $objects objects")
+    }
+
+    /** Returns a [size] by [size] layer with walls on every fourth column and a gap that moves, so a search winds through it. */
+    private fun windingLayer(size: Int): TileLayer {
+        val layer = TileLayer(tileSet, columns = size, rows = size)
+        for (column in 1 until size step 4) {
+            for (row in 0 until size) if (row != column * 7 % size) layer[column, row] = Tile.of(0)
+        }
+        return layer
     }
 
     /**
