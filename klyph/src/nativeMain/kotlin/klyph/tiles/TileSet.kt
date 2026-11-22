@@ -59,6 +59,12 @@ public class TileSet(
         return id >= 0 && id < solid.size && solid[id]
     }
 
+    /**
+     * The opposite of [isSolid], made once, so the searches of `Pathfinding.kt` default to it without
+     * making a new lambda on every call.
+     */
+    internal val isNotSolid: (Tile) -> Boolean = { !isSolid(it) }
+
     /** Returns `true` if [tile] is not empty and its id is one of the [oneWayIds]. Flips do not matter. */
     public fun isOneWay(tile: Tile): Boolean {
         val id = tile.id
