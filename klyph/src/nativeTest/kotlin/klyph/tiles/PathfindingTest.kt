@@ -252,7 +252,7 @@ class PathfindingTest {
     fun recomputingAGrownFieldAllocatesNothing() {
         val layer = TileLayer(tileSet, columns = 256, rows = 256)
         // Walls on every fourth column with a gap that moves, so the search winds through the grid.
-        for (column in 3 until 256 step 4) {
+        for (column in 1 until 256 step 4) {
             for (row in 0 until 256) if (row != column * 7 % 256) layer[column, row] = Tile.of(0)
         }
         val field = DistanceField()

@@ -15,6 +15,7 @@ All notable changes to klyph are recorded here. The format follows
   it in the fixed step and `PhysicsBody` moves an entity with its body; see the
   [Physics guide](https://inemtsev.github.io/klyph/guide/physics.html).
 - `games/physics`: a playground of eighteen physics scenes, from a blob garden to a 5 000-grain stress test.
+- `DistanceField` and `TileGrid.shortestPath`: find the way across a tile grid, for many walkers heading to one goal or one unit going to a clicked cell.
 
 ## [1.3.0] - 2026-11-21
 

@@ -118,7 +118,8 @@ same view into each layer's cells, sizes the record buffers for them and writes 
 cell in view (a diagonal flip is a quarter turn clockwise with the quad's x flip the tile's y flip and its y flip
 the opposite of its x flip) before the ordinary sprites; `TileGrid` is the read-only interface both `TileLayer` and
 the immutable `TileMapLayer` implement, with `tileAt`, `solidRectangles` (row runs merged down equal columns),
-`toTileLayer`, and `Commands.spawnTileLayer`/`spawnSolids` (one `Solid` box per rectangle, `Passable.FROM_BELOW`
+`toTileLayer`, `shortestPath`/`shortestPathOrNull` (a `List` of `Cell`s, a value class) and `DistanceField.compute`
+(breadth first from goal cells, `Neighbors.FOUR` or `EIGHT` without cutting corners, allocating nothing once grown), and `Commands.spawnTileLayer`/`spawnSolids` (one `Solid` box per rectangle, `Passable.FROM_BELOW`
 for one-way tiles); `app.assets.tileMap(path)` reads orthogonal finite Tiled JSON maps (`.tmj`, CSV or uncompressed
 base64 layers, one tileset embedded or as `.tsj`, bool tile properties `solid` and `oneWay`) through the internal
 `readTiledMap` and the internal recursive-descent JSON reader `klyph.json.parseJson` (errors name line and column;
@@ -228,6 +229,7 @@ CI job (no display, no GPU) uses it; the Windows job runs it in bash like its ot
 ./gradlew :benchmarks:benchmarkMixer                            # headless, no window or device
 ./gradlew :benchmarks:benchmarkMixer -Pklyph.music=games/shooter/assets/music.ogg
 ./gradlew :benchmarks:benchmarkPhysics                          # the physics stress world, headless
+./gradlew :benchmarks:benchmarkPaths                            # distance field and paths on a 256 by 256 grid, headless
 ./gradlew :benchmarks:benchmarkList
 ```
 
