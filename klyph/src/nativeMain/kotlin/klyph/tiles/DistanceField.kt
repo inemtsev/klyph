@@ -15,7 +15,7 @@ package klyph.tiles
  * a cell with a route, and [UNREACHABLE] for a cell with none. A step goes to a neighbor under
  * [neighborhood] and counts 1, diagonal or not.
  *
- * Has no sample because a [TileSet] needs a texture, which needs a GPU device.
+ * @sample samples.tiles.Paths.compute
  */
 public class DistanceField {
     /** Number of cells across, those of the grid of the last [compute]; 0 before the first. */
@@ -65,12 +65,16 @@ public class DistanceField {
      * are passable, so no step cuts the corner of a wall.
      *
      * The search is breadth-first from every goal at once and visits each cell once. [isPassable]
-     * is called once for each cell, row by row from the top. The function is inline, so the test
-     * runs without boxing each [Tile], and the field allocates only for a grid with more cells than
-     * any it held before. A goal listed twice counts once. A rejected call leaves the field as it was.
+     * is called once for each cell, row by row from the top. The function is inline, so a lambda
+     * or a function reference passed as [isPassable] runs without boxing each [Tile], and the field
+     * allocates only for a grid with more cells than any it held before; a function stored in a
+     * variable and passed as [isPassable] is called through its object, which boxes every tile. A
+     * goal listed twice counts once. A rejected call leaves the field as it was.
      *
      * @throws IllegalArgumentException if [goals] is empty, or a goal is outside [grid] or not
      *   passable.
+     *
+     * @sample samples.tiles.Paths.compute
      */
     public inline fun compute(
         grid: TileGrid,
@@ -88,6 +92,8 @@ public class DistanceField {
      *
      * @throws IndexOutOfBoundsException if [column] is not in `0 until columns` or [row] is not in
      *   `0 until rows`.
+     *
+     * @sample samples.tiles.Paths.compute
      */
     public operator fun get(column: Int, row: Int): Int {
         if (column !in 0 until columns || row !in 0 until rows) {
@@ -264,10 +270,10 @@ internal inline fun DistanceField.readPassable(grid: TileGrid, isPassable: (Tile
  * row down and left to right. A walker that takes this step from every cell it reaches walks a
  * shortest path.
  *
- * Has no sample because a [TileSet] needs a texture, which needs a GPU device.
- *
  * @throws IndexOutOfBoundsException if [column] is not in `0 until columns` or [row] is not in
  *   `0 until rows`.
+ *
+ * @sample samples.tiles.Paths.nextStepOrNull
  */
 public fun DistanceField.nextStepOrNull(column: Int, row: Int): Cell? {
     val distance = this[column, row]

@@ -50,11 +50,12 @@ public enum class Neighborhood {
  *
  * The search is breadth-first from [end] and stops once it reaches [start]. Each call allocates
  * a [DistanceField] and the list; for many walkers heading to the same cell, compute one field
- * and read [nextStepOrNull] instead.
- *
- * Has no sample because a [TileSet] needs a texture, which needs a GPU device.
+ * and read [nextStepOrNull] instead. Pass [isPassable] as a lambda or a function reference: as
+ * with [DistanceField.compute], a function stored in a variable boxes every tile.
  *
  * @throws IllegalArgumentException if [start] or [end] is outside the grid or not passable.
+ *
+ * @sample samples.tiles.Paths.findPath
  */
 public inline fun TileGrid.findPathOrNull(
     start: Cell,
@@ -78,10 +79,10 @@ public inline fun TileGrid.findPathOrNull(
  * shortest path is one of the fewest cells; among several, the one returned is always the same
  * for the same grid.
  *
- * Has no sample because a [TileSet] needs a texture, which needs a GPU device.
- *
  * @throws IllegalArgumentException if [start] or [end] is outside the grid or not passable.
  * @throws NoSuchElementException if no path joins [start] and [end].
+ *
+ * @sample samples.tiles.Paths.findPath
  */
 public inline fun TileGrid.findPath(
     start: Cell,
