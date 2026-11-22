@@ -24,7 +24,7 @@ public enum class Neighbors(internal val count: Int) {
  *
  * A new field is empty, 0 by 0 cells. Its arrays grow to the grid the first time [compute] runs,
  * and recomputing it for a grid of that size or smaller, made of tiles it has seen before,
- * allocates nothing; a tile new to the field costs one small allocation, once. Read a cell's distance
+ * allocates nothing; a tile new to the field costs a small allocation, once. Read a cell's distance
  * with [get], as in `field[column, row]`; a cell no goal can be reached from reads [UNREACHABLE].
  *
  * [toString] gives `DistanceField(size=4x3, reachable=10)`.
@@ -51,7 +51,8 @@ public class DistanceField {
     /**
      * Returns the number of steps from the cell at [column] and [row] to the nearest goal of the last
      * [compute], 0 for a goal itself, or [UNREACHABLE] when the cell cannot be walked or no goal can
-     * be reached from it.
+     * be reached from it. A [column] or [row] outside the field throws, as it does on a new field,
+     * which has no cells until [compute] runs.
      *
      * @throws IndexOutOfBoundsException if [column] is not in `0 until columns` or [row] is not in
      *   `0 until rows`.
@@ -68,7 +69,8 @@ public class DistanceField {
     /**
      * Fills this field with the number of steps from every cell of [grid] to the nearest of [goals],
      * moving to the [neighbors] of each cell and only through cells whose tile [isPassable]. What the
-     * field held before is replaced, and its size becomes the grid's.
+     * field held before is replaced, and its size becomes the grid's. A goal outside [grid] throws,
+     * and the field is left as it was.
      *
      * [isPassable] defaults to the tiles that are not [TileSet.isSolid], the opposite of what
      * [solidRectangles] makes walls of; pass a test of your own to keep walkers off water, or to let
@@ -291,7 +293,8 @@ private val MOVE_Y = intArrayOf(0, 0, 1, -1, 1, 1, -1, -1)
  * [start] and ends with [end], or `null` when no path leads there. A path from a cell to itself is
  * that one cell, if it can be walked.
  *
- * Both ends have to be walkable cells, or there is no path. [isPassable] defaults to the tiles that
+ * A [start] or [end] outside the grid throws. Both ends have to be walkable cells, or there is no
+ * path. [isPassable] defaults to the tiles that
  * are not [TileSet.isSolid], as in [DistanceField.compute]. Where several paths are as short, the
  * one that goes straight before it goes diagonally is taken. Each call searches anew; for many
  * walkers heading to one place, compute a [DistanceField] once and let each read its next step from
@@ -321,8 +324,9 @@ public fun TileGrid.shortestPathOrNull(
 
 /**
  * Returns one of the shortest paths from [start] to [end] over this grid, as [shortestPathOrNull]
- * does, but throws when no path leads there. Use it where the level is made so that a path always
- * exists. Pass the arguments by name, as in `grid.shortestPath(start = here, end = there)`.
+ * does, but throws when no path leads there. A [start] or [end] outside the grid throws too. Use
+ * it where the level is made so that a path always exists. Pass the arguments by name, as in
+ * `grid.shortestPath(start = here, end = there)`.
  *
  * @throws IllegalArgumentException if [start] or [end] is outside the grid.
  * @throws NoSuchElementException if no path leads from [start] to [end].
