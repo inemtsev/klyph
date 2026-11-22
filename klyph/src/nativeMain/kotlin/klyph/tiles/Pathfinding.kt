@@ -23,7 +23,8 @@ public enum class Neighbors(internal val count: Int) {
  * changes, as a tower defense game does after every tower it places.
  *
  * A new field is empty, 0 by 0 cells. Its arrays grow to the grid the first time [compute] runs,
- * and recomputing it for a grid of that size or smaller allocates nothing. Read a cell's distance
+ * and recomputing it for a grid of that size or smaller, made of tiles it has seen before,
+ * allocates nothing; a tile new to the field costs one small allocation, once. Read a cell's distance
  * with [get], as in `field[column, row]`; a cell no goal can be reached from reads [UNREACHABLE].
  *
  * [toString] gives `DistanceField(size=4x3, reachable=10)`.
@@ -72,10 +73,10 @@ public class DistanceField {
      * [isPassable] defaults to the tiles that are not [TileSet.isSolid], the opposite of what
      * [solidRectangles] makes walls of; pass a test of your own to keep walkers off water, or to let
      * them through doors. It is asked once for each different tile of the grid, flips included, so
-     * it has to answer by the tile alone. A goal on a cell that cannot be walked is
-     * left out, and with no goal left every cell reads [UNREACHABLE]. Once the field's arrays have
-     * grown to the grid, this allocates nothing: keep [goals] in a list of your own to recompute
-     * without making one each time. Pass the arguments after [grid] by name, as in
+     * it has to answer by the tile alone. A goal on a cell that cannot be walked is left out, and
+     * with no goal left every cell reads [UNREACHABLE]. Once the field has computed a grid of this
+     * size holding the same kinds of tile, this allocates nothing: keep [goals] in a list of your
+     * own to recompute without making one each time. Pass the arguments after [grid] by name, as in
      * `field.compute(grid, goals = listOf(base), neighbors = Neighbors.EIGHT)`.
      *
      * @throws IllegalArgumentException if a cell of [goals] is outside [grid], with the field left

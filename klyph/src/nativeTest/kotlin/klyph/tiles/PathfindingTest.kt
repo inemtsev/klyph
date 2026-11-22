@@ -197,7 +197,11 @@ class PathfindingTest {
         }.message
         assertEquals("Goal cell Cell(3, 0) is outside the grid of 3x2 cells.", message)
         assertEquals(listOf("0 1 2", "1 2 3"), picture(field))
+        // One past each edge: the right and bottom ones, then the left and top ones.
+        assertFailsWith<IllegalArgumentException> { field.compute(layer, goals = listOf(cell(0, 2))) }
+        assertFailsWith<IllegalArgumentException> { field.compute(layer, goals = listOf(cell(-1, 0))) }
         assertFailsWith<IllegalArgumentException> { field.compute(layer, goals = listOf(cell(0, -1))) }
+        assertEquals(listOf("0 1 2", "1 2 3"), picture(field))
     }
 
     @Test
@@ -217,6 +221,19 @@ class PathfindingTest {
         )
         // Every diagonal step on the way would cut a corner of a wall, so eight neighbors take the same path.
         assertEquals(path, layer.shortestPath(start = cell(0, 2), end = cell(4, 0), neighbors = Neighbors.EIGHT))
+    }
+
+    @Test
+    fun ofPathsAsShortTheOneThatGoesStraightFirstIsTaken() {
+        val layer = layerOf(
+            "...",
+            "...",
+        )
+        // Both (1, 0) and (1, 1) lead to (2, 1) in two steps; the straight step comes first.
+        assertEquals(
+            listOf(cell(0, 0), cell(1, 0), cell(2, 1)),
+            layer.shortestPath(start = cell(0, 0), end = cell(2, 1), neighbors = Neighbors.EIGHT),
+        )
     }
 
     @Test
