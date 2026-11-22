@@ -55,7 +55,8 @@ public class DistanceField {
      * Computes the distance of every cell of [grid] to the nearest of [goals], replacing what the
      * field held. A cell's distance is the fewest steps from it to a goal through passable cells:
      * 0 for a goal, and [UNREACHABLE] for a cell with no such route, which every cell that is not
-     * passable is.
+     * passable is. It throws when [goals] is empty, or when a goal lies outside [grid] or is not
+     * passable, and the field then keeps what it held.
      *
      * [isPassable] says which tiles a walker may enter. It defaults to every tile that is not
      * solid in the grid's [TileSet], `!tileSet.isSolid(tile)`, so [Tile.EMPTY] is passable, as
@@ -67,9 +68,9 @@ public class DistanceField {
      * The search is breadth-first from every goal at once and visits each cell once. [isPassable]
      * is called once for each cell, row by row from the top. The function is inline, so a lambda
      * or a function reference passed as [isPassable] runs without boxing each [Tile], and the field
-     * allocates only for a grid with more cells than any it held before; a function stored in a
-     * variable and passed as [isPassable] is called through its object, which boxes every tile. A
-     * goal listed twice counts once. A rejected call leaves the field as it was.
+     * allocates only for a grid with more cells than any it was given before; a function stored in
+     * a variable and passed as [isPassable] is called through its object, which boxes every tile.
+     * A goal listed twice counts once.
      *
      * @throws IllegalArgumentException if [goals] is empty, or a goal is outside [grid] or not
      *   passable.
@@ -88,7 +89,9 @@ public class DistanceField {
 
     /**
      * Returns the distance in steps from the cell at [column] and [row] to the nearest goal, 0 for
-     * a goal and [UNREACHABLE] for a cell with no route to one.
+     * a goal and [UNREACHABLE] for a cell with no route to one. A cell outside the field, with
+     * [column] not in `0 until columns` or [row] not in `0 until rows`, throws, as
+     * [TileGrid.get] does; before the first [compute] the field has no cells.
      *
      * @throws IndexOutOfBoundsException if [column] is not in `0 until columns` or [row] is not in
      *   `0 until rows`.
@@ -268,7 +271,8 @@ internal inline fun DistanceField.readPassable(grid: TileGrid, isPassable: (Tile
  * The step goes to a neighbor under [DistanceField.neighborhood]; when several neighbors are one
  * step nearer, the cells beside it come before the corners, each in reading order, from the top
  * row down and left to right. A walker that takes this step from every cell it reaches walks a
- * shortest path.
+ * shortest path. A cell outside the field, with [column] not in `0 until columns` or [row] not in
+ * `0 until rows`, throws, as [DistanceField.get] does.
  *
  * @throws IndexOutOfBoundsException if [column] is not in `0 until columns` or [row] is not in
  *   `0 until rows`.

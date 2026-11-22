@@ -40,7 +40,8 @@ public enum class Neighborhood {
 /**
  * Returns a shortest path from [start] to [end] through the passable cells of this grid, as the
  * cells walked, [start] first and [end] last, or `null` when no path joins them. [start] equal to
- * [end] gives a list of that one cell.
+ * [end] gives a list of that one cell. A [start] or [end] that lies outside the grid or is not
+ * passable throws.
  *
  * [isPassable] says which tiles a walker may enter, and defaults to every tile that is not solid
  * in the grid's [TileSet], `!tileSet.isSolid(tile)`, as [DistanceField.compute] does. Each step
@@ -71,7 +72,8 @@ public inline fun TileGrid.findPathOrNull(
 /**
  * Returns a shortest path from [start] to [end] through the passable cells of this grid, as the
  * cells walked, [start] first and [end] last. [start] equal to [end] gives a list of that one cell.
- * When no path may join them, use [findPathOrNull].
+ * It throws when no path joins them, and when [start] or [end] lies outside the grid or is not
+ * passable; when no path may join them, use [findPathOrNull].
  *
  * [isPassable] says which tiles a walker may enter, and defaults to every tile that is not solid
  * in the grid's [TileSet], `!tileSet.isSolid(tile)`, as [DistanceField.compute] does. Each step
