@@ -11,6 +11,29 @@ times the pixels they did. The benchmarks spread sprites over the window's size 
 divide sprite sizes (and the hierarchy's ring radii) by the window's pixel density, so every
 sprite still covers the same pixels as in the earlier runs and the GPU fill work matches them.
 
+## Pathfinding (2026-11-22)
+
+The `paths` benchmark (`./gradlew :benchmarks:benchmarkPaths`) runs headless on a 256 by 256 grid,
+a maze of walls one cell thick every 4 columns, each open at the bottom or the top in turn, so
+49,471 cells are passable and the path between opposite corners winds through every corridor. It
+recomputes a `DistanceField` from the bottom-right corner, and finds the path from the top-left
+corner to it with `findPath`, each 200 times with four and with eight neighbors. Apple M4 Pro,
+release build, three runs; the lines are the third, and the other runs agree within 0.1 ms on the
+averages.
+
+```
+field four  average=0.589ms p99=0.678ms slowest=0.691ms (16320 steps from the far corner, DistanceField(size=256x256, neighborhood=FOUR, reachable=49471))
+field eight average=1.288ms p99=1.349ms slowest=1.369ms (16194 steps from the far corner, DistanceField(size=256x256, neighborhood=EIGHT, reachable=49471))
+path four   average=1.080ms p99=1.215ms slowest=1.281ms (16321 cells)
+path eight  average=1.707ms p99=1.813ms slowest=1.991ms (16195 cells)
+```
+
+A recompute allocates nothing once the field has grown, which `DistanceFieldTest` checks with the
+GC's statistics, so a tower defense game can recompute on every placement. `compute` and
+`findPath` are inline so that the passability test runs without boxing each `Tile`: with them
+not inline, 60 recomputes of a 64 by 64 grid allocated 164,040 objects. A path costs more than a
+field because it allocates its field and a list of 16,321 cells on every call.
+
 ## Automatic texture atlas (2026-11-20)
 
 `assets.region(path)` packs the files it loads into shared 2048 by 2048 atlas pages, so sprites

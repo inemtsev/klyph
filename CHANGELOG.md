@@ -14,6 +14,8 @@ All notable changes to klyph are recorded here. The format follows
   events, raycasts and point and box queries, sleeping, and bullets that never tunnel. `App.addPhysics` steps
   it in the fixed step and `PhysicsBody` moves an entity with its body; see the
   [Physics guide](https://inemtsev.github.io/klyph/guide/physics.html).
+- Pathfinding over a `TileGrid`: `DistanceField` gives every cell its steps to the nearest goal and
+  the next step toward it, for many walkers, and `findPath`/`findPathOrNull` return one shortest path.
 - `games/physics`: a playground of eighteen physics scenes, from a blob garden to a 5 000-grain stress test.
 
 ## [1.3.0] - 2026-11-21

@@ -181,35 +181,32 @@ public class DistanceField {
 
     /**
      * Spreads the distances from the cells queued so far, breadth-first, until every reachable
-     * cell has one or the cell [stop] is taken from the queue. Returns how many cells were reached.
+     * cell has one or the cell [stop] is taken from the queue: each cell taken gives its unreached
+     * passable neighbors its distance plus one and queues them. Returns how many cells were reached.
      */
     private fun spread(stop: Int): Int {
+        val corners = neighborhood == Neighborhood.EIGHT
         var head = 0
         while (head < tail) {
             val cell = queue[head++]
             if (cell == stop) break
-            visitNeighbors(cell)
+            val column = cell % columns
+            val row = cell / columns
+            val next = distances[cell] + 1
+            val hasLeft = column > 0
+            val hasRight = column < columns - 1
+            if (hasLeft) visit(cell - 1, next)
+            if (hasRight) visit(cell + 1, next)
+            if (row > 0) {
+                visit(cell - columns, next)
+                if (corners) visitCorners(cell, -columns, hasLeft, hasRight, next)
+            }
+            if (row < rows - 1) {
+                visit(cell + columns, next)
+                if (corners) visitCorners(cell, columns, hasLeft, hasRight, next)
+            }
         }
         return tail
-    }
-
-    /** Gives the unreached passable neighbors of [cell] its distance plus one and queues them. */
-    private fun visitNeighbors(cell: Int) {
-        val column = cell % columns
-        val row = cell / columns
-        val next = distances[cell] + 1
-        val hasLeft = column > 0
-        val hasRight = column < columns - 1
-        if (hasLeft) visit(cell - 1, next)
-        if (hasRight) visit(cell + 1, next)
-        if (row > 0) {
-            visit(cell - columns, next)
-            if (neighborhood == Neighborhood.EIGHT) visitCorners(cell, -columns, hasLeft, hasRight, next)
-        }
-        if (row < rows - 1) {
-            visit(cell + columns, next)
-            if (neighborhood == Neighborhood.EIGHT) visitCorners(cell, columns, hasLeft, hasRight, next)
-        }
     }
 
     /**
@@ -230,7 +227,10 @@ public class DistanceField {
         }
     }
 
-    /** Returns `DistanceField(size=16x9, neighborhood=FOUR, reachable=120)`, `reachable` counting the cells with a distance. The format may change. */
+    /**
+     * Returns `DistanceField(size=16x9, neighborhood=FOUR, reachable=120)`, `reachable` counting
+     * the cells with a distance. The format may change.
+     */
     override fun toString(): String = "DistanceField(size=${columns}x$rows, neighborhood=$neighborhood, reachable=$reachableCount)"
 
     /** Holds [UNREACHABLE]. */

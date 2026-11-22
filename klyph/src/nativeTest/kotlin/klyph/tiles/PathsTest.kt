@@ -13,6 +13,11 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PathsTest {
+    private companion object {
+        /** The eight steps to a neighbor, as (dx, dy). */
+        val OFFSETS = listOf(0 to -1, -1 to 0, 1 to 0, 0 to 1, -1 to -1, 1 to -1, -1 to 1, 1 to 1)
+    }
+
     /** Two 8 by 8 tiles: 0 solid, 1 water, which is not solid. */
     private val tileSet = TileSet(
         SpriteSheet.fromGrid(Texture(16, 8), columns = 2, rows = 1),
@@ -183,8 +188,6 @@ class PathsTest {
      * nothing changes, a search that shares no code with the one under test; `null` when there is no route.
      */
     private fun referenceDistance(grid: TileGrid, start: Cell, end: Cell, neighborhood: Neighborhood): Int? {
-        fun open(column: Int, row: Int) = column in 0 until grid.columns && row in 0 until grid.rows &&
-            !grid.tileSet.isSolid(grid[column, row])
         val steps = Array(grid.rows) { IntArray(grid.columns) { Int.MAX_VALUE } }
         steps[start.row][start.column] = 0
         var changed = true
@@ -192,24 +195,28 @@ class PathsTest {
             changed = false
             for (row in 0 until grid.rows) {
                 for (column in 0 until grid.columns) {
-                    if (!open(column, row)) continue
-                    for (dy in -1..1) {
-                        for (dx in -1..1) {
-                            val corner = dx != 0 && dy != 0
-                            if (dx == 0 && dy == 0 || corner && neighborhood == Neighborhood.FOUR) continue
-                            if (!open(column + dx, row + dy) || corner && !(open(column + dx, row) && open(column, row + dy))) continue
-                            val from = steps[row + dy][column + dx]
-                            if (from != Int.MAX_VALUE && from + 1 < steps[row][column]) {
-                                steps[row][column] = from + 1
-                                changed = true
-                            }
-                        }
+                    val nearest = OFFSETS.filter { (dx, dy) -> canStep(grid, Cell(column, row), dx, dy, neighborhood) }
+                        .minOfOrNull { (dx, dy) -> steps[row + dy][column + dx] } ?: Int.MAX_VALUE
+                    if (nearest != Int.MAX_VALUE && nearest + 1 < steps[row][column]) {
+                        steps[row][column] = nearest + 1
+                        changed = true
                     }
                 }
             }
         }
         return steps[end.row][end.column].takeIf { it != Int.MAX_VALUE }
     }
+
+    /** Returns whether a walker may step from [from] by ([dx], [dy]) under [neighborhood], to a corner only past two open cells. */
+    private fun canStep(grid: TileGrid, from: Cell, dx: Int, dy: Int, neighborhood: Neighborhood): Boolean {
+        val corner = dx != 0 && dy != 0
+        if (corner && neighborhood == Neighborhood.FOUR) return false
+        val sidesOpen = !corner || isOpen(grid, from.column + dx, from.row) && isOpen(grid, from.column, from.row + dy)
+        return isOpen(grid, from.column, from.row) && isOpen(grid, from.column + dx, from.row + dy) && sidesOpen
+    }
+
+    private fun isOpen(grid: TileGrid, column: Int, row: Int): Boolean =
+        column in 0 until grid.columns && row in 0 until grid.rows && !grid.tileSet.isSolid(grid[column, row])
 
     @Test
     fun cellsAreEqualByColumnAndRow() {
