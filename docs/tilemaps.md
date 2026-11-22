@@ -129,6 +129,16 @@ addSystem(Phase.UPDATE) { app ->
 The solids do not follow. `spawnSolids` made them from the cells as they were. To open a hole in
 a wall, destroy the solid entities it returned and call it again with the changed layer.
 
+## Finding a way
+
+A walker that goes from cell to cell asks the grid for the way. `layer.findPath(start, end)`
+returns the cells of a shortest path between two `Cell`s, through the tiles that are not solid,
+and `findPathOrNull` returns `null` when walls cut them apart. For many walkers heading to the
+same place, such as the enemies of a tower defense game, keep one `DistanceField`, call
+`field.compute(layer, goals)` again whenever a tile changes, and have each walker read
+`field.nextStepOrNull(column, row)` for the cell it stands in. Pass `Neighborhood.EIGHT` to walk
+diagonals too, and a test of your own for the tiles a walker may enter.
+
 ## Colliders of your own
 
 `solidRectangles` returns the merged boxes that `spawnSolids` uses, for any test of a tile you like.
