@@ -3,7 +3,7 @@ package klyph.physics.demo
 import klyph.math.Rect
 import klyph.physics.Material
 import klyph.physics.Particle
-import klyph.physics.ParticleCollision
+import klyph.physics.BodyCollision
 import klyph.physics.PhysicsWorld
 import klyph.physics.SoftBody
 import klyph.physics.SoftBodyShape
@@ -69,7 +69,7 @@ object GripAndBounceScene : Scene {
 
         override val blobs = List(3) { w -> setDown(bodies.add(shape, 0f, 0f, stiff, material = MATERIALS[w]), w) }
         val balls = List(3) { i ->
-            ps.add((26 + i * 5) * t, DROP_ROW * t, radius = BALL_RADIUS, collision = ParticleCollision.EVERYTHING, material = Material(restitution = RESTITUTIONS[i]))
+            ps.add((26 + i * 5) * t, DROP_ROW * t, radius = BALL_RADIUS, bodyCollision = BodyCollision.COLLIDE, material = Material(restitution = RESTITUTIONS[i]))
         }
 
         /** Balls added with a right click, each bouncing like the next of the three in turn. */
@@ -114,7 +114,7 @@ object GripAndBounceScene : Scene {
         override fun spawn(x: Float, y: Float) {
             if (spawned.size >= Scenes.MAX_SPAWNED || !Scenes.isOpen(world, x, y)) return
             val i = spawned.size % 3
-            spawned += ps.add(x, y, radius = BALL_RADIUS, collision = ParticleCollision.EVERYTHING, material = Material(restitution = RESTITUTIONS[i]))
+            spawned += ps.add(x, y, radius = BALL_RADIUS, bodyCollision = BodyCollision.COLLIDE, material = Material(restitution = RESTITUTIONS[i]))
         }
 
         override fun draw(canvas: Canvas, debug: DebugDraw, view: Rect) {

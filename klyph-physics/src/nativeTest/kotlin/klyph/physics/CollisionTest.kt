@@ -111,7 +111,7 @@ class CollisionTest {
     @Test
     fun grainsOfSandPileUpInsteadOfPassingThroughEachOther() {
         world.solids = room(12, 20)
-        val grains = (0 until 200).map { ps.add(40f + (it % 20) * 6f, 40f + (it / 20) * 6f, radius = 2f, collision = ParticleCollision.EVERYTHING) }
+        val grains = (0 until 200).map { ps.add(40f + (it % 20) * 6f, 40f + (it / 20) * 6f, radius = 2f, bodyCollision = BodyCollision.COLLIDE) }
         repeat(400) { world.step(dt) }
         var closest = Float.MAX_VALUE
         for (i in grains.indices) for (j in grains.indices) {
@@ -134,7 +134,7 @@ class CollisionTest {
         world.solids = room(20, 12)
         val floor = 11 * tile
         val blob = box(160f, floor)
-        val grain = ps.add(160f, 40f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        val grain = ps.add(160f, 40f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
         val ghost = ps.add(162f, 40f)
         repeat(180) { world.step(dt) }
         val ring = bodies.ringOf(blob)

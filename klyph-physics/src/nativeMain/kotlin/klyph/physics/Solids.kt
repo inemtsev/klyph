@@ -292,10 +292,10 @@ public class SolidGrid(
         if (nearVersion != version) refreshNear()
         val x = particles.x
         val y = particles.y
-        val filtered = particles.anyFiltered
+        val passing = particles.anyPassSolids
         val hasDynamic = dynamic.isNotEmpty()
         for (p in 0 until particles.end) {
-            if (particles.invMass[p] == 0f || filtered && particles.mask[p] and PhysicsLayers.SOLIDS_BIT == 0) continue
+            if (particles.invMass[p] == 0f || passing && particles.flags[p] and Particles.PASSES_SOLIDS != 0) continue
             // a soft body's particles look a little further, as near a solid they touch it, for events
             val r = particles.radius[p] + events.touchReach(particles.owner[p])
             if (!isFarFromGrid(x[p], y[p], r)) collideGrid(particles, p, r, events, restingMove)

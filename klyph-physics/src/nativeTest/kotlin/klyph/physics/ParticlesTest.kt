@@ -123,9 +123,9 @@ class ParticlesTest {
 
     @Test
     fun aGrainIsAliveCollidesWithEverythingAndBelongsToNoSoftBody() {
-        val grain = particles.add(0f, 0f, radius = 1f, collision = ParticleCollision.EVERYTHING)
+        val grain = particles.add(0f, 0f, radius = 1f, bodyCollision = BodyCollision.COLLIDE)
         val spark = particles.add(1f, 0f, radius = 1f)
-        val skin = particles.add(2f, 0f, radius = 1f, collision = ParticleCollision.EVERYTHING)
+        val skin = particles.add(2f, 0f, radius = 1f, bodyCollision = BodyCollision.COLLIDE)
         particles.owner[skin.index] = 0
         assertTrue(particles.isGrain(grain.index))
         assertFalse(particles.isGrain(spark.index))

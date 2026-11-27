@@ -115,7 +115,7 @@ class CouplingTest {
         val bodies = world.rigidBodies
         val crate = world.rigidBody(Shape.box(20f, 20f), 300f, 200f)
         val mass = 1f / bodies.inverseMassOf(crate)
-        val ball = world.particles.add(200f, 200f, mass = mass, radius = 4f, collision = ParticleCollision.EVERYTHING)
+        val ball = world.particles.add(200f, 200f, mass = mass, radius = 4f, bodyCollision = BodyCollision.COLLIDE)
         world.setVelocity(ball, 300f, 0f)
         repeat(60) { world.step(dt) }
         assertTrue(bodies.velocityXOf(crate) > 100f, "the crate was pushed: ${bodies.velocityXOf(crate)}")
@@ -131,7 +131,7 @@ class CouplingTest {
         val world = PhysicsWorld(PhysicsConfig(gravity = Vec2.ZERO, damping = 0f))
         val bodies = world.rigidBodies
         val crate = world.rigidBody(Shape.box(20f, 40f), 300f, 200f)
-        val ball = world.particles.add(200f, 185f, mass = 20f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        val ball = world.particles.add(200f, 185f, mass = 20f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
         world.setVelocity(ball, 300f, 0f)
         repeat(60) { world.step(dt) }
         assertTrue(bodies.angularVelocityOf(crate) > 0.2f, "hit above its middle, it turns clockwise: ${bodies.angularVelocityOf(crate)}")
@@ -141,7 +141,7 @@ class CouplingTest {
     fun grainsPouredOnACrateHeapUpOnIt() {
         val world = room()
         world.rigidBody(Shape.box(100f, 20f), 320f, floor - 10f, kind = BodyKind.STATIC)
-        val grains = List(60) { world.particles.add(300f + (it % 10) * 4f, 300f - (it / 10) * 4f, radius = 2f, collision = ParticleCollision.EVERYTHING) }
+        val grains = List(60) { world.particles.add(300f + (it % 10) * 4f, 300f - (it / 10) * 4f, radius = 2f, bodyCollision = BodyCollision.COLLIDE) }
         repeat(300) { world.step(dt) }
         val ps = world.particles
         var on = 0
@@ -248,9 +248,9 @@ class CouplingTest {
             300f,
             kind = BodyKind.STATIC,
         )
-        val grain = world.particles.add(470f, 250f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        val grain = world.particles.add(470f, 250f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
         val blob = world.softBody(dome, 170f, 250f)
-        val missed = world.particles.add(320f, 250f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        val missed = world.particles.add(320f, 250f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
         repeat(120) { world.step(dt) }
         assertEquals(300f - 5f - 2f, world.particles.yOf(grain), 0.5f, "the grain rests on the right shelf")
         assertTrue(topOf(world, blob) < 295f, "the blob rests on the left one: its top is at ${topOf(world, blob)}")
@@ -264,10 +264,10 @@ class CouplingTest {
         world.rigidBody(Shape.circle(10f), 100f, 100f, kind = BodyKind.STATIC)
         // Rigid box reaches [89, 111] (reach 10 + MARGIN 1).
         // Distant grain and soft body are far outside it and should not be filed.
-        world.particles.add(500f, 500f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        world.particles.add(500f, 500f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
         world.softBody(dome, 500f, 500f)
         // A grain whose radius + MARGIN reaches into [89, 111] (at x = 113.5, radius 2 -> left = 110.5 <= 111).
-        world.particles.add(113.5f, 100f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        world.particles.add(113.5f, 100f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
         val coupling = Coupling(world)
         coupling.beginStep(dt)
         assertEquals(2, coupling.broadphase.count, "only the rigid body and the nearby grain are filed")

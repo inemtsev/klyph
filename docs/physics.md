@@ -212,10 +212,12 @@ addSystem(Phase.FIXED_UPDATE) { _ ->
 
 ## Layers and fast things
 
-Physics filters collisions with klyph's `CollisionLayers`, as a `Collider` does: everything is
-on some layers and has a mask of the layers it collides with. The level is on
-`PhysicsLayers.SOLIDS`, layer 30, so layers 0 to 29 are the game's own. A particle collides
-only with the level unless it is added with `ParticleCollision.EVERYTHING`, which sand needs.
+Physics filters collisions with klyph's `CollisionLayers`: everything is on some layers (any of
+the 32) and has a mask of the layers it collides with. Two things collide only when each one's mask
+holds a layer of the other, so either can refuse. The level has no layer: a mask covers only other
+bodies and particles, and `setSolidCollision(thing, SolidCollision.PASS)` lets one thing fall
+through the level. A particle meets only the level unless it is added with
+`BodyCollision.COLLIDE`, which sand needs.
 `Motion.BULLET` sweeps a fast body or particle every substep, so it never passes through a
 wall, however thin.
 
@@ -223,10 +225,10 @@ wall, however thin.
 ```kotlin
 val world = physics.world
 val ghost = world.rigidBody(Shape.circle(8f), x = 100f, y = 100f)
-// On layer 3, colliding with the level and nothing else.
-world.rigidBodies.setLayers(ghost, layers = CollisionLayers.of(3), mask = PhysicsLayers.SOLIDS)
+// On layer 3, colliding with no other body. The level still holds it up.
+world.rigidBodies.setLayers(ghost, layers = CollisionLayers.of(3), mask = CollisionLayers.NONE)
 // Sand that falls through other sand would be no sand; grains collide with everything.
-world.particles.add(x = 120f, y = 100f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+world.particles.add(x = 120f, y = 100f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
 val shot = world.rigidBody(Shape.circle(2f), x = 0f, y = 100f)
 world.rigidBodies.setMotion(shot, Motion.BULLET)
 world.rigidBodies.setVelocity(shot, vx = 6_000f, vy = 0f)

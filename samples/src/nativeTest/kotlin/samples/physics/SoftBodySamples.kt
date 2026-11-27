@@ -4,12 +4,14 @@ import klyph.physics.PhysicsWorld
 import klyph.physics.SelfCollision
 import klyph.physics.SoftBodyShape
 import klyph.physics.SoftBodyTuning
+import klyph.physics.SolidCollision
 import klyph.physics.SolidGrid
 import klyph.physics.SolidTags
 import klyph.physics.centerXOf
 import klyph.physics.floorTagsOf
 import klyph.physics.isOnFloor
 import klyph.physics.maxYOf
+import klyph.physics.minYOf
 import klyph.physics.meanVelocityXOf
 import klyph.physics.softBody
 import samples.Sample
@@ -93,6 +95,23 @@ class SoftBodySamples {
         // A long thin body folds over when it lands; keep its skin from passing through itself.
         world.softBodies.setSelfCollision(sheet, SelfCollision.COLLIDE)
         assertPrints(world.softBodies.selfCollisionOf(sheet), "COLLIDE")
+    }
+
+    @Sample
+    fun setSolidCollision() {
+        val world = PhysicsWorld()
+        // A floor of 16-unit tiles along row 9, its top at y = 144.
+        val grid = SolidGrid(columns = 20, rows = 10, tileSize = 16f)
+        for (column in 0 until 20) grid.fill(column, 9)
+        world.solids = grid
+        val slime = world.softBody(SoftBodyShape.semiDisc(13f, 14, 8, coreMass = 34f), centerX = 160f, baseY = 100f)
+        world.softBodies.setSolidCollision(slime, SolidCollision.PASS)
+        assertPrints(world.softBodies.solidCollisionOf(slime), "PASS")
+
+        repeat(60) { world.step(1.seconds / 60) }
+
+        // All of it fell through the floor.
+        assertTrue(world.softBodies.minYOf(slime) > 160f)
     }
 
     @Sample

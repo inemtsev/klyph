@@ -4,6 +4,10 @@ package klyph.collision
  * A set of up to 32 collision layers, numbered 0 to 31, one bit each. A [Collider] uses one set
  * for the layers it is on and another for the layers it hits.
  *
+ * [Collisions] reports a pair when either collider's mask holds a layer of the other. The
+ * `klyph-physics` module reads the same sets with a stricter rule: two of its bodies collide only
+ * when each one's mask holds a layer of the other, so either can refuse.
+ *
  * Build a set from single layers with [of] and [plus]:
  * `CollisionLayers.of(1) + CollisionLayers.of(2)`. [bits] holds layer `i` in bit `i`.
  *

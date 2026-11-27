@@ -44,9 +44,9 @@ a second. The core is the goo inside, so now it can't leave.
 **A thin skin** 🧴: a dot keeps 0.5 units from other bodies. Two blobs pressed onto the same floor
 would otherwise line their dots up exactly on each other's edges, where "inside" is a coin toss.
 
-**Grains** ⏳: `particles.add(x, y, radius = 2f, collision = ParticleCollision.EVERYTHING)`. Two grains closer than
+**Grains** ⏳: `particles.add(x, y, radius = 2f, bodyCollision = BodyCollision.COLLIDE)`. Two grains closer than
 `ra + rb` are pushed apart along the line between them, by inverse mass. They also stay out of soft
-bodies. A particle that doesn't collide (the default) only meets the solids, like the fountain's.
+bodies. A particle that doesn't collide (the default) only meets the level, like the fountain's.
 
 **Standing on each other** 🦶: a push that lifts a particle counts as a floor in
 [🦶 Contacts](contacts.md), so a blob on top of another can still jump. No tags: only solids have those.
@@ -60,7 +60,7 @@ half an edge away from the body's own other edges, for things that fold.
 
 | knob | default | turn it up 🔼 | turn it down 🔽 |
 |---|---|---|---|
-| `collision` on `particles.add` | `SOLIDS` | `EVERYTHING`: a grain, hits bodies and other grains | `SOLIDS`: a ghost, only hits solids 👻 |
+| `bodyCollision` on `particles.add` | `PASS` | `COLLIDE`: a grain, hits bodies and other grains | `PASS`: a ghost, only hits the level 👻 |
 | `radius` | `0` | a bigger grain, a wider gap | a point |
 | `setSelfCollision(body, SelfCollision.COLLIDE)` | `PASS` | a folding skin can't pass through itself | cheaper: no check of every dot against every edge |
 | `PhysicsConfig.cellSize` | `AUTO`: the average body | for big bodies | for small ones. about one body wide is best |

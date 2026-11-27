@@ -17,12 +17,12 @@
 val RED = CollisionLayers.of(1)
 val RED_GATE = CollisionLayers.of(3)
 val notRedGate = CollisionLayers(CollisionLayers.ALL.bits and RED_GATE.bits.inv())
-val notSolids = CollisionLayers(CollisionLayers.ALL.bits and PhysicsLayers.SOLIDS.bits.inv())
 
 world.rigidBodies.setLayers(gate, RED_GATE, CollisionLayers.ALL)
 world.rigidBodies.setLayers(ball, RED, notRedGate)   // passes the red gate
 world.softBodies.setLayers(blob, RED, notRedGate)
-world.particles.setLayers(grain, RED, notSolids)     // falls through the level
+world.particles.setLayers(grain, RED, CollisionLayers.ALL)
+world.particles.setSolidCollision(grain, SolidCollision.PASS)   // falls through the level
 
 world.rigidBodies.setResponse(zone, ContactResponse.SENSE)
 
@@ -38,11 +38,13 @@ e.contactsBegun.has(TouchSide.of(ball), TouchSide.SOLIDS)   // did the ball land
 for (i in 0 until e.brokenJointCount) e.brokenJointAt(i)
 ```
 
-**Filters.** Layers are klyph's `CollisionLayers`, as on a `Collider`: a thing's layers are 0 to 29,
-a mask any of them. A pair collides when `layersA and maskB != 0 && layersB and maskA != 0`, so
-either one can refuse the other. Everything starts on `CollisionLayers.DEFAULT` with the mask
-`CollisionLayers.ALL`. The level has its own layer, `PhysicsLayers.SOLIDS`, layer 30: take it out of
-a mask and the thing falls through the floor. A soft body's filter is
+**Filters.** Layers are klyph's `CollisionLayers`: a thing's layers and mask can use any of the 32.
+Physics collides a pair only when `layersA and maskB != 0 && layersB and maskA != 0`, so each one
+can refuse the other; a klyph `Collider` is looser, and `app.collisions` reports a pair when either
+mask holds a layer of the other. Everything starts on `CollisionLayers.DEFAULT` with the mask
+`CollisionLayers.ALL`. The level has no layer, so no mask touches it: to let a thing fall through the
+floor, call `setSolidCollision(thing, SolidCollision.PASS)`. A wall that stops only some layers is a
+static rigid body on a layer, not the level. A soft body's filter is
 all its particles'. Every place two things meet asks: rigid against rigid, against particles and soft
 bodies, soft against soft, particles against the solids, and a bullet's sweep. A filtered pair never
 gets a contact, so it never pushes, never wakes the other and never joins its island.
@@ -73,7 +75,7 @@ nothing. A body that's removed ends its touches in the next step.
 | knob | default | what it does |
 |---|---|---|
 | `setLayers(handle, layers, mask)` | `CollisionLayers.DEFAULT`, `CollisionLayers.ALL` | on rigid bodies, soft bodies and particles: who collides with whom |
-| `PhysicsLayers.SOLIDS` in a mask | in | out, and it passes through the level |
+| `setSolidCollision(handle, SolidCollision.PASS)` | `SolidCollision.COLLIDE` | it passes through the level |
 | `setResponse(body, ContactResponse.SENSE)` | `ContactResponse.PUSH` | notices, never pushes |
 | `breakForce` on a weld | never | how hard it can be pulled before it breaks, and says so |
 

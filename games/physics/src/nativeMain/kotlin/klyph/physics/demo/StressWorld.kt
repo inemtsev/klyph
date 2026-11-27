@@ -1,6 +1,6 @@
 package klyph.physics.demo
 
-import klyph.physics.ParticleCollision
+import klyph.physics.BodyCollision
 import klyph.physics.PhysicsConfig
 import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
@@ -47,7 +47,7 @@ class StressWorld(
         while (ps.size < grains) {
             var x = left + if (row % 2 == 1) gap / 2f else 0f
             while (x <= right && ps.size < grains) {
-                ps.add(x, y, radius = GRAIN_RADIUS, collision = ParticleCollision.EVERYTHING)
+                ps.add(x, y, radius = GRAIN_RADIUS, bodyCollision = BodyCollision.COLLIDE)
                 x += gap
             }
             y -= gap * 0.87f

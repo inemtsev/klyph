@@ -3,7 +3,7 @@ package klyph.physics.demo
 import klyph.math.Rect
 import klyph.physics.BodyKind
 import klyph.physics.Material
-import klyph.physics.ParticleCollision
+import klyph.physics.BodyCollision
 import klyph.physics.PhysicsWorld
 import klyph.physics.RigidBody
 import klyph.physics.Shape
@@ -86,7 +86,7 @@ object DrumScene : Scene {
                 CENTER_X + (it % perRow - perRow / 2f) * gap + (it / perRow % 2) * gap / 2f,
                 CENTER_Y - (it / perRow) * gap,
                 radius = GRAIN_RADIUS,
-                collision = ParticleCollision.EVERYTHING,
+                bodyCollision = BodyCollision.COLLIDE,
                 material = Material(friction = 0.6f, staticFriction = 0.8f),
             )
         }

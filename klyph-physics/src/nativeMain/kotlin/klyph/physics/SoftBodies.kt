@@ -176,10 +176,11 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
     internal fun hasSelfCollision(body: Int): Boolean = selfCollision[body]
 
     /**
-     * Puts every particle of [body] on [layers], colliding only with what is on a layer of [mask]: see
-     * [PhysicsLayers].
+     * Puts every particle of [body] on [layers], colliding with what is on a layer of [mask] and holds a
+     * layer of [body]'s in its own mask: see [PhysicsLayers]. The layers say nothing about the solids:
+     * see [setSolidCollision].
      *
-     * @throws IllegalArgumentException if [layers] is empty or holds [PhysicsLayers.SOLIDS].
+     * @throws IllegalArgumentException if [layers] is empty.
      */
     public fun setLayers(body: SoftBody, layers: CollisionLayers, mask: CollisionLayers) {
         setFilter(body.index, layers.bits, mask.bits)
@@ -196,6 +197,22 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
     }
 
     internal fun category(body: Int): Int = world.particles.category[core(body)]
+
+    /**
+     * Sets whether every particle of [body] is kept out of the solids, the [SolidGrid] and its moving
+     * solids. It is [SolidCollision.COLLIDE] by default; a [SolidCollision.PASS] body falls through the
+     * level.
+     *
+     * @sample samples.physics.SoftBodySamples.setSolidCollision
+     */
+    public fun setSolidCollision(body: SoftBody, solidCollision: SolidCollision) {
+        val passes = solidCollision == SolidCollision.PASS
+        for (i in 0..ringCount(body.index)) world.particles.setPassesSolids(particle(body.index, i), passes)
+    }
+
+    /** Returns whether [body] is kept out of the solids: see [setSolidCollision]. */
+    public fun solidCollisionOf(body: SoftBody): SolidCollision =
+        if (world.particles.passesSolidsAt(core(body.index))) SolidCollision.PASS else SolidCollision.COLLIDE
 
     internal fun mask(body: Int): Int = world.particles.mask[core(body)]
 

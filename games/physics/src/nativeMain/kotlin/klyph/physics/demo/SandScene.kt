@@ -1,7 +1,7 @@
 package klyph.physics.demo
 
 import klyph.math.Rect
-import klyph.physics.ParticleCollision
+import klyph.physics.BodyCollision
 import klyph.physics.PhysicsConfig
 import klyph.physics.PhysicsWorld
 import klyph.physics.SolidShape
@@ -87,7 +87,7 @@ object SandScene : Scene {
                 while (x <= right && ps.size < GRAINS) {
                     if (y < x + leftSlope - clear && y < rightSlope - x - clear) {
                         band[ps.size] = row / 12 % BANDS.size
-                        ps.add(x, y, radius = GRAIN_RADIUS, collision = ParticleCollision.EVERYTHING)
+                        ps.add(x, y, radius = GRAIN_RADIUS, bodyCollision = BodyCollision.COLLIDE)
                     }
                     x += GAP
                 }
@@ -104,7 +104,7 @@ object SandScene : Scene {
             repeat(SCOOP) { i ->
                 // a little hex heap, five grains a row, around the click
                 val row = i / 5
-                world.particles.add(x + (i % 5 - 2) * GAP + (row % 2) * GAP / 2f, y - row * GAP * 0.87f, radius = GRAIN_RADIUS, collision = ParticleCollision.EVERYTHING)
+                world.particles.add(x + (i % 5 - 2) * GAP + (row % 2) * GAP / 2f, y - row * GAP * 0.87f, radius = GRAIN_RADIUS, bodyCollision = BodyCollision.COLLIDE)
             }
         }
 

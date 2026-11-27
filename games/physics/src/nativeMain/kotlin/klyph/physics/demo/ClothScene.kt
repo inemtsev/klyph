@@ -3,7 +3,7 @@ package klyph.physics.demo
 import klyph.math.Rect
 import klyph.physics.Cloth
 import klyph.physics.Particle
-import klyph.physics.ParticleCollision
+import klyph.physics.BodyCollision
 import klyph.physics.PhysicsWorld
 import klyph.physics.DebugDraw
 import klyph.physics.cloth
@@ -67,14 +67,14 @@ object ClothScene : Scene {
             // a flag held along its left edge, on a pole
             flag = w.cloth(56f, 100f, columns = 16, rows = 10, spacing = SPACING, bendCompliance = 0.001f, pinned = { col, _ -> col == 0 })
             // a curtain held along its top
-            curtain = w.cloth(230f, 100f, columns = 14, rows = 18, spacing = SPACING, radius = 2f, collision = ParticleCollision.EVERYTHING)
+            curtain = w.cloth(230f, 100f, columns = 14, rows = 18, spacing = SPACING, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
             // a net held at its two sides, and a heavy ball above it: it lands on the net's top edge, drags
             // it down into a V, and tears through
             sheet = w.cloth(
-                440f, 180f, columns = NET_COLS, rows = 8, spacing = SPACING, tearAt = 1.35f, radius = 2f, collision = ParticleCollision.EVERYTHING,
+                440f, 180f, columns = NET_COLS, rows = 8, spacing = SPACING, tearAt = 1.35f, radius = 2f, bodyCollision = BodyCollision.COLLIDE,
                 pinned = { col, _ -> col == 0 || col == NET_COLS - 1 },
             )
-            heavyBall = w.particles.add(440f + (NET_COLS - 1) * SPACING / 2f, 40f, mass = BALL_MASS, radius = BALL_RADIUS, collision = ParticleCollision.EVERYTHING)
+            heavyBall = w.particles.add(440f + (NET_COLS - 1) * SPACING / 2f, 40f, mass = BALL_MASS, radius = BALL_RADIUS, bodyCollision = BodyCollision.COLLIDE)
         }
 
         override fun beforeStep(dt: Float) {
@@ -92,7 +92,7 @@ object ClothScene : Scene {
 
         override fun spawn(x: Float, y: Float) {
             if (spawned.size >= Scenes.MAX_SPAWNED || !Scenes.isOpen(world, x, y)) return
-            spawned += world.particles.add(x, y, mass = BALL_MASS, radius = BALL_RADIUS, collision = ParticleCollision.EVERYTHING)
+            spawned += world.particles.add(x, y, mass = BALL_MASS, radius = BALL_RADIUS, bodyCollision = BodyCollision.COLLIDE)
         }
 
         override fun draw(canvas: Canvas, debug: DebugDraw, view: Rect) {

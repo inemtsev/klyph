@@ -131,13 +131,28 @@ internal object TheWorld : JointEnd {
     override fun toString(): String = "JointEnd.WORLD"
 }
 
-/** What a particle collides with: see [Particles.add]. */
-public enum class ParticleCollision {
-    /** Only the solids of the level, such as a spark or a drop of a fountain. */
-    SOLIDS,
+/** Whether a particle collides with bodies and other particles: see [Particles.add]. */
+public enum class BodyCollision {
+    /**
+     * It passes through rigid bodies, soft bodies and other particles, such as a spark or a drop of a
+     * fountain: the default, and the cheaper.
+     */
+    PASS,
 
-    /** The solids, soft bodies, rigid bodies and every other particle that collides with everything, like a grain of sand. */
-    EVERYTHING,
+    /** It is kept out of rigid bodies, soft bodies and every other particle that collides with bodies, like a grain of sand. */
+    COLLIDE,
+}
+
+/**
+ * Whether a body or a particle is kept out of the level, the [SolidGrid] and its moving solids: see
+ * [RigidBodies.setSolidCollision], [SoftBodies.setSolidCollision] and [Particles.setSolidCollision].
+ */
+public enum class SolidCollision {
+    /** It is kept out of the solids: the default. */
+    COLLIDE,
+
+    /** It passes through the solids, as a ghost does. */
+    PASS,
 }
 
 /** How a particle or a rigid body moves each substep: see [Particles.setMotion] and [RigidBodies.setMotion]. */

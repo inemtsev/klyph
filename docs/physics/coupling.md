@@ -17,7 +17,7 @@
 val world = PhysicsWorld()
 val blob = world.softBody(dome, 320f, 448f)
 val crate = world.rigidBody(Shape.box(28f, 28f), 320f, 400f)    // rests on the blob, squashing it
-val grain = world.particles.add(100f, 300f, radius = 2f, collision = ParticleCollision.EVERYTHING)   // bounces off crates
+val grain = world.particles.add(100f, 300f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)   // bounces off crates
 
 val rope = world.rope(500f, 20f, 500f, 300f, segments = 14)
 val tie = world.attach(rope.last, crate)                         // the rope's end, held to the crate
@@ -39,7 +39,7 @@ push   = depth / (wₚ + w_body)
 The particle moves `wₚ·push` out, the body `push` back at `r`, moving and turning. A ball that hits a
 crate square on its middle pushes it straight; one that hits it high turns it.
 
-**Which particles?** Every particle of a soft body, and every particle made with `collision = ParticleCollision.EVERYTHING`:
+**Which particles?** Every particle of a soft body, and every particle made with `bodyCollision = BodyCollision.COLLIDE`:
 the same ones that bump into each other. A plain rope or cloth passes through crates, as it passes
 through blobs.
 

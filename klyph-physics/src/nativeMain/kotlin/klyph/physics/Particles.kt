@@ -41,6 +41,9 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
     /** Whether any particle has ever been given a filter: until then, nobody need look. */
     internal var anyFiltered = false
 
+    /** Whether any particle has ever been set to [SolidCollision.PASS]: until then, nobody need look. */
+    internal var anyPassSolids = false
+
     /** Each particle's [Material], spread over three arrays. */
     internal var friction = FloatArray(initialCapacity)
     internal var staticFriction = FloatArray(initialCapacity)
@@ -85,10 +88,11 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
      * Adds a particle at ([x], [y]) at rest and returns its handle.
      *
      * [mass] is more than 0, or [STATIC] for a particle nothing moves. [radius] is how far it keeps
-     * out of things, 0 for a point. With [ParticleCollision.EVERYTHING] it is kept out of soft bodies
-     * and out of every other such particle, by their radii, like a grain of sand; with
-     * [ParticleCollision.SOLIDS] it only meets the solids. Its [material] says how it grips and
-     * bounces. Pass the arguments after [y] by name.
+     * out of things, 0 for a point. With [BodyCollision.COLLIDE] it is kept out of rigid bodies, soft
+     * bodies and every other such particle, by their radii, like a grain of sand; with
+     * [BodyCollision.PASS], the default, it passes through them and only meets the solids. Either way
+     * it is kept out of the solids until [setSolidCollision] says otherwise. Its [material] says how
+     * it grips and bounces. Pass the arguments after [y] by name.
      *
      * @throws IllegalArgumentException if [mass] is not more than 0 or [radius] is negative.
      *
@@ -99,7 +103,7 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
         y: Float,
         mass: Float = 1f,
         radius: Float = 0f,
-        collision: ParticleCollision = ParticleCollision.SOLIDS,
+        bodyCollision: BodyCollision = BodyCollision.PASS,
         material: Material = Material.DEFAULT,
     ): Particle {
         require(mass > 0f) { "Particle mass $mass is not more than 0." }
@@ -114,7 +118,7 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
         prevY[p] = y
         invMass[p] = if (mass == STATIC) 0f else 1f / mass
         this.radius[p] = radius
-        flags[p] = if (collision == ParticleCollision.EVERYTHING) ALIVE or COLLIDES else ALIVE
+        flags[p] = if (bodyCollision == BodyCollision.COLLIDE) ALIVE or COLLIDES else ALIVE
         owner[p] = -1
         category[p] = CollisionLayers.DEFAULT.bits
         mask[p] = CollisionLayers.ALL.bits
@@ -196,11 +200,11 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
     internal fun isBulletAt(p: Int): Boolean = flags[p] and BULLET != 0
 
     /**
-     * Puts [particle] on [layers] and has it collide only with what is on a layer of [mask], as a
-     * klyph [klyph.collision.Collider] does; see [PhysicsLayers]. For a soft body's particles, set
-     * the whole body's with [SoftBodies.setLayers].
+     * Puts [particle] on [layers] and has it collide with what is on a layer of [mask] and holds a
+     * layer of [particle]'s in its own mask; see [PhysicsLayers]. The layers say nothing about the solids: see
+     * [setSolidCollision]. For a soft body's particles, set the whole body's with [SoftBodies.setLayers].
      *
-     * @throws IllegalArgumentException if [layers] is empty or holds [PhysicsLayers.SOLIDS].
+     * @throws IllegalArgumentException if [layers] is empty.
      *
      * @sample samples.physics.ParticleSamples.setLayers
      */
@@ -218,9 +222,35 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
     /** Returns the layers [particle] collides with: see [setLayers]. */
     public fun maskOf(particle: Particle): CollisionLayers = CollisionLayers(mask[particle.index])
 
-    /** Returns what [particle] collides with besides the solids: see [add]. */
-    public fun collisionOf(particle: Particle): ParticleCollision =
-        if (flags[particle.index] and COLLIDES != 0) ParticleCollision.EVERYTHING else ParticleCollision.SOLIDS
+    /** Returns whether [particle] collides with bodies and other particles: see [add]. */
+    public fun bodyCollisionOf(particle: Particle): BodyCollision =
+        if (flags[particle.index] and COLLIDES != 0) BodyCollision.COLLIDE else BodyCollision.PASS
+
+    /**
+     * Sets whether [particle] is kept out of the solids, the [SolidGrid] and its moving solids. It is
+     * [SolidCollision.COLLIDE] by default; a [SolidCollision.PASS] particle falls through the level.
+     * For a soft body's particles, set the whole body's with [SoftBodies.setSolidCollision].
+     *
+     * @sample samples.physics.ParticleSamples.setSolidCollision
+     */
+    public fun setSolidCollision(particle: Particle, solidCollision: SolidCollision) {
+        setPassesSolids(particle.index, solidCollision == SolidCollision.PASS)
+    }
+
+    /** Returns whether [particle] is kept out of the solids: see [setSolidCollision]. */
+    public fun solidCollisionOf(particle: Particle): SolidCollision =
+        if (passesSolidsAt(particle.index)) SolidCollision.PASS else SolidCollision.COLLIDE
+
+    internal fun setPassesSolids(p: Int, passes: Boolean) {
+        if (passes) {
+            flags[p] = flags[p] or PASSES_SOLIDS
+            anyPassSolids = true
+        } else {
+            flags[p] = flags[p] and PASSES_SOLIDS.inv()
+        }
+    }
+
+    internal fun passesSolidsAt(p: Int): Boolean = flags[p] and PASSES_SOLIDS != 0
 
     internal fun collidesAt(p: Int): Boolean = flags[p] and COLLIDES != 0
 
@@ -260,7 +290,7 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
 
     // The engine's own ways in, by slot.
     internal fun addAt(x: Float, y: Float, mass: Float, radius: Float = 0f, collides: Boolean = false): Int =
-        add(x, y, mass, radius, if (collides) ParticleCollision.EVERYTHING else ParticleCollision.SOLIDS).index
+        add(x, y, mass, radius, if (collides) BodyCollision.COLLIDE else BodyCollision.PASS).index
 
     internal fun remove(p: Int) = removeAt(p)
 
@@ -516,6 +546,7 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
         internal const val ALIVE = 1
         internal const val COLLIDES = 2
         internal const val BULLET = 4
+        internal const val PASSES_SOLIDS = 8
     }
 }
 

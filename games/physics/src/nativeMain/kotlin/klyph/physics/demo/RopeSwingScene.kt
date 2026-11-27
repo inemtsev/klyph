@@ -2,7 +2,7 @@ package klyph.physics.demo
 
 import klyph.math.Rect
 import klyph.physics.Particle
-import klyph.physics.ParticleCollision
+import klyph.physics.BodyCollision
 import klyph.physics.PhysicsWorld
 import klyph.physics.PinnedEnds
 import klyph.physics.SoftBody
@@ -83,7 +83,7 @@ object RopeSwingScene : Scene {
             val right = 36 * t
             val y = BRIDGE_ROW * t
             val length = (right - left) * 1.25f
-            bridge = world.chain(left, y, left + length, y, segments = BRIDGE_SEGMENTS, pinned = PinnedEnds.BOTH, radius = length / BRIDGE_SEGMENTS / 2f, collision = ParticleCollision.EVERYTHING)
+            bridge = world.chain(left, y, left + length, y, segments = BRIDGE_SEGMENTS, pinned = PinnedEnds.BOTH, radius = length / BRIDGE_SEGMENTS / 2f, bodyCollision = BodyCollision.COLLIDE)
             ps.moveTo(bridge.last, right, y)
 
             blobs = listOf(world.softBody(Scenes.dome(), (left + right) / 2f, (BRIDGE_ROW - 3) * t))

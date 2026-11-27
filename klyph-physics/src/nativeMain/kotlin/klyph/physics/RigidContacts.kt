@@ -398,9 +398,11 @@ internal class RigidContacts(private val world: PhysicsWorld) {
         // rebuilt, the edges are numbered afresh: an old edge contact's number means nothing now
         updateEdges(grid)
         val moving = grid.dynamic
+        val sensor = bodies.sensor
+        val passesSolids = bodies.passesSolids
         for (body in 0 until bodies.end) {
             if (!bodies.isDynamic(body)) continue
-            if (bodies.sensor[body] || bodies.mask[body] and PhysicsLayers.SOLIDS_BIT == 0) continue
+            if (sensor[body] || passesSolids[body]) continue
             // a sleeping body only wakes if a moving solid reaches it: the still ones it slept on
             if (bodies.asleep[body] && !touchesMovingSolid(body, moving)) continue
             val reach = bodies.reach[body] + MARGIN

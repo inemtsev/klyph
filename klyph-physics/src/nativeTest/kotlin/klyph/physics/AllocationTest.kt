@@ -73,7 +73,7 @@ class AllocationTest {
         repeat(50) { ps.add(200f + it, 50f, radius = 2f) }
         // blobs and colliding grains, so the broadphase and body collisions run too
         repeat(6) { world.softBody(SoftBodyShape.semiDisc(13f, 14, 8, 34f), 150f + it * 30f, 100f) }
-        repeat(60) { ps.add(160f + it % 20 * 5f, 20f + it / 20 * 5f, radius = 2f, collision = ParticleCollision.EVERYTHING) }
+        repeat(60) { ps.add(160f + it % 20 * 5f, 20f + it / 20 * 5f, radius = 2f, bodyCollision = BodyCollision.COLLIDE) }
         // and a hand dragging one of the blobs about
         world.grab(150f, 90f)
         var frame = 0
@@ -107,7 +107,7 @@ class AllocationTest {
         world.rigidBodies.setAngularVelocity(paddle, 1f)
         // blobs and grains among them, and a rope tied to a crate, so the soft-rigid coupling runs too
         repeat(4) { world.softBody(SoftBodyShape.semiDisc(13f, 14, 8, 34f), 200f + it * 60f, 440f) }
-        repeat(30) { world.particles.add(260f + it % 10 * 5f, 100f + it / 10 * 5f, radius = 2f, collision = ParticleCollision.EVERYTHING) }
+        repeat(30) { world.particles.add(260f + it % 10 * 5f, 100f + it / 10 * 5f, radius = 2f, bodyCollision = BodyCollision.COLLIDE) }
         val knot = world.particles.add(100f, 330f)
         world.attach(knot, stack[0])
         // and joints of every kind, with limits, motors and a weld that breaks

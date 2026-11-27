@@ -95,7 +95,7 @@ class PhysicsWorldTest {
             val world = PhysicsWorld()
             world.solids = TestBodies.grid().apply { for (c in 0 until columns) fill(c, 9) }
             world.softBody(TestBodies.dome(), centerX = 80f, baseY = 100f)
-            val p = world.particles.add(40f, 20f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+            val p = world.particles.add(40f, 20f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
             world.setVelocity(p, 120f, -50f)
             return world
         }

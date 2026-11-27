@@ -1,7 +1,7 @@
 package klyph.physics.demo
 
 import klyph.math.Rect
-import klyph.physics.ParticleCollision
+import klyph.physics.BodyCollision
 import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
 import klyph.physics.DebugDraw
@@ -83,7 +83,7 @@ object StressScene : Scene {
                 else -> repeat(SPAWN_GRAINS) { i ->
                     val gap = 2f * StressWorld.GRAIN_RADIUS + 0.1f
                     val row = i / 25
-                    world.particles.add(x + (i % 25 - 12) * gap + (row % 2) * gap / 2f, y - row * gap * 0.87f, radius = StressWorld.GRAIN_RADIUS, collision = ParticleCollision.EVERYTHING)
+                    world.particles.add(x + (i % 25 - 12) * gap + (row % 2) * gap / 2f, y - row * gap * 0.87f, radius = StressWorld.GRAIN_RADIUS, bodyCollision = BodyCollision.COLLIDE)
                 }
             }
         }
