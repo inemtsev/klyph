@@ -24,36 +24,10 @@ jobs:
     # Dokka analyses the klyph sources, which need the SDL3 cinterop, which needs SDL3's headers.
     runs-on: macos-26
     timeout-minutes: 60
-    env:
-      HOMEBREW_NO_AUTO_UPDATE: "1"
-      HOMEBREW_NO_INSTALL_CLEANUP: "1"
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      # Lands in /opt/homebrew/opt/sdl3, which the klyph plugin's Sdl3Locator checks first.
-      - name: Install SDL3
-        run: brew install sdl3
-
-      - name: Read Kotlin version
-        id: kotlin
-        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
-
-      # The Kotlin/Native compiler and its LLVM toolchain download into ~/.konan on first use.
-      - name: Cache Kotlin/Native toolchain
-        uses: actions/cache@v6
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
-
-      # "basic" is the open-source cache; the default "enhanced" one is under separate terms of use.
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-provider: basic
+      - uses: ./.github/actions/setup-klyph
 
       # One site over klyph and klyph-platform, written to build/dokka/html.
       - name: Generate the API reference

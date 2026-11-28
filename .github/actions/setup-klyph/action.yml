@@ -1,0 +1,99 @@
+name: Setup klyph
+description: Installs Java 21 and SDL3, caches the Kotlin/Native toolchain, and configures Gradle.
+
+inputs:
+  sdl3-version:
+    description: SDL3 release version to install on Linux and Windows.
+    required: false
+    default: "3.4.18"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: "21"
+
+    # macOS: lands in /opt/homebrew/opt/sdl3, which Sdl3Locator checks first. The engine build sets
+    # klyph.sdl3.download=false, so nothing is downloaded.
+    - name: Install SDL3 (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      env:
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+        HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      run: brew install sdl3
+
+    # Linux: Ubuntu 24.04 has no SDL3 package, so SDL is built from this release tag and cached.
+    - name: Set SDL3 install folder (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: echo "SDL3_PREFIX=$HOME/sdl3" >> "$GITHUB_ENV"
+
+    - name: Cache SDL3 (Linux)
+      if: runner.os == 'Linux'
+      id: sdl3-cache
+      uses: actions/cache@v6
+      with:
+        path: ~/sdl3
+        key: sdl3-${{ inputs.sdl3-version }}-ubuntu-24.04-${{ runner.arch }}
+
+    # Development packages from SDL's docs/README-linux.md, so the library gets the X11,
+    # Wayland and audio backends a desktop build has. SDL loads them at runtime.
+    - name: Build SDL3 (Linux)
+      if: runner.os == 'Linux' && steps.sdl3-cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        SDL3_VERSION: ${{ inputs.sdl3-version }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          build-essential cmake ninja-build pkg-config \
+          libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev \
+          libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
+          libdrm-dev libgbm-dev libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev \
+          libasound2-dev libpulse-dev libpipewire-0.3-dev libdbus-1-dev libudev-dev
+        git clone --depth 1 --branch "release-$SDL3_VERSION" https://github.com/libsdl-org/SDL.git "$RUNNER_TEMP/sdl-src"
+        # CMAKE_INSTALL_LIBDIR=lib: the build looks for lib/, not lib/x86_64-linux-gnu/.
+        cmake -S "$RUNNER_TEMP/sdl-src" -B "$RUNNER_TEMP/sdl-build" -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX="$HOME/sdl3" \
+          -DCMAKE_INSTALL_LIBDIR=lib \
+          -DSDL_SHARED=ON -DSDL_STATIC=OFF \
+          -DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+        cmake --build "$RUNNER_TEMP/sdl-build"
+        cmake --install "$RUNNER_TEMP/sdl-build"
+
+    # Windows: SDL's own MinGW development package gives headers, libSDL3.dll.a and an SDL3.dll
+    # that needs only system DLLs. Forward slashes let the JDK read the path directly.
+    - name: Install SDL3 (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      env:
+        SDL3_VERSION: ${{ inputs.sdl3-version }}
+      run: |
+        cd "$RUNNER_TEMP"
+        curl -sSfL -o sdl3.tar.gz "https://github.com/libsdl-org/SDL/releases/download/release-$SDL3_VERSION/SDL3-devel-$SDL3_VERSION-mingw.tar.gz"
+        tar -xzf sdl3.tar.gz
+        echo "SDL3_PREFIX=${RUNNER_TEMP//\\//}/SDL3-$SDL3_VERSION/x86_64-w64-mingw32" >> "$GITHUB_ENV"
+
+    - name: Read Kotlin version
+      id: kotlin
+      shell: bash
+      run: |
+        version="$(sed -n 's/^[[:space:]]*kotlin[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' gradle/libs.versions.toml)"
+        test -n "$version"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
+    # The Kotlin/Native compiler and its toolchains download into ~/.konan on first use.
+    - name: Cache Kotlin/Native toolchain
+      uses: actions/cache@v6
+      with:
+        path: ~/.konan
+        key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
+
+    # "basic" is the open-source cache; the default "enhanced" one is under separate terms of use.
+    - uses: gradle/actions/setup-gradle@v6
+      with:
+        cache-provider: basic

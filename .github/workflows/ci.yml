@@ -2,7 +2,22 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
+    paths-ignore:
+      - "*.md"
+      - "LICENSE"
+      - "klyph-gradle-plugin/README.md"
+      - "tools/template/README.md"
+      - ".github/ISSUE_TEMPLATE/**"
   pull_request:
+    paths-ignore:
+      - "*.md"
+      - "LICENSE"
+      - "klyph-gradle-plugin/README.md"
+      - "tools/template/README.md"
+      - ".github/ISSUE_TEMPLATE/**"
+  workflow_dispatch:
 
 # A newer push to the same branch or pull request cancels the run still in progress.
 concurrency:
@@ -17,53 +32,29 @@ jobs:
     # Apple silicon, so the build picks the macosArm64 target with no flags.
     runs-on: macos-26
     timeout-minutes: 60
-    env:
-      HOMEBREW_NO_AUTO_UPDATE: "1"
-      HOMEBREW_NO_INSTALL_CLEANUP: "1"
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
+      - uses: ./.github/actions/setup-klyph
 
-      # Lands in /opt/homebrew/opt/sdl3, which the klyph plugin's Sdl3Locator checks first; the
-      # engine build sets klyph.sdl3.download=false, so nothing is downloaded.
-      - name: Install SDL3
-        run: brew install sdl3
-
-      - name: Read Kotlin version
-        id: kotlin
-        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
-
-      # The Kotlin/Native compiler and its LLVM toolchain download into ~/.konan on first use.
-      - name: Cache Kotlin/Native toolchain
-        uses: actions/cache@v6
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
-
-      # "basic" is the open-source cache; the default "enhanced" one is under separate terms of use.
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-provider: basic
-
+      # detekt and its custom-rule tests are OS-independent JVM checks and run on Linux.
       - name: Test and link
         run: >-
-          ./gradlew --no-daemon
-          check
+          ./gradlew
+          check -x detekt
           :sandbox:linkDebugExecutableMacosArm64
           :games:shooter:linkDebugExecutableMacosArm64
           :benchmarks:linkReleaseExecutableMacosArm64
 
-      # Runs the sandbox offscreen for 30 frames and saves frame 20 as a PNG, so every push
-      # has a picture. A relative screenshot path resolves against the repository root, and
-      # the capture creates its folder.
-      # The runner has a GPU, so the step fails if no picture was written.
+      # Runs the linked sandbox binary offscreen for 30 frames and saves frame 20 as a PNG, so
+      # every push has a picture. The runner has a GPU, so the step fails if no picture was written.
       - name: Screenshot
+        env:
+          KLYPH_OFFSCREEN: "1"
+          KLYPH_FRAMES: "30"
+          KLYPH_SCREENSHOT: "20:${{ github.workspace }}/build/screenshots/sandbox.png"
         run: |
-          ./gradlew --no-daemon :sandbox:run -Pklyph.offscreen=1 -Pklyph.frames=30 -Pklyph.screenshot=20:build/screenshots/sandbox.png
+          ./sandbox/build/bin/macosArm64/debugExecutable/sandbox.kexe
           test -f build/screenshots/sandbox.png
 
       - name: Upload screenshot
@@ -74,18 +65,22 @@ jobs:
           path: build/screenshots/
           if-no-files-found: error
 
-      # Builds the klibs of every target and the cinterop klibs, and publishes them to ~/.m2 as a
-      # release would. Unsigned: signing runs only when signingInMemoryKey is set, and CI has none.
-      - name: Publish to mavenLocal
-        run: ./gradlew --no-daemon publishToMavenLocal -Pklyph.targets=all
+      # Builds the klibs of every target and the cinterop klibs, publishes them and the Gradle
+      # plugin to ~/.m2, and runs the plugin's unit and TestKit tests on the same warm daemon.
+      # Unsigned: signing runs only when signingInMemoryKey is set, and CI has none.
+      - name: Publish to mavenLocal and test Gradle plugin
+        run: >-
+          ./gradlew
+          publishToMavenLocal
+          -Pklyph.targets=all
+          :klyph-gradle-plugin:check
+          :klyph-gradle-plugin:publishToMavenLocal
+          -x :klyph-gradle-plugin:detekt
 
-      # The plugin's unit and TestKit tests, then its jar and marker to ~/.m2 for the consumer test.
-      - name: Test and publish the Gradle plugin to mavenLocal
-        run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
-
-      # The tests of klyph's own detekt rules; check above only builds their jar for detekt.
-      - name: Test the detekt rules
-        run: ./gradlew --no-daemon -p tools/detekt-rules check
+      # Free the 4g daemon heap before the consumer test starts its own Gradle build.
+      - name: Stop Gradle daemon
+        if: always()
+        run: ./gradlew --stop
 
       # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
       # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.
@@ -108,106 +103,39 @@ jobs:
   linux:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    env:
-      # Ubuntu 24.04 has no SDL3 package, so SDL is built from this release tag and cached.
-      SDL3_VERSION: "3.4.18"
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set SDL3 install folder
-        run: echo "SDL3_PREFIX=$HOME/sdl3" >> "$GITHUB_ENV"
-
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Cache SDL3
-        id: sdl3-cache
-        uses: actions/cache@v6
-        with:
-          path: ${{ env.SDL3_PREFIX }}
-          key: sdl3-${{ env.SDL3_VERSION }}-ubuntu-24.04-${{ runner.arch }}
-
-      # Development packages from SDL's docs/README-linux.md, so the library gets the X11,
-      # Wayland and audio backends a desktop build has. SDL loads them at runtime.
-      - name: Build SDL3
-        if: steps.sdl3-cache.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config \
-            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev \
-            libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev libdecor-0-dev \
-            libdrm-dev libgbm-dev libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev \
-            libasound2-dev libpulse-dev libpipewire-0.3-dev libdbus-1-dev libudev-dev
-          git clone --depth 1 --branch "release-$SDL3_VERSION" https://github.com/libsdl-org/SDL.git "$RUNNER_TEMP/sdl-src"
-          # CMAKE_INSTALL_LIBDIR=lib: the build looks for lib/, not lib/x86_64-linux-gnu/.
-          cmake -S "$RUNNER_TEMP/sdl-src" -B "$RUNNER_TEMP/sdl-build" -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX="$SDL3_PREFIX" \
-            -DCMAKE_INSTALL_LIBDIR=lib \
-            -DSDL_SHARED=ON -DSDL_STATIC=OFF \
-            -DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
-          cmake --build "$RUNNER_TEMP/sdl-build"
-          cmake --install "$RUNNER_TEMP/sdl-build"
-
-      - name: Read Kotlin version
-        id: kotlin
-        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
-
-      # The Kotlin/Native compiler and its LLVM toolchain download into ~/.konan on first use.
-      - name: Cache Kotlin/Native toolchain
-        uses: actions/cache@v6
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
-
-      # "basic" is the open-source cache; the default "enhanced" one is under separate terms of use.
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-provider: basic
+      - uses: ./.github/actions/setup-klyph
 
       # Binaries get an rpath to $SDL3_PREFIX/lib, so test executables find libSDL3.so at runtime.
+      # Linux also runs detekt across every module and tests klyph's own detekt rules.
       - name: Test and link
         run: >-
-          ./gradlew --no-daemon
+          ./gradlew
           -Psdl3.prefix="$SDL3_PREFIX"
           check
+          :detekt-rules:check
           :sandbox:linkDebugExecutableLinuxX64
           :games:shooter:linkDebugExecutableLinuxX64
           :benchmarks:linkReleaseExecutableLinuxX64
 
-      # Runs the sandbox offscreen for 30 frames and saves frame 20 as a PNG, so every push
-      # has a picture. A relative screenshot path resolves against the repository root, and
-      # the capture creates its folder.
-      # Informational only: the runner has no GPU, and SDL_GPU needs a device even offscreen,
-      # so the run is expected to fail here. It must pass on macOS.
-      - name: Screenshot
-        continue-on-error: true
-        run: |
-          ./gradlew --no-daemon -Psdl3.prefix="$SDL3_PREFIX" :sandbox:run -Pklyph.offscreen=1 -Pklyph.frames=30 -Pklyph.screenshot=20:build/screenshots/sandbox.png
+      # Every target except macosArm64, which Kotlin/Native builds only on macOS, plus the Gradle
+      # plugin's tests and ~/.m2 publication on the same warm daemon. Unsigned: signing runs only
+      # when signingInMemoryKey is set, and CI has none.
+      - name: Publish to mavenLocal and test Gradle plugin
+        run: >-
+          ./gradlew
+          -Psdl3.prefix="$SDL3_PREFIX"
+          publishToMavenLocal
+          -Pklyph.targets=all
+          :klyph-gradle-plugin:check
+          :klyph-gradle-plugin:publishToMavenLocal
 
-      - name: Upload screenshot
+      # Free the 4g daemon heap before the consumer test starts its own Gradle build.
+      - name: Stop Gradle daemon
         if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: screenshot-linux
-          path: build/screenshots/
-          if-no-files-found: ignore
-
-      # Every target except macosArm64, which Kotlin/Native builds only on macOS. Unsigned:
-      # signing runs only when signingInMemoryKey is set, and CI has none.
-      - name: Publish to mavenLocal
-        run: ./gradlew --no-daemon -Psdl3.prefix="$SDL3_PREFIX" publishToMavenLocal -Pklyph.targets=all
-
-      # The plugin's unit and TestKit tests, then its jar and marker to ~/.m2 for the consumer test.
-      - name: Test and publish the Gradle plugin to mavenLocal
-        run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
-
-      # The tests of klyph's own detekt rules; check above only builds their jar for detekt.
-      - name: Test the detekt rules
-        run: ./gradlew --no-daemon -p tools/detekt-rules check
+        run: ./gradlew --stop
 
       # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
       # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.
@@ -233,8 +161,6 @@ jobs:
   windows:
     runs-on: windows-2025
     timeout-minutes: 60
-    env:
-      SDL3_VERSION: "3.4.18"
     defaults:
       run:
         shell: bash
@@ -245,57 +171,29 @@ jobs:
 
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      # SDL's own MinGW development package: headers, the import library libSDL3.dll.a and an
-      # SDL3.dll that needs only system DLLs. MSYS2's SDL3.dll also needs libiconv-2.dll.
-      # Gradle gets the prefix as a Windows path with forward slashes, which the JDK reads directly.
-      - name: Install SDL3
-        run: |
-          cd "$RUNNER_TEMP"
-          curl -sSfL -o sdl3.tar.gz "https://github.com/libsdl-org/SDL/releases/download/release-$SDL3_VERSION/SDL3-devel-$SDL3_VERSION-mingw.tar.gz"
-          tar -xzf sdl3.tar.gz
-          echo "SDL3_PREFIX=${RUNNER_TEMP//\\//}/SDL3-$SDL3_VERSION/x86_64-w64-mingw32" >> "$GITHUB_ENV"
-
-      - name: Read Kotlin version
-        id: kotlin
-        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
-
-      # The Kotlin/Native compiler and its LLVM and MinGW toolchains download into ~/.konan on first use.
-      - name: Cache Kotlin/Native toolchain
-        uses: actions/cache@v6
-        with:
-          path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ steps.kotlin.outputs.version }}
-
-      # "basic" is the open-source cache; the default "enhanced" one is under separate terms of use.
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-provider: basic
+      - uses: ./.github/actions/setup-klyph
 
       # Every link copies SDL3.dll from $SDL3_PREFIX/bin next to its binary, so test executables
-      # find it at run time.
+      # find it at run time. detekt and its custom-rule tests run on Linux.
       - name: Test and link
         run: >-
-          ./gradlew --no-daemon
+          ./gradlew
           -Psdl3.prefix="$SDL3_PREFIX"
-          check
+          check -x detekt
           :sandbox:linkDebugExecutableMingwX64
           :games:shooter:linkDebugExecutableMingwX64
           :benchmarks:linkReleaseExecutableMingwX64
 
-      # Runs the sandbox offscreen for 30 frames and saves frame 20 as a PNG, so every push
-      # has a picture. A relative screenshot path resolves against the repository root, and
-      # the capture creates its folder.
-      # Informational only: the runner has no GPU, and SDL_GPU needs a device even offscreen,
-      # so the run is expected to fail here. It must pass on macOS.
+      # Runs the linked sandbox binary offscreen for 30 frames and saves frame 20 as a PNG.
+      # Informational only: must pass on macOS.
       - name: Screenshot
         continue-on-error: true
-        run: |
-          ./gradlew --no-daemon -Psdl3.prefix="$SDL3_PREFIX" :sandbox:run -Pklyph.offscreen=1 -Pklyph.frames=30 -Pklyph.screenshot=20:build/screenshots/sandbox.png
+        env:
+          KLYPH_OFFSCREEN: "1"
+          KLYPH_FRAMES: "30"
+        run: >-
+          KLYPH_SCREENSHOT="20:${GITHUB_WORKSPACE//\\//}/build/screenshots/sandbox.png"
+          ./sandbox/build/bin/mingwX64/debugExecutable/sandbox.exe
 
       - name: Upload screenshot
         if: always()
@@ -305,18 +203,24 @@ jobs:
           path: build/screenshots/
           if-no-files-found: ignore
 
-      # Every target except macosArm64, which Kotlin/Native builds only on macOS. Unsigned:
-      # signing runs only when signingInMemoryKey is set, and CI has none.
-      - name: Publish to mavenLocal
-        run: ./gradlew --no-daemon -Psdl3.prefix="$SDL3_PREFIX" publishToMavenLocal -Pklyph.targets=all
+      # Every target except macosArm64, which Kotlin/Native builds only on macOS, plus the Gradle
+      # plugin's tests and ~/.m2 publication on the same warm daemon. Unsigned: signing runs only
+      # when signingInMemoryKey is set, and CI has none.
+      - name: Publish to mavenLocal and test Gradle plugin
+        run: >-
+          ./gradlew
+          -Psdl3.prefix="$SDL3_PREFIX"
+          publishToMavenLocal
+          -Pklyph.targets=all
+          :klyph-gradle-plugin:check
+          :klyph-gradle-plugin:publishToMavenLocal
+          -x :klyph-gradle-plugin:detekt
 
-      # The plugin's unit and TestKit tests, then its jar and marker to ~/.m2 for the consumer test.
-      - name: Test and publish the Gradle plugin to mavenLocal
-        run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
-
-      # The tests of klyph's own detekt rules; check above only builds their jar for detekt.
-      - name: Test the detekt rules
-        run: ./gradlew --no-daemon -p tools/detekt-rules check
+      # Free the 4g daemon heap before the consumer test starts its own Gradle build and ensure
+      # no daemon holds cache locks if an earlier step failed.
+      - name: Stop Gradle daemon
+        if: always()
+        run: ./gradlew --stop
 
       # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
       # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.
