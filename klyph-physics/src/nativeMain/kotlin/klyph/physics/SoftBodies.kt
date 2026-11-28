@@ -179,8 +179,6 @@ public class SoftBodies internal constructor(private val world: PhysicsWorld) {
      * Puts every particle of [body] on [layers], colliding with what is on a layer of [mask] and holds a
      * layer of [body]'s in its own mask: see [PhysicsLayers]. The layers say nothing about the solids:
      * see [setSolidCollision].
-     *
-     * @throws IllegalArgumentException if [layers] is empty.
      */
     public fun setLayers(body: SoftBody, layers: CollisionLayers, mask: CollisionLayers) {
         setFilter(body.index, layers.bits, mask.bits)

@@ -5,7 +5,6 @@ import klyph.math.Vec2
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -140,6 +139,23 @@ class FiltersTest {
     }
 
     @Test
+    fun aSoftBodySetBackToCollideLandsOnTheFloor() {
+        val world = room()
+        val blobs = world.softBodies
+        val ghost = world.softBody(TestBodies.dome(), 200f, floor - 120f)
+        val lander = world.softBody(TestBodies.dome(), 440f, floor - 120f)
+        blobs.setSolidCollision(ghost, SolidCollision.PASS)
+        blobs.setSolidCollision(lander, SolidCollision.PASS)
+        steps(world, 0.2f)
+        assertTrue(blobs.maxYOf(lander) < floor - 20f, "it is still above the floor: ${blobs.maxYOf(lander)}")
+        blobs.setSolidCollision(lander, SolidCollision.COLLIDE)
+        assertEquals(SolidCollision.COLLIDE, blobs.solidCollisionOf(lander))
+        steps(world, 2f)
+        assertEquals(floor, blobs.maxYOf(lander), 3f, "every particle of it is kept out of the floor again")
+        assertTrue(blobs.minYOf(ghost) > 30 * tile, "the other fell out of the bottom: ${blobs.minYOf(ghost)}")
+    }
+
+    @Test
     fun aBulletPassesAWallItFiltersOut() {
         val world = PhysicsWorld(PhysicsConfig(gravity = Vec2(0f, 0f)))
         val bodies = world.rigidBodies
@@ -169,16 +185,33 @@ class FiltersTest {
     }
 
     @Test
-    fun layersAreOneOrMoreOfAllThirtyTwo() {
+    fun layersAreAnyOfAllThirtyTwoOrNone() {
         val world = room()
         val b = world.rigidBody(Shape.circle(5f), 100f, 100f)
         val p = world.particles.add(100f, 100f)
-        assertFailsWith<IllegalArgumentException> { world.rigidBodies.setLayers(b, CollisionLayers.NONE, CollisionLayers.ALL) }
-        assertFailsWith<IllegalArgumentException> { world.particles.setLayers(p, CollisionLayers.NONE, CollisionLayers.ALL) }
         world.rigidBodies.setLayers(b, CollisionLayers.of(30), CollisionLayers.ALL)
         world.particles.setLayers(p, CollisionLayers.of(31), CollisionLayers.ALL)
         assertEquals(CollisionLayers.of(30), world.rigidBodies.layersOf(b))
         assertEquals(CollisionLayers.of(31), world.particles.layersOf(p))
+        world.rigidBodies.setLayers(b, CollisionLayers.NONE, CollisionLayers.ALL)
+        world.particles.setLayers(p, CollisionLayers.NONE, CollisionLayers.ALL)
+        assertEquals(CollisionLayers.NONE, world.rigidBodies.layersOf(b))
+        assertEquals(CollisionLayers.NONE, world.particles.layersOf(p))
+    }
+
+    @Test
+    fun aBodyOnNoLayerPassesOtherBodiesAndStandsOnTheFloor() {
+        val world = room()
+        val bodies = world.rigidBodies
+        val below = world.rigidBody(Shape.box(40f, 20f), 320f, floor - 10f)
+        val above = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 60f)
+        bodies.setLayers(above, CollisionLayers.NONE, CollisionLayers.ALL)
+        val blob = world.softBody(TestBodies.dome(), 480f, floor - 60f)
+        world.softBodies.setLayers(blob, CollisionLayers.NONE, CollisionLayers.ALL)
+        steps(world, 2f)
+        assertEquals(floor - 10f, bodies.yOf(below), 1f, "the lower box stands on the floor")
+        assertEquals(floor - 10f, bodies.yOf(above), 1f, "the upper one fell through it to the floor")
+        assertEquals(floor, world.softBodies.maxYOf(blob), 3f, "the blob stands on the floor")
     }
 
     @Test

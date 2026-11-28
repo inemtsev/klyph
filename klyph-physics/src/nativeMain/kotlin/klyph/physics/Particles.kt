@@ -204,12 +204,9 @@ public class Particles internal constructor(initialCapacity: Int = 64) {
      * layer of [particle]'s in its own mask; see [PhysicsLayers]. The layers say nothing about the solids: see
      * [setSolidCollision]. For a soft body's particles, set the whole body's with [SoftBodies.setLayers].
      *
-     * @throws IllegalArgumentException if [layers] is empty.
-     *
      * @sample samples.physics.ParticleSamples.setLayers
      */
     public fun setLayers(particle: Particle, layers: CollisionLayers, mask: CollisionLayers) {
-        PhysicsLayers.checkLayers(layers)
         val p = particle.index
         category[p] = layers.bits
         this.mask[p] = mask.bits

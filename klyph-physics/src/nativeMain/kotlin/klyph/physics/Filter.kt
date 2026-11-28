@@ -25,10 +25,6 @@ public object PhysicsLayers {
 
     internal fun collides(categoryA: Int, maskA: Int, categoryB: Int, maskB: Int): Boolean =
         categoryA and maskB != 0 && categoryB and maskA != 0
-
-    internal fun checkLayers(layers: CollisionLayers) {
-        require(layers.bits != 0) { "Collision layers $layers hold no layer." }
-    }
 }
 
 /** What one side of a [Touch] is. */

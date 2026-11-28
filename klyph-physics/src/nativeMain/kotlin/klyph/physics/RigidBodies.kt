@@ -263,8 +263,6 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
      * [body]'s in its own mask; see [PhysicsLayers]. The layers say nothing about the solids: see
      * [setSolidCollision]. It wakes, as what it rested on may no longer hold it.
      *
-     * @throws IllegalArgumentException if [layers] is empty.
-     *
      * @sample samples.physics.RigidBodySamples.setLayers
      */
     public fun setLayers(body: RigidBody, layers: CollisionLayers, mask: CollisionLayers) {
@@ -278,7 +276,6 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
     public fun maskOf(body: RigidBody): CollisionLayers = CollisionLayers(mask[body.index])
 
     internal fun setFilter(b: Int, category: Int, mask: Int) {
-        PhysicsLayers.checkLayers(CollisionLayers(category))
         this.category[b] = category
         this.mask[b] = mask
         if (category != CollisionLayers.DEFAULT.bits || mask != CollisionLayers.ALL.bits) anyFiltered = true
