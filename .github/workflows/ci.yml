@@ -52,7 +52,7 @@ jobs:
         env:
           KLYPH_OFFSCREEN: "1"
           KLYPH_FRAMES: "30"
-          KLYPH_SCREENSHOT: "20:build/screenshots/sandbox.png"
+          KLYPH_SCREENSHOT: "20:${{ github.workspace }}/build/screenshots/sandbox.png"
         run: |
           ./sandbox/build/bin/macosArm64/debugExecutable/sandbox.kexe
           test -f build/screenshots/sandbox.png
@@ -191,8 +191,9 @@ jobs:
         env:
           KLYPH_OFFSCREEN: "1"
           KLYPH_FRAMES: "30"
-          KLYPH_SCREENSHOT: "20:build/screenshots/sandbox.png"
-        run: ./sandbox/build/bin/mingwX64/debugExecutable/sandbox.exe
+        run: >-
+          KLYPH_SCREENSHOT="20:${GITHUB_WORKSPACE//\\//}/build/screenshots/sandbox.png"
+          ./sandbox/build/bin/mingwX64/debugExecutable/sandbox.exe
 
       - name: Upload screenshot
         if: always()
