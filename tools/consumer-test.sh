@@ -110,6 +110,8 @@ kotlin { sourceSets.nativeMain.dependencies { implementation("com.eventslooped.k
 EOF
 
 {
+    echo "org.gradle.jvmargs=-Xmx4g"
+    echo "org.gradle.caching=true"
     echo "org.gradle.configuration-cache=true"
     if [[ -n "${SDL3_PREFIX:-}" ]]; then echo "sdl3.prefix=$SDL3_PREFIX"; fi
 } > "$dir/gradle.properties"
@@ -117,7 +119,7 @@ EOF
 verified=()
 
 if [[ "${KLYPH_CONSUMER_RUN:-1}" == 0 ]]; then
-    gradle link "linkDebugExecutable$Target"
+    gradle build "linkDebugExecutable$Target" distribute
     [[ -f "$dir/build/bin/$target/debugExecutable/$executable" ]] || fail "linkDebugExecutable$Target produced no $executable."
     [[ -f "$dir/build/bin/$target/debugExecutable/assets/ship.png" ]] || fail "The debug link did not copy assets/ next to $executable."
     verified+=("the debug executable links and gets assets/ next to it (not run: KLYPH_CONSUMER_RUN=0)")
@@ -126,9 +128,8 @@ else
     summary="$(grep -E '^Shooter ran ' "$dir/run.log" || true)"
     [[ -n "$summary" ]] || fail "The run printed no 'Shooter ran' summary (log: $dir/run.log)."
     verified+=("run with the autopilot for 5 seconds: $summary")
+    gradle distribute distribute
 fi
-
-gradle distribute distribute
 # The consumer build sets no project version, so the zip and its folder are shooter-<target>.
 folder="shooter-$target"
 zip="$dir/build/distributions/$folder.zip"
