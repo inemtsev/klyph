@@ -3,35 +3,28 @@ package klyph.physics
 import klyph.collision.CollisionLayers
 
 /**
- * The layer the level is on. Physics filters collisions with klyph's [CollisionLayers], as a
- * [klyph.collision.Collider] does: everything that collides is on some layers and has a mask of
- * the layers it collides with, and two things collide only when each one's mask holds a layer of
- * the other. By default everything is on [CollisionLayers.DEFAULT] with the mask
- * [CollisionLayers.ALL], so everything collides with everything.
+ * How physics reads klyph's [CollisionLayers]. Everything that collides is on some layers and has a
+ * mask of the layers it collides with, and two things collide only when each one's mask holds a
+ * layer of the other, so either one can refuse the other. By default everything is on
+ * [CollisionLayers.DEFAULT] with the mask [CollisionLayers.ALL], so everything collides with
+ * everything. All 32 layers are the game's own.
  *
- * The level, the [SolidGrid], is on [SOLIDS], layer 30: take it out of a mask and the thing passes
- * through the solids. Use layers 0 to 29 for your own.
+ * A klyph [klyph.collision.Collider] reads the same layers with another rule: `Collisions` reports a
+ * pair when either one's mask holds a layer of the other, as it only says what overlaps.
+ *
+ * The layers say nothing about the level: whether a thing is kept out of the [SolidGrid] is its
+ * [SolidCollision], set with [RigidBodies.setSolidCollision], [SoftBodies.setSolidCollision] and
+ * [Particles.setSolidCollision]. A wall that stops only some layers is a static rigid body on a layer.
  *
  * @sample samples.physics.LayerSamples.layers
  */
 public object PhysicsLayers {
-    /** Layer 30, the level's: everything whose mask holds it is kept out of the solids. */
-    public val SOLIDS: CollisionLayers = CollisionLayers.of(30)
-
     /** Returns `true` if [layersA] with [maskA] and [layersB] with [maskB] collide, as described on [PhysicsLayers]. */
     public fun collide(layersA: CollisionLayers, maskA: CollisionLayers, layersB: CollisionLayers, maskB: CollisionLayers): Boolean =
         collides(layersA.bits, maskA.bits, layersB.bits, maskB.bits)
 
     internal fun collides(categoryA: Int, maskA: Int, categoryB: Int, maskB: Int): Boolean =
         categoryA and maskB != 0 && categoryB and maskA != 0
-
-    internal const val SOLIDS_BIT: Int = 1 shl 30
-
-    internal fun checkLayers(layers: CollisionLayers) {
-        require(layers.bits != 0 && layers.bits and (SOLIDS_BIT or (1 shl 31)) == 0) {
-            "Layers $layers must hold at least one of layers 0 to 29, as layer 30 is the solids'."
-        }
-    }
 }
 
 /** What one side of a [Touch] is. */

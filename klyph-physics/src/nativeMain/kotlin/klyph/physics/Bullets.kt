@@ -115,7 +115,7 @@ internal class Bullets(private val world: PhysicsWorld) {
             candidates[candidateCount++] = other
         }
         val grid = world.solids
-        if (grid != null && bs.mask[b] and PhysicsLayers.SOLIDS_BIT != 0) {
+        if (grid != null && !bs.passesSolids[b]) {
             contacts.updateEdges(grid)
             val ed = contacts.edges
             val r = bs.reach[b] + RigidContacts.MARGIN
@@ -214,7 +214,7 @@ internal class Bullets(private val world: PhysicsWorld) {
         val grid = world.solids ?: return
         val step = grid.tileSize / 4f
         for (p in 0 until particles.end) {
-            if (particles.flags[p] and Particles.BULLET == 0 || particles.invMass[p] == 0f || particles.mask[p] and PhysicsLayers.SOLIDS_BIT == 0) continue
+            if (particles.flags[p] and Particles.BULLET == 0 || particles.invMass[p] == 0f || particles.flags[p] and Particles.PASSES_SOLIDS != 0) continue
             val x0 = particles.prevX[p]
             val y0 = particles.prevY[p]
             val dx = particles.x[p] - x0

@@ -87,8 +87,8 @@ class ShortcutsTest {
         // 24 apart, closing at 1200 units a second: 20 a step, 2.5 a substep (no more than they're
         // wide, or they'd hop past each other), so they meet in the second step, though their boxes and
         // circles are apart at its start but for how far they move
-        val a = ps.add(100f, 100f, radius = 1.25f, collision = ParticleCollision.EVERYTHING)
-        val b = ps.add(124f, 100f, radius = 1.25f, collision = ParticleCollision.EVERYTHING)
+        val a = ps.add(100f, 100f, radius = 1.25f, bodyCollision = BodyCollision.COLLIDE)
+        val b = ps.add(124f, 100f, radius = 1.25f, bodyCollision = BodyCollision.COLLIDE)
         world.setVelocity(a, 600f, 0f)
         world.setVelocity(b, -600f, 0f)
         repeat(3) { world.step(dt) }
@@ -101,7 +101,7 @@ class ShortcutsTest {
         val world = room(PhysicsConfig(iterations = 3))
         val random = Random(5)
         val grains = ArrayList<Particle>()
-        repeat(800) { grains += world.particles.add(150f + random.nextFloat() * 300f, 100f + random.nextFloat() * 300f, radius = 1.25f, collision = ParticleCollision.EVERYTHING) }
+        repeat(800) { grains += world.particles.add(150f + random.nextFloat() * 300f, 100f + random.nextFloat() * 300f, radius = 1.25f, bodyCollision = BodyCollision.COLLIDE) }
         repeat(180) { world.step(dt) }
         val ps = world.particles
         // nothing through anything: every two grains at least nearly their radii apart, none out of the room

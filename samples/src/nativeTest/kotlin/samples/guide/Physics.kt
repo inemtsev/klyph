@@ -15,7 +15,7 @@ import klyph.physics.JointEnd
 import klyph.physics.Material
 import klyph.physics.Motion
 import klyph.physics.Overlaps
-import klyph.physics.ParticleCollision
+import klyph.physics.BodyCollision
 import klyph.physics.PhysicsBody
 import klyph.physics.PhysicsConfig
 import klyph.physics.PhysicsLayers
@@ -167,10 +167,10 @@ class Physics {
         // snippet: layers
         val world = physics.world
         val ghost = world.rigidBody(Shape.circle(8f), x = 100f, y = 100f)
-        // On layer 3, colliding with the level and nothing else.
-        world.rigidBodies.setLayers(ghost, layers = CollisionLayers.of(3), mask = PhysicsLayers.SOLIDS)
+        // On layer 3, colliding with no other body. The level still holds it up.
+        world.rigidBodies.setLayers(ghost, layers = CollisionLayers.of(3), mask = CollisionLayers.NONE)
         // Sand that falls through other sand would be no sand; grains collide with everything.
-        world.particles.add(x = 120f, y = 100f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        world.particles.add(x = 120f, y = 100f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
         val shot = world.rigidBody(Shape.circle(2f), x = 0f, y = 100f)
         world.rigidBodies.setMotion(shot, Motion.BULLET)
         world.rigidBodies.setVelocity(shot, vx = 6_000f, vy = 0f)

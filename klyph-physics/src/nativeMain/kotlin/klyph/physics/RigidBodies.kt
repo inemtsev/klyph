@@ -82,6 +82,9 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
 
     /** Whether each body is a sensor: see [setResponse]. */
     internal var sensor = BooleanArray(initialCapacity)
+
+    /** Whether each body passes through the solids: see [setSolidCollision]. */
+    internal var passesSolids = BooleanArray(initialCapacity)
     internal var thickness = FloatArray(initialCapacity)
 
     /** Number of bodies asleep. */
@@ -173,6 +176,7 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
         category[b] = CollisionLayers.DEFAULT.bits
         mask[b] = CollisionLayers.ALL.bits
         sensor[b] = false
+        passesSolids[b] = false
         thickness[b] = 0f
         shapes[b] = NO_SHAPES
         reach[b] = 0f
@@ -255,11 +259,9 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
     internal fun isBullet(b: Int): Boolean = bullet[b]
 
     /**
-     * Puts [body] on [layers] and has it collide only with what is on a layer of [mask], as a klyph
-     * [klyph.collision.Collider] does; see [PhysicsLayers]. It wakes, as what it rested on may no longer
-     * hold it.
-     *
-     * @throws IllegalArgumentException if [layers] is empty or holds [PhysicsLayers.SOLIDS].
+     * Puts [body] on [layers] and has it collide with what is on a layer of [mask] and holds a layer of
+     * [body]'s in its own mask; see [PhysicsLayers]. The layers say nothing about the solids: see
+     * [setSolidCollision]. It wakes, as what it rested on may no longer hold it.
      *
      * @sample samples.physics.RigidBodySamples.setLayers
      */
@@ -274,7 +276,6 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
     public fun maskOf(body: RigidBody): CollisionLayers = CollisionLayers(mask[body.index])
 
     internal fun setFilter(b: Int, category: Int, mask: Int) {
-        PhysicsLayers.checkLayers(CollisionLayers(category))
         this.category[b] = category
         this.mask[b] = mask
         if (category != CollisionLayers.DEFAULT.bits || mask != CollisionLayers.ALL.bits) anyFiltered = true
@@ -307,6 +308,28 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
     }
 
     internal fun isSensor(b: Int): Boolean = sensor[b]
+
+    /**
+     * Sets whether [body] is kept out of the solids, the [SolidGrid] and its moving solids. It is
+     * [SolidCollision.COLLIDE] by default; a [SolidCollision.PASS] body falls through the level. A body
+     * set back to [SolidCollision.COLLIDE] while a little way into a solid is pushed out; one sunk most
+     * of the way in stays there. A change wakes it; setting the value it already has does nothing.
+     *
+     * @sample samples.physics.RigidBodySamples.setSolidCollision
+     */
+    public fun setSolidCollision(body: RigidBody, solidCollision: SolidCollision) {
+        setPassesSolids(body.index, solidCollision == SolidCollision.PASS)
+    }
+
+    /** Returns whether [body] is kept out of the solids: see [setSolidCollision]. */
+    public fun solidCollisionOf(body: RigidBody): SolidCollision =
+        if (passesSolids[body.index]) SolidCollision.PASS else SolidCollision.COLLIDE
+
+    internal fun setPassesSolids(b: Int, passes: Boolean) {
+        if (passesSolids[b] == passes) return
+        passesSolids[b] = passes
+        if (alive[b]) wake(b)
+    }
 
     /** Whether bodies [p] and [q] are let collide by their filters: see [Filter]. */
     @Suppress("NOTHING_TO_INLINE")
@@ -793,6 +816,7 @@ public class RigidBodies internal constructor(initialCapacity: Int = 16) {
         category = category.copyOf(size)
         mask = mask.copyOf(size)
         sensor = sensor.copyOf(size)
+        passesSolids = passesSolids.copyOf(size)
         thickness = thickness.copyOf(size)
         stillFor = stillFor.copyOf(size)
         island = island.copyOf(size)

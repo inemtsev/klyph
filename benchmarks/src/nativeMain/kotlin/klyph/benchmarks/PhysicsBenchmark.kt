@@ -1,6 +1,6 @@
 package klyph.benchmarks
 
-import klyph.physics.ParticleCollision
+import klyph.physics.BodyCollision
 import klyph.physics.PhysicsConfig
 import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
@@ -100,7 +100,7 @@ private fun stressWorld(boxes: Int, grains: Int, blobs: Int): PhysicsWorld {
     while (world.particles.size < grains) {
         var x = left + if (row % 2 == 1) gap / 2f else 0f
         while (x <= right && world.particles.size < grains) {
-            world.particles.add(x, y, radius = GRAIN_RADIUS, collision = ParticleCollision.EVERYTHING)
+            world.particles.add(x, y, radius = GRAIN_RADIUS, bodyCollision = BodyCollision.COLLIDE)
             x += gap
         }
         y -= gap * 0.87f

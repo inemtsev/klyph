@@ -12,13 +12,13 @@
     <ID>MaxLineLength:Bench.kt:Bench.Result$class</ID>
     <ID>MaxLineLength:BulletsScene.kt:BulletsScene.Run$world.rigidBody(Shape.box(THIN, PANE), x, PANE_Y + PANE / 2f, density = PANE_DENSITY).also { b -> world.joints.hinge(b, JointEnd.WORLD, x, PANE_Y) }</ID>
     <ID>MaxLineLength:ClothScene.kt:ClothScene.Run$440f</ID>
-    <ID>MaxLineLength:ClothScene.kt:ClothScene.Run$heavyBall = w.particles.add(440f + (NET_COLS - 1) * SPACING / 2f, 40f, mass = BALL_MASS, radius = BALL_RADIUS, collision = ParticleCollision.EVERYTHING)</ID>
+    <ID>MaxLineLength:ClothScene.kt:ClothScene.Run$heavyBall = w.particles.add(440f + (NET_COLS - 1) * SPACING / 2f, 40f, mass = BALL_MASS, radius = BALL_RADIUS, bodyCollision = BodyCollision.COLLIDE)</ID>
     <ID>MaxLineLength:CratesAndBlobsScene.kt:CratesAndBlobsScene.Run$swinger = world.rigidBody(Shape.box(SWINGER, SWINGER), endX + dx * SWINGER / 2f, endY + dy * SWINGER / 2f, angle = PULLED_BACK, density = SWINGER_DENSITY)</ID>
     <ID>MaxLineLength:CratesAndBlobsScene.kt:CratesAndBlobsScene.Run$val cushion = world.softBody(SoftBodyShape.semiDisc(CUSHION_RADIUS, arcSegments = 22, baseSegments = 12, coreMass = 34f), CUSHION_X, floor)</ID>
     <ID>MaxLineLength:CratesAndBlobsScene.kt:CratesAndBlobsScene.Run$val tower = List(TOWER) { world.rigidBody(Shape.box(TOWER_CRATE, TOWER_CRATE), TOWER_X, floor - TOWER_CRATE / 2f - it * TOWER_CRATE) }</ID>
     <ID>MaxLineLength:DrumScene.kt:DrumScene.Run$for (i in 0 until CRATES) add(world.rigidBody(Shape.box(CRATE, CRATE), CENTER_X + (i - 2f) * 34f, CENTER_Y + 40f, angle = i * 0.4f))</ID>
-    <ID>MaxLineLength:GripAndBounceScene.kt:GripAndBounceScene.Run$ps.add((26 + i * 5) * t, DROP_ROW * t, radius = BALL_RADIUS, collision = ParticleCollision.EVERYTHING, material = Material(restitution = RESTITUTIONS[i]))</ID>
-    <ID>MaxLineLength:GripAndBounceScene.kt:GripAndBounceScene.Run$spawned += ps.add(x, y, radius = BALL_RADIUS, collision = ParticleCollision.EVERYTHING, material = Material(restitution = RESTITUTIONS[i]))</ID>
+    <ID>MaxLineLength:GripAndBounceScene.kt:GripAndBounceScene.Run$ps.add((26 + i * 5) * t, DROP_ROW * t, radius = BALL_RADIUS, bodyCollision = BodyCollision.COLLIDE, material = Material(restitution = RESTITUTIONS[i]))</ID>
+    <ID>MaxLineLength:GripAndBounceScene.kt:GripAndBounceScene.Run$spawned += ps.add(x, y, radius = BALL_RADIUS, bodyCollision = BodyCollision.COLLIDE, material = Material(restitution = RESTITUTIONS[i]))</ID>
     <ID>MaxLineLength:HeadlessTest.kt:HeadlessTest$assertEquals(0, run.world.queryPoint(mx, my, found), "step $step: the beam's part $i passes through something at ($mx, $my)")</ID>
     <ID>MaxLineLength:HeadlessTest.kt:HeadlessTest$assertTrue(bodies.xOf(b) > Scenes.TILE &amp;&amp; bodies.xOf(b) &lt; BulletsScene.PLATE_X, "bullet $b went through, to ${bodies.xOf(b)}")</ID>
     <ID>MaxLineLength:HeadlessTest.kt:HeadlessTest$assertTrue(bodies.xOf(torso) in JointsScene.BRIDGE_LEFT..JointsScene.BRIDGE_RIGHT, "the ragdoll is on the bridge: ${bodies.xOf(torso)}")</ID>
@@ -38,9 +38,9 @@
     <ID>MaxLineLength:MouseTest.kt:MouseTest$val grabbed = if (p != null) sandbox.grab(ps.xOf(p), ps.yOf(p)) else sandbox.grab(world.rigidBodies.xOf(b!!), world.rigidBodies.yOf(b))</ID>
     <ID>MaxLineLength:PileScene.kt:PileScene$/** The funnel: its walls slope in from [FUNNEL_LEFT] and [FUNNEL_RIGHT] on row [FUNNEL_TOP], over [FUNNEL_ROWS] rows, to a neck 10 tiles wide. */</ID>
     <ID>MaxLineLength:PileScene.kt:PileScene.Run$blobs += bodies.add(SHAPES[i % SHAPES.size], x, FUNNEL_TOP * t, SoftBodyTuning(spokeCompliance = 0.001f, areaCompliance = 0.0006f))</ID>
-    <ID>MaxLineLength:RopeSwingScene.kt:RopeSwingScene.Run$bridge = world.chain(left, y, left + length, y, segments = BRIDGE_SEGMENTS, pinned = PinnedEnds.BOTH, radius = length / BRIDGE_SEGMENTS / 2f, collision = ParticleCollision.EVERYTHING)</ID>
+    <ID>MaxLineLength:RopeSwingScene.kt:RopeSwingScene.Run$bridge = world.chain(left, y, left + length, y, segments = BRIDGE_SEGMENTS, pinned = PinnedEnds.BOTH, radius = length / BRIDGE_SEGMENTS / 2f, bodyCollision = BodyCollision.COLLIDE)</ID>
     <ID>MaxLineLength:RopeSwingScene.kt:RopeSwingScene.Run$debug.square(canvas, ps.xOf(p), ps.yOf(p), if (pinned) 6f else maxOf(2f, ps.radiusOf(p) * 2f), if (pinned) ANCHOR else color)</ID>
-    <ID>MaxLineLength:SandScene.kt:SandScene.Run$world.particles.add(x + (i % 5 - 2) * GAP + (row % 2) * GAP / 2f, y - row * GAP * 0.87f, radius = GRAIN_RADIUS, collision = ParticleCollision.EVERYTHING)</ID>
+    <ID>MaxLineLength:SandScene.kt:SandScene.Run$world.particles.add(x + (i % 5 - 2) * GAP + (row % 2) * GAP / 2f, y - row * GAP * 0.87f, radius = GRAIN_RADIUS, bodyCollision = BodyCollision.COLLIDE)</ID>
     <ID>MaxLineLength:SandboxApp.kt:canvas.drawText(font, text, width - MARGIN, MARGIN + line++ * LINE, scale = 2f, align = TextAlign.RIGHT, layer = HUD_LAYER, shadow = shadow)</ID>
     <ID>MaxLineLength:SandboxApp.kt:if (badge != null) canvas.drawText(font, badge, width / 2f, MARGIN, color = BADGE, scale = 3f, align = TextAlign.CENTER, layer = HUD_LAYER, shadow = shadow)</ID>
     <ID>MaxLineLength:SceneTest.kt:SceneTest$for</ID>
@@ -58,7 +58,7 @@
     <ID>MaxLineLength:SpringsScene.kt:SpringsScene.Run$if (k &lt; 2) for (i in 2 until CHAIN_LINKS) cs.bend(chain[i - 2], chain[i - 1], chain[i], compliance = if (k == 0) 0f else SOFT_BEND)</ID>
     <ID>MaxLineLength:SpringsScene.kt:SpringsScene.Run$val chain = List(CHAIN_LINKS) { i -> ps.add(chainX[k] + i * CHAIN_GAP, CHAIN_TOP, mass = if (i &lt; 2) Particles.STATIC else 1f) }</ID>
     <ID>MaxLineLength:StacksScene.kt:StacksScene.Run$world.rigidBody(Shape.box(DOMINO_WIDTH, DOMINO_HEIGHT), FIRST_DOMINO + it * DOMINO_GAP, floor - DOMINO_HEIGHT / 2f, material = Material.RUBBER)</ID>
-    <ID>MaxLineLength:StressScene.kt:StressScene.Run$world.particles.add(x + (i % 25 - 12) * gap + (row % 2) * gap / 2f, y - row * gap * 0.87f, radius = StressWorld.GRAIN_RADIUS, collision = ParticleCollision.EVERYTHING)</ID>
+    <ID>MaxLineLength:StressScene.kt:StressScene.Run$world.particles.add(x + (i % 25 - 12) * gap + (row % 2) * gap / 2f, y - row * gap * 0.87f, radius = StressWorld.GRAIN_RADIUS, bodyCollision = BodyCollision.COLLIDE)</ID>
     <ID>ReturnCount:Recording.kt:Recording.Companion$fun parse: Recording?</ID>
     <ID>ReturnCount:Sandbox.kt:Sandbox$fun beginStep: Boolean</ID>
     <ID>ReturnCount:Scenes.kt:Scenes$fun isOpen: Boolean</ID>

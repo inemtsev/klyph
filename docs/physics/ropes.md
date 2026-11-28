@@ -26,7 +26,7 @@ sheet.particleAt(3, 5)                                                          
 ```
 
 A `Strand` (rope or chain) and a `Cloth` are just **lists of handles**. The particles and constraints
-live in the world like any others, so everything else works on them: collisions (`collision = ParticleCollision.EVERYTHING`),
+live in the world like any others, so everything else works on them: collisions (`bodyCollision = BodyCollision.COLLIDE`),
 friction, pins, `particles.remove`.
 
 **The three kinds of cloth link.** 🧵
@@ -71,7 +71,7 @@ is dragged, and how the bridge's far end is moved onto its ledge so it sags.
 - 💥 **In 2D a ball can't hit a sheet's face.** It always meets an edge first, and a pinned edge
   is a wall. To tear a net, hold it by its sides and let the weight drag its free edge down.
 - 💥 **Too many particles to collide.** Every colliding cloth particle goes in the broadphase. A
-  20 × 20 sheet is 400 more particles; use `ParticleCollision.EVERYTHING` only where something needs to hit it.
+  20 × 20 sheet is 400 more particles; use `BodyCollision.COLLIDE` only where something needs to hit it.
 
 ## 🧪 Try it
 

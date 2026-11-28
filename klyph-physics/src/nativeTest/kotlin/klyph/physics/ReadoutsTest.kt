@@ -45,9 +45,9 @@ class ReadoutsTest {
     fun twoParticlesThatMeetTouchEachOtherAndAFreeOneTouchesNothing() {
         val world = PhysicsWorld(PhysicsConfig(gravity = Vec2.ZERO))
         val ps = world.particles
-        val a = ps.add(100f, 100f, radius = 4f, collision = ParticleCollision.EVERYTHING)
-        val b = ps.add(106f, 100f, radius = 4f, collision = ParticleCollision.EVERYTHING)
-        val free = ps.add(300f, 300f, radius = 4f, collision = ParticleCollision.EVERYTHING)
+        val a = ps.add(100f, 100f, radius = 4f, bodyCollision = BodyCollision.COLLIDE)
+        val b = ps.add(106f, 100f, radius = 4f, bodyCollision = BodyCollision.COLLIDE)
+        val free = ps.add(300f, 300f, radius = 4f, bodyCollision = BodyCollision.COLLIDE)
         world.step(dt)
         assertTrue(world.events.isTouching(a) || world.events.isTouching(b))
         val touched = if (world.events.isTouching(b)) world.events.touchedParticleOrNull(b) else world.events.touchedParticleOrNull(a)
@@ -80,7 +80,7 @@ class ReadoutsTest {
     fun theBroadphaseHoldsABoxForEveryBodyAndEveryCollidingParticle() {
         val world = room()
         world.softBody(TestBodies.dome(), 80f, 100f)
-        world.particles.add(120f, 60f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        world.particles.add(120f, 60f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
         world.particles.add(130f, 60f, radius = 2f)
         world.step(dt)
         assertEquals(2, world.broadphase.count, "the body and the colliding particle, not the plain one")

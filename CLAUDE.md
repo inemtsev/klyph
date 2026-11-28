@@ -145,9 +145,9 @@ every angle is in radians, with `90f.degrees` and `toDegrees()` in `klyph.math` 
 step allocates nothing (`AllocationTest` checks that with the GC's statistics); the old `Int`-slot
 functions stay `internal` for the solver and its tests; `SolidGrid` is the level, `Events` what the
 last step did, `addPhysics` and `PhysicsBody` the bridge to `App` and the entity world, and
-`DebugDraw` draws it; collision filters are `klyph.collision.CollisionLayers`, with the level on
-`PhysicsLayers.SOLIDS`, layer 30; `docs/physics.md` is its guide page and `docs/physics/` the
-explainers, read on GitHub),
+`DebugDraw` draws it; collision filters are `klyph.collision.CollisionLayers`, read with a
+both-sides rule, and each thing's `SolidCollision` (`setSolidCollision`), not a layer, keeps it in the
+level; `docs/physics.md` is its guide page and `docs/physics/` the explainers, read on GitHub),
 `sandbox` (executable; a smoke test that opens a window and clears it each frame), `games:shooter`
 (executable in `games/shooter`; the reference game sample, keyboard with mouse aim or gamepad, its art and sounds in
 `games/shooter/assets/` synced next to the binary after every link; enemies come in waves kept in a

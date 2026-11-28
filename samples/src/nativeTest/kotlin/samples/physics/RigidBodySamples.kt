@@ -8,6 +8,8 @@ import klyph.physics.Motion
 import klyph.physics.PhysicsLayers
 import klyph.physics.PhysicsWorld
 import klyph.physics.Shape
+import klyph.physics.SolidCollision
+import klyph.physics.SolidGrid
 import klyph.physics.rigidBody
 import samples.Sample
 import samples.assertPrints
@@ -108,9 +110,26 @@ class RigidBodySamples {
         val world = PhysicsWorld()
         val ghosts = CollisionLayers.of(3)
         val ghost = world.rigidBody(Shape.circle(8f), x = 0f, y = 0f)
-        // On its own layer, and colliding with nothing but the level.
-        world.rigidBodies.setLayers(ghost, layers = ghosts, mask = PhysicsLayers.SOLIDS)
+        // On its own layer, and colliding with no other body. The level still holds it up.
+        world.rigidBodies.setLayers(ghost, layers = ghosts, mask = CollisionLayers.NONE)
         assertPrints(world.rigidBodies.layersOf(ghost) == ghosts, "true")
+    }
+
+    @Sample
+    fun setSolidCollision() {
+        val world = PhysicsWorld()
+        // A floor of 16-unit tiles along row 9, its top at y = 144.
+        val grid = SolidGrid(columns = 20, rows = 10, tileSize = 16f)
+        for (column in 0 until 20) grid.fill(column, 9)
+        world.solids = grid
+        val ghost = world.rigidBody(Shape.box(20f, 20f), x = 160f, y = 100f)
+        world.rigidBodies.setSolidCollision(ghost, SolidCollision.PASS)
+        assertPrints(world.rigidBodies.solidCollisionOf(ghost), "PASS")
+
+        repeat(60) { world.step(1.seconds / 60) }
+
+        // It fell through the floor.
+        assertTrue(world.rigidBodies.yOf(ghost) > 160f)
     }
 
     @Sample
@@ -149,9 +168,9 @@ class LayerSamples {
         val player = CollisionLayers.of(0)
         val coins = CollisionLayers.of(1)
         val coin = world.rigidBody(Shape.circle(4f), x = 0f, y = 0f)
-        // Coins collide with the player and the level, not with each other.
-        world.rigidBodies.setLayers(coin, layers = coins, mask = player + PhysicsLayers.SOLIDS)
-        assertPrints(PhysicsLayers.collide(coins, player + PhysicsLayers.SOLIDS, coins, player + PhysicsLayers.SOLIDS), "false")
+        // Coins collide with the player, not with each other. The level holds them whatever the mask.
+        world.rigidBodies.setLayers(coin, layers = coins, mask = player)
+        assertPrints(PhysicsLayers.collide(coins, player, coins, player), "false")
         assertPrints(PhysicsLayers.collide(coins, player, player, CollisionLayers.ALL), "true")
     }
 }

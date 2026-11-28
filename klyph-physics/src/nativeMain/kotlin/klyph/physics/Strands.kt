@@ -106,7 +106,7 @@ public enum class PinnedEnds {
  * pushed. With a [bendCompliance] it also resists folding (see [Constraints.bend]); without, it folds
  * anywhere. [pinned] says which ends are static, so it hangs from there. A link stretched past
  * [tearAt] times its rest length breaks (0, the default, never). Its particles are as round as
- * [radius], and collide as [collision] says. Pass the arguments after the ends by name.
+ * [radius], and collide as [bodyCollision] says. Pass the arguments after the ends by name.
  *
  * @throws IllegalArgumentException if [segments] is less than 1, either end is not finite, the two
  * ends are the same point, any segment has length not finite and more than 0, [mass] is not more
@@ -127,9 +127,9 @@ public fun PhysicsWorld.rope(
     pinned: PinnedEnds = PinnedEnds.START,
     tearAt: Float = 0f,
     radius: Float = 0f,
-    collision: ParticleCollision = ParticleCollision.SOLIDS,
+    bodyCollision: BodyCollision = BodyCollision.PASS,
     material: Material = Material.DEFAULT,
-): Strand = strand(fromX, fromY, toX, toY, segments, mass, compliance, bendCompliance, pinned, tearAt, radius, collision, material, slack = true)
+): Strand = strand(fromX, fromY, toX, toY, segments, mass, compliance, bendCompliance, pinned, tearAt, radius, bodyCollision, material, slack = true)
 
 /**
  * Adds a chain from ([fromX], [fromY]) to ([toX], [toY]), cut into [segments] links, and returns it:
@@ -152,9 +152,9 @@ public fun PhysicsWorld.chain(
     pinned: PinnedEnds = PinnedEnds.START,
     tearAt: Float = 0f,
     radius: Float = 2f,
-    collision: ParticleCollision = ParticleCollision.SOLIDS,
+    bodyCollision: BodyCollision = BodyCollision.PASS,
     material: Material = Material.DEFAULT,
-): Strand = strand(fromX, fromY, toX, toY, segments, mass, compliance, bendCompliance, pinned, tearAt, radius, collision, material, slack = false)
+): Strand = strand(fromX, fromY, toX, toY, segments, mass, compliance, bendCompliance, pinned, tearAt, radius, bodyCollision, material, slack = false)
 
 private fun PhysicsWorld.strand(
     fromX: Float,
@@ -168,7 +168,7 @@ private fun PhysicsWorld.strand(
     pinned: PinnedEnds,
     tearAt: Float,
     radius: Float,
-    collision: ParticleCollision,
+    bodyCollision: BodyCollision,
     material: Material,
     slack: Boolean,
 ): Strand {
@@ -191,7 +191,7 @@ private fun PhysicsWorld.strand(
             fromY + (toY - fromY) * t,
             mass = if (isPinned) Particles.STATIC else mass,
             radius = radius,
-            collision = collision,
+            bodyCollision = bodyCollision,
             material = material,
         )
     }
@@ -238,7 +238,7 @@ public fun PhysicsWorld.cloth(
     bendCompliance: Float = 0.0001f,
     tearAt: Float = 0f,
     radius: Float = 0f,
-    collision: ParticleCollision = ParticleCollision.SOLIDS,
+    bodyCollision: BodyCollision = BodyCollision.PASS,
     material: Material = Material.DEFAULT,
     pinned: (column: Int, row: Int) -> Boolean = { _, row -> row == 0 },
 ): Cloth {
@@ -263,7 +263,7 @@ public fun PhysicsWorld.cloth(
             top + row * spacing,
             mass = if (pinned(col, row)) Particles.STATIC else mass,
             radius = radius,
-            collision = collision,
+            bodyCollision = bodyCollision,
             material = material,
         )
     }

@@ -5,7 +5,6 @@ import klyph.math.Vec2
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -37,7 +36,6 @@ class FiltersTest {
         val BLUE = CollisionLayers.of(2)
         val GATE = CollisionLayers.of(3)
         val NOT_GATE = allBut(GATE)
-        val NOT_SOLIDS = allBut(PhysicsLayers.SOLIDS)
 
         /** Every layer but [layers]. */
         fun allBut(layers: CollisionLayers) = CollisionLayers(CollisionLayers.ALL.bits and layers.bits.inv())
@@ -58,11 +56,11 @@ class FiltersTest {
         repeat(80) {
             val shape = if (it % 2 == 0) Shape.box(10f + random.nextFloat() * 20f, 10f + random.nextFloat() * 20f) else Shape.circle(5f + random.nextFloat() * 10f)
             val b = world.rigidBody(shape, 60f + random.nextFloat() * 520f, 40f + random.nextFloat() * 300f, angle = random.nextFloat() * 6f)
-            // a mask of any of the three, but never nothing, and always the solids so nothing falls out
+            // a mask of any of the three, but never nothing; the level holds them whatever the mask
             var mask = CollisionLayers.NONE
             for (c in categories) if (random.nextBoolean()) mask = mask + c
             if (mask == CollisionLayers.NONE) mask = categories[random.nextInt(3)]
-            bodies.setLayers(b, categories[random.nextInt(3)], mask + PhysicsLayers.SOLIDS)
+            bodies.setLayers(b, categories[random.nextInt(3)], mask)
         }
         var contacts = 0
         steps(world, 4f) {
@@ -101,7 +99,7 @@ class FiltersTest {
         world.softBodies.setLayers(through, RED, NOT_GATE)
         val stopped = world.softBody(TestBodies.dome(), 440f, 250f)
         val ps = world.particles
-        val grain = ps.add(320f, 200f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        val grain = ps.add(320f, 200f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
         ps.setLayers(grain, RED, NOT_GATE)
         steps(world, 3f)
         assertTrue(world.softBodies.maxYOf(through) > floor - 3f, "the red blob reached the floor: ${world.softBodies.maxYOf(through)}")
@@ -123,18 +121,38 @@ class FiltersTest {
     }
 
     @Test
-    fun withoutTheSolidsBitThingsFallThroughTheLevel() {
+    fun passingSolidsThingsFallThroughTheLevel() {
         val world = room()
         val box = world.rigidBody(Shape.box(20f, 20f), 200f, 300f)
-        world.rigidBodies.setLayers(box, CollisionLayers.DEFAULT, NOT_SOLIDS)
+        world.rigidBodies.setSolidCollision(box, SolidCollision.PASS)
         val blob = world.softBody(TestBodies.dome(), 320f, 330f)
-        world.softBodies.setLayers(blob, CollisionLayers.DEFAULT, NOT_SOLIDS)
-        val grain = world.particles.add(450f, 300f, radius = 2f, collision = ParticleCollision.EVERYTHING)
-        world.particles.setLayers(grain, CollisionLayers.DEFAULT, NOT_SOLIDS)
+        world.softBodies.setSolidCollision(blob, SolidCollision.PASS)
+        val grain = world.particles.add(450f, 300f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
+        world.particles.setSolidCollision(grain, SolidCollision.PASS)
+        assertEquals(SolidCollision.PASS, world.rigidBodies.solidCollisionOf(box))
+        assertEquals(SolidCollision.PASS, world.softBodies.solidCollisionOf(blob))
+        assertEquals(SolidCollision.PASS, world.particles.solidCollisionOf(grain))
         steps(world, 1.5f)
         assertTrue(world.rigidBodies.yOf(box) > 30 * tile, "the box fell out of the bottom: ${world.rigidBodies.yOf(box)}")
         assertTrue(world.softBodies.minYOf(blob) > 30 * tile, "the blob fell out of the bottom: ${world.softBodies.minYOf(blob)}")
         assertTrue(world.particles.yOf(grain) > 30 * tile, "the grain fell out of the bottom: ${world.particles.yOf(grain)}")
+    }
+
+    @Test
+    fun aSoftBodySetBackToCollideLandsOnTheFloor() {
+        val world = room()
+        val blobs = world.softBodies
+        val ghost = world.softBody(TestBodies.dome(), 200f, floor - 120f)
+        val lander = world.softBody(TestBodies.dome(), 440f, floor - 120f)
+        blobs.setSolidCollision(ghost, SolidCollision.PASS)
+        blobs.setSolidCollision(lander, SolidCollision.PASS)
+        steps(world, 0.2f)
+        assertTrue(blobs.maxYOf(lander) < floor - 20f, "it is still above the floor: ${blobs.maxYOf(lander)}")
+        blobs.setSolidCollision(lander, SolidCollision.COLLIDE)
+        assertEquals(SolidCollision.COLLIDE, blobs.solidCollisionOf(lander))
+        steps(world, 2f)
+        assertEquals(floor, blobs.maxYOf(lander), 3f, "every particle of it is kept out of the floor again")
+        assertTrue(blobs.minYOf(ghost) > 30 * tile, "the other fell out of the bottom: ${blobs.minYOf(ghost)}")
     }
 
     @Test
@@ -152,13 +170,150 @@ class FiltersTest {
     }
 
     @Test
-    fun layersAreOneOrMoreOfLayersZeroToTwentyNine() {
+    fun narrowMasksKeepThingsInTheLevel() {
+        val world = room()
+        val box = world.rigidBody(Shape.box(20f, 20f), 200f, 300f)
+        world.rigidBodies.setLayers(box, RED, RED)
+        val blob = world.softBody(TestBodies.dome(), 320f, 330f)
+        world.softBodies.setLayers(blob, RED, CollisionLayers.NONE)
+        val grain = world.particles.add(450f, 300f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
+        world.particles.setLayers(grain, RED, BLUE)
+        steps(world, 1.5f)
+        assertEquals(floor - 10f, world.rigidBodies.yOf(box), 1f, "the box landed on the floor")
+        assertTrue(world.softBodies.maxYOf(blob) < floor + 3f, "the blob landed on the floor: ${world.softBodies.maxYOf(blob)}")
+        assertTrue(world.particles.yOf(grain) < floor, "the grain landed on the floor: ${world.particles.yOf(grain)}")
+    }
+
+    @Test
+    fun layersAreAnyOfAllThirtyTwoOrNone() {
         val world = room()
         val b = world.rigidBody(Shape.circle(5f), 100f, 100f)
         val p = world.particles.add(100f, 100f)
-        assertFailsWith<IllegalArgumentException> { world.rigidBodies.setLayers(b, CollisionLayers.NONE, CollisionLayers.ALL) }
-        assertFailsWith<IllegalArgumentException> { world.rigidBodies.setLayers(b, PhysicsLayers.SOLIDS, CollisionLayers.ALL) }
-        assertFailsWith<IllegalArgumentException> { world.particles.setLayers(p, CollisionLayers.of(31), CollisionLayers.ALL) }
+        world.rigidBodies.setLayers(b, CollisionLayers.of(30), CollisionLayers.ALL)
+        world.particles.setLayers(p, CollisionLayers.of(31), CollisionLayers.ALL)
+        assertEquals(CollisionLayers.of(30), world.rigidBodies.layersOf(b))
+        assertEquals(CollisionLayers.of(31), world.particles.layersOf(p))
+        world.rigidBodies.setLayers(b, CollisionLayers.NONE, CollisionLayers.ALL)
+        world.particles.setLayers(p, CollisionLayers.NONE, CollisionLayers.ALL)
+        assertEquals(CollisionLayers.NONE, world.rigidBodies.layersOf(b))
+        assertEquals(CollisionLayers.NONE, world.particles.layersOf(p))
+    }
+
+    @Test
+    fun aBodyOnNoLayerPassesOtherBodiesAndStandsOnTheFloor() {
+        val world = room()
+        val bodies = world.rigidBodies
+        val below = world.rigidBody(Shape.box(40f, 20f), 320f, floor - 10f)
+        val above = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 60f)
+        bodies.setLayers(above, CollisionLayers.NONE, CollisionLayers.ALL)
+        val blob = world.softBody(TestBodies.dome(), 480f, floor - 60f)
+        world.softBodies.setLayers(blob, CollisionLayers.NONE, CollisionLayers.ALL)
+        steps(world, 2f)
+        assertEquals(floor - 10f, bodies.yOf(below), 1f, "the lower box stands on the floor")
+        assertEquals(floor - 10f, bodies.yOf(above), 1f, "the upper one fell through it to the floor")
+        assertEquals(floor, world.softBodies.maxYOf(blob), 3f, "the blob stands on the floor")
+    }
+
+    @Test
+    fun bodiesOnLayersThirtyAndThirtyOneStandOnTheFloorAndOnEachOther() {
+        val world = room()
+        val bodies = world.rigidBodies
+        val below = world.rigidBody(Shape.box(40f, 20f), 320f, floor - 10f)
+        bodies.setLayers(below, CollisionLayers.of(30), CollisionLayers.of(31))
+        val above = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 60f)
+        bodies.setLayers(above, CollisionLayers.of(31), CollisionLayers.of(30))
+        steps(world, 2f)
+        assertEquals(floor - 10f, bodies.yOf(below), 1f, "the lower box stands on the floor")
+        assertEquals(floor - 30f, bodies.yOf(above), 1f, "the upper one stands on it")
+    }
+
+    // --- the level ---
+
+    @Test
+    fun settingTheSolidCollisionAgainLeavesABodyAsleep() {
+        val world = room()
+        val bodies = world.rigidBodies
+        val crate = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 10f)
+        steps(world, 3f)
+        assertTrue(bodies.isAsleep(crate), "the crate fell asleep on the floor")
+        bodies.setSolidCollision(crate, SolidCollision.COLLIDE)
+        assertTrue(bodies.isAsleep(crate), "setting what it already was leaves it asleep")
+        bodies.setSolidCollision(crate, SolidCollision.PASS)
+        assertFalse(bodies.isAsleep(crate), "a change wakes it")
+        steps(world, 1.5f)
+        assertTrue(bodies.yOf(crate) > 30 * tile, "and it falls out of the level: ${bodies.yOf(crate)}")
+    }
+
+    @Test
+    fun aSleepingBodySetBackToCollideInTheFloorIsPushedOut() {
+        val world = room(PhysicsConfig(gravity = Vec2(0f, 0f)))
+        val bodies = world.rigidBodies
+        // sunk 4 units into the floor; one sunk most of the way in stays there, as it would had it never passed
+        val crate = world.rigidBody(Shape.box(20f, 20f), 320f, floor - 6f)
+        bodies.setSolidCollision(crate, SolidCollision.PASS)
+        steps(world, 3f)
+        assertTrue(bodies.isAsleep(crate), "the crate fell asleep in the floor")
+        bodies.setSolidCollision(crate, SolidCollision.COLLIDE)
+        assertFalse(bodies.isAsleep(crate), "a change wakes it")
+        steps(world, 1f)
+        assertTrue(bodies.yOf(crate) <= floor - 10f + 1f, "it was pushed out of the floor: ${bodies.yOf(crate)}")
+    }
+
+    @Test
+    fun bulletsThatPassSolidsCrossAWallOfThem() {
+        val world = room(PhysicsConfig(gravity = Vec2(0f, 0f)))
+        for (r in 0 until 28) world.solids!!.fill(20, r)
+        val bodies = world.rigidBodies
+        val stopped = world.rigidBody(Shape.circle(2f), 100f, 200f)
+        val crossed = world.rigidBody(Shape.circle(2f), 100f, 260f)
+        bodies.setSolidCollision(crossed, SolidCollision.PASS)
+        val stoppedGrain = world.particles.add(100f, 320f, radius = 1f)
+        val crossedGrain = world.particles.add(100f, 380f, radius = 1f)
+        world.particles.setSolidCollision(crossedGrain, SolidCollision.PASS)
+        for (b in listOf(stopped, crossed)) {
+            bodies.setMotion(b, Motion.BULLET)
+            bodies.setVelocity(b, vx = 6_000f, vy = 0f)
+        }
+        for (p in listOf(stoppedGrain, crossedGrain)) {
+            world.particles.setMotion(p, Motion.BULLET)
+            world.setVelocity(p, vx = 6_000f, vy = 0f)
+        }
+        repeat(3) { world.step(dt) }
+        val wall = 20 * tile
+        assertTrue(bodies.xOf(stopped) < wall, "the bullet stopped at the wall: ${bodies.xOf(stopped)}")
+        assertTrue(bodies.xOf(crossed) > wall + tile, "the one passing solids went through: ${bodies.xOf(crossed)}")
+        assertTrue(world.particles.xOf(stoppedGrain) < wall, "the bullet grain stopped at the wall: ${world.particles.xOf(stoppedGrain)}")
+        val crossedX = world.particles.xOf(crossedGrain)
+        assertTrue(crossedX > wall + tile, "the one passing solids went through: $crossedX")
+    }
+
+    @Test
+    fun particlesThatPassSolidsFallThroughAMovingSolid() {
+        val world = room()
+        world.solids!!.add(Solid.moving(left = 280f, top = 200f, right = 360f, bottom = 216f))
+        val held = world.particles.add(300f, 150f, radius = 2f)
+        val passed = world.particles.add(340f, 150f, radius = 2f)
+        world.particles.setSolidCollision(passed, SolidCollision.PASS)
+        steps(world, 1f)
+        assertTrue(world.particles.yOf(held) < 200f, "one rests on the moving solid: ${world.particles.yOf(held)}")
+        assertTrue(world.particles.yOf(passed) > 216f, "the other fell through it: ${world.particles.yOf(passed)}")
+    }
+
+    @Test
+    fun aSlotHandedOutAgainCollidesWithTheSolids() {
+        val world = room()
+        val box = world.rigidBody(Shape.box(20f, 20f), 200f, 300f)
+        world.rigidBodies.setSolidCollision(box, SolidCollision.PASS)
+        world.rigidBodies.remove(box)
+        val next = world.rigidBody(Shape.box(20f, 20f), 200f, 300f)
+        assertEquals(box, next, "the new box took the old one's slot")
+        assertEquals(SolidCollision.COLLIDE, world.rigidBodies.solidCollisionOf(next))
+        val drop = world.particles.add(300f, 300f)
+        world.particles.setSolidCollision(drop, SolidCollision.PASS)
+        world.particles.remove(drop)
+        val nextDrop = world.particles.add(300f, 300f)
+        assertEquals(drop, nextDrop, "the new particle took the old one's slot")
+        assertEquals(SolidCollision.COLLIDE, world.particles.solidCollisionOf(nextDrop))
     }
 
     // --- sensors ---
@@ -197,7 +352,7 @@ class FiltersTest {
         val world = room()
         sensor(world, 320f, 250f)
         val blob = world.softBody(TestBodies.dome(), 280f, 180f)
-        val grain = world.particles.add(380f, 150f, radius = 2f, collision = ParticleCollision.EVERYTHING)
+        val grain = world.particles.add(380f, 150f, radius = 2f, bodyCollision = BodyCollision.COLLIDE)
         val log = sensorLog(world, 2f)
         assertEquals(1, log.count { it == "in ${TouchSide.of(blob)}" }, "$log")
         assertEquals(1, log.count { it == "out ${TouchSide.of(blob)}" }, "$log")
@@ -462,12 +617,12 @@ class FiltersTest {
     fun removingAParticleInASensorAndReusingItsSlotReportsExitAndEntry() {
         val world = room()
         val s = sensor(world, 320f, floor - 20f)
-        val p = world.particles.add(320f, floor - 20f, mass = Particles.STATIC, radius = 3f, collision = ParticleCollision.EVERYTHING)
+        val p = world.particles.add(320f, floor - 20f, mass = Particles.STATIC, radius = 3f, bodyCollision = BodyCollision.COLLIDE)
         world.step(dt)
         assertTrue(world.events.sensorsEntered.has(TouchSide.of(s), TouchSide.of(p)))
 
         world.particles.remove(p)
-        val q = world.particles.add(320f, floor - 20f, mass = Particles.STATIC, radius = 3f, collision = ParticleCollision.EVERYTHING)
+        val q = world.particles.add(320f, floor - 20f, mass = Particles.STATIC, radius = 3f, bodyCollision = BodyCollision.COLLIDE)
         assertEquals(p, q, "q reuses p's slot")
         world.step(dt)
 

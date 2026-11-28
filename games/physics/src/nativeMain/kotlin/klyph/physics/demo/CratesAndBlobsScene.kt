@@ -2,7 +2,7 @@ package klyph.physics.demo
 
 import klyph.math.Rect
 import klyph.physics.Attachment
-import klyph.physics.ParticleCollision
+import klyph.physics.BodyCollision
 import klyph.physics.PhysicsWorld
 import klyph.physics.PinnedEnds
 import klyph.physics.RigidBody
@@ -117,7 +117,7 @@ object CratesAndBlobsScene : Scene {
             compliance = STRETCH,
             pinned = PinnedEnds.BOTH,
             radius = SPRING_RADIUS,
-            collision = ParticleCollision.EVERYTHING,
+            bodyCollision = BodyCollision.COLLIDE,
         )
 
         /** The crate dropped on the trampoline, once it's been dropped. */
