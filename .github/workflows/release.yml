@@ -47,7 +47,10 @@ jobs:
 
       - name: Read Kotlin version
         id: kotlin
-        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+        run: |
+          version="$(sed -n 's/^[[:space:]]*kotlin[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' gradle/libs.versions.toml)"
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # The Kotlin/Native compiler and its LLVM toolchain download into ~/.konan on first use.
       - name: Cache Kotlin/Native toolchain

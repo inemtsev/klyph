@@ -2,7 +2,10 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
+  workflow_dispatch:
 
 # A newer push to the same branch or pull request cancels the run still in progress.
 concurrency:
@@ -35,7 +38,10 @@ jobs:
 
       - name: Read Kotlin version
         id: kotlin
-        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+        run: |
+          version="$(sed -n 's/^[[:space:]]*kotlin[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' gradle/libs.versions.toml)"
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # The Kotlin/Native compiler and its LLVM toolchain download into ~/.konan on first use.
       - name: Cache Kotlin/Native toolchain
@@ -49,10 +55,11 @@ jobs:
         with:
           cache-provider: basic
 
+      # detekt and its custom-rule tests are OS-independent JVM checks and run on Linux.
       - name: Test and link
         run: >-
           ./gradlew --no-daemon
-          check
+          check -x detekt
           :sandbox:linkDebugExecutableMacosArm64
           :games:shooter:linkDebugExecutableMacosArm64
           :benchmarks:linkReleaseExecutableMacosArm64
@@ -81,11 +88,7 @@ jobs:
 
       # The plugin's unit and TestKit tests, then its jar and marker to ~/.m2 for the consumer test.
       - name: Test and publish the Gradle plugin to mavenLocal
-        run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
-
-      # The tests of klyph's own detekt rules; check above only builds their jar for detekt.
-      - name: Test the detekt rules
-        run: ./gradlew --no-daemon -p tools/detekt-rules check
+        run: ./gradlew --no-daemon -p klyph-gradle-plugin check -x detekt publishToMavenLocal
 
       # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
       # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.
@@ -154,7 +157,10 @@ jobs:
 
       - name: Read Kotlin version
         id: kotlin
-        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+        run: |
+          version="$(sed -n 's/^[[:space:]]*kotlin[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' gradle/libs.versions.toml)"
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # The Kotlin/Native compiler and its LLVM toolchain download into ~/.konan on first use.
       - name: Cache Kotlin/Native toolchain
@@ -262,7 +268,10 @@ jobs:
 
       - name: Read Kotlin version
         id: kotlin
-        run: echo "version=$(sed -n 's/.*kotlin-gradle-plugin:\([^"]*\)".*/\1/p' buildSrc/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+        run: |
+          version="$(sed -n 's/^[[:space:]]*kotlin[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' gradle/libs.versions.toml)"
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # The Kotlin/Native compiler and its LLVM and MinGW toolchains download into ~/.konan on first use.
       - name: Cache Kotlin/Native toolchain
@@ -277,12 +286,12 @@ jobs:
           cache-provider: basic
 
       # Every link copies SDL3.dll from $SDL3_PREFIX/bin next to its binary, so test executables
-      # find it at run time.
+      # find it at run time. detekt and its custom-rule tests run on Linux.
       - name: Test and link
         run: >-
           ./gradlew --no-daemon
           -Psdl3.prefix="$SDL3_PREFIX"
-          check
+          check -x detekt
           :sandbox:linkDebugExecutableMingwX64
           :games:shooter:linkDebugExecutableMingwX64
           :benchmarks:linkReleaseExecutableMingwX64
@@ -312,11 +321,7 @@ jobs:
 
       # The plugin's unit and TestKit tests, then its jar and marker to ~/.m2 for the consumer test.
       - name: Test and publish the Gradle plugin to mavenLocal
-        run: ./gradlew --no-daemon -p klyph-gradle-plugin check publishToMavenLocal
-
-      # The tests of klyph's own detekt rules; check above only builds their jar for detekt.
-      - name: Test the detekt rules
-        run: ./gradlew --no-daemon -p tools/detekt-rules check
+        run: ./gradlew --no-daemon -p klyph-gradle-plugin check -x detekt publishToMavenLocal
 
       # A fresh project outside the repository builds the shooter from the artifacts in ~/.m2 with
       # only the plugin line, klyph { } and the dependency, then zips it and checks the zip.

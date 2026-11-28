@@ -51,6 +51,12 @@ dir="${dir%/}/klyph-consumer-$$"
 rm -rf "$dir"
 mkdir -p "$dir/gradle"
 
+# On CI, stop the Gradle daemon on exit: on Windows, a lingering daemon holds lock files under
+# GRADLE_USER_HOME/caches and causes setup-gradle's post-action cache archive to fail.
+if [[ -n "${CI:-}" ]]; then
+    trap '(cd "$repo" && ./gradlew --stop > /dev/null 2>&1) || true' EXIT
+fi
+
 fail() {
     echo "FAILED: $1" >&2
     echo "The project is kept in $dir." >&2
